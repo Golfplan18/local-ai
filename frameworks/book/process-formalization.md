@@ -6,15 +6,9 @@ Process Formalization (PFF)
 
 ## Display Description
 
-Design, convert, render, and audit AI instruction frameworks. Default output is a single consolidated framework file (single-pass rendering, which is the canonical exchange format because it runs both inside Ora and outside it). Four modes: F-Design (new framework), F-Convert (existing → current standard), F-Render (produce additional execution variants on explicit request — opt-in), F-Audit (review).
+Design, convert, deterministically derive, or audit an AI instruction framework. PFF produces one dual-use canonical and a truthful admission state; it never treats authored prose as implemented code, registered capability, saved file, or active product.
 
-_A Meta-Framework for Formalizing Domain Expertise into Executable AI Specifications_
-
-_Version 2.3_
-
-_v2.3 update: semantically reconciles the two competing v2.2 canonicals. The full milestone, anatomy, recovery, rendering, variable-fidelity, and CFF/OFF integration specification is preserved together with the single-file default, approval gates, audit nuance, quality bars, and operational safeguards. This file and its Ora runtime mirror are now one exact body._
-
-_v2.2 update: consolidated single-file output is now the default for F-Design and F-Convert. Additional execution variants (agent-mode, reasoning-model) are produced only when explicitly requested with stated rationale, per the user's strong preference against file profusion. v2.1 baseline incorporated research-backed findings from "Best Practices for Multi-Step AI Prompting" (Appendix)._
+_Version 3.0_
 
 ---
 
@@ -22,1882 +16,861 @@ _v2.2 update: consolidated single-file output is now the default for F-Design an
 
 ### Mode
 
-Required. Which of the four PFF operations: F-Design (create a new framework from a task description; default output is one consolidated framework file), F-Convert (modernize an existing framework against the current standard; default output is one consolidated framework file), F-Render (produce an additional execution variant from an existing framework — opt-in path), or F-Audit (review an existing framework for quality issues).
+Required. Select F-Design, F-Convert, F-Render, or F-Audit. F-Design creates a new canonical from a known procedure. F-Convert preserves and modernizes an existing framework. F-Render requests or consumes a deterministic derived view. F-Audit performs a non-mutating review.
 
-### Task description — for F-Design
+### Task or process description
 
-Required for F-Design. Description of the task or domain you want a framework for. The more concrete, the better — name the deliverable, the stakeholders, and the hard requirements.
+Required for F-Design. Provide the known procedure, the outcome it must produce, who or what performs it, the intended user, and the conditions under which the procedure is complete.
 
-### Existing framework — for F-Convert, F-Render, F-Audit
+### Existing framework
 
-Required for F-Convert, F-Render, and F-Audit. The framework spec (paste the content, attach the file, or provide a vault path).
+Required for F-Convert, F-Render, and F-Audit. Provide the complete source framework, not a summary. Paste it, attach it, or identify an already supplied source unambiguously.
 
-### Target execution tier — for F-Render
+### Authoritative wording and contributors
 
-Required for F-Render. The additional rendering you want produced beyond the default consolidated file: `agent` (swarm execution with stages and tools) or `reasoning-model` (simplified for o3/o4/DeepSeek-R1). For backward compatibility with PFF v2.1 split-artifact frameworks, `single-pass` is also accepted as a target. The legacy value `specification` is accepted only when reconstructing an older v2.1-style canonical spec from a v2.2 consolidated file; new work should not produce specification-tier files.
+Required when the user has supplied exact wording or explicitly selected contributor sources. Identify text that must survive verbatim and name each selected contributor. PFF treats the user's wording as authority and model-authored interpretation as subordinate.
 
-### Rationale for additional variant — for F-Render
+### Target derived view
 
-Required for F-Render. Explain why the consolidated single-file is insufficient and why the requested variant is the right fit. This rationale is a file-proliferation gate: PFF never produces additional variants merely because it can.
+Required for F-Render. Name the requested deterministic target, such as an exact Ora body mirror, a runtime projection, or an outbound Agent Skill package. Also identify the registered transformer or exporter that can create it, if known.
 
-### Existing display name and display description
+### Context and external data
 
-Optional for F-Convert and F-Audit. Provide existing picker copy so PFF can preserve, correct, or improve it instead of silently replacing it.
+Optional at intake; required before admission when the proposed framework depends on it. Identify conversation context, vault material, project files or status, web or external consultation, other named sources, and whether each lane is required or optional.
 
-### Quality bar
+### Capabilities and effects
 
-Optional. Select `production-ready`, `draft`, or `rough sketch`. Defaults to `production-ready`; Section XII defines each threshold.
+Optional at intake; required before admission when the procedure uses a tool, deterministic transformer, renderer, executable capability, durable write, external effect, or reusable code. Describe required behavior rather than a package, executable, or machine path.
 
-### Constraints
+### Constraints and quality bar
 
-Optional. State scope, length, format, audience, prohibited behavior, and any other boundaries the framework must honor.
+Optional. State scope, audience, privacy, portability, format, prohibited behavior, consequential approvals, and the observable standard the output must meet. Quality labels never replace exact verification criteria.
 
 ## How to Use This File
 
-This is a meta-framework — a framework for creating frameworks. It serves four functions:
+PFF is both a standalone sequential instruction and an Ora multipass framework.
 
-1. **Design new frameworks from scratch** by following the Framework Design Process (Section IV). Default output: one consolidated framework file.
-2. **Convert existing frameworks** to the current standard by following the Conversion Protocol (Section VI). Default output: one consolidated converted framework file.
-3. **Render an additional execution variant** (agent mode or reasoning-model) from an existing consolidated framework file by following the Rendering Protocol (Section V). This is the explicit opt-in path for producing extra rendering files beyond the consolidated default.
-4. **Audit existing frameworks** against the quality standard by following the Quality Verification Checklist (Section VII).
+In a standalone session, follow the selected mode's METHOD instructions in milestone order. Keep intermediate deliverables visible, carry only declared handoffs forward, and stop at any required unavailable dependency.
 
-Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemini) or local swarm model — then provide your input below the USER INPUT marker at the bottom. State which function you need, or the AI will determine it from context.
+Inside Ora, strict preflight resolves the selected mode, every milestone, every METHOD reference, same-run prior, external prerequisite, verification criterion, Gear, output format, and drift question before the mode executes. Ora supplies each resolved METHOD to the declared milestone pipeline pass.
 
-**Mode F-Design:** You have a task that needs a framework. You will describe what the framework must accomplish, what inputs it receives, and what outputs it produces. The AI will guide you through the full design process and produce **one consolidated framework file** — the single-pass rendering, which contains all the canonical intellectual content and runs in commercial AI without further packaging. This is the default. If you have a concrete reason to also produce an agent-mode or reasoning-model rendering (e.g., this framework will run on the Mac Studio swarm with tool access), state that reason explicitly and additional renderings will be produced as separate files. The AI may surface a recommendation to render an additional variant, but always presents it as a choice and never produces multiple files by default.
+Both forms execute the same authored canonical body. Neither form grants file, tool, code, registration, activation, publication, or external-effect authority merely because the prose describes such work.
 
-**Mode F-Convert:** You have an existing framework that needs modernization. Paste the old framework as input. The AI will analyze it against the current standard, identify gaps, and produce **one consolidated updated framework file** conforming to the Framework Anatomy and Authoring Standards defined here. Same single-file default as F-Design — additional execution variants only on explicit request with stated rationale.
-
-**Mode F-Render:** You have an existing consolidated framework file (or a canonical specification from a prior PFF version) and need an _additional_ execution variant generated from it. This is the explicit opt-in path for producing extra renderings beyond the default consolidated file. Paste the framework as input and state which variant you need (agent mode for swarm execution, reasoning-model for o3/R1, or another single-pass rendering if you are deriving from an older split-artifact framework). The output is one additional file.
-
-**Mode F-Audit:** You have a framework (new or converted) and want it evaluated against the standards in this document. Paste the framework as input. The AI will score it against the Quality Verification Checklist and provide specific remediation recommendations.
-
----
-
-## Table of Contents
-
-- Section I: Governing Principles
-- Section II: Framework Anatomy — The Structural Standard
-- Section III: Framework Authoring Standards — Language and Convention
-- Section IV: Framework Design Process — Creating a New Framework
-- Section V: Rendering Protocol — Generating Execution Variants
-- Section VI: Conversion Protocol — Modernizing Existing Frameworks
-- Section VII: Quality Verification Checklist
-- Section VIII: Named Failure Modes in Framework Design
-- Section IX: Reference Examples — Structural Patterns
-- Section X: Integration with CFF and OFF
-- Section XI: Execution Commands
-- Section XII: Operational Safeguards and Reference
+PFF does not save the canonical, synchronize mirrors, implement a transformer, write durable code, update a registry, expose a picker entry, activate a Trigger, or approve consequential use unless the surrounding authorized system actually performs and proves that separate operation.
 
 ---
 
 ## MILESTONES DELIVERED
 
-This framework's own declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
-
-PFF is a multi-mode framework. The four modes (F-Design / F-Convert / F-Render / F-Audit) deliver different milestones along independent paths. F-Design has more than 5 phases and is therefore decomposed into multiple intermediate milestones per the multi-milestone requirement in Section 2.3; the other three modes are short enough to remain single-milestone. All milestone properties are defined inline per milestone per the inline-properties principle.
+PFF uses the fewest coherent milestones justified by execution working load. Each milestone is a full pipeline pass in Ora, so a boundary exists only when it creates a necessary verification, recovery, handoff, fresh-context, evidence, or authority boundary. The likely two/two/one/one shape below follows the current work, not a universal count rule.
 
 ### Milestones for Mode F-Design
 
-#### Milestone 1: Requirements Gathered
+#### Milestone 1: Design Basis Established
 
 - **Mode:** F-Design
-- **Endpoint produced:** A complete requirements record covering: final user-facing deliverable; mode structure (single-mode or multi-mode with per-mode deliverables); routing layer (if any); per-mode milestone breakpoints with all 8 inline properties elicited per Phase 1 Question 1 Steps A-E; input inventory; quality definition; failure modes; pipeline position; execution environment; domain expertise needs; precedent frameworks; proactive gap assessment accepted/dismissed item by item by the user; complexity assessment confirming recommended architecture (simple / standard / agent-mode / multi-framework pipeline).
-- **Verification criterion:** Every question 1-10 in Phase 1 has a recorded answer; the proactive gap assessment was presented to the user and accepted/dismissed item by item; the complexity assessment was presented and confirmed; if the framework is multi-mode, modes are enumerated and each has its own milestone breakdown elicited; if any mode has more than 5 layers and only one milestone has been declared for it, Step E correction was applied; M0 routing layer (if present) was identified per Step C.
-- **Layers covered:** Phase 1 (Requirements Gathering and Proactive Elicitation)
+- **Endpoint produced:** A Design Basis that preserves the user's authoritative wording and explicit contributors; defines the outcome, inputs, outputs, performers, environment, working-load map, context lanes, external data, capabilities, evidence, quality, failure, recovery, composition, and admission dependencies; and records unresolved decisions without silently choosing.
+- **Verification criterion:** Every operative obligation in the user's request appears in the Design Basis with its source and intended downstream use; every relationship, branch, comparison, evidence need, user/tool/external boundary, expected output, validation, handoff, fresh-context need, and recovery need is either resolved or explicitly marked unresolved; no file, code, registration, activation, or capability is claimed to exist merely because it is proposed.
+- **Methods:** design_basis
 - **Required prior milestones:** None
+- **External prerequisites:** None
 - **Gear:** 4
-- **Output format:** Structured Phase 1 record with one section per question 1-10 in the Question Sequence.
-- **Drift check question:** Do the captured requirements faithfully reflect the user's stated task without injected framework defaults the user did not confirm, and do the proactive gap items reflect the user's actual problem space rather than generic patterns?
+- **Gear 4 purpose:** both
+- **Output format:** Markdown Design Basis with Authority Record, Outcome and Boundaries, Working-Load Map, Context and Provenance Contract, Capability and Health Contract, Quality and Recovery Contract, Composition Decision, and Unresolved Decisions.
+- **Drift check question:** Does the Design Basis preserve the user's exact outcome and authoritative wording while distinguishing supplied facts, contributor material, model proposals, unavailable context, and unimplemented capabilities?
 
-#### Milestone 2: Evaluation Criteria and Architecture Designed
+#### Milestone 2: Canonical Authored and Admission State Reported
 
 - **Mode:** F-Design
-- **Endpoint produced:** Numbered evaluation criteria (7-12) with five-level rubrics per criterion derived from quality dimensions, anti-failure dimensions, and integration dimensions; processing architecture with layer structure, handoff specifications, stage boundaries for agent mode (if applicable), invariant checks, anti-drift anchors (for >7-layer frameworks), named failure modes per layer plus framework-wide cross-cutting failure modes, and recovery protocol covering retry/halt/proceed conditions at each identified failure point.
-- **Verification criterion:** Quality dimensions from Question 3, anti-failure dimensions from Question 4, and integration dimensions from Question 5 are all extracted into criteria; criteria count is 7-12 with each having a five-level rubric; layers map to evaluation criteria such that every criterion has at least one layer producing material that satisfies it; handoffs declare what each layer produces, consumes, and discards; the architecture was presented to the user for review and accepted before proceeding to Phase 4.
-- **Layers covered:** Phase 2 (Evaluation Criteria Design), Phase 3 (Architecture Design)
+- **Endpoint produced:** One authored dual-use canonical framework body using strict METHOD declarations and workload-coherent milestones, followed by a truthful admission report that states implemented and missing capabilities, deterministic derivations, behavioral proof, registration, consequential approval, access, and active/inactive status.
+- **Verification criterion:** The canonical preserves every accepted Design Basis obligation; all operative instructions identify performer and environment; every METHOD is used and every reference resolves; every milestone declares the strict properties and a complete context override; required unavailable lanes or capabilities yield INCOMPLETE rather than a false canonical-complete claim; mirrors and derived views are described only as exact copies or deterministic transforms; the admission report keeps the new framework private and inactive until implementation, behavioral proof, registration, and consequential approval are actually evidenced.
+- **Methods:** design_canonical
 - **Required prior milestones:** M1
+- **External prerequisites:** None
 - **Gear:** 4
-- **Output format:** Numbered criteria list with rubrics + textual architecture description with layer structure + handoff table + named failure modes inventory + recovery protocol per failure point.
-- **Drift check question:** Do the evaluation criteria collectively cover the quality, anti-failure, and integration dimensions captured in M1, and does the architecture map every criterion to a producing layer with explicit handoffs?
-
-#### Milestone 3: Canonical Specification Drafted
-
-- **Mode:** F-Design
-- **Endpoint produced:** Full canonical framework specification conforming to Framework Anatomy (Section II): YAML frontmatter, Header Block (Purpose, Input Contract, Output Contract, Execution Tier), Milestones Delivered with all properties inline per Section 2.3 schema, Evaluation Criteria, Persona (if applicable), Processing Layers with full instructions and invariant checks at boundaries, Self-Evaluation Layer with calibration warning and correction trigger phrases, Error Correction and Output Formatting Layer with variable fidelity verification and Recovery Declaration, Named Failure Modes section, Execution Commands block.
-- **Verification criterion:** Every Section II subsection (2.1-2.12) is either present or explicitly justified as omitted; Milestones Delivered uses the inline-properties schema with all required fields per milestone (Endpoint produced, Verification criterion, Layers covered, Required prior milestones, Gear, Output format, Drift check question, plus Mode for multi-mode frameworks, plus Conditional layers when applicable, plus M0 when applicable); the Authoring Standards in Section III are applied (imperative voice, IF/THEN logic, named actors, specific quantities, Think-Then-Format); invariant checks are present at every layer boundary except the final two; named failure modes are declared per layer plus framework-wide.
-- **Layers covered:** Phase 4 (Specification Drafting)
-- **Required prior milestones:** M2
-- **Gear:** 4
-- **Output format:** Full markdown specification document following the structure defined in Section II.
-- **Drift check question:** Does the drafted specification faithfully implement the architecture from M2 and satisfy the requirements from M1, without introducing scope, criteria, or layers that were not part of the design?
-
-#### Milestone 4: Consolidated Framework File Rendered and Verified
-
-- **Mode:** F-Design
-- **Endpoint produced:** **One consolidated framework file** rendered from the M3 specification draft, applying the Single-Pass Rendering Protocol (Section 5.1) so the file is both the canonical intellectual source and a self-contained executable in commercial AI. The single-pass rendering is the canonical exchange format because it is what runs outside Ora and is how frameworks are shared with others. Verification against the Section VII Quality Verification Checklist is performed and presented inline (not as a separate persistent file) showing pass on every applicable item. Framework Registry entry produced. **Additional renderings (agent-mode, reasoning-model) are produced only when the user explicitly requested them in Phase 1 Question 6 with stated rationale, or when the AI surfaces a recommendation that the user accepts**; in those cases each additional rendering is a separate file beyond the default.
-- **Verification criterion:** The consolidated framework file passes Section VII Structural Completeness, Milestones Delivered Compliance, Input/Output Integrity, Evaluation Architecture, Language Compliance, Anti-Drift Compliance, Think-Then-Format Compliance, Variable Fidelity Compliance, Anti-Confabulation Compliance, Recovery Compliance, Backward Compatibility, and Proactive Elicitation Compliance; if any additional renderings were requested, each passes its rendering-specific compliance checks (Agent-Mode Compliance, Reasoning-Model Compliance); the Framework Registry entry contains all required fields and an accurate Delivers summary that compresses the framework's actual milestones.
-- **Layers covered:** Phase 5 (Rendering), Phase 6 (Verification)
-- **Required prior milestones:** M3
-- **Gear:** 4
-- **Output format:** One consolidated framework file at its target path + inline Section VII audit summary + Framework Registry entry. Additional rendering files only if explicitly requested.
-- **Drift check question:** Does the consolidated framework file faithfully express every operational directive from the M3 specification draft, pass all applicable Quality Verification Checklist items, and avoid producing additional rendering files that the user did not explicitly request? Is the Framework Registry entry's Delivers summary an accurate compression of the framework's actual milestones?
+- **Gear 4 purpose:** both
+- **Output format:** One Markdown canonical body, then a concise Admission Report with State, Evidence Present, Blockers, Essential Next Plan or Programming Handoff, Required Approval, and Permitted Access.
+- **Drift check question:** Does the authored canonical implement only the accepted Design Basis, retain one source of truth, and report every missing implementation, context, export, proof, registration, or approval as a blocker rather than as completed work?
 
 ### Milestones for Mode F-Convert
 
-#### Milestone 1: Modernized Framework Specification
+#### Milestone 1: Source Meaning and Conversion Basis Established
 
 - **Mode:** F-Convert
-- **Endpoint produced:** Updated canonical framework spec conforming to the current Framework Anatomy and Authoring Standards; intellectual content preservation cross-check confirming no original substance was lost; updated Framework Registry entry reflecting any changed Delivers content; conversion change-log enumerating what was added, modified, restructured, or removed relative to the prior version.
-- **Verification criterion:** All items in the Quality Verification Checklist (Section VII) pass for the updated spec; cross-check confirms all original framework intellectual content is preserved in the updated version; the Section VI Conversion Protocol's Analysis Phase, Conversion Phase, and Verification Phase all completed; Milestones Delivered uses the inline-properties schema; if the original framework declared milestones using a legacy schema (Preconditions / Framework Registry summary fields), they are restated using the current schema (Layers covered / Required prior milestones / Gear / Output format / Drift check question).
-- **Layers covered:** Section VI (Conversion Protocol — 6.1 Analysis Phase, 6.2 Conversion Phase, 6.3 Verification Phase)
+- **Endpoint produced:** A Conversion Basis mapping every unique source obligation, contract, quality rule, failure behavior, recovery path, provenance requirement, and integration seam to keep, consolidate, replace, or escalate, with contradictions shown rather than silently resolved.
+- **Verification criterion:** The complete source framework has been read; every unique operative meaning has a destination or an explicit disposition; authoritative user wording and explicit contributor sources remain identifiable; duplicates, obsolete contradictions, construction history, and false runtime claims are separated from current required meaning; no conversion edit or activation is claimed.
+- **Methods:** convert_map
 - **Required prior milestones:** None
+- **External prerequisites:** None
 - **Gear:** 4
-- **Output format:** Updated canonical framework specification document plus a conversion change-log noting what was added, modified, restructured, or removed.
-- **Drift check question:** Does the modernized framework preserve every piece of original intellectual content while conforming to current Authoring Standards, and does it correctly use the inline-properties schema for any milestones declared?
+- **Gear 4 purpose:** both
+- **Output format:** Markdown Conversion Basis with Source Authority, Semantic Preservation Map, Contradictions Requiring Decision, Runtime and Capability Truth, Proposed Canonical Shape, and Unresolved Dependencies.
+- **Drift check question:** Does the Conversion Basis preserve all unique required meaning from the source without treating repetition, obsolete implementation history, or unsupported promises as requirements?
+
+#### Milestone 2: Converted Canonical Authored and Admission State Reported
+
+- **Mode:** F-Convert
+- **Endpoint produced:** One converted dual-use canonical framework body using strict METHOD declarations and workload-coherent milestones, followed by a concise preservation summary and truthful admission report.
+- **Verification criterion:** Every retained source meaning maps into the converted canonical; every accepted replacement is explicit; no unresolved contradiction was chosen by the model; strict preflight properties are present; context, capability, provenance, health, handoff, and recovery declarations are complete; independently authored variants and false file/code/register/activate claims are absent; any missing implementation, derivation, proof, registration, or consequential approval keeps the converted framework private, inactive, or INCOMPLETE.
+- **Methods:** convert_canonical
+- **Required prior milestones:** M1
+- **External prerequisites:** None
+- **Gear:** 4
+- **Gear 4 purpose:** both
+- **Output format:** One Markdown canonical body, concise Preservation Summary, and Admission Report with State, Evidence Present, Blockers, Essential Next Plan or Programming Handoff, Required Approval, and Permitted Access.
+- **Drift check question:** Does the converted canonical preserve the source's unique required meaning and the user's accepted changes while refusing to represent authored prose as implemented or admitted behavior?
 
 ### Milestones for Mode F-Render
 
-#### Milestone 1: Additional Rendered Execution Variant
+#### Milestone 1: Deterministic Derived View Produced or Refused
 
 - **Mode:** F-Render
-- **Endpoint produced:** One new framework file rendered from an existing consolidated framework file (the canonical single-pass file from PFF v2.2 onward, or a legacy canonical specification from v2.1 and earlier) into the requested target environment (agent-mode, reasoning-model, or — in the legacy case — a single-pass file derived from a v2.1 split-artifact framework). This is an opt-in additional artifact beyond the consolidated default.
-- **Verification criterion:** The rendered variant passes the rendering-specific compliance checks in Section VII (Agent-Mode Compliance for agent renderings, Reasoning-Model Compliance for reasoning-model renderings, Backward Compatibility for all renderings); every operational directive from the source framework is preserved in the rendered variant.
-- **Layers covered:** Section V (Rendering Protocol — 5.1 Single-Pass Rendering Protocol, 5.2 Agent-Mode Rendering Protocol, or 5.3 Reasoning-Model Rendering Protocol per target; plus 5.4 Rendering Order if the user explicitly requests more than one additional rendering in the same F-Render invocation)
+- **Endpoint produced:** One body-faithful derived view produced by an identified deterministic transformer or exporter, or an INCOMPLETE report naming the unavailable transformer, exporter, registration, health proof, source canonical, or target contract.
+- **Verification criterion:** The source is the admitted canonical; the target is a permitted deterministic projection; the transformer or exporter is implemented, registered, and passes its declared deterministic health check before use; the output preserves the canonical instructions under the target's documented transformation rules; no model-authored variant, manual reinterpretation, or activation claim is substituted when deterministic derivation is unavailable.
+- **Methods:** render_derive
 - **Required prior milestones:** None
-- **Gear:** 4
-- **Output format:** One additional framework file in the target environment's expected format.
-- **Drift check question:** Does the rendered variant preserve every operational directive from the source framework while honoring the target environment's specific rendering rules, and does it pass the rendering-specific compliance checks for that environment?
+- **External prerequisites:** None
+- **Gear:** 3
+- **Output format:** Either one derived view with source identity, transformer/exporter identity, health result, target contract, and parity result, or an INCOMPLETE report with exact blocker and smallest remediation.
+- **Drift check question:** Was the requested view deterministically derived from the admitted canonical without independent model authorship, and does any unavailable derivation dependency remain visibly incomplete?
 
 ### Milestones for Mode F-Audit
 
-#### Milestone 1: Framework Audit Report
+#### Milestone 1: Framework Contract Audited
 
 - **Mode:** F-Audit
-- **Endpoint produced:** Scored audit report documenting framework compliance against the Quality Verification Checklist (Section VII) with pass/fail per checklist item, specific location identification for each failure, and concrete remediation recommendations.
-- **Verification criterion:** Every Section VII checklist item received a pass/fail verdict; every failure cites the specific location in the framework being audited where the failure occurs; every failure is paired with a concrete remediation recommendation rather than a generic suggestion; the audit covers Structural Completeness, Milestones Delivered Compliance, Input/Output Integrity, Evaluation Architecture, Language Compliance, Anti-Drift Compliance, Think-Then-Format Compliance, Variable Fidelity Compliance, Anti-Confabulation Compliance, Recovery Compliance, applicable rendering compliance categories, Backward Compatibility, and Proactive Elicitation Compliance.
-- **Layers covered:** Section VII (Quality Verification Checklist application)
+- **Endpoint produced:** A non-mutating framework audit that distinguishes canonical quality, strict execution conformance, context and capability truth, deterministic derivation, admission state, and downstream integration, with exact blockers and concrete remediation.
+- **Verification criterion:** Every applicable quality and admission check receives PASS, FLAG, FAIL, or NOT APPLICABLE with evidence; each FLAG or FAIL cites the exact contract location or absent proof, explains user-visible consequence, and proposes the smallest correction; the audit does not edit, save, register, activate, derive, or execute the framework.
+- **Methods:** audit_contract
 - **Required prior milestones:** None
+- **External prerequisites:** None
 - **Gear:** 4
-- **Output format:** Markdown audit report with verdict-per-item, location citations, and remediation recommendations.
-- **Drift check question:** Does the audit report assign verdicts to every checklist item, cite specific locations for failures rather than generic claims, and provide concrete remediation rather than vague exhortations?
+- **Gear 4 purpose:** independent corroboration
+- **Output format:** Markdown audit with Scope, Evidence Inspected, Findings by contract area, Exact Blockers, Remediation, Admission State, and Unverified Items.
+- **Drift check question:** Does the audit remain non-mutating, evidence-bound, and specific about blockers and remediation without converting missing proof into a passing judgment?
 
 ---
 
-## Section I: Governing Principles
+## Purpose and Truth Boundary
 
-These principles govern all framework design decisions. When a design choice is ambiguous, resolve it by reference to these principles in priority order.
+PFF formalizes a known or demonstrated procedure into a natural-language execution contract. It can also preserve and modernize an existing contract, request a deterministic projection of an admitted canonical, or assess a framework without changing it.
 
-### 1. Specification Is the Control Surface
+A framework specification controls model behavior only to the extent that a model receives and follows it. It does not create an executable capability, a secure permission boundary, a durable store, a user interface, or an admission lifecycle.
 
-A framework is a natural language specification. It is not code, not a suggestion, and not a style guide. The framework defines what happens, in what order, with what inputs, producing what outputs, meeting what standards. The AI's role is execution, not interpretation. Every instruction that requires interpretation is an instruction that will be interpreted differently by different models, producing inconsistent results.
+Use PFF when the procedure is sufficiently known to formalize. Use Process Inference when the path between known endpoints must first be inferred. Use Problem Evolution only when work is explicitly governed as an evolving project. Use standalone Programming for durable repository code. Use Decision Clarity Analysis when the issue is an irreducible choice rather than a formalizable procedure.
 
-**Design implication:** Prefer explicit directives over implied expectations. Prefer concrete criteria over qualitative descriptions. Prefer enumerated options over open-ended guidance.
+PFF output is authored material. New or converted material begins private and inactive. A surrounding product may later save, implement, test, register, approve, expose, or activate it under separate authority and evidence.
 
-### 2. Separation of Intellectual Content from Execution Environment
+## Governing Principles
 
-The intellectual content of a framework — what it accomplishes, what quality standards govern it, what evaluation criteria apply — is independent of how it executes. The same intellectual content can render into a single-pass framework for commercial AI, an agent mode file for a local swarm, a reasoning-model profile, or any future execution environment.
+### 1. One authored source of truth
 
-**The default consolidated framework file (single-pass rendering) IS the canonical specification.** They are not separate artifacts. The single-pass rendering preserves all intellectual content while being directly executable in commercial AI, which is the primary distribution context. This consolidation is the v2.2 default. Agent-mode and reasoning-model renderings, when needed, are produced as additional separate files on explicit request — they do not displace the consolidated default.
+Create one dual-use canonical body containing standalone sequential and Ora multipass METHOD instructions. Permit only exact body mirrors or views produced by a documented deterministic transformer/exporter.
 
-**Design implication:** Do not embed execution-environment assumptions into the framework's intellectual layers. Stage boundaries in the framework are logical, not mechanical. Whether a stage boundary becomes an actual context window reset (agent mode) or remains a conceptual division within a single pass (commercial mode, the default) is a rendering decision, not a design decision. Tool-dependent steps must degrade gracefully when tools are absent.
+### 2. Specification and implementation are different facts
 
-### 3. Minimum Information Forward
+State required behavior abstractly and name the performer and environment. Claim a write, save, registration, activation, publication, send, render, or deployment only when an authorized performer actually caused and verified it.
 
-At every stage boundary, carry forward only the information the next stage requires to do its job correctly. Discard everything else. Context debt — accumulated irrelevant information — degrades output quality in proportion to its volume. This principle applies within a framework (between layers/stages) and between frameworks (between pipeline steps).
+### 3. Authoritative input survives
 
-Research confirms this principle quantitatively: a 2025 study of 18 frontier models found that adding full conversation history (~113,000 tokens) dropped accuracy by 30% compared to a focused 300-token version. LLM reasoning degrades at approximately 3,000 tokens of accumulated context even when within the model's stated context window. LLMs can identify irrelevant content but cannot reliably ignore it during generation. Signal-to-noise ratio, not context capacity, determines output quality.
+Preserve exact user wording when paraphrase could change meaning and preserve every explicitly selected contributor. Show unresolved competing versions rather than choosing one.
 
-**Design implication:** Every stage must declare its output contract — what it produces that downstream stages consume. Every stage must declare its input contract — what it requires from upstream. The intersection of these contracts defines the handoff. Anything not in the handoff is discarded.
+### 4. Evaluation shapes the process
 
-### 4. Named Failure Modes Over General Caution
+Define observable results before METHODs. Use only evaluation dimensions that change a decision or catch a material failure; scored rubrics are optional and must have observable, useful distinctions.
 
-A model told "be careful about X" will be careful sometimes and not other times, unpredictably. A model told "the specific failure mode here is [name]: [description of what goes wrong and why]" will watch for that pattern reliably. Named failure modes are more effective than general quality exhortations because they give the model a concrete pattern to match against.
+### 5. Milestones follow working load
 
-Research on LLM attention mechanisms confirms the mechanism: during generation, models emit "anchor tokens" that are repeatedly attended to by subsequent positions, stabilizing reasoning. Named concepts in prompts become these anchor tokens. When a failure mode is named "The Drift Trap," that name becomes a retrievable reference point the model's attention mechanism repeatedly activates during generation. Named concepts create cognitive hooks; general caution does not.
+A milestone is a full Ora pipeline pass. Derive boundaries from working load, evidence, authority, validation, handoff, fresh-context, and recovery needs. Length, METHOD count, and Gear changes are warnings, not rules.
 
-**Design implication:** Every framework must include a Named Failure Modes section listing the specific ways that framework's output typically goes wrong. Generic quality language ("ensure high quality," "maintain consistency") is prohibited. Replace it with specific failure modes and their correction protocols.
+### 6. Minimum sufficient context
 
-### 5. Evaluation Is Architecture, Not Afterthought
+Give each milestone complete relevant context. Required unavailable lanes refuse or yield INCOMPLETE; optional unavailable lanes are disclosed and omitted. User text and selected contributors survive condensation.
 
-Evaluation criteria are not appended to a framework after design — they are the framework's structural skeleton. The evaluation criteria define what "correct output" means. The processing layers exist to produce output that meets those criteria. Design the evaluation criteria first, then design the processing layers to satisfy them.
+### 7. Capabilities are contracts, not names
 
-**Design implication:** The Framework Design Process begins with output requirements and evaluation criteria. Processing layers are derived from criteria, not the reverse.
+Declare behavior, input/output, performer, environment, effects, permission, health, evidence, failure, and recovery. Context access never grants tool or effect authority.
 
-### 6. Anti-Confabulation by Design
+### 8. Named failure and recovery
 
-AI models do not have a hard stop when information is missing. They generate plausible-sounding output regardless of factual grounding. Framework design must assume this behavior and architect against it. Three mechanisms apply universally:
+Name concrete failures with detection and correction. State retry, ask, partial-result, handoff, or stop behavior and preserve completed deliverables.
 
-- **Explicit instruction:** Direct the model to state what information is missing rather than filling gaps with assumptions.
-- **Named failure mode:** Identify the specific confabulation risk for each stage ("The most common error at this stage is presenting assumed information as retrieved fact").
-- **Structured output with confidence indicators:** Force the model to evaluate its own certainty before producing output.
+### 9. Progressive focus without false atomization
 
-### 7. Progressive Disclosure Over Monolithic Instruction
+Give each METHOD one focus, input, output, and handoff. Combine work using the same evidence and judgment; separate genuinely different performers, authorities, evidence, or validation.
 
-A framework with 50 instructions presented simultaneously competes with itself for the model's attention. A framework with 5 stages of 10 instructions each, where each stage focuses attention on its specific task, produces better results. This is true even in single-pass execution — the model processes sequentially and benefits from staged focus.
+### 10. Think before formatting
 
-Research validates this directly: Anthropic's context engineering research found that "giving LLMs more context often makes them perform worse, not better, in instruction-following tasks." Sub-agent architectures that return condensed summaries (1,000–2,000 tokens from 10,000+ token explorations) outperform monolithic context injection.
+Place substantive instructions before formatting and track named variables, quantities, terms, identities, and scope through handoffs.
 
-**Design implication:** Organize framework instructions into discrete layers/stages with clear focus boundaries. Each stage should be comprehensible on its own terms without requiring the model to hold all other stages in active attention simultaneously.
+### 11. Portability and graceful limits
 
-### 8. Backward Compatibility
+Use behavioral names rather than machine paths, packages, executables, or providers. A tool-backed specification may be portable while its required capability remains unavailable; state that limitation.
 
-A framework designed for agent execution must degrade gracefully to single-pass execution. A framework designed for a two-model adversarial pipeline must degrade gracefully to single-model execution. Agent-tier metadata (tool definitions, checkpoint protocols, stage boundary markers) is ignored by commercial AI in single-pass mode, and this is by design. No framework should require a specific execution environment to produce useful output.
+## Canonical Contract Anatomy
 
-### 9. Recovery Is Architecture, Not Exception Handling
+A canonical contains only user/runtime material: identity; mode and intake; output; context; capabilities; workload-coherent milestones; METHODs; verification, provenance, failure, recovery, and handoff; admission/access truth; brief composition seams; execution commands; and concise current version history.
 
-Contracts that specify only what must be true — preconditions, postconditions, quality thresholds — are incomplete. A complete contract also specifies what happens when violations occur. The Agent Behavioral Contracts framework (2026) proved mathematically that if recovery rate exceeds natural drift rate, behavioral drift is bounded. The key parameter in controlling drift is not the quality of the original instructions but the speed and specificity of recovery when drift occurs.
+Keep construction notes, source-line maps, hashes, acceptance history, reconstruction apparatus, and duplicated explanation out. YAML is repository metadata; exact Ora mirrors carry the body only.
 
-**Design implication:** Every framework must specify recovery protocols at two levels. At the layer level: what happens when a layer's output fails its local quality check (retry with flagged deficiency, halt and report, or proceed with explicit acknowledgment). At the framework level: what happens when the Self-Evaluation layer identifies an unresolvable deficiency (flag for human review, specify what additional input would resolve it, or identify which upstream layer needs rework).
+### Identity and picker copy
 
-### 10. Complexity-Appropriate Design
+Lead the Display Description with the concrete deliverable and close with when to choose the framework. Keep display text truthful about unavailable or conditional behavior. Picker copy cannot imply that a framework is implemented, admitted, or active merely because its file exists.
 
-Not every task benefits from full multi-layer decomposition. Research on budget-aware evaluation (EMNLP 2024) found that excessive decomposition produces diminishing returns and can decrease performance. Simple chain-of-thought with self-consistency is extremely competitive against more complex multi-step strategies for straightforward tasks.
+### Input contract
 
-Empirical evidence converges on a practical complexity ceiling of approximately 10–12 processing layers within a single context window, beyond which anti-drift techniques become essential and performance degrades noticeably. This ceiling varies by model capability and task complexity.
+For each input declare identity/format, source/owner, required status, authority, privacy, unavailable/ambiguous behavior, and consuming METHOD/output. Remove setup questions no METHOD or output consumes.
 
-**Design implication:** The Framework Design Process includes a complexity assessment that routes simple tasks to fewer layers. A three-layer framework (Input Validation, Core Processing, Self-Evaluation + Output) is a legitimate and often optimal design for straightforward tasks. Layer count should match task complexity, not a target architecture. When a framework exceeds 10–12 layers for single-pass execution, split it into multiple execution stages (agent mode) or a multi-pass sequence with explicit carry-forward specifications.
+### Output contract
 
----
+For each output declare the artifact/state/effect, producer/environment, shape, destination, verification, provenance, incomplete/failure behavior, and consumer. List real effects only when an implemented performer owns them.
 
-## Section II: Framework Anatomy — The Structural Standard
+### Operative METHOD declaration contract
 
-Every framework, regardless of its purpose, conforms to this structural standard. Sections may be minimal for simple frameworks or extensive for complex ones, but the structure is invariant. Omitting a section is an explicit design decision documented with rationale, not a silent absence.
+Use exactly this operative heading grammar:
 
-### 2.1 YAML Frontmatter
+~~~markdown
+### METHOD <ID>: <Name>
+~~~
 
-```yaml
----
-title: [Framework Name]
-nexus: [project or domain]
-type: engram
-writing: [no | value from controlled vocabulary]
-date created: [YYYY/MM/DD]
-date modified: [YYYY/MM/DD]
-framework_version: [semantic version]
-execution_tier: [specification | single-pass | agent | reasoning-model]
-pipeline_step: [step number if part of a multi-step pipeline, or "standalone"]
----
-```
+The identifier begins with a letter and contains only letters, digits, underscores, periods, or hyphens. Every operative METHOD has a unique identifier. Every declared METHOD is referenced by at least one milestone. Every milestone reference resolves. METHOD and legacy LAYER grammar never mix.
 
-The `execution_tier` property identifies the document's role:
+Each METHOD body states:
 
-- `single-pass` — **The default value for consolidated framework files** (v2.2 default). Self-contained framework executable in commercial AI, contains all canonical intellectual content. This is the canonical exchange format and is what runs both inside and outside Ora.
-- `agent` — Rendered for swarm execution with stage boundaries, tool access, and state management. Produced as an additional file only on explicit request.
-- `reasoning-model` — Rendered for reasoning-specialized models (o3, o4, DeepSeek R1) with simplified instruction profile. Produced as an additional file only on explicit request.
-- `specification` — Legacy value retained for backward compatibility with frameworks designed under PFF v2.1 and earlier, where the canonical specification was a separate file from the renderings. New frameworks should not use this value; the single-pass file IS the canonical specification.
+1. Performer and environment.
+2. Primary focus.
+3. Inputs and their authority.
+4. Ordered instructions and explicit branches.
+5. Output and downstream consumer.
+6. Validation and deterministic health.
+7. Named failure, recovery, and handoff.
+8. Output formatting after substantive work.
 
-The `pipeline_step` property identifies the framework's position in a multi-step pipeline, or "standalone" if the framework operates independently.
+### Strict milestone contract
 
-### 2.2 Framework Header Block
+Every model-executed milestone declares these exact runtime properties:
 
-The header block appears immediately after frontmatter. It provides the AI with essential orientation before any processing begins.
+- Methods
+- Required prior milestones
+- External prerequisites
+- Verification criterion
+- Gear
+- Gear 4 purpose when Gear is 4
+- Output format
+- Drift check question
 
-```
-# [Framework Name]
+Use exact comma-separated identifiers or None for Methods, Required prior milestones, and External prerequisites. Required prior milestones contain only earlier same-run M-identifiers. External prerequisites name caller-supplied data or state that must resolve before execution; they never masquerade as same-run milestones.
 
-## Display Name
-[Short picker-friendly name, 60 char limit. Used in the framework picker row title and the bridge-zone label when this framework is invoked.]
+Gear is exactly 2, 3, or 4 for model-executed work. Gear 4 purpose is exactly exploration, independent corroboration, or both. A non-Gear-4 milestone does not declare a Gear 4 purpose.
 
-## Display Description
-[Brief description, 500 char limit. 2–4 sentences. Used in the framework picker dropdown row to tell the user what this framework produces and when to pick it.]
+The authoring/admission contract also requires mode, endpoint, provenance, complete context override, capability health, authority boundaries, handoff/discard rules, failure/recovery, and admission consequence.
 
-## Setup Questions
-[Optional but strongly recommended for user-pickable frameworks. Structured list of inputs this framework needs, consumed by the framework setup popup (V3 Input Handling Phase 7) to detect missing inputs deterministically. Each question is an `### Name` heading whose body's first sentence flags `Required.` or `Optional.`; the rest of the body is the description shown to the user.
+Current strict runtime preflight enforces its recognized execution properties. PFF must not claim that unimplemented context-lane or admission enforcement exists. Newly authored material stays private and inactive until all required enforcement and proof are present.
 
-When a framework declares this section, the popup uses it directly. When absent, the popup falls back to LLM-driven analysis of the `## INPUT CONTRACT` section below.
+## Working-Load Milestone Design
 
-Mode-conditional questions are written as `Required for [mode-name] mode.` and the analyzer handles the conditional logic against the user's chosen mode.]
+### Build the working-load map
 
-## PURPOSE
-[One to three sentences. What this framework produces and why it exists.
-Name the deliverable concretely, not the aspiration.]
+Inventory active obligations; input/output/METHOD relationships; branches and user decisions; comparisons; evidence and provenance; user/tool/external boundaries; intermediate/final outputs; objective validation; context-changing handoffs; fresh-context needs; recovery points; and performer or authority changes.
 
-## INPUT CONTRACT
-[Explicit enumeration of every input this framework requires.
-For each input: name, format, source, and whether required or optional.]
+### Group work into the fewest coherent passes
 
-## OUTPUT CONTRACT
-[Explicit enumeration of every output this framework produces.
-For each output: name, format, destination, and quality threshold.]
+Start with one milestone per mode. Add a boundary only when:
 
-## EXECUTION TIER
-[specification | single-pass | agent | reasoning-model]
-[If agent: list of available tools and their trigger conditions.]
-[If single-pass: state that all stages execute sequentially in one context window.]
-[If reasoning-model: state that instructions are simplified for
-internal reasoning models.]
-```
+1. A stable intermediate deliverable is required by later work.
+2. Later work needs a materially different evidence set or context window.
+3. A user decision or consequential approval must occur before proceeding.
+4. A deterministic capability or external effect begins after model-only work.
+5. Independent verification must close one result before dependent work can be trusted.
+6. Failure after the boundary should preserve a useful resume point.
+7. The performer or authority changes.
+8. The milestone would otherwise contain incompatible Gear purposes.
 
-**Display Name and Display Description rules:**
+Remove a boundary that only reconstructs the same active state or adds a full pass without a new truth, safety, recovery, context, authority, or handoff guarantee.
 
-- **Display Name** is the picker row title and bridge-zone label. Hard limit 60 characters. Plain text, no Markdown. Should make the framework immediately recognizable to a user scanning the picker. Acronyms in parentheses are encouraged when the framework is commonly referenced by acronym (e.g. "Process Formalization (PFF)").
-- **Display Description** is the picker row body. Hard limit 500 characters. 2–4 sentences. Lead with the deliverable; close with when to pick this framework over the alternatives. Plain text, no Markdown.
-- Both fields are mandatory for every framework that is user-pickable. Pipeline-internal stage specs (F-* and Phase A) are exempt — they are loaded automatically by the orchestrator and never appear in the picker.
-- The picker parser reads these sections by literal heading match. Do not rename, demote to a sub-heading, or add modifiers like `## Display Name (preview)`.
+### Validate the dependency graph
 
-**Input Contract format:**
+Confirm earlier same-mode priors, separately typed external data, no cycles, necessary/used METHODs, an independently verifiable output, complete variables/sources, safe discards, and a truthful failure action.
 
-```
-INPUT CONTRACT
+Instruction length, section count, and METHOD count may trigger a review of the grouping. They never determine the answer by themselves.
 
-Required:
-- [Input name]: [format description]. Source: [where it comes from].
-- [Input name]: [format description]. Source: [where it comes from].
+## Gear, Verification, and Evidence
 
-Optional:
-- [Input name]: [format description]. Source: [where it comes from].
-  Default behavior if absent: [what the framework does without this input].
-```
+### Gear choice
 
-**Output Contract format:**
+Use Gear 4 for substantive work that benefits from lateral exploration, independent corroboration, or both. State the exact purpose so every analyst, evaluator, reviser, verifier, consolidator, formatter, and final quality judgment knows why the second lane exists.
 
-```
-OUTPUT CONTRACT
+Use Gear 3 for a coherent single-owner iterative task, especially when reasoning surrounds a deterministic capability call and an independent second analysis would add no material evidence.
 
-Primary outputs:
-- [Output name]: [format description]. Destination: [where it goes].
-  Quality threshold: [specific measurable criterion].
+Use Gear 2 only for a rare, explicitly justified, high-confidence model task whose result still has an observable verification criterion.
 
-Secondary outputs (if applicable):
-- [Output name]: [format description]. Destination: [where it goes].
-```
+Do not use Gear 1 for model-executed work. Missing, malformed, duplicated, or prose-contaminated Gear values refuse; they never default upward.
 
-### 2.3 Milestones Delivered
+### Gear 4 purpose
 
-Every framework that delivers project-level milestones declares them here. This declaration is the handoff point between project supervision (via the Problem Evolution Framework, PEF) and framework execution — when PEF needs a milestone delivered, it consults this section to identify which framework to invoke. It is also the structural basis for layered framework execution: Ora's milestone executor parses this section and runs each milestone as a separate pipeline pass with drift detection at the boundaries.
+- exploration: the second lane searches a materially different solution or interpretation space;
+- independent corroboration: the second lane independently tests the same claim or result against evidence;
+- both: the second lane must both widen the search and independently test important conclusions.
 
-The Milestones Delivered section is required for every framework that can be selected by PEF for milestone delivery.
+Preserve whether agreement was independent at first analysis or emerged only after cross-review. Preserve material disagreement and source provenance. Do not average conflicts into false consensus.
 
-**Exemption for pipeline-stage and fixed-sequence frameworks:** Frameworks invoked deterministically by a parent pipeline driver or orchestrator — not selected by PEF — are exempt from this requirement. Examples include the Gear 4 pipeline stage frameworks (F-Analysis-Breadth, F-Analysis-Depth, F-Evaluate, F-Revise, F-Consolidate, F-Verify) and Phase A prompt cleanup. These frameworks produce intermediate outputs that feed the next stage; they do not deliver standalone project milestones.
+### Verification criteria
 
-Exempt frameworks must declare the exemption explicitly in their Execution Tier section with a statement of the form: _"This framework is invoked as part of [pipeline or orchestration name]; it is not PEF-selectable and does not declare Milestones Delivered."_
+Write one criterion per milestone that an independent reviewer can apply to the actual output. Name required fields, relationships, thresholds, sources, failure states, or observable behavior. Avoid “complete,” “robust,” or “high quality” unless the same sentence defines what those words mean.
 
-**Inline-properties principle.** All milestone properties are defined inline within each milestone block — never via shared definitions, factored references, or parent-subsection inheritance. Every property is bound to the specific milestone path it governs. This prevents cross-mode property mismatches and makes each milestone block fully self-contained for the parser.
+Verification happens before a milestone is represented as complete. A diagnostic string, refusal, transport error, wrong type, empty result, unavailable lane, missing health proof, or model assertion about an effect is not a deliverable.
 
-**Schema:**
+### Provenance
 
-```
-## MILESTONES DELIVERED
+Keep a concise claim-to-source relationship sufficient to distinguish:
 
-[Optional intro paragraph: what milestones the framework delivers, across how many modes, where drift checks fire.]
+- authoritative user wording;
+- explicit contributor material;
+- same-run prior deliverables;
+- external data and when it was consulted;
+- model-authored proposals or synthesis;
+- deterministic capability results; and
+- facts that remain unverified.
 
-### M0: Routing
-[Declare ONLY if the framework has a triage / routing / classification layer that fires before mode selection. Skip entirely if the framework has no such layer.]
+Provenance is part of truthful handoff and validation. Do not copy private sources, full technical traces, or internal pipeline scaffolding into a public artifact merely to prove provenance.
 
-- **Function:** [what this layer classifies, routes, or gates]
-- **Layers covered:** [layer numbers]
-- **Output:** [what M0 produces — typically a mode selection plus any classification flag that downstream milestones consume conditionally]
+## Context-Lane Contract
 
-### Milestone N: [Name]
+Context declarations at this layer are authoring and admission contracts. Dialogue owns retrieval, token measurement, privacy, provenance, project-file, HCP, source, index, and generic trace services. PFF neither implements a parallel retriever nor claims that an unavailable Dialogue lane works.
 
-- **Mode:** [mode name (e.g., I-Create, F-Design); for single-mode frameworks, write "all" or omit this property entirely]
-- **Endpoint produced:** [concrete artifact or state change this milestone produces]
-- **Verification criterion:** [how to objectively determine this milestone is achieved]
-- **Layers covered:** [comma-separated layer numbers, e.g., "1, 2" or "3, 4, 5"]
-- **Conditional layers:** [OPTIONAL — present only if one or more layers in Layers covered fire conditionally. List the conditional layers and state the activating condition inline. Example: "3, 4, 6 — fire only when M0 classifies tier as Incarnated"]
-- **Required prior milestones:** [M-references whose deliverables this milestone consumes. Use "None" for the first milestone. For cross-mode references, prefix with the mode name (e.g., "I-Create.M4")]
-- **Gear:** [pipeline gear at which this milestone runs. Default 4]
-- **Output format:** [reference to a Layer Output Format block from the framework, or inline description of the deliverable's structure]
-- **Drift check question:** [specific question used at this milestone's boundary to detect wandering from the user's original intent — specific enough to surface scope expansion, terminology shift, or premature convergence; not generic]
+Recognized context categories include authoritative-user-input, explicit-contributors, conversation-context, vault-semantic, project-status-files, web-external, deterministic-capability-results, and same-run-prior-deliverables. A framework may define another named lane when its owner and behavior are explicit.
 
-[Additional Milestone entries follow the same structure with all properties inline. Multi-mode frameworks MAY group milestones under optional `### Milestones for Mode <Name>` subsection headers for human readability — but the parser uses each milestone's inline Mode property as the source of truth, never the parent subsection header.]
-```
+For each mode, declare default lanes with required or optional status. For every milestone, declare a complete override listing all lanes it may consume. An override is a full contract, not a delta from the mode default.
 
-**Format standards:**
+For each lane, state:
 
-- All milestone properties are defined inline within their milestone block. No factoring, no shared definitions, no parent-subsection inheritance for property values.
-- The **Endpoint produced** is a concrete deliverable or state change — a specific artifact, file, or observable change in the system. Abstract outcomes are prohibited.
-- The **Verification criterion** must be objectively determinable per the Resolution Statement Objectivity Protocol. Ambiguous quality terms ("good," "robust," "complete") are prohibited unless paired with objective evaluation criteria.
-- **Layers covered** lists the processing layers grouped under this milestone. The milestone executor concatenates these layers' instructions into a single pipeline pass.
-- **Conditional layers** is optional. Declare only when one or more layers in Layers covered fire conditionally on runtime state — typically a classification produced by M0 or an earlier milestone. State the condition inline so the parser and executor can resolve it without external context.
-- **Required prior milestones** lists the prior milestones whose deliverables this milestone consumes. Cross-mode references (rare; usually only the first milestone of a mode pulling from M0) use the mode-prefix syntax `<ModeName>.<MilestoneId>`.
-- **Gear** is the pipeline gear at which this milestone runs. Default is Gear 4 (parallel adversarial review with consolidation). Lower gears are acceptable for milestones that only assemble structured data with no synthesis.
-- **Output format** can reference an existing Layer Output Format block from the framework rather than duplicate it inline.
-- **Drift check question** is asked at the milestone's boundary to detect whether the deliverable still addresses the user's original input.
-- **Mode** is required as an inline property when the framework has multiple modes producing different milestone paths. Single-mode frameworks may omit Mode or write "all".
+1. owner and retrieval or supply mechanism;
+2. exact content class;
+3. required or optional status;
+4. privacy and authority;
+5. provenance representation;
+6. context budget or selection rule;
+7. unavailable behavior; and
+8. METHODs allowed to consume it.
 
-**Multi-milestone requirement.** Frameworks with more than ~5 processing layers per mode SHOULD declare multiple intermediate milestones for that mode, where each milestone groups a coherent set of layers that produces a stable deliverable downstream milestones consume. A framework (or mode) that runs 8+ layers under a single milestone receives no drift checkpoints between input and final output; declaring intermediate milestones is the structural mechanism for drift prevention. Single-milestone designs are appropriate only for short paths (≤5 layers) or paths with no natural intermediate deliverable.
+A required lane that the current caller cannot supply yields REFUSED or INCOMPLETE before dependent work. An optional unavailable lane yields a visible limitation and continues. Authoritative user text and explicit contributor sources survive condensation and are never replaced by a model summary.
 
-**Multi-mode frameworks.** Frameworks with multiple modes (e.g., M-Operational / M-Supervised in MOM, or F-Design / F-Convert / F-Render / F-Audit in this framework) declare the milestones for each mode separately, with Mode bound inline to each milestone. M0 routing layers, when present, fire before mode selection and feed the mode classification to downstream milestones via Conditional layers.
+Tool and capability permission is declared separately. Context access never grants mutation, provider contact, credential use, publication, or another effect.
 
-**During F-Design:** The designer elicits milestones delivered as part of Phase 1 Question 1 of the Framework Design Process. Each declared milestone becomes an entry in this section with all properties inline.
+### PFF mode defaults and complete milestone overrides
 
-**Example — Deep Research Protocol (single-mode, multiple intermediate milestones):**
+F-Design default lanes are authoritative-user-input required; explicit-contributors required when selected; conversation-context, vault-semantic, project-status-files, and web-external optional; deterministic-capability-results optional; same-run-prior-deliverables conditional.
 
-```
-## MILESTONES DELIVERED
+F-Design M1 completely overrides the default with authoritative-user-input required, explicit-contributors required when selected, conversation-context optional, vault-semantic optional, project-status-files optional, web-external optional, deterministic-capability-results optional, and same-run-prior-deliverables unavailable.
 
-This framework delivers three sequential milestones. Each milestone is a coherent intermediate deliverable that downstream milestones consume; each is a checkpoint where adversarial review and drift detection fire.
+F-Design M2 completely overrides the default with authoritative-user-input required, explicit-contributors required when selected, conversation-context optional, vault-semantic optional, project-status-files optional, web-external optional, deterministic-capability-results required only for a claimed deterministic dependency, and same-run-prior-deliverables M1 required.
 
-### Milestone 1: Approved Research Plan
+F-Convert default lanes are authoritative-user-input required, the complete existing framework required as user-supplied source, explicit-contributors required when selected, other source lanes optional, and same-run priors conditional.
 
-- **Endpoint produced:** A research plan containing 3-7 sub-queries; per-sub-query coverage_criterion; per-sub-query source_hints (VAULT_CONTENT first-ranked); stopping_criteria for the run; for caller_context=USER_DIRECT with vague initial query, explicit user approval of the plan structure.
-- **Verification criterion:** Every sub-query has a coverage_criterion; every sub-query has source_hints; stopping_criteria declared; sub-queries collectively cover normalized_query without obvious gap; plan_review_status appropriate to caller_context.
-- **Layers covered:** 1, 2
-- **Required prior milestones:** None
-- **Gear:** 4
-- **Output format:** See Layer 2 Output Format.
-- **Drift check question:** Does this research plan address the user's original query without scope expansion into adjacent topics?
+F-Convert M1 completely overrides the default with authoritative-user-input required, complete existing framework required, explicit-contributors required when selected, conversation-context optional, vault-semantic optional, project-status-files optional, web-external optional, deterministic-capability-results optional, and same-run-prior-deliverables unavailable.
 
-### Milestone 2: Evidence Integrated and Iteration Resolved
+F-Convert M2 completely overrides the default with authoritative-user-input required, complete existing framework required, explicit-contributors required when selected, conversation-context optional, vault-semantic optional, project-status-files optional, web-external optional, deterministic-capability-results required only for a claimed deterministic dependency, and same-run-prior-deliverables M1 required.
 
-- **Endpoint produced:** An integrated_evidence_map with one entry per sub-query in research_plan, each carrying deduplicated claims tagged with source class and citations; iteration_decision (CONVERGED, CONVERGED_WITH_GAPS, or BLOCKED).
-- **Verification criterion:** Every sub-query in research_plan appears in integrated_evidence_map; every retained claim carries a source-class tag and citation; iteration count did not exceed depth_cap; vault was consulted before external retrieval; iteration_decision is one of CONVERGED, CONVERGED_WITH_GAPS, or BLOCKED.
-- **Layers covered:** 3, 4, 5
-- **Required prior milestones:** M1
-- **Gear:** 4
-- **Output format:** See Layer 5 Output Format.
-- **Drift check question:** Does the integrated evidence cover every sub-query approved in the research plan, and does the iteration decision faithfully reflect coverage status without falsely declaring CONVERGED while material gaps remain?
+F-Render default lanes are authoritative-user-input required; admitted source canonical required from the caller or an implemented owned lookup; deterministic-capability-results required from an implemented registered transformer or exporter; project-status-files optional; explicit-contributors unavailable unless part of the canonical; conversation-context, vault-semantic, and web-external unavailable unless the registered transformer or exporter contract names an implemented lane; same-run-prior-deliverables unavailable.
 
-### Milestone 3: Final Research Report
+F-Render M1 completely overrides its mode default with authoritative-user-input required, admitted source canonical required, explicit-contributors unavailable unless part of the canonical, conversation-context optional, vault-semantic unavailable unless needed to locate the canonical through an owned service, project-status-files optional, web-external unavailable unless the exporter contract requires it, deterministic-capability-results required, and same-run-prior-deliverables unavailable.
 
-- **Endpoint produced:** Structured markdown research report with Executive Summary, per-sub-query sections with citations, Cross-Query Synthesis, Caveats, Bibliography, Corrections Log, Missing Information Declaration, Recovery Declaration; persisted to vault if persist=true.
-- **Verification criterion:** Every sub-query has a section in the report; every claim carries a source-class tag; Bibliography contains every cited URL with no orphans in either direction; all 9 Evaluation Criteria scored at threshold or with documented UNRESOLVED DEFICIENCY.
-- **Layers covered:** 6, 7, 8
-- **Required prior milestones:** M2
-- **Gear:** 4
-- **Output format:** See Layer 6 Output Format and Layer 8 Output Format.
-- **Drift check question:** Does the final report directly answer the user's original query with proper citation grounding, no fabricated URLs, and faithful representation of the integrated evidence?
-```
+F-Audit default lanes are authoritative-user-input required; complete framework and supplied evidence required from the caller; explicit-contributors required when selected; conversation-context, vault-semantic, project-status-files, web-external, and deterministic-capability-results optional; same-run-prior-deliverables unavailable.
 
-(Single-mode framework: no Mode property declared; no M0 routing milestone; no Conditional layers; flat M1, M2, M3 numbering.)
+F-Audit M1 completely overrides its mode default with authoritative-user-input required, complete framework and supplied evidence required, explicit-contributors required when selected, conversation-context optional, vault-semantic optional, project-status-files optional, web-external optional, deterministic-capability-results optional, and same-run-prior-deliverables unavailable.
 
-For a multi-mode example with M0 routing and Conditional layers, see the Mission/Objectives/Milestones framework's Milestones Delivered section.
+These declarations do not assert that every optional lane is currently implemented. Each run must disclose the actual supplied and unavailable lanes.
 
-### 2.4 Evaluation Criteria
+## Capability, Code, and Health Contract
 
-Immediately following the header block. Listed before processing layers because evaluation criteria define what the processing must achieve. The model reads the criteria before it reads the processing instructions, establishing the quality target before execution begins.
+### Abstract capability declaration
 
-```
-## EVALUATION CRITERIA
+For every deterministic operation declare identifier, behavior, performer/environment, input/output, transformation rule, effects, permission, exact health check/result, admission proof, registration, unavailable/failure behavior, recovery, and lifecycle owner.
 
-This framework's output is evaluated against these [N] criteria.
-Each criterion is rated 1-5. Minimum passing score: [threshold] per criterion.
+A capability name without an implemented registered performer is a dependency, not functionality.
 
-1. **[Criterion Name]**:
-   - 5 (Excellent): [Specific, observable description of what constitutes
-     a top score for this dimension.]
-   - 4 (Strong): [What distinguishes strong from excellent.]
-   - 3 (Passing): [Minimum acceptable standard — concrete and observable.]
-   - 2 (Below threshold): [Specific observable deficiencies.]
-   - 1 (Failing): [What constitutes clear failure on this dimension.]
+### Deterministic health
 
-2. **[Criterion Name]**: [Same structure.]
+A health check tests required behavior, not process existence. Record its result. A missing, stale, wrong-type, failed, or ambiguous result makes a required capability unavailable; optional failures disclose and use only an independent valid fallback.
 
-[Continue for all criteria. Limit to 7-12 criteria.]
-```
+### Durable code and Programming
 
-**Standard for writing evaluation criteria:**
+Missing reusable code keeps the framework private/inactive and the path INCOMPLETE. Produce a bounded Programming handoff naming behavior, repository scope, non-goals, inputs/outputs, authority, checks, recovery, registration, and return evidence. Resume admission only after implementation and independent review.
 
-Each criterion must specify what is being measured in concrete terms. "Quality of output" is not a criterion. "Psychological authenticity of character motivation as demonstrated by consistent internal parliament coalition activation across three or more independent decision points" is a criterion.
+Programming remains explicit and Git-native. PFF does not intercept Inquiry, create a Process Run, add a queue, or invent a second code executor.
 
-Each criterion must include rubric-level descriptions for all five score levels. Research shows that rubric-based evaluation with concrete per-level descriptions achieves 0.897 correlation with human judgment, while unstructured evaluation achieves only 0.392 — a 2.3× difference (Prometheus, ICLR 2024). Vague criteria produce unreliable self-evaluation. Concrete rubrics produce reliable self-evaluation.
+### The runner.py counterfactual
 
-Use a 1-5 scale rather than 1-10. A five-point scale requires less differentiation per level and produces more consistent self-evaluation scores. Each level needs a description of uniform length to prevent length bias in the model's scoring.
+Define runner.py only through this test:
 
-Limit criteria to 7–12. Research on criterion proliferation confirms that evaluation quality degrades as criterion count rises — each criterion receives less attention. IF more dimensions need tracking, THEN consolidate related dimensions into composite criteria.
+> If runner.py did not exist, which required behavior, truth guarantee, safety property, or rollback capability would become impossible through the current milestone executor, capability registry, elicitation, admission, and Programming paths?
 
-### 2.5 Persona Activation (Optional)
+If the answer is none, runner.py does not exist. If a behavior passes, PFF produces only the capability specification and Programming handoff.
 
-IF the framework benefits from a specialized persona, THEN define it here. Persona activation is a tool for focusing the model's response patterns, not a requirement. Simple frameworks may omit this section.
+## Canonical, Mirror, Derivation, and Admission
 
-```
-## PERSONA
+### Dual-use canonical
 
-You are the [Persona Name] — [one-sentence description of expertise and orientation].
+The canonical body must work in two execution forms without separate authorship:
 
-You possess:
-- [Specific capability relevant to this framework's task]
-- [Specific capability relevant to this framework's task]
-- [Specific capability relevant to this framework's task]
+- Standalone: follow the selected mode's milestones and METHODs sequentially, preserving declared handoffs and stopping at unavailable required dependencies.
+- Ora multipass: strict preflight resolves METHOD bodies into milestone passes with the declared Gear, criterion, priors, prerequisites, output, and drift question.
 
-Throughout this framework, you will shift between specialized roles
-as indicated by Role Shift markers at the beginning of each layer.
-Your core identity as [Persona Name] persists across all role shifts.
-```
+Do not create a second prompt that changes meaning for one environment. Environment-specific explanation may be deterministically omitted only when the responsible performer still receives every controlling instruction.
 
-**Persona design standards:**
+### Exact mirrors
 
-- Personas combine domain expertise relevant to the framework's task. Name specific exemplars of mastery rather than generic descriptors. "The psychological insight of Dostoevsky" is more effective than "deep psychological understanding."
-- Limit persona capabilities to three to five items. Each must be directly relevant to the framework's processing requirements.
-- **Every persona detail must be task-relevant. Irrelevant details are prohibited.** Research shows performance drops of almost 30 percentage points from irrelevant persona attributes (Araujo et al., 2025). Do not add biographical details, personality traits, or expertise areas that do not serve the framework's processing requirements.
-- Simple role specification ("You are an expert in X") primarily affects tone and style, not factual accuracy. Detailed expert identities with task-relevant capabilities meaningfully improve performance. IF a persona is used, THEN make it detailed and specific.
-- Role shifts within layers are optional for focus purposes but recommended for adversarial self-review. Use them when a layer requires materially different expertise than the default persona. IF a Role Shift creates a critic or evaluator role, THEN include an explicit identification quota: "Identify at minimum [N] specific deficiencies" rather than open-ended review. This forces genuine adversarial engagement rather than rubber-stamping.
+The Vault canonical owns authored Markdown and repository metadata. When an Ora runtime counterpart is required, remove only the Vault YAML and the single separator blank line; the remaining body is exact. A mirror is not an independently edited variant.
 
-### 2.6 Processing Layers
+Mirror parity does not decide whether a framework should exist, be invocable, be visible, or be active. Those are admission and access decisions.
 
-The core of the framework. Each layer represents a discrete processing stage with its own focus, input, and output.
+### Deterministic derived views
 
-```
-## LAYER [N]: [LAYER NAME]
+A Skill package, compact runtime projection, or other target view is permitted only when:
 
-**Role Shift** (if applicable): As the [Role Name], you [one sentence
-describing the shifted focus].
+1. the admitted canonical is identified as source;
+2. an implemented registered transformer or exporter owns the target;
+3. transformation rules are deterministic and documented;
+4. a health check passes before derivation;
+5. every controlling instruction survives or its deterministic relocation is verified;
+6. output identity and provenance point back to the canonical; and
+7. the derived view cannot become a new authored authority.
 
-**Stage Focus**: [One sentence stating what this layer accomplishes.]
+F-Render requests or consumes that capability. A language model does not independently rewrite the view.
 
-**Input**: [What this layer reads — either the original framework inputs
-or the output of a previous layer.]
+### Admission states
 
-**Output**: [What this layer produces for downstream consumption.]
+Use these states exactly enough to avoid a false release claim:
 
-### [Processing Instructions]
+- INCOMPLETE: essential code, context, canonical source, transformer/exporter, health evidence, behavioral proof, registration, or decision is missing.
+- AUTHORED_PRIVATE_INACTIVE: the canonical is complete as authored text, but one or more implementation, proof, registration, approval, or access steps remain.
+- READY_FOR_ADMISSION_REVIEW: implementation and required behavioral proof are present and registration is prepared or present, but consequential approval or final access decision remains.
+- ADMITTED_ACTIVE: the owning admission authority has verified the exact artifact, required capabilities, proof, registration, approval, and access, and has actually activated it.
 
-[Concrete, directive instructions for this layer's work.
-Use imperative voice. Use IF/THEN for conditional logic.
-Use enumerated lists for sequential steps.
-Use named failure modes for known risks at this stage.]
+PFF may report the first three states. PFF alone never grants ADMITTED_ACTIVE.
 
-### Output Formatting for This Layer
+A new or converted framework remains private and inactive until implementation, behavioral proof, registration, and consequential approval are complete. File presence, mirror parity, a registry draft, an exporter output, or user silence is not admission.
 
-[Specific formatting requirements for this layer's output.
-Separated from processing instructions per the Think-Then-Format
-standard — reasoning instructions always precede formatting instructions.]
-```
+### Admission report
 
-**Layer design standards:**
+For F-Design and F-Convert, report:
 
-- Each layer has a single primary focus. IF a layer is doing two unrelated things, THEN split it into two layers.
-- Layer output must be explicitly defined. "Complete this layer's analysis" is insufficient. "Produce a prioritized list of [specific items] with [specific attributes] for each" is sufficient.
-- Layers are numbered sequentially. Cross-references between layers use layer numbers, not descriptions.
-- The number of layers is determined by the task's complexity, not by a target count. Simple frameworks may have three layers. Complex frameworks may have twelve. No layer exists without a clear reason. IF a framework exceeds 12 processing layers for single-pass execution, THEN evaluate whether it should be split into multiple execution stages or a multi-pass sequence.
-- **Think-Then-Format:** Within every processing layer, reasoning instructions precede formatting instructions, and the two are structurally separated by a subsection break. The model reasons about the problem first, then formats its output per the layer's requirements. This prevents the documented reasoning degradation caused by format constraints (Tam et al., EMNLP 2024).
-- **Invariant Check at Layer Boundaries:** At the end of each processing layer (except the final two), include a brief invariant verification: "Before proceeding: confirm that the primary objective stated in the Purpose has not shifted, that all named variables from the Input Contract are still being tracked, and that the output of this layer falls within the scope defined by the Output Contract." This is not a full self-evaluation — it is a lightweight drift detection mechanism. Full evaluation is consolidated in the Self-Evaluation layer.
+- exact canonical identity and version;
+- current state;
+- prompt-only, tool-backed, or bounded deterministic-capability class;
+- authoritative inputs and contributors preserved;
+- required context lanes and actual availability;
+- required capabilities, health, and proof;
+- canonical/mirror/derived-view state;
+- implementation and Programming dependencies;
+- registration state;
+- consequential approval and access state;
+- exact blockers;
+- smallest essential next plan; and
+- recovery point.
 
-### 2.7 Self-Evaluation Layer
+Do not create a second lifecycle database or permanent admission ledger. The report describes current truth.
 
-A dedicated processing layer (always the penultimate layer) where the model evaluates its own output against the Evaluation Criteria from Section 2.3.
+## EXECUTION METHODS
 
-```
-## LAYER [N]: SELF-EVALUATION
+### METHOD design_basis: Establish the authoritative design basis
 
-**Stage Focus**: Evaluate all output produced in Layers 1 through [N-1]
-against the Evaluation Criteria defined in Section 2.3.
+#### Performer and environment
 
-**Calibration warning**: Self-evaluation scores are systematically
-inflated. Research finds LLMs are overconfident in 84.3% of scenarios.
-A self-score of 4/5 likely corresponds to 3/5 by external evaluation
-standards. Score conservatively. Articulate specific uncertainties
-alongside scores.
+The model performs requirements analysis in the current conversation. The model may inspect only context and sources actually supplied through declared lanes. The model does not write files, implement code, register a framework, invoke an external effect, or activate a product.
 
-For each criterion:
-1. State the criterion name and number.
-2. Wait — verify the current output against this specific criterion's
-   rubric descriptions before scoring. [Explicit correction trigger.]
-3. Identify specific evidence in the output that supports or undermines
-   each score level.
-4. Assign a score (1-5) with cited evidence from the output.
-5. IF the score is below [threshold], THEN:
-   a. Identify the specific deficiency with a direct quote or
-      reference to the deficient passage.
-   b. State the specific modification required to raise the score.
-   c. Apply the modification.
-   d. Re-score after modification.
-6. IF the score meets or exceeds [threshold], THEN confirm and proceed.
+#### Instructions
 
-After all criteria are evaluated:
-- IF all scores meet threshold, THEN proceed to the Output Formatting layer.
-- IF any score remains below threshold after one modification attempt,
-  THEN flag the deficiency explicitly in the output with the label
-  UNRESOLVED DEFICIENCY and state what additional input or iteration
-  would be needed to resolve it.
-```
+1. Preserve the original user input verbatim in an Authority Record when wording affects scope, meaning, names, thresholds, permissions, or intended output.
+2. List every explicit contributor source with its owner, supplied form, intended use, and authority. Keep contributor material distinct from model-authored interpretation.
+3. State the concrete procedure, user-visible outcome, performer, environment, audience, input, output, and completion condition.
+4. Ask only questions whose answers materially change outcome, scope, authority, risk, context, capability, composition, or verification. Do not re-ask answered questions.
+5. When source versions conflict and the user has not chosen, reproduce the competing propositions in concise form and mark the decision unresolved.
+6. Build the working-load map: obligations, relationships, branches, comparisons, evidence, user/tool/external boundaries, expected outputs, validations, handoffs, fresh-context needs, and recovery.
+7. Define the mode structure. Use multiple modes only for genuinely different entry conditions or outputs.
+8. Start each mode as one milestone. Add only boundaries that satisfy the Working-Load Milestone Design tests. Record the reason for every boundary.
+9. Define mode-default context lanes and a complete override for each proposed milestone. Mark required and optional lanes and name the owner service.
+10. Inventory deterministic capabilities and external effects. For each, state whether it is implemented, registered, healthy, and proved, unknown, or absent.
+11. Apply the runner.py counterfactual. If no required behavior becomes impossible without runner.py, record that runner.py is absent by design.
+12. Define objective verification, provenance, failure, recovery, and downstream handoff for each proposed milestone.
+13. Ask whether the process stands alone, feeds one output directly, or writes into a corpus for multiple sources or outputs. Treat CFF/OFF composition as a brief interface decision, not a duplicated architecture.
+14. Present proactive gaps grounded in the emerging contract. Label each as accepted, rejected, or unresolved based on the user's actual response.
+15. Distinguish confirmed requirements from recommendations. Do not convert a recommendation into scope without acceptance.
 
-**Self-evaluation design standards:**
+#### Validation
 
-- **Use explicit correction trigger phrases.** The phrase "Wait — let me verify" at the start of each criterion evaluation reduces the self-correction blind spot by 89.3% and increases correction accuracy by 156% (Tsui, 2025). Do not use open-ended "check your work" instructions.
-- **Require cited evidence.** For each score, the model must point to specific passages in its own output that support the score. Unsupported scores are prohibited.
-- **Pairwise comparison where possible.** LLMs demonstrate higher reliability in comparative assessments than absolute scoring. Where the framework provides reference examples or the evaluation criteria include concrete exemplars, instruct the model to compare its output against those references rather than scoring in the abstract.
-- **Treat scores as upper bounds.** Include the calibration warning in every Self-Evaluation layer to counteract documented overconfidence.
+Before delivering the Design Basis, confirm every user obligation has a source and destination, every selected contributor remains present, every missing dependency is explicit, and no authored proposal is represented as an existing capability or approved decision.
 
-### 2.8 Error Correction and Output Formatting Layer
+#### Failure and recovery
 
-The final processing layer. Handles mechanical error correction, output formatting, and final verification.
+If essential user intent or a source conflict remains unresolved, return a usable partial Design Basis with the exact decision needed. If a required context lane is unavailable, return INCOMPLETE and name the owner service and smallest remediation. Preserve resolved material for the next pass.
 
-```
-## LAYER [N]: ERROR CORRECTION AND OUTPUT FORMATTING
+#### Output formatting
 
-**Stage Focus**: Final verification, mechanical error correction,
-and output formatting for delivery.
+Produce these sections in order: Authority Record; Outcome and Boundaries; Inputs and Outputs; Modes; Working-Load Map; Proposed Milestones and Boundary Reasons; Context and Provenance Contract; Capability and Health Contract; Verification and Recovery; Composition Decision; Accepted Proactive Gaps; Unresolved Decisions.
 
-### Error Correction Protocol
+### METHOD design_canonical: Author one dual-use canonical and truthful admission state
 
-1. Verify factual consistency across all output sections.
-   Flag and correct any contradictions.
-2. Verify terminology consistency. Confirm that defined terms are
-   used with their defined meanings throughout.
-3. Verify structural completeness. Confirm all required output
-   components (per Output Contract) are present.
-4. Verify variable fidelity. Confirm that all named variables,
-   entities, and quantities defined in the Input Contract or
-   established during processing are still present and accurately
-   represented. IF any variable has been silently dropped, conflated
-   with another variable, or simplified, THEN restore it.
-5. Verify word count compliance (if applicable).
-6. Document all corrections made in a Corrections Log appended
-   to the output.
+#### Performer and environment
 
-### Output Formatting
+The model authors one Markdown canonical in the current conversation from the resolved M1 Design Basis and original user input. The model returns text. The model does not claim that text was saved, mirrored, exported, implemented, registered, approved, exposed, or activated.
 
-[Specific formatting instructions for the framework's deliverables.
-Include templates, section structures, and formatting standards.]
+#### Instructions
 
-### Missing Information Declaration
+1. Reconcile the M1 Design Basis against the original user input. The original wording controls whenever the summary differs.
+2. Preserve every accepted obligation and explicit contributor source. Label model-created additions as authored synthesis or proposal where provenance matters.
+3. Create one authored dual-use canonical body. Include standalone sequential use and Ora multipass METHOD use in the same body.
+4. Use strict METHOD headings only. Give each METHOD a unique identifier and complete performer, input, instruction, output, validation, failure, recovery, handoff, and formatting contract.
+5. Declare the fewest coherent milestones from working load. For each model-executed milestone, include Methods, Required prior milestones, External prerequisites, Verification criterion, exact Gear, Gear 4 purpose when applicable, Output format, and Drift check question.
+6. Ensure every METHOD is used, every reference resolves, every prior is earlier in the same mode, and every external prerequisite names caller-supplied state rather than a same-run deliverable.
+7. Declare exact Gear 4 purpose as exploration, independent corroboration, or both. Do not use Gear 1 for model-executed work or silently default a missing Gear.
+8. Declare mode-default context lanes and a complete per-milestone override. Required unavailable lanes refuse or yield INCOMPLETE; optional unavailable lanes disclose and continue.
+9. Keep user text and explicit contributors through every handoff. Define concise provenance sufficient to distinguish user, contributor, same-run, external, model-authored, and deterministic sources.
+10. Define deterministic capability contracts by behavior. Include exact health check, passing result, proof, permission, failure, and recovery.
+11. If durable reusable code is essential and absent, mark the affected path INCOMPLETE and produce a bounded Programming handoff. Do not implement or claim the code.
+12. Apply the runner.py counterfactual. Do not include runner.py when existing execution paths can provide all required behavior.
+13. Define output contracts that distinguish returned text from real effects. Never say PFF wrote a file, synchronized a mirror, updated a registry, or activated a product unless supplied execution evidence proves that separate action.
+14. Permit exact body-identical Vault/Ora mirrors and deterministic derived Skill/runtime views only. Do not author independent variants.
+15. Include concise quality, named failure, recovery, portability, and PFF/CFF/OFF composition meaning. Refer to the integration architecture for detail rather than duplicating it.
+16. Assign INCOMPLETE, AUTHORED_PRIVATE_INACTIVE, or READY_FOR_ADMISSION_REVIEW from actual evidence. Never assign ADMITTED_ACTIVE.
+17. Keep the framework private and inactive until implementation, behavioral proof, registration, consequential approval, and access are complete.
+18. If an essential context, capability, export, or admission proof is absent, include the smallest essential next plan. Use a bounded Programming handoff only when durable code is required.
+19. Run a top-down and bottom-up contract review. Cross-check Setup Questions, inputs, METHOD consumption, outputs, verification, failure, and admission in both directions.
+20. Return one canonical body. Put the Admission Report after the body rather than embedding construction or status history into the canonical.
 
-Before finalizing output, explicitly state:
-- Any input information that was expected but absent.
-- Any processing step where insufficient information forced assumptions.
-- Any evaluation criterion where the score reflects a gap in
-  available information rather than a quality deficiency.
+#### Validation
 
-A response that acknowledges missing information is always preferable
-to a response that fills gaps with assumptions.
+Confirm strict heading grammar, complete milestone properties, reference resolution, no unused METHOD, workload-coherent boundaries, complete context overrides, capability health declarations, provenance, handoffs, recovery, dual-use execution, deterministic-only derivation, and truthful admission state.
 
-### Recovery Declaration
+Confirm that the output contains no independently authored execution variant, hardcoded machine path, prose-only implementation promise, false effect claim, duplicate architecture essay, or activation by implication.
 
-IF the Self-Evaluation layer flagged any UNRESOLVED DEFICIENCY, THEN
-restate each deficiency here with:
-- The specific criterion that was not met.
-- What additional input, iteration, or human judgment would resolve it.
-- Whether the deficiency affects downstream consumers of this
-  framework's output (if part of a pipeline).
-```
+#### Failure and recovery
 
-### 2.9 Agent-Tier Metadata (Agent Mode Only)
+If the canonical cannot be completed without a missing decision, required lane, code implementation, transformer/exporter, or admission proof, return the complete usable portion plus INCOMPLETE, exact blocker, preserved handoff, and essential next plan. Do not hide the missing dependency behind a draft label.
 
-This section appears only in agent-mode renderings. It is absent from specifications, single-pass renderings, and reasoning-model renderings.
+#### Output formatting
 
-```
-## AGENT EXECUTION METADATA
+Return: Canonical Framework Body; Admission Report. If durable code is essential, add one Bounded Programming Handoff inside the Admission Report. Do not add a separate audit file, tracker, ledger, or independently authored variant.
 
-### Stage Boundaries
+### METHOD convert_map: Map source meaning before conversion
 
-[Enumeration of which layers constitute discrete execution stages
-with actual context window resets between them.]
+#### Performer and environment
 
-Stage 1: Layers 1-3 (executed in single inference call)
-  Handoff to Stage 2: [specific data extracted and carried forward]
+The model performs a read-only semantic analysis of the complete supplied framework and its accepted owner sources. No source file is modified and no converted artifact is represented as saved or active.
 
-Stage 2: Layers 4-6 (executed in single inference call)
-  Handoff to Stage 3: [specific data extracted and carried forward]
+#### Instructions
 
-[Continue for all stages.]
+1. Read the complete source before proposing a change.
+2. Identify every unique operative instruction, input, output, quality rule, failure mode, recovery path, provenance rule, context dependency, capability dependency, handoff, and integration seam.
+3. Map each item to KEEP, CONSOLIDATE, REPLACE BY CURRENT USER DECISION, REMOVE AS DUPLICATE OR OBSOLETE, or ESCALATE.
+4. Preserve the user's authoritative wording and explicit contributor sources. Record where paraphrase would change meaning.
+5. Separate exact duplicates and repeated examples from unique meaning. Do not concatenate source sections into the replacement.
+6. Identify false or unsupported runtime claims, including file writes, code generation, registration, activation, deterministic derivation, retrieval, health, or external effects.
+7. Identify METHOD/LAYER grammar, milestone, prior, prerequisite, Gear, Gear-4-purpose, output, drift, context, capability, and admission gaps against the current strict contract.
+8. Distinguish same-run priors from external data. Identify every unresolved or circular reference.
+9. Build the working-load map and propose the fewest coherent milestones. Treat source length and former layer count as warnings only.
+10. Identify conflicting source versions. When the current user has not superseded or chosen one, present the competing meaning and stop that branch.
+11. Classify existing variants: canonical body, exact mirror, deterministic derived view, or independent authored drift. Only the first three may survive.
+12. Apply the runner.py counterfactual and identify any bounded Programming dependency.
+13. Map PFF/CFF/OFF composition meaning briefly and refer detailed topology to the architecture reference.
+14. Propose the replacement shape and admission consequence without editing.
 
-### Persistent Reference Document
+#### Validation
 
-[A compact summary injected into every stage's context window alongside
-the previous stage's output and the current stage's instructions.
-Contains: the original objective (unchanged across all stages), key
-constraints, scope boundaries, and named variables that must persist
-throughout the pipeline. This document is the stable frame that no
-individual stage can override.]
+Every unique source item has exactly one disposition and destination. Removed content is duplicate, obsolete, contradicted by current authority, implementation history, or unusable apparatus rather than unique required meaning. No unresolved conflict has been silently decided.
 
-### Tool Definitions
+#### Failure and recovery
 
-[Enumeration of available tools with trigger conditions.]
+If the complete source is unavailable, return INCOMPLETE and request it. If unique meaning cannot fit the approved artifact purpose or shape, stop before conversion and identify the exact conflict. If an authority conflict remains, preserve both versions and ask for one decision.
 
-Tool: file_read
-  Description: Read contents of a file from the vault or workspace.
-  Trigger: When processing requires information from a file not already
-           in the context window.
-  Input: file path (string)
-  Output: file contents (string)
-  Failure handling: IF tool call fails, THEN [specific recovery action].
+#### Output formatting
 
-Tool: file_write
-  Description: Write output to a file in the workspace.
-  Trigger: When a stage produces output that must persist for
-           downstream stages or final delivery.
-  Input: file path (string), content (string)
-  Output: confirmation with file path
-  Failure handling: IF tool call fails, THEN [specific recovery action].
+Produce: Source Authority; Semantic Preservation Map; Contradictions; Runtime and Capability Truth; Working-Load and Milestone Proposal; Canonical Replacement Shape; Admission Consequence; Unresolved Dependencies.
 
-Tool: rag_query
-  Description: Query the ChromaDB knowledge base for relevant context.
-  Trigger: When processing requires information that may exist in the
-           vault but is not in the current context window.
-  Input: query string, optional filters (nexus, type, tags)
-  Output: ranked list of relevant chunks with source metadata
-  Failure handling: IF tool call fails, THEN [specific recovery action].
+### METHOD convert_canonical: Produce the converted canonical and truthful admission state
 
-[Additional tools as needed for the specific framework.]
+#### Performer and environment
 
-### Checkpoint Protocol
+The model authors one converted Markdown canonical in the current conversation from M1, the complete source, and current user decisions. The model returns text and does not claim repository or product effects.
 
-At each stage boundary:
-1. Extract the stage's output per the handoff specification.
-2. Write the extracted output to [workspace location].
-3. Log stage completion with timestamp.
-4. IF stage output fails self-evaluation threshold, THEN:
-   a. Log the failure with specifics.
-   b. Retry the stage once with the deficiency flagged in the
-      stage's input context.
-   c. IF retry fails, THEN halt execution and surface the failure
-      to the user with the label STAGE FAILURE, the stage number,
-      and the specific deficiency.
+#### Instructions
 
-### Python Runner Specification
+1. Use the Semantic Preservation Map as the conversion boundary. Retain all KEEP items, merge CONSOLIDATE items without losing distinctions, apply only accepted replacements, and omit only justified duplicates or obsolete material.
+2. Preserve authoritative wording and explicit contributors. Keep the source-to-meaning relationship visible in concise provenance where needed.
+3. Replace legacy LAYER execution grammar with strict METHOD declarations. Do not mix grammars.
+4. Re-derive milestones from current working load. Do not inherit a fixed count from the source, instruction length, or former layer count.
+5. Apply every strict milestone property and resolve all references.
+6. Add complete context, provenance, capability, deterministic health, handoff, and recovery contracts.
+7. Keep one authored dual-use canonical. Retain only exact body mirrors and implemented deterministic derived views.
+8. Remove hardcoded machine assumptions unless the actual product is intentionally machine-specific and that constraint is accepted.
+9. Replace prose-only code or tool promises with implemented capability evidence or an explicit INCOMPLETE dependency and bounded Programming handoff.
+10. Apply the runner.py counterfactual; do not reproduce a runner merely because the source named one.
+11. Preserve concise, task-specific quality and named failure meaning. Remove repetitive universal rubrics and examples that do not change execution.
+12. Preserve a brief PFF/CFF/OFF seam when relevant and refer to the architecture reference.
+13. Cross-check every source-map item against the converted canonical before delivery.
+14. Report preservation changes concisely outside the canonical.
+15. Assign only an evidence-supported admission state. New converted material remains private and inactive until implementation, behavioral proof, registration, consequential approval, and access are complete.
+16. If essential code, context, export, derivation, or admission proof is missing, return INCOMPLETE or AUTHORED_PRIVATE_INACTIVE with the exact essential next plan.
 
-[Natural language specification for the Python code that executes
-this framework. This specification is used to generate runner.py
-via the modified-date regeneration pattern.]
+#### Validation
 
-The runner for this framework:
+Check strict preflight shape, semantic preservation, reference integrity, context overrides, capability health, provenance, deterministic-only derivation, effect truth, recovery, portability, and admission. A structurally valid conversion fails when it loses source meaning or invents implementation.
 
-Initialization:
-1. [What the runner does before the first inference call]
+#### Failure and recovery
 
-Stage execution loop:
-1. [How each stage is called]
-2. [How output is captured]
-3. [How handoff extraction occurs]
-4. [How stage boundaries are managed]
+If conversion exposes an unresolved source decision, preserve the completed map and return to that decision without silently choosing. If a required implementation is absent, return the canonical only as private/inactive or incomplete and attach the bounded handoff.
 
-Tool call routing:
-1. [How tool calls are detected in model output]
-2. [How each tool type is dispatched]
-3. [How tool results are injected back into context]
+#### Output formatting
 
-Error handling:
-1. [Retry logic for failed stages]
-2. [Retry logic for failed tool calls]
-3. [Halt conditions and user notification]
+Return: Converted Canonical Framework Body; Preservation Summary; Admission Report. Keep source-line maps, construction history, detailed audits, and reconstruction apparatus out of the canonical.
 
-Output collection:
-1. [How final output is assembled from stage outputs]
-2. [Where final output is written]
-3. [What metadata is logged]
-```
+### METHOD render_derive: Request or consume a deterministic derived view
 
-### 2.10 Named Failure Modes Section
+#### Performer and environment
 
-Every framework includes a section listing failure modes specific to that framework's task.
+The model validates the derivation request and may request or consume an already implemented registered deterministic transformer or exporter through the surrounding authorized capability boundary. The model never substitutes its own rewrite for that capability.
 
-```
-## NAMED FAILURE MODES
+#### Instructions
 
-**The [Name] Trap:** [One-sentence description of what goes wrong.]
-Correction: [One-sentence description of what to do instead.]
+1. Identify the exact admitted canonical and target view.
+2. Confirm the target is a deterministic projection, not a request for a newly authored variant or changed behavior.
+3. Resolve the transformer or exporter through the registered capability boundary. Do not infer availability from prose, a filename, a package name, or a prior output.
+4. Inspect the capability contract: input, output, deterministic rules, permissions, side effects, health check, passing result, proof, registration, failure, and recovery.
+5. Run or consume the declared no-effect health check through the authorized performer before derivation.
+6. If the capability, registration, permission, canonical, target contract, or passing health result is unavailable, stop and return INCOMPLETE with the exact blocker and smallest remediation.
+7. If available, submit the canonical bytes or canonical structured source exactly as the capability requires.
+8. Receive the derived view. Validate target schema, required instruction coverage, source identity, version, and documented transformation invariants.
+9. Confirm that omitted explanation was deterministically omitted and that every controlling instruction reached the responsible performer.
+10. Record concise derivation provenance: canonical identity, transformer/exporter identity, target, health result, and parity result.
+11. Do not register, install, activate, publish, or trust the derived view unless the surrounding authority separately performs and proves that action.
+12. Treat outbound Agent Skill packaging as a deterministic export of a reviewed framework, not as an inbound import, installation, trust, permission, update, or lifecycle contract.
 
-**The [Name] Trap:** [One-sentence description of what goes wrong.]
-Correction: [One-sentence description of what to do instead.]
+#### Validation
 
-[Continue for all identified failure modes.]
-```
+A successful result requires an admitted source canonical, implemented registered transformer/exporter, passing health result, deterministic transformation, valid target, and instruction-parity proof. Model similarity, a plausible package, or an exporter specification is not enough.
 
-Failure modes are identified during the design process (Phase 3, Step 7). Additional failure modes may be discovered during use and added in subsequent versions.
+#### Failure and recovery
 
-### 2.11 Execution Commands Block
+Return INCOMPLETE on any missing required dependency. Preserve the source identity and requested target. Name whether remediation belongs to canonical correction, capability implementation through Programming, registration, health repair, permission, or admission.
 
-The final element of every framework. Provides the model with explicit activation instructions.
+#### Output formatting
 
-```
----
+On success, return one Derived View followed by a concise Derivation Result. On failure, return INCOMPLETE with Source, Target, Missing Dependency, Consequence, Smallest Remediation, and Recovery Point.
+
+### METHOD audit_contract: Audit without mutation
+
+#### Performer and environment
+
+The model performs an evidence-bound, read-only review. It may inspect supplied canonicals, exact mirrors, derived views, registrations, capability contracts, health evidence, and tests through read-only lanes. It does not modify or activate anything.
+
+#### Instructions
+
+1. State the audit scope and the exact artifacts and evidence actually inspected.
+2. Identify the canonical authority and version. If authority is ambiguous, flag it before other conclusions.
+3. Check one authored dual-use body, standalone sequence, Ora METHOD use, exact mirror parity, and deterministic-only derived views.
+4. Check all four mode contracts that apply to the framework under review.
+5. Check strict METHOD grammar, unique identifiers, used declarations, resolved references, and absence of METHOD/LAYER mixing.
+6. Check every milestone's Methods, same-run priors, external prerequisites, verification criterion, exact Gear, Gear-4 purpose, output format, and drift question.
+7. Evaluate milestone count against working load, including obligation, evidence, boundary, handoff, fresh-context, and recovery cost. Do not use length or METHOD count as a fixed rule.
+8. Check authoritative user wording, explicit contributors, and concise provenance through handoffs.
+9. Check mode-default context lanes and complete milestone overrides. Distinguish implemented lanes from declarations; required unavailable lanes are blockers and optional unavailable lanes require disclosure.
+10. Check capability abstraction, permissions, health, proof, registration, failure, rollback, and owner. Treat prose-only code or provider claims as absent.
+11. Apply the runner.py counterfactual. Flag an unnecessary runner and flag any required behavior lacking a real implementation route.
+12. Check output/effect truth: authored, returned, saved, mirrored, derived, registered, activated, published, and approved are distinct states.
+13. Check admission: new or converted material remains private and inactive until implementation, behavioral proof, registration, consequential approval, and access are complete.
+14. Check failure, partial-result, resume, handoff, and recovery behavior.
+15. Check portability and hardcoded environment assumptions.
+16. Check the PFF/CFF/OFF seam only to the degree the framework composes; do not demand duplicated architecture.
+17. Apply concise quality checks top-down and bottom-up. Compare Setup Questions to METHOD consumption and outputs in both directions.
+18. For every FLAG or FAIL, cite the exact location or absent evidence, state the user-visible consequence, and recommend the smallest correction.
+19. Mark uninspected or unavailable evidence UNVERIFIED. Do not infer a pass.
+20. Do not edit, save, derive, register, activate, or execute the framework.
+
+#### Validation
+
+Every applicable check has PASS, FLAG, FAIL, or NOT APPLICABLE. Findings distinguish documentary quality from runtime conformance and admission proof. Every material finding has remediation.
+
+#### Failure and recovery
+
+If the complete artifact or required evidence is unavailable, return the audit that can be supported, mark the rest UNVERIFIED, and name the exact evidence needed. Do not convert missing evidence into failure unless the framework claims that evidence exists.
+
+#### Output formatting
+
+Produce: Scope; Evidence Inspected; Findings by Canonical, Execution, Context, Capability, Derivation, Admission, Recovery, Portability, and Composition; Exact Blockers; Remediation; Admission State; Unverified Items.
+
+## Authoring Standards
+
+### Directive language
+
+Use imperative voice for operative instructions and declarative voice for definitions. Name every actor when the referent could be ambiguous. Use a task-relevant persona only when it changes behavior; omit ornamental identity. Use exact quantities only when the quantity changes behavior; avoid arbitrary precision.
+
+Use explicit IF, THEN, and ELSE structure for real branches. State which performer makes the decision and what evidence it uses.
+
+Prefer affirmative required behavior. Keep prohibitions for dangerous, irreversible, misleading, or commonly recurring failure paths where the negative boundary itself matters.
+
+### Method focus and handoff
+
+Give each METHOD one primary responsibility. State what it reads, what it may ignore, what it produces, who consumes the result, and what must persist.
+
+Carry the minimum sufficient handoff, but never discard authoritative user text, selected contributors, named variables, essential disagreement, required provenance, or unresolved decisions.
+
+### Evaluation design
+
+Use observable criteria tied to user-visible behavior, material regression, data preservation, essential failure behavior, or admission truth. Avoid criteria that merely repeat the instruction.
+
+Use a scored rubric only when score levels correspond to independently observable states and the score changes a decision. Otherwise use exact pass, fail, incomplete, or bounded categorical outcomes.
+
+### Missing information and uncertainty
+
+List missing required inputs before dependent processing. State assumptions only when the user has authorized assumption or the branch is reversible and the uncertainty is disclosed.
+
+Label facts, supplied claims, model inferences, deterministic results, and unresolved items distinctly. Acknowledged absence is preferable to plausible invention.
+
+### Output density
+
+Every section must change execution, verification, recovery, admission, or user understanding. Remove repeated cautions, ornamental examples, generic exhortations, and framework history that does not control current behavior.
+
+Length is an output of required meaning. It is not a target for padding or trimming. If unique required meaning conflicts with an approved artifact shape, surface the conflict rather than dropping meaning.
+
+## Quality and Admission Verification
+
+Apply these checks before reporting a new or converted canonical as authored:
+
+### Canonical and authority
+
+- One dual-use canonical has explicit owner/version.
+- Authoritative wording and contributors survive with attribution.
+- Conflicts remain visible; construction/audit apparatus stays outside.
+
+### Modes, milestones, and METHODs
+
+- Modes have distinct purposes and the fewest workload-justified milestones.
+- Boundaries have handoff, verification, recovery, context, evidence, or authority value.
+- METHOD grammar is strict; identifiers are unique/used and references resolve.
+- Same-run priors are earlier/local; external prerequisites are external.
+- Gear, Gear-4 purpose, criterion, output, and drift question are exact.
+
+### Context and provenance
+
+- Mode defaults and complete milestone overrides distinguish required/optional lanes.
+- Required unavailable lanes refuse/incomplete; optional absence is disclosed.
+- User/contributor material survives; provenance and effect permission remain distinct.
+
+### Capability and code
+
+- Capability contracts include performer, health, proof, registration, permission, failure, and recovery.
+- Missing code has a Programming handoff and the runner.py counterfactual was applied.
+- Prose or hardcoded environment names do not substitute for behavior.
+
+### Output and derivation
+
+- Returned, saved, mirrored, derived, registered, and activated states are distinct.
+- Mirrors are body-identical; views are deterministic/source-bound; no independent variant exists.
+- F-Render refuses missing derivation dependencies; composition contracts align.
+
+### Failure, recovery, and admission
+
+- Material failures have detection/recovery and preserve completed work.
+- Incomplete output names blocker/next plan; new material stays private/inactive.
+- Admission matches evidence, PFF never grants ADMITTED_ACTIVE, and F-Audit does not mutate.
+
+Production-ready as authored text means these authoring checks pass. Product-ready and active additionally require actual implementation, behavioral proof, registration, consequential approval, access, and activation by their owning authorities.
+
+## Named Failure Modes and Recovery
+
+**The Prose Became Code Trap:** The framework describes a runner, exporter, renderer, write, or effect and then reports the capability as present. Recovery: mark the dependency absent, keep the framework inactive, and create the bounded Programming or capability handoff.
+
+**The Independent Variant Trap:** A model rewrites a canonical for another environment and creates a second source of truth. Recovery: discard the independent rewrite; restore one canonical and use an implemented deterministic transformer.
+
+**The Boundary by Length Trap:** The author creates milestones because the document is long or contains many METHODs. Recovery: rebuild the working-load map and retain only boundaries with a real verification, handoff, context, authority, evidence, or recovery function.
+
+**The Pipeline-Pass Proliferation Trap:** Micro-milestones repeatedly pay for full pipeline passes without preserving a useful intermediate result. Recovery: merge adjacent milestones that use the same evidence, performer, Gear purpose, and validation.
+
+**The Monolithic Working-Load Trap:** One milestone holds incompatible branches, evidence regimes, user decisions, and recoverable outputs. Recovery: split at the smallest stable deliverable or authority boundary.
+
+**The Authority Substitution Trap:** A summary or model interpretation replaces the user's wording or a selected contributor. Recovery: restore the authoritative source and redo every dependent handoff and verification.
+
+**The Required Lane Mirage:** A method proceeds as if retrieval, project context, web consultation, or another required lane ran when it was unavailable. Recovery: refuse or return INCOMPLETE; name the owner service and required evidence.
+
+**The Optional Lane Gate Trap:** A useful optional enrichment failure blocks an otherwise valid result. Recovery: disclose the limitation and continue through an independent valid fallback.
+
+**The Permission Smuggle Trap:** A context allow-list is treated as permission to call a tool or cause an effect. Recovery: separate context from capability/effect authority and obtain the required permission.
+
+**The Health-by-Presence Trap:** A registered name or running process is accepted as proof that required behavior works. Recovery: run the declared behavioral health check and require its exact passing result.
+
+**The False Admission Trap:** File presence, a registry draft, mirror parity, or user silence is treated as activation. Recovery: return to the evidence-supported admission state and keep the material private and inactive.
+
+**The Semantic Loss Trap:** Conversion improves structure while dropping unique source meaning. Recovery: return to the semantic preservation map and restore or explicitly escalate every lost item.
+
+**The Duplicate Architecture Trap:** PFF reproduces the full CFF/OFF integration architecture and drifts from its owner. Recovery: retain only the brief seam and refer to the architecture canonical.
+
+**The Implicit Handoff Trap:** A later METHOD depends on information that no declared input, lane, capability, or prior supplies. Recovery: add a truthful source or stop the dependent path as incomplete.
+
+**The False Consensus Trap:** Agreement reached after cross-review is represented as independent corroboration. Recovery: preserve initial lane positions, material disagreement, and convergence history in internal evidence.
+
+**The Missing Recovery Trap:** Failure leaves only a diagnostic or inaccessible scratch reference. Recovery: return completed outputs, exact blocker, preserved handoff, and a usable resume or next-plan instruction.
+
+**The Audit Mutation Trap:** F-Audit fixes or activates what it inspects. Recovery: revert the mutation, issue the evidence-bound report, and place any fix in a separately approved change task.
+
+**The Premature Accommodation Trap:** Mandatory authority, safety, or output questions are skipped to reduce conversational friction. Recovery: explain the consequence, ask the smallest unresolved question, and keep the dependent path incomplete.
+
+## Standalone and Ora Execution
+
+### Standalone sequence
+
+Read the canonical/source, select one mode, validate actual inputs/context/capabilities, and execute its milestones in order. Follow referenced METHODs, apply the declared Gear purpose as a quality posture, verify each criterion, and preserve handoffs. Stop on required unavailable dependencies and return completed work plus INCOMPLETE/next plan.
+
+A standalone model cannot create genuine parallel independence merely by role-playing two lanes in one context. It may apply both perspectives as a quality aid but must not label the result independently corroborated.
+
+### Ora multipass sequence
+
+Ora preflight resolves exact identity/mode, masks fenced examples, validates the strict contract, and refuses partial resolution before model spend/effects. The executor supplies original user input, resolved priors/prerequisites/METHODs, output, criterion, and Gear-4 purpose.
+
+PFF's context-lane declarations remain authoring/admission contracts until Dialogue-owned services and their Framework integration exist and are proved. The canonical must expose unavailable required lanes rather than implying retrieval.
+
+### Handoff and recovery
+
+A handoff carries the authoritative objective/wording, contributors/provenance, variables/decisions, output, disagreement/uncertainty, health/verification evidence, authority boundaries, discards, and recovery point. Return it with earlier outputs when later work fails.
+
+## Integration with CFF and OFF
+
+PFF is the process member of the PFF/CFF/OFF family: PFF produces information, CFF structures the corpus where information accumulates, and OFF expresses content as a target artifact. The full topology belongs to Reference — PFF-CFF-OFF Integration Architecture.
+
+During F-Design and F-Convert, ask whether the process stands alone, feeds one output directly, or participates in a multi-source or multi-output workflow.
+
+- Shape 1, standalone PFF: return the process result directly.
+- Shape 3, direct PFF to OFF: align the PFF output contract with one OFF input contract.
+- Shape 4, corpus-mediated: align the PFF write contract with one named corpus section.
+
+For corpus-mediated work, declare the corpus and section identity, content shape, source and provenance, write performer, health and permission boundary, validation, and missing-data behavior. PFF describes the write contract; it does not claim the write occurred or duplicate CFF's architecture.
+
+CFF and OFF remain sibling frameworks with their own authority. Their versions do not determine PFF's admission state.
 
 ## EXECUTION COMMANDS
 
-1. Confirm you have fully processed this framework and all associated
-   input materials.
-2. IF any required inputs (per Input Contract) are missing, THEN list
-   them now and request them before proceeding.
-3. IF any required inputs are present but ambiguous, THEN state what
-   you understand, what you are uncertain about, and what assumptions
-   you will make if not corrected. Wait for confirmation before proceeding.
-4. Once all required inputs are confirmed present, execute the framework.
-   Process each layer sequentially. Produce all outputs specified in the
-   Output Contract.
-```
-
-### 2.12 Framework Registry Entry
-
-Every framework specification is accompanied by a registry entry — a compressed metadata record designed for search indexing. The registry entry is produced automatically during the Execution Commands step and does not require separate user action beyond saving the entry to the registry file.
-
-The registry entry format:
-
-```
-Name: [framework title]
-Purpose: [one sentence]
-Problem Class: [category of problem]
-Input Summary: [required inputs, one line each]
-Output Summary: [primary outputs, one line each]
-Proven Applications: [test history]
-Known Limitations: [primary risk]
-File Location: [path]
-Provenance: [human-created | agent-created]
-Confidence: [low | medium | high]
-Version: [semantic version]
-Delivers: [one-line summary per milestone type, semicolon-separated]
-```
-
-Registry entries are indexed in ChromaDB's knowledge collection for semantic search. When an agent needs a framework, it queries the registry rather than loading all framework files into context.
-
----
-
-## Section III: Framework Authoring Standards — Language and Convention
-
-These standards govern the language, syntax, and structural conventions used in all framework documents. They exist to maximize clarity for AI models and minimize interpretation variance across different models and sessions.
-
-### 3.1 Instruction Voice
-
-**Use imperative voice for all directives.**
-
-- Write: "Produce a list of five items."
-- Do not write: "You should consider producing a list of five items."
-- Do not write: "It would be helpful to produce a list of five items."
-
-**Use declarative voice for definitions and descriptions.**
-
-- Write: "A molecular note synthesizes two or more atomic concepts into an emergent second-order insight."
-- Do not write: "You might think of a molecular note as something that synthesizes concepts."
-
-**Use conditional structure for branching logic.**
-
-- Write: "IF the character is classified as Major, THEN produce a profile of 700-850 words. IF the character is classified as Secondary, THEN produce a profile of 375-550 words."
-- Do not write: "The profile length should vary based on character importance."
-
-**Use affirmative directives rather than negative ones.** Research shows "do X" consistently outperforms "don't do Y" across models, with up to 67% accuracy improvement in controlled tests (Bsharat et al., 2023).
-
-- Write: "Use active voice for all directives."
-- Do not write: "Don't use passive voice."
-
-### 3.2 Precision of Reference
-
-**Name every actor explicitly. Do not rely on pronouns when the referent could be ambiguous.**
-
-- Write: "The Depth model evaluates the Breadth model's output."
-- Do not write: "It evaluates the output."
-
-**Name every document by its full title on first reference. Use a defined short name on subsequent references.**
-
-- Write: "The Character Foundation Framework (hereafter: Character Framework) produces four outputs."
-- Subsequent: "The Character Framework's self-evaluation layer…"
-
-**Use specific quantities rather than qualitative descriptors.**
-
-- Write: "Produce exactly three alternative framings."
-- Do not write: "Produce several alternative framings."
-- Write: "The summary must not exceed 200 words."
-- Do not write: "Keep the summary concise."
-
-### 3.3 Structural Conventions
-
-**Section headers use the following hierarchy:**
-
-```
-# Document Title (one per document)
-## Major Section (numbered in Table of Contents)
-### Subsection
-#### Sub-subsection (use sparingly — prefer flatter structure)
-```
-
-**Enumerated lists for sequential steps.** IF order matters, THEN number the items.
-
-**Bullet lists for non-sequential items.** IF order does not matter, THEN use bullets.
-
-**Bold for defined terms on first use.** After first definition, use the term without bold.
-
-**Code blocks for templates, formats, and structural patterns.**
-
-**IF/THEN blocks for conditional logic.** Capitalize IF, THEN, ELSE for visual parsing:
-
-```
-IF [condition], THEN [action].
-IF [condition], THEN [action], ELSE [alternative action].
-IF [condition A] AND [condition B], THEN [action].
-```
-
-### 3.4 Named Failure Mode Convention
-
-Every Named Failure Mode follows this structure:
-
-```
-**The [Name] Trap:** [One-sentence description of what goes wrong.]
-Correction: [One-sentence description of what to do instead.]
-```
-
-The name should be descriptive and memorable. "The Topic Trap" is better than "Failure Mode 7." Names create cognitive hooks — anchor tokens in the model's attention mechanism — that the model pattern-matches against during processing.
-
-### 3.5 Input/Output Contract Convention
-
-Every input and output is specified with this minimum information:
-
-```
-- [Name]: [Data type or format]. [Size constraints if applicable].
-  Source/Destination: [Where it comes from or goes to].
-  Required/Optional: [Required | Optional — default if absent: (behavior)].
-```
-
-### 3.6 Evaluation Criterion Convention
-
-Every evaluation criterion follows this structure:
-
-```
-[N]. **[Criterion Name]** ([Weight if weighted scoring is used]):
-  - 5 (Excellent): [Specific observable requirements.]
-  - 4 (Strong): [What distinguishes strong from excellent.]
-  - 3 (Passing): [Minimum acceptable standard.]
-  - 2 (Below threshold): [Specific observable deficiencies.]
-  - 1 (Failing): [What constitutes clear failure.]
-```
-
-Each level's description should be approximately the same length to prevent length bias in the model's scoring.
-
-### 3.7 Anti-Drift Conventions
-
-These conventions specifically address context drift — the progressive degradation of instruction adherence over long documents.
-
-**Restate critical constraints at the point of application, not only at the point of definition.** IF a word count limit is defined in the header and applies during Layer 8, THEN restate it in Layer 8. Models lose awareness of early instructions as they process deeper into a document.
-
-**Place anti-drift anchors after accumulated context, exploiting recency bias.** Research confirms that as context grows, primacy bias (attention to early content) weakens while recency bias (attention to recent content) remains stable. Anti-drift anchors should appear at the start of the next processing block, immediately after the section divider — so they are the most recently read content before the model begins generating. The anchor structure:
-
-```
----
-ORIENTATION ANCHOR — MIDPOINT REMINDER
-Primary deliverable: [restate from Output Contract]
-Key decisions made so far: [brief summary of upstream conclusions]
-Scope boundaries that must not shift: [restate critical constraints]
-Next layer must produce: [preview of upcoming output requirement]
-Continue to Layer [N+1].
----
-```
-
-Insert an orientation anchor in any framework with more than seven processing layers, positioned at approximately the midpoint of the layer sequence. Additional anchors may be inserted in frameworks exceeding twelve layers.
-
-**Place the highest-priority instruction last within each layer.** Models exhibit recency bias — the last instruction read before generating output receives the most attention.
-
-**Use section dividers (horizontal rules) between layers.** Visual separation reinforces cognitive separation for the model.
-
-**Limit each layer to a single primary focus.** Multi-focus layers produce drift because the model satisfies one focus and loses track of the other.
-
-### 3.8 Word Count and Output Density
-
-**Specify word counts as ranges, not targets.** "900-1000 words" is enforceable. "About 1000 words" is not.
-
-**Specify information density expectations explicitly.** "Every sentence must advance the analysis. Filler language, restatement of the prompt, and transitional phrases that add no information are prohibited." This instruction is more effective than word count limits alone because it addresses the underlying behavior that inflates word count.
-
-**Include a word count verification step in the Error Correction layer.** The model must count its own output and adjust before finalizing.
-
-### 3.9 Think-Then-Format
-
-**Separate reasoning from formatting within every processing layer.** Research demonstrates that format restrictions cause significant reasoning degradation, with stricter constraints producing greater harm (Tam et al., EMNLP 2024). JSON-mode formatting alone can cause up to 56% performance variation.
-
-The mitigation: within every layer, processing instructions (reasoning, analysis, generation) appear first. Output formatting instructions (structure, templates, field requirements) appear second, in a clearly separated subsection. The model reasons about the problem, then formats its conclusion. Never embed format requirements within reasoning instructions.
-
-```
-## LAYER [N]: [LAYER NAME]
-
-### Processing Instructions
-[All reasoning, analysis, and generation directives here.]
-
-### Output Format for This Layer
-[All formatting, structure, and template requirements here.]
-```
-
-### 3.10 Variable Fidelity
-
-**Track named variables explicitly at layer boundaries.** When a framework establishes named variables — character names, numerical quantities, defined terms, specific entities, scope parameters — those variables must be maintained accurately across all subsequent layers. Models silently drop, conflate, or simplify variables as processing depth increases.
-
-The mitigation: include variable inventory requirements at layer boundaries (as part of the invariant check in Section 2.6). At any layer that establishes or transforms named variables, the output format should include an explicit variable state summary listing all active variables and their current values.
-
----
-
-## Section IV: Framework Design Process — Creating a New Framework
-
-This section provides the step-by-step process for designing a new framework from scratch. The AI follows this process when operating in Mode F-Design.
-
-### Phase 1: Requirements Gathering and Proactive Elicitation
-
-The AI conducts a structured interview with the user to establish the framework's requirements. This phase uses progressive questioning — questions build on previous answers, and the AI does not advance to the next question until the current one is resolved.
-
-**The AI asks both reactive and proactive questions.** Reactive questions clarify what the user has stated. Proactive questions surface requirements the user has not articulated — missing dimensions, unstated constraints, implicit assumptions. Research shows LLMs are 15 times less likely than humans to ask follow-up questions and default to assuming an interpretation rather than seeking clarification (Shaikh et al., 2025). The structured question sequence below forces proactive elicitation through explicit prompts.
-
-**Question Sequence:**
-
-1. **Task Definition, Modes, and Milestones Delivered:** Establish the framework's mode structure, then elicit milestones with all properties inline.
-
-    **Step A — Final deliverable.** What does this framework produce as its final user-facing deliverable?
-
-    **Step B — Modes.** Does this framework have a single execution path or multiple modes (e.g., create / modify / audit)? For each mode identified, what does that mode deliver as its final output?
-
-    **Step C — Routing.** Does the framework have a triage / classification / routing layer that fires BEFORE mode selection? If so, what does it produce that downstream milestones will consume? (This becomes M0 — routing is not itself a milestone but precedes them.)
-
-    **Step D — Per-mode milestone breakpoints.** For each mode identified in Step B: at what natural breakpoints along that mode's layer sequence does the path produce coherent intermediate deliverables that downstream layers consume? For each milestone (intermediate or final) within a mode, elicit ALL of the following inline: (a) the concrete endpoint produced, (b) which layers feed into it, (c) any layers in (b) that fire conditionally based on M0 routing classification or other runtime state, and the condition that activates them, (d) how achievement would be objectively verified, (e) which prior milestones it depends on (use mode-prefix syntax for cross-mode references), (f) the pipeline gear at which it should run (default Gear 4), (g) the output format reference, (h) a drift check question specific enough to surface scope expansion, terminology shift, or premature convergence within this milestone's scope.
-
-    **Step E — Verify chunking sufficiency.** IF any mode has more than ~5 layers and you have identified only one milestone for that mode, THEN return to Step D for that mode — long unchunked execution defeats drift prevention. Single-milestone designs are valid only for short modes (≤5 layers) or modes with no natural intermediate deliverable; if you commit to a single milestone, document the rationale in the framework's Execution Tier section.
-
-    All elicited properties are recorded inline per milestone — never factored into shared definitions or parent-subsection-only inheritance.
-
-2. **Input Inventory:** What information does this framework receive as input? For each input: What is it? Where does it come from? Is it always available or sometimes absent?
-3. **Quality Definition:** How do you know the output is good? What specific attributes distinguish excellent output from mediocre output for this task? Push beyond "high quality" — name the dimensions.
-4. **Failure Modes:** What are the most likely ways this framework's output could go wrong? What mistakes have you seen AI make on this type of task before?
-5. **Pipeline Position:** Is this framework standalone or part of a multi-step pipeline? IF part of a pipeline: What step does it receive input from? What step consumes its output? What is the minimum information the next step needs from this step's output?
-6. **Execution Environment:** The default output is **one consolidated framework file** (the single-pass rendering, executable in commercial AI and serving as the canonical exchange format). Confirm this default is acceptable. IF the user has a concrete reason to also produce an agent-mode rendering (the framework will run on a local swarm orchestrator with tool access, multi-stage execution with context-window resets, or Python orchestration) or a reasoning-model rendering (the framework will target o3, o4-mini, or DeepSeek R1 and benefits from simplified instructions), THEN they state the rationale explicitly and the additional rendering is added to Milestone 4's deliverable. The AI may surface a recommendation if the architecture clearly warrants an additional rendering — for example, a complexity assessment of >8 layers suggests agent-mode execution may be valuable — but presents it as a choice and proceeds with single-file output unless the user accepts. Never produce multiple rendering files by default.
-7. **Domain Expertise:** Does this task require specialized knowledge or perspective? IF so, THEN define the expertise in terms of specific exemplars of mastery (real or archetypal) rather than generic descriptors.
-8. **Precedent Frameworks:** Are there existing frameworks (in your vault or elsewhere) that do something similar to what this framework needs to do? IF so, THEN identify what they do well and what they lack.
-9. **Proactive Gap Assessment:** Based on the answers above, the AI identifies and presents:
-
-    - Requirements the user likely has not articulated, based on common patterns for this task type.
-    - Constraints that typically matter for this domain but were not mentioned.
-    - Stakeholders or downstream consumers whose needs have not been addressed.
-    - Potential failure modes the user did not identify.
-
-    The user reviews, accepts relevant items, and dismisses irrelevant ones. This step does not proceed automatically — the AI presents its assessment and waits for the user's response. The assessment must be grounded in the framework's emerging Input/Output Contracts, not generic questions.
-
-10. **Complexity Assessment:** Based on the task definition, input/output inventory, and quality dimensions:
-
-    - IF the task can be accomplished in three layers (Input Validation, Core Processing, Self-Evaluation + Output), THEN recommend the simple architecture.
-    - IF the task requires five to eight layers, THEN recommend the standard architecture.
-    - IF the task requires more than eight layers, THEN recommend agent-mode execution with stage boundaries, and identify where human review gates should be inserted.
-    - IF the task requires more than twelve layers, THEN evaluate whether it should be decomposed into a multi-framework pipeline with an orchestration layer.
-
-    Present the complexity assessment to the user with reasoning and wait for confirmation.
-
-### Phase 2: Evaluation Criteria Design
-
-From the requirements gathered in Phase 1, the AI drafts the evaluation criteria. This happens before processing layer design because the criteria define what the processing must achieve.
-
-**Process:**
-
-1. Extract quality dimensions from the user's answers to Question 3 (Quality Definition).
-2. Extract anti-failure dimensions from the user's answers to Question 4 (Failure Modes) — each failure mode implies a quality dimension that prevents it.
-3. Extract integration dimensions from the user's answers to Question 5 (Pipeline Position) — output must satisfy downstream requirements.
-4. Combine, deduplicate, and organize into a numbered list of evaluation criteria. Limit to 7–12 criteria.
-5. For each criterion, draft the five-level rubric per the convention in Section 3.6.
-6. Present the draft criteria to the user for review and revision.
-
-### Phase 3: Architecture Design
-
-With evaluation criteria established, the AI designs the processing architecture.
-
-**Process:**
-
-1. **Map criteria to processing requirements.** For each evaluation criterion, identify what processing must occur to satisfy it. This produces a list of required processing functions.
-2. **Group functions into layers.** Processing functions that share a focus and operate on the same information group into a single layer. Functions that require different information or a different analytical mode become separate layers.
-3. **Sequence the layers.** Determine the logical order. Layers that produce information consumed by later layers must precede them. Layers that require user input or external data should be positioned to minimize context switching.
-4. **Define handoffs.** For each layer boundary, specify:
-
-    - What the completed layer produces (output contract of the layer).
-    - What the next layer requires (input contract of the next layer).
-    - What is discarded at the boundary (everything not in the next layer's input contract).
-5. **Insert standard layers.** Every framework includes:
-
-    - A Self-Evaluation layer (penultimate position).
-    - An Error Correction and Output Formatting layer (final position).
-6. **Insert invariant checks.** At the end of every processing layer (except the final two), insert the lightweight invariant verification per Section 2.6.
-7. **Insert anti-drift anchors.** IF the framework has more than seven processing layers, THEN insert an orientation anchor at the midpoint per Section 3.7.
-8. **Identify stage boundaries for agent mode.** Determine which layer boundaries should become actual execution breaks in agent mode. Criteria for stage boundaries:
-
-    - The output of the preceding layers constitutes a complete intermediate product.
-    - The next layers require a materially different analytical mode.
-    - Tool access is required at the boundary (file read/write, RAG query).
-    - Context window pressure is a risk if layers are combined.
-9. **Draft Named Failure Modes.** For each layer, identify the most likely failure mode specific to that layer's processing task. For the framework as a whole, identify cross-cutting failure modes.
-10. **Draft Recovery Protocol.** For each identified failure point: what happens when the failure occurs? Specify retry conditions, halt conditions, and what information the user needs to resolve the failure.
-11. **Present the architecture to the user.** Show the layer structure, handoff specifications, stage boundaries, failure modes, and recovery protocol for review before proceeding to full draft.
-
-### Phase 4: Specification Drafting
-
-The AI produces the full canonical specification following the Framework Anatomy in Section II.
-
-**Process:**
-
-1. Draft the Header Block (Purpose, Input Contract, Output Contract).
-2. Draft the Milestones Delivered section per Section 2.3. All milestone properties are defined inline per milestone — never factored into shared definitions.
-
-    IF the framework has a routing / triage layer (identified in Phase 1 Question 1 Step C), THEN declare it as M0 at the top of the Milestones Delivered section with Function, Layers covered, and Output. M0 is not itself a milestone; it precedes mode selection.
-
-    For each mode (identified in Phase 1 Question 1 Step B), draft the mode's milestones in sequence. For each milestone, produce an entry with all required properties bound inline: Mode (omit or write "all" for single-mode frameworks), Endpoint produced, Verification criterion, Layers covered, Conditional layers (only if applicable, with the condition stated inline), Required prior milestones (with mode prefix for cross-mode references), Gear, Output format, and Drift check question.
-
-    IF any mode has more than ~5 layers and only one milestone has been declared for that mode, THEN return to Phase 1 Question 1 Step D to identify intermediate breakpoints.
-
-    Verify each Verification criterion is objectively determinable per the Resolution Statement Objectivity Protocol — no ambiguous quality terms without objective evaluation criteria.
-
-3. Draft the Evaluation Criteria (from Phase 2, refined by architecture decisions in Phase 3). Use five-level rubrics with concrete per-level descriptions.
-4. Draft the Persona (if applicable, based on Question 7 from Phase 1).
-5. Draft each Processing Layer with full instructions following the Authoring Standards in Section III. Apply the Think-Then-Format standard to every layer. Insert invariant checks at layer boundaries.
-6. Draft the Self-Evaluation Layer keyed to the specific evaluation criteria, including correction trigger phrases and calibration warning.
-7. Draft the Error Correction and Output Formatting Layer, including variable fidelity verification and Recovery Declaration.
-8. Draft the Named Failure Modes section.
-9. Append the Execution Commands block.
-
-### Phase 5: Rendering
-
-The AI produces **one consolidated framework file by default** by applying the Single-Pass Rendering Protocol (Section 5.1) to the M3 specification draft. The resulting file is both the canonical intellectual source and a self-contained executable in commercial AI — these are not separate artifacts. The single-pass rendering is the canonical exchange format because it is what runs outside Ora and is how frameworks are shared with others.
-
-Additional renderings are produced **only on explicit request** as captured in Phase 1 Question 6:
-
-- IF agent-mode rendering was requested with stated rationale, THEN follow the Agent-Mode Rendering Protocol (Section 5.2) and produce that as a separate file.
-- IF reasoning-model rendering was requested with stated rationale, THEN follow the Reasoning-Model Rendering Protocol (Section 5.3) and produce that as a separate file.
-- IF multiple additional renderings were requested, THEN render the consolidated single-pass file first (validates intellectual content), then agent mode (adds execution machinery on top of validated content), then reasoning-model (simplifies from validated single-pass).
-
-Default path: one file out, no additional renderings. The user may always invoke F-Render later if they decide they need an additional rendering.
-
-### Phase 6: Verification
-
-The AI applies the Quality Verification Checklist from Section VII to the finished framework(s) and presents the verification **inline in the conversation** as a summary of pass/fail per applicable checklist item — not as a separate persistent file. The verification is operational and ephemeral: its purpose is to catch issues at production time, not to live alongside the framework in the vault. Save a separate verification file only if the user explicitly requests one.
-
----
-
-## Section V: Rendering Protocol — Generating Execution Variants
-
-**Preamble (v2.2 update).** The single-pass rendering (Section 5.1) is the **default and canonical output** of F-Design and F-Convert. It contains all of the intellectual content of a framework and is directly executable in commercial AI, which is the primary distribution context (the format that runs outside Ora and that frameworks can be shared in with others). There is no separate "specification" file in addition to the single-pass file — they are the same artifact.
-
-The agent-mode rendering (Section 5.2) and reasoning-model rendering (Section 5.3) are **opt-in additional artifacts** produced only when the user explicitly requests them with stated rationale (e.g., the framework will run on the Mac Studio swarm; the framework targets o3/R1). Each additional rendering is a separate file beyond the consolidated default.
-
-This section defines all three protocols. By default, only Section 5.1 is applied.
-
-### 5.1 Single-Pass Rendering Protocol
-
-The single-pass rendering is the **default consolidated framework file**. It contains the canonical intellectual content of the framework AND is directly executable in a single commercial AI context window with no tool access. This is the primary output of F-Design and F-Convert.
-
-**Rendering steps:**
-
-1. **Copy the specification structure intact.** The Framework Anatomy sections remain in the same order.
-2. **Remove all agent-tier metadata.** Delete: Stage Boundaries, Persistent Reference Document, Tool Definitions, Checkpoint Protocol, and Python Runner Specification.
-3. **Set execution_tier to `single-pass`** in YAML frontmatter.
-4. **Adjust the Execution Tier section** of the Header Block:
-
-    ```
-    ## EXECUTION TIER
-    Single-pass: All layers execute sequentially in one context window.
-    No external tool access is available. All processing is internal.
-    ```
-
-5. **Add anti-drift anchors.** In frameworks with more than seven processing layers, insert an orientation anchor at the midpoint of the layer sequence per Section 3.7. Position the anchor at the start of the next processing block, immediately after the section divider.
-6. **Add the input validation and proactive elicitation protocol** to the first processing layer. In single-pass mode, the framework must gather any needed clarification from the user within the same session. Insert at the beginning of Layer 1:
-
-    ```
-    Before beginning Layer 1 processing, review all required inputs
-    per the Input Contract. IF any required input is absent, THEN
-    present a numbered list of specific questions to the user
-    referencing the missing Input Contract items by name.
-    Do not proceed until all required inputs are confirmed.
-
-    IF any required input is present but ambiguous, THEN state
-    what you understand, what you are uncertain about, and what
-    assumption you will make if not corrected. Wait for confirmation.
-
-    IF optional inputs are absent, THEN note their absence and state
-    the default behavior that will apply.
-
-    Additionally, assess whether the provided inputs are likely
-    underspecified for this framework's task. IF common requirements
-    for this task type appear to be missing, THEN surface them:
-    "Based on [framework task], the following requirements are
-    typically important but were not specified: [list]. Should any
-    of these be addressed before proceeding?"
-    ```
-
-7. **Consolidate evaluation into a single pass.** In the Self-Evaluation layer, add:
-
-    ```
-    Execute all criterion evaluations in a single sequential pass.
-    Do not skip criteria. Do not defer criteria to a later step.
-    IF any criterion cannot be fully evaluated due to context window
-    limitations, THEN score it as INCOMPLETE rather than guessing.
-    ```
-
-8. **Verify total document length.** Single-pass frameworks must operate within a commercial AI context window alongside the user's input materials. IF the specification plus typical inputs would exceed 75% of a standard context window (approximately 150,000 tokens for current frontier models), THEN identify layers that can be condensed or split the framework into a multi-pass sequence with explicit pass boundaries and carry-forward specifications.
-
-### 5.2 Agent-Mode Rendering Protocol
-
-The agent-mode rendering takes a canonical specification and produces a mode file optimized for execution in a multi-stage pipeline with tool access and Python orchestration.
-
-**Rendering steps:**
-
-1. **Copy the specification structure intact.**
-2. **Set execution_tier to `agent`** in YAML frontmatter.
-3. **Map layers to execution stages.** Using the stage boundaries identified in Phase 3 of the design process, group layers into stages. Each stage becomes one inference call in the pipeline.
-4. **Write handoff specifications for each stage boundary.** For each boundary:
-
-    ```
-    STAGE BOUNDARY: Stage [N] → Stage [N+1]
-
-    Extract from Stage [N] output:
-    - [Specific data element 1]
-    - [Specific data element 2]
-    - [Specific data element N]
-
-    Discard:
-    - [Everything not listed above]
-
-    Construct Stage [N+1] context window:
-    - System prompt: [mode file header through Stage N+1 instructions]
-    - Persistent Reference Document: [original objective, key constraints,
-      scope boundaries, named variables — unchanged across all stages]
-    - Previous stage output: [extracted data elements above]
-    - Additional context: [any RAG retrievals or file reads needed]
-    ```
-
-5. **Write the Persistent Reference Document.** A compact summary (target: under 500 tokens) containing: the framework's Purpose statement, the Output Contract's primary deliverable, the three highest-priority evaluation criteria, all named variables and their current values, and any scope boundaries that must not shift. This document is injected into every stage's context window.
-6. **Write tool definitions.** For each tool available to this framework:
-
-    ```
-    TOOL: [tool_name]
-    Description: [What it does]
-    Trigger condition: [When the model should invoke this tool]
-    Input schema: [parameter names and types]
-    Output schema: [what the tool returns]
-    Failure handling: IF tool call fails, THEN [specific recovery action]
-    ```
-
-7. **Write the checkpoint protocol** per the template in Section 2.8.
-8. **Write the Python Runner Specification.** Structure the specification as described in Section 2.8.
-9. **Add adversarial review integration points.** Identify which stages produce outputs that should be cross-evaluated by the opposing model in the swarm. For each such point:
-
-    ```
-    ADVERSARIAL REVIEW POINT after Stage [N]:
-
-    Reviewing model: [Depth | Breadth]
-    Review focus: [What the reviewer evaluates — map to Six Hats assignment]
-    Review input: Stage [N] output + evaluation criteria [list numbers]
-    Review output: [Scored evaluation with specific deficiency identification]
-    Action on review:
-      IF all scores ≥ [threshold], THEN proceed to Stage [N+1].
-      IF any score < [threshold], THEN return to Stage [N] with
-      deficiency report appended to context. Maximum retries: [count].
-    ```
-
-### 5.3 Reasoning-Model Rendering Protocol
-
-The reasoning-model rendering takes a canonical specification and produces a framework optimized for execution by reasoning-specialized models (o3, o4-mini, DeepSeek R1) that structure reasoning internally.
-
-Research on reasoning models converges on a clear finding: traditional prompting techniques — chain-of-thought instructions, step-by-step scaffolding, few-shot examples — can hinder reasoning model performance because they interfere with the model's native reasoning patterns. Reasoning models benefit from simpler, more direct prompts.
-
-**Rendering steps:**
-
-1. **Copy the specification structure intact.**
-2. **Set execution_tier to `reasoning-model`** in YAML frontmatter.
-3. **Simplify processing layer instructions.** For each layer:
-
-    - Remove explicit chain-of-thought instructions ("think step by step," "reason through this carefully"). The model does this internally.
-    - Remove few-shot examples unless they demonstrate edge cases the model would not encounter in training.
-    - Reduce procedural scaffolding. Replace multi-step instruction sequences with direct objective statements where the intermediate steps are obvious.
-    - Retain: evaluation criteria, output contracts, named failure modes, conditional logic, and constraints. These are specifications, not reasoning scaffolding.
-4. **Retain the Self-Evaluation layer** but simplify its instructions:
-
-    ```
-    Evaluate your output against each criterion. For any criterion
-    scoring below [threshold], identify the deficiency and correct it.
-    Flag unresolvable deficiencies.
-    ```
-
-    Reasoning models show near-zero self-correction blind spots due to error-correction sequences in their training data. Elaborate correction trigger phrases are unnecessary.
-
-5. **Retain all structural elements.** Input/Output Contracts, Evaluation Criteria, Named Failure Modes, and Execution Commands remain unchanged. These are contracts and specifications, not reasoning instructions.
-6. **Retain anti-drift anchors and invariant checks.** Even reasoning models benefit from explicit scope reminders.
-
-### 5.4 Rendering Order
-
-The single-pass rendering is always produced first because it is the default consolidated output. **When the user has explicitly requested additional renderings beyond the single-pass default**, render them in this order: agent-mode after single-pass, then reasoning-model. This order is correct because:
-
-- The single-pass version validates that the intellectual content is complete and self-contained.
-- The agent-mode version adds execution machinery on top of validated content.
-- The reasoning-model version simplifies from the validated single-pass version.
-- Issues caught in the single-pass rendering (missing layers, unclear handoffs, evaluation gaps) are corrected before the more complex renderings.
-
----
-
-## Section VI: Conversion Protocol — Modernizing Existing Frameworks
-
-This section provides the process for converting an existing framework to the current standard. The AI follows this process when operating in Mode F-Convert.
-
-### 6.1 Analysis Phase
-
-1. **Read the existing framework completely** before making any changes.
-2. **Identify the framework's intellectual content:**
-
-    - What does it produce? (Map to Output Contract.)
-    - What does it require? (Map to Input Contract.)
-    - What quality standards does it apply? (Map to Evaluation Criteria.)
-    - What processing steps does it follow? (Map to Processing Layers.)
-    - What failure modes does it address? (Map to Named Failure Modes.)
-3. **Identify structural gaps against the Framework Anatomy:**
-
-    - Is there a formal Input Contract? (Existing frameworks typically lack this.)
-    - Is there a formal Output Contract? (Often implied but not explicit.)
-    - Are evaluation criteria separated from processing instructions? (Often mixed together.)
-    - Are evaluation criteria written as five-level rubrics with concrete per-level descriptions? (Almost never in legacy frameworks.)
-    - Are processing layers clearly bounded with single focus? (Often blended.)
-    - Is Think-Then-Format observed within layers? (Rarely in legacy frameworks.)
-    - Is there an explicit Self-Evaluation layer with correction triggers? (May exist informally.)
-    - Is there an explicit Error Correction layer with variable fidelity checks? (Often partial.)
-    - Are failure modes named? (Sometimes present, often generic.)
-    - Are recovery protocols specified? (Almost never in legacy frameworks.)
-4. **Identify language standard gaps against the Authoring Standards:**
-
-    - Instruction voice: imperative or suggestive?
-    - Conditional logic: IF/THEN structure or prose descriptions?
-    - References: named or pronoun-dependent?
-    - Quantities: specific or qualitative?
-    - Word counts: ranges or vague targets?
-    - Directives: affirmative ("do X") or negative ("don't do Y")?
-5. **Identify consolidation opportunities** (for frameworks that were split into initiation/foundation/evaluation triads):
-
-    - Can the initiation framework's progressive questioning be absorbed into the first processing layer?
-    - Can the evaluation framework's criteria be absorbed into the Evaluation Criteria section and Self-Evaluation layer?
-    - Is the split still justified by context window pressure, or does the updated structural standard resolve the drift that caused the split?
-6. **Assess complexity.** Apply the complexity assessment from Phase 1, Question 10 of the Framework Design Process. IF the framework exceeds 12 layers, THEN recommend either agent-mode execution or decomposition into a multi-framework pipeline.
-7. **Present the analysis to the user** with specific recommendations before proceeding to conversion.
-
-### 6.2 Conversion Phase
-
-1. **Draft the canonical specification** by restructuring the existing framework's intellectual content into the Framework Anatomy:
-
-    - Extract and formalize the Input Contract.
-    - Extract and formalize the Output Contract.
-    - Extract, separate, and formalize the Evaluation Criteria with five-level rubrics.
-    - Reorganize processing instructions into properly bounded layers with Think-Then-Format separation.
-    - Add invariant checks at layer boundaries.
-    - Add or formalize the Self-Evaluation layer with correction triggers and calibration warning.
-    - Add or formalize the Error Correction and Output Formatting layer with variable fidelity verification and Recovery Declaration.
-    - Name all identified failure modes.
-    - Draft recovery protocols.
-    - Apply all Authoring Standards to instruction language.
-2. **Preserve all intellectual content.** Conversion modernizes structure and language. It does not add, remove, or alter the framework's substantive instructions unless a deficiency is identified, in which case the AI flags it for user review rather than silently correcting it.
-3. **Consolidate split frameworks** (if applicable and if the user confirms consolidation):
-
-    - Absorb initiation questioning into Layer 1 progressive questioning protocol.
-    - Absorb evaluation criteria into the Evaluation Criteria section.
-    - Absorb evaluation processing into the Self-Evaluation layer.
-    - Verify that the consolidated framework does not exceed context window viability for single-pass use.
-4. **Render the consolidated converted framework file.** Apply the Single-Pass Rendering Protocol (Section 5.1) to produce one consolidated file as the default output of F-Convert. Additional execution variants are produced only on explicit user request with stated rationale, per Section V Preamble (v2.2).
-
-### 6.3 Verification Phase
-
-1. **Cross-check intellectual content.** Verify that every instruction, criterion, and processing step from the original framework exists in the converted version. Document and justify any omissions.
-2. **Apply the Quality Verification Checklist** from Section VII.
-3. **Present the converted framework** to the user with a change log documenting:
-    - Structural changes (sections added, reorganized, or consolidated).
-    - Language changes (instructions rewritten for standard compliance).
-    - Content additions (new layers, failure modes, criteria, or recovery protocols not in the original).
-    - Content flagged for review (potential deficiencies discovered during conversion).
-
----
-
-## Section VII: Quality Verification Checklist
-
-Apply this checklist to any framework — new, converted, or rendered. Score each item Pass/Fail. All items must pass for the framework to be considered complete.
-
-### Structural Completeness
-
-- [ ] YAML frontmatter present with all required properties.
-- [ ] Header Block present with Purpose, Input Contract, Output Contract, and Execution Tier.
-- [ ] Milestones Delivered section present, OR pipeline-stage exemption declared in Execution Tier per Section II subsection 2.3.
-- [ ] Evaluation Criteria present and positioned before processing layers.
-- [ ] All processing layers numbered, named, and bounded with single focus.
-- [ ] Self-Evaluation layer present in penultimate position.
-- [ ] Error Correction and Output Formatting layer present in final position.
-- [ ] Named Failure Modes section present with framework-specific failure modes.
-- [ ] Execution Commands block present at end of document.
-
-### Milestones Delivered Compliance
-
-_These items apply only to frameworks that declare Milestones Delivered. Pipeline-stage and fixed-sequence frameworks exempt per Section II subsection 2.3 are not subject to this category; their exemption declaration in Execution Tier is checked under Structural Completeness._
-
-- [ ] Milestones Delivered section is positioned between the Framework Header Block and the Evaluation Criteria.
-- [ ] At least one milestone is declared.
-- [ ] Every milestone has all required properties defined inline within its block: Endpoint produced, Verification criterion, Layers covered, Required prior milestones, Gear, Output format, Drift check question. Multi-mode frameworks also declare Mode inline per milestone.
-- [ ] No milestone property is factored into shared definitions, parent-subsection-only inheritance, or external references — every property is bound inline to its specific milestone path.
-- [ ] If the framework has a routing / triage / classification layer that fires before mode selection, M0 is declared at the top of the Milestones Delivered section with Function, Layers covered, and Output.
-- [ ] If any milestone declares Conditional layers, both the conditional layer numbers and the activating condition are stated inline within that milestone.
-- [ ] Each Verification criterion is objectively evaluable — no ambiguous quality terms without objective evaluation criteria.
-- [ ] Each Endpoint produced is a concrete artifact or state change, not an abstract outcome.
-- [ ] Each Drift check question is specific enough to surface scope expansion, terminology shift, or premature convergence — not a generic "is this on track?".
-- [ ] Each Layers covered list is non-overlapping with other milestones' Layers covered (no layer appears in two milestones, except M0 which is its own routing pass).
-- [ ] Required prior milestones references are valid (every M-N reference resolves to a declared milestone; cross-mode references use the mode-prefix syntax `<ModeName>.<MilestoneId>`).
-- [ ] Each mode with more than 5 processing layers declares more than one milestone for that mode, OR explicitly justifies single-milestone design in the Execution Tier section.
-- [ ] Multi-mode frameworks declare Mode as an inline property per milestone (single-mode frameworks may omit Mode or write "all").
-
-### Input/Output Integrity
-
-- [ ] Every required input is named with format, source, and required/optional status.
-- [ ] Every output is named with format, destination, and quality threshold.
-- [ ] Every processing layer's internal input (what it reads) is explicit.
-- [ ] Every processing layer's internal output (what it produces) is explicit.
-- [ ] Handoffs between layers specify what carries forward and what is discarded.
-- [ ] No layer requires information that no previous layer or input provides.
-
-### Evaluation Architecture
-
-- [ ] Every evaluation criterion has a name and a five-level rubric with concrete per-level descriptions of approximately uniform length.
-- [ ] Criteria are limited to 7–12. IF more, THEN consolidated or justified.
-- [ ] Every criterion is measurable — an independent evaluator could apply it and arrive at a consistent score.
-- [ ] The Self-Evaluation layer references all criteria by number and name.
-- [ ] The Self-Evaluation layer includes explicit correction trigger phrases.
-- [ ] The Self-Evaluation layer includes the calibration warning about systematic overconfidence.
-- [ ] The Self-Evaluation layer includes a remediation protocol for below-threshold scores.
-
-### Language Compliance
-
-- [ ] All directives use imperative voice.
-- [ ] All conditional logic uses IF/THEN structure.
-- [ ] All actors are named explicitly (no ambiguous pronouns).
-- [ ] All quantities are specific (no "several," "some," "concise," "brief").
-- [ ] All word count requirements are ranges, not single targets.
-- [ ] All documents and sections are referenced by name, not description.
-- [ ] Directives use affirmative form ("do X") rather than negative ("don't do Y").
-
-### Anti-Drift Compliance
-
-- [ ] Each processing layer has a single primary focus.
-- [ ] Critical constraints are restated at the point of application, not only at definition.
-- [ ] Frameworks with more than seven layers include an orientation anchor positioned at the start of the next processing block after the midpoint.
-- [ ] Section dividers (horizontal rules) separate all layers.
-- [ ] Invariant checks present at layer boundaries (except final two layers).
-
-### Think-Then-Format Compliance
-
-- [ ] Every processing layer separates reasoning instructions from formatting instructions.
-- [ ] Formatting instructions appear after reasoning instructions within each layer.
-- [ ] No format requirements are embedded within reasoning instructions.
-
-### Variable Fidelity Compliance
-
-- [ ] The Error Correction layer includes explicit variable fidelity verification.
-- [ ] Layers that establish or transform named variables include variable state summaries in their output format.
-
-### Anti-Confabulation Compliance
-
-- [ ] The Error Correction layer includes an explicit Missing Information Declaration.
-- [ ] At least one Named Failure Mode addresses confabulation risk for this framework's specific task.
-- [ ] The Self-Evaluation layer includes a confidence assessment requirement.
-
-### Recovery Compliance
-
-- [ ] Recovery protocols specified for layer-level failures (what happens when a layer's output fails its invariant check).
-- [ ] Recovery protocols specified for framework-level failures (what happens when Self-Evaluation identifies unresolvable deficiencies).
-- [ ] The Error Correction layer includes a Recovery Declaration section.
-
-### Agent-Mode Compliance (Agent Renderings Only)
-
-- [ ] Stage Boundaries section present with layer-to-stage mapping.
-- [ ] Handoff specifications present for each stage boundary.
-- [ ] Persistent Reference Document defined with original objective, constraints, and named variables.
-- [ ] Tool Definitions present with trigger conditions and failure handling.
-- [ ] Checkpoint Protocol present with retry and halt conditions.
-- [ ] Python Runner Specification present in natural language.
-- [ ] Adversarial Review Points identified where applicable.
-
-### Reasoning-Model Compliance (Reasoning-Model Renderings Only)
-
-- [ ] Chain-of-thought scaffolding removed from processing layers.
-- [ ] Few-shot examples removed unless demonstrating edge cases.
-- [ ] Processing layer instructions use direct objective statements rather than procedural scaffolding.
-- [ ] Evaluation criteria, output contracts, named failure modes, and constraints retained.
-- [ ] Self-Evaluation layer simplified to direct evaluation instructions.
-
-### Backward Compatibility (All Renderings)
-
-- [ ] Single-pass rendering is self-contained and executable without tool access.
-- [ ] Agent-mode rendering degrades to single-pass if executed in a commercial AI context.
-- [ ] Reasoning-model rendering produces usable output if executed by a non-reasoning model (may not be optimal, but must not break).
-- [ ] No rendering requires a specific model or provider to function.
-
-### Proactive Elicitation Compliance
-
-- [ ] The Execution Commands block or first processing layer includes input validation against the Input Contract.
-- [ ] Ambiguous inputs trigger explicit assumption declaration before proceeding.
-- [ ] The framework includes proactive gap assessment for likely missing requirements (F-Design mode) or input validation with underspecification assessment (rendered frameworks).
-
----
-
-## Section VIII: Named Failure Modes in Framework Design
-
-These are the most common ways framework design itself goes wrong. They apply to the meta-process of creating frameworks, not to any specific framework's task.
-
-**The Abstraction Trap:** Designing a framework that describes what good output looks like without specifying the processing steps that produce it. A framework that says "produce psychologically authentic characters" without defining what psychological authenticity means operationally and what processing steps achieve it. Correction: Every quality aspiration must decompose into concrete processing steps and measurable evaluation criteria.
-
-**The Kitchen Sink Trap:** Including every possible consideration in every layer, producing layers that are unfocused and internally competing. A layer that simultaneously handles character psychology, thematic integration, reader engagement, and continuity tracking will do all four poorly. Correction: One primary focus per layer. IF a layer has more than one primary focus, THEN split it.
-
-**The Echo Chamber Trap:** Writing evaluation criteria that merely restate the processing instructions rather than independently defining output quality. IF Criterion 3 says "thematic integration is well-executed" and Layer 4 says "integrate themes well," THEN the evaluation is circular — it will always pass because it measures nothing the processing did not already claim to do. Correction: Evaluation criteria must be independently verifiable. Write them as if they will be applied by a reviewer who has never read the processing instructions.
-
-**The Implicit Handoff Trap:** Assuming the model will naturally carry information between layers without explicit specification. In single-pass mode, this sometimes works because everything is in one context window. In agent mode, it fails completely because context resets at stage boundaries. Even in single-pass mode, implicit handoffs cause drift over long frameworks. Correction: Every layer boundary has an explicit handoff. What carries forward is named. What is discarded is stated.
-
-**The Persona Inflation Trap:** Creating an elaborate persona with extensive backstory that consumes context without improving output. The persona is a focusing tool, not a character. Correction: Limit persona to name, one-sentence description, and three to five specific capabilities directly relevant to the task. Every persona detail must be task-relevant; irrelevant details produce measurable performance degradation.
-
-**The Criterion Proliferation Trap:** Defining more than twelve evaluation criteria, creating an evaluation burden that the Self-Evaluation layer cannot execute thoroughly in its context allocation. Evaluation quality degrades as criterion count rises — each criterion receives less attention. Correction: Limit criteria to 7–12. IF more dimensions need tracking, THEN consolidate related dimensions into composite criteria.
-
-**The Specification-as-Prose Trap:** Writing framework instructions as flowing prose paragraphs rather than structured directives. Prose is ambiguous. Directives are not. Correction: Apply the Authoring Standards from Section III. Convert every paragraph of instruction into enumerated steps, IF/THEN conditionals, or explicit directives.
-
-**The Tool Assumption Trap (Agent Mode):** Designing processing steps that require tool access without defining the tool, its trigger conditions, or its failure handling. The model will either skip the step or confabulate the tool's output. Correction: Every tool reference must point to a formal Tool Definition. Every tool call must have a defined failure path.
-
-**The Monolithic Stage Trap (Agent Mode):** Mapping the entire framework to a single execution stage, losing all benefits of multi-stage execution (context window management, checkpoint recovery, adversarial review integration). Correction: Identify natural break points using the criteria from Phase 3, Step 8 of the Framework Design Process.
-
-**The False Atomization Trap:** Splitting a framework into excessive micro-layers that create overhead without analytical benefit. Not every instruction needs its own layer. Correction: Apply the single-focus test. IF two instruction groups share a focus and operate on the same information, THEN they belong in the same layer.
-
-**The Missing Context Trap (Pipeline Frameworks):** Designing a framework as if it operates in isolation when it is actually part of a multi-step pipeline. The framework's Input Contract does not account for what the previous step actually produces, or its Output Contract does not provide what the next step actually needs. Correction: Verify input and output contracts against adjacent pipeline steps during design. IF adjacent steps do not yet exist, THEN specify what this framework requires and produces and flag the dependency.
-
-**The Retroactive Evaluation Trap:** Designing processing layers first and then writing evaluation criteria to match what the layers produce. This reverses the correct design sequence (criteria first, then layers to satisfy criteria) and produces criteria that rubber-stamp whatever the processing happens to generate. Correction: Design evaluation criteria before processing layers. See Governing Principle 5.
-
-**The Silent Variable Collapse Trap:** Variables defined early in processing — character names, numerical quantities, specific entities, scope parameters — are silently dropped, conflated with similar variables, or simplified as processing depth increases. The model does not flag the loss because it does not recognize it as an error. Correction: Include variable inventory requirements at layer boundaries. At any layer that establishes or transforms named variables, include an explicit variable state summary.
-
-**The Simulated Refinement Trap:** In self-evaluation or multi-pass contexts, the model introduces artificial errors into its own output just to demonstrate correction, rather than performing genuine critique. Research documents this as a specific failure mode of stepwise prompting (Sun et al., ACL 2024). Correction: Structure self-evaluation as criterion-by-criterion scoring against concrete rubrics with cited evidence, not open-ended "find and fix problems."
-
-**The Premature Accommodation Trap:** During input elicitation or clarification, the AI abandons important questioning steps when the user signals impatience, sacrificing specification quality for conversational comfort. Research found AI interviewers ended structured interviews prematurely when users expressed time constraints, missing critical requirements. Correction: Framework elicitation sequences must complete mandatory items even when the user signals impatience. The AI may acknowledge the user's time constraint but must flag that skipped items may affect output quality.
-
-**The Format-Before-Reasoning Trap:** Embedding output format requirements within processing instructions, causing the model to prioritize syntactic compliance over analytical quality. Research shows format restrictions cause significant reasoning degradation (Tam et al., EMNLP 2024). Correction: Apply the Think-Then-Format standard from Section 3.9. Processing instructions precede formatting instructions within every layer.
-
-**The Over-Specification Trap:** Specifying requirements the model already satisfies by default, consuming context budget on instructions that add no value while potentially overwhelming the model with competing requirements. Research found that adding more requirements does not reliably improve performance and that LLMs can guess unspecified requirements 41.1% of the time (Yang et al., CMU 2025). Correction: Specify what the model will not get right by default. Leave implicit what it handles well natively. Test against real inputs to identify which specifications are actually needed.
-
----
-
-## Section IX: Reference Examples — Structural Patterns
-
-This section provides abbreviated structural patterns for common framework types. These are not complete frameworks — they are structural skeletons showing how the Framework Anatomy maps to specific use cases.
-
-### 9.1 Analytical Framework Pattern
-
-For frameworks that analyze input material and produce structured assessment.
-
-```
-Header Block:
-  Purpose: Analyze [input type] and produce [assessment type].
-  Input Contract: [Source material] + [evaluation criteria or rubric].
-  Output Contract: [Structured assessment with scored dimensions].
-
-Evaluation Criteria: [Dimension-specific criteria with five-level rubrics.]
-
-Layer 1: Input Analysis — Read and decompose input material into
-         assessable components.
-Layer 2: Dimension Mapping — Map components to evaluation dimensions.
-Layer 3: Assessment Execution — Evaluate each dimension with evidence.
-         [Think-Then-Format: analyze first, structure scores second.]
-Layer 4: Synthesis — Produce integrated assessment with priorities.
-Layer 5: Self-Evaluation (with correction triggers and calibration warning).
-Layer 6: Error Correction and Output Formatting (with variable fidelity
-         check and Recovery Declaration).
-
-Named Failure Modes:
-- The Surface Reading Trap
-- The Criterion Conflation Trap
-- The Unsupported Score Trap
-```
-
-### 9.2 Generative Framework Pattern
-
-For frameworks that produce creative or structured content from specifications.
-
-```
-Header Block:
-  Purpose: Generate [content type] from [input specifications].
-  Input Contract: [Specification documents] + [reference materials] +
-                  [author direction].
-  Output Contract: [Generated content in specified format] +
-                   [condensed variant if applicable].
-
-Evaluation Criteria: [Content quality criteria with five-level rubrics.]
-
-Layer 1: Specification Intake — Parse requirements and constraints.
-         [Includes proactive gap assessment for likely missing requirements.]
-Layer 2: Foundation Principles — Establish governing standards for
-         generation.
-Layer 3-N: Domain-Specific Processing Layers — Generate content
-           through progressive development stages.
-           [Think-Then-Format applied to every layer.]
-           [Invariant checks at every layer boundary.]
-           [Orientation anchor at midpoint if N > 7.]
-Layer N+1: Self-Evaluation (with correction triggers).
-Layer N+2: Error Correction and Output Formatting (with variable
-           fidelity check and Recovery Declaration).
-
-Named Failure Modes:
-- The Prompt Echo Trap (restating input as output)
-- The Drift Trap (progressive departure from specifications)
-- The Density Trap (inflating word count without information gain)
-- The Silent Variable Collapse Trap
-```
-
-### 9.3 Pipeline Step Framework Pattern
-
-For frameworks that occupy a position in a multi-step automated pipeline.
-
-```
-Header Block:
-  Purpose: Execute Step [N] of [pipeline name].
-           Receive [previous step output] and produce [next step input].
-  Input Contract: [Previous step output specification] +
-                  [persistent reference documents].
-  Output Contract: [Deliverable for this step] +
-                   [handoff package for next step].
-
-Evaluation Criteria: [Step-specific criteria with five-level rubrics] +
-                     [pipeline integration criteria].
-
-Layer 1: Input Validation — Verify all required inputs from previous
-         step are present and well-formed. IF missing or malformed,
-         THEN halt and report.
-Layer 2-N: Step-Specific Processing Layers.
-           [Think-Then-Format applied to every layer.]
-Layer N+1: Handoff Preparation — Extract minimum information forward
-           per the next step's input contract.
-Layer N+2: Self-Evaluation.
-Layer N+3: Error Correction and Output Formatting (with Recovery
-           Declaration specifying impact on downstream steps).
-
-Agent-Tier Metadata:
-  Stage Boundaries: [Defined based on processing requirements.]
-  Persistent Reference Document: [Pipeline objective, scope boundaries,
-     named variables carried from Step 1.]
-  Tool Definitions: [file_read, file_write, rag_query as applicable.]
-  Checkpoint Protocol: [Standard protocol with step-specific additions.]
-  Adversarial Review Points: [After primary processing, before handoff.]
-  Python Runner Specification: [Step-specific orchestration requirements.]
-
-Named Failure Modes:
-- The Orphan Output Trap (producing output the next step cannot consume)
-- The Context Contamination Trap (carrying forward noise from input)
-- The Silent Failure Trap (proceeding despite missing required inputs)
-- The Silent Variable Collapse Trap
-```
-
-### 9.4 Evaluation Framework Pattern
-
-For standalone frameworks designed to assess the output of other frameworks.
-
-```
-Header Block:
-  Purpose: Evaluate the output of [framework name] against its
-           evaluation criteria.
-  Input Contract: [Framework output to evaluate] +
-                  [evaluation criteria from the original framework] +
-                  [original input materials for reference].
-  Output Contract: [Scored evaluation with criterion-by-criterion
-                   assessment] + [specific remediation recommendations
-                   for any below-threshold scores].
-
-Evaluation Criteria: [Meta-criteria for evaluation quality — assessing
-                     whether the evaluation itself is thorough, fair,
-                     and actionable. Five-level rubrics.]
-
-Layer 1: Criteria Loading — Parse and internalize all evaluation criteria
-         from the source framework.
-Layer 2: Evidence Mapping — For each criterion, identify specific evidence
-         in the output that supports scoring.
-Layer 3: Criterion-by-Criterion Scoring — Score each criterion with
-         cited evidence. Use correction triggers before each score.
-         For each below-threshold score, draft a specific remediation
-         recommendation. [Think-Then-Format.]
-Layer 4: Cross-Criterion Consistency Check — Verify that scores across
-         criteria are logically consistent (a high score on
-         "psychological authenticity" with a low score on "response
-         pattern consistency" requires explanation).
-Layer 5: Synthesis — Produce overall assessment with prioritized
-         remediation recommendations.
-Layer 6: Self-Evaluation.
-Layer 7: Error Correction and Output Formatting.
-
-Named Failure Modes:
-- The Inflation Trap (scoring generously to avoid delivering bad news)
-- The Criterion Blindness Trap (evaluating against general quality
-  rather than the specific criteria defined for this framework)
-- The Vague Remediation Trap (identifying deficiencies without
-  specifying exactly what should change)
-```
-
-### 9.5 Conversion Framework Pattern
-
-For frameworks that transform an existing document from one format or standard to another.
-
-```
-Header Block:
-  Purpose: Convert [source document type] to [target standard/format].
-  Input Contract: [Source document] + [target standard specification].
-  Output Contract: [Converted document conforming to target standard] +
-                   [change log documenting all modifications].
-
-Evaluation Criteria: [Completeness of conversion] +
-                     [preservation of intellectual content] +
-                     [compliance with target standard].
-                     [Five-level rubrics for each.]
-
-Layer 1: Source Analysis — Read and inventory all intellectual content
-         in the source document.
-Layer 2: Gap Analysis — Compare source structure against target standard.
-         Identify all structural, language, and content gaps.
-Layer 3: Conversion Execution — Restructure source content into target
-         format. Apply target language standards. Add required sections.
-         [Think-Then-Format.]
-Layer 4: Content Preservation Verification — Cross-check that every
-         instruction, criterion, and processing step from the source
-         exists in the converted output.
-Layer 5: Self-Evaluation.
-Layer 6: Error Correction and Output Formatting.
-
-Named Failure Modes:
-- The Silent Omission Trap (dropping source content during restructuring)
-- The Over-Standardization Trap (forcing generic structure where the
-  source had justified custom structure)
-- The Format-Over-Substance Trap (achieving structural compliance
-  while degrading intellectual content)
-```
-
----
-
-## Section X: Integration with CFF and OFF
-
-PFF is one of three sibling meta-frameworks. The Corpus Formalization Framework (CFF) formalizes the knowledge corpus where information accumulates across a workflow. The Output Formalization Framework (OFF) formalizes the rendered artifacts that express corpus content. The full three-framework integration is specified in `Reference — PFF-CFF-OFF Integration Architecture.md`. This section provides PFF's perspective on that architecture.
-
-### Detection trigger built into PFF design
-
-When a user invokes PFF (mode F-Design), the design process includes the question:
-
-> _Does this process feed a workflow with multiple sources or multiple outputs?_
-
-If yes, PFF recommends invoking CFF in parallel to design the corpus the bespoke PFF will write into. The bespoke PFF's output contract is then aligned with a specific corpus section.
-
-If no, the bespoke PFF stands alone (Shape 1) or feeds directly to an OFF (Shape 3).
-
-The detection is gated on user confirmation. The user may decline; PFF proceeds with whatever shape they prefer.
-
-### Composition shapes from PFF's perspective
-
-The integration architecture defines four composition shapes. From PFF's perspective:
-
-- **Standalone PFF (Shape 1):** the bespoke PFF runs and presents output directly to the user. No corpus, no OFF.
-- **Direct PFF→OFF (Shape 3, degenerate corpus):** the bespoke PFF's output flows directly into a bespoke OFF as its content input. The PFF's output contract and the OFF's input contract must align.
-- **Corpus-mediated (Shape 4, the standard pattern):** the bespoke PFF writes into a specified corpus section. CFF's template defines the section; the bespoke PFF's write contract aligns with the section's expected content.
-
-### PFF write contract for corpus-mediated composition
-
-For Shape 4 composition, the bespoke PFF declares:
-
-- Which corpus it writes to (by template name and instance directory)
-- Which section of the corpus it writes (by section name)
-- What content shape it produces (matching the corpus section's expected content schema)
-- What happens when the PFF cannot run successfully (write contract surfaces failure to the corpus's missing-data behavior)
-
-The write contract becomes part of the corpus's source assignment in CFF Layer 4 (Source Identification).
-
-### Reference
-
-Full architecture: `Reference — PFF-CFF-OFF Integration Architecture.md`. Sibling specifications: `Framework — Corpus Formalization.md` and `Framework — Output Formalization.md`.
-
----
-
-## Section XI: Execution Commands
-
----
-
-## EXECUTION COMMANDS
-
-1. Confirm you have fully processed this meta-framework and any associated input materials.
-2. Identify the operating mode from the user's input:
-
-    - **Mode F-Design:** User describes a new framework to create. Follow the Framework Design Process (Section IV). **Default output: one consolidated framework file** (single-pass rendering, which is also the canonical intellectual source).
-    - **Mode F-Convert:** User provides an existing framework. Follow the Conversion Protocol (Section VI). **Default output: one consolidated converted framework file.**
-    - **Mode F-Render:** User provides an existing framework and explicitly wants an additional execution variant beyond the default. Follow the Rendering Protocol (Section V). Output: one additional rendering file.
-    - **Mode F-Audit:** User provides a framework for evaluation. Apply the Quality Verification Checklist (Section VII). Output: audit report presented inline by default; persistent file only if requested.
-3. IF the mode is ambiguous, THEN ask the user to confirm before proceeding.
-4. Execute the appropriate process. **Produce the default single-file output unless the user has explicitly requested additional renderings with stated rationale.** If the architecture clearly warrants suggesting an additional rendering (e.g., complexity assessment of >8 layers suggests agent-mode may be valuable), surface the recommendation as a choice and proceed with single-file output unless the user accepts.
-5. Apply the Quality Verification Checklist to all outputs before delivery. Present the verification inline as a pass/fail summary unless the user requested a persistent verification file.
-6. Produce a Framework Registry Entry for every framework specification produced. The entry follows this format:
-
-    FRAMEWORK REGISTRY ENTRY Name: [framework name from the specification's title] Purpose: [one sentence from the specification's PURPOSE section] Problem Class: [what category of problem this framework solves — inferred from the specification's purpose and input contract] Input Summary: [condensed from the specification's INPUT CONTRACT — required inputs only, one line each] Output Summary: [condensed from the specification's OUTPUT CONTRACT — primary outputs only, one line each] Proven Applications: [list any test cases run during this session; if none, state "None yet — initial version"] Known Limitations: [inferred from the specification's Named Failure Modes — one sentence summarizing the most significant risk] File Location: [the path where the specification file will be saved] Provenance: [human-created | agent-created] Confidence: [low — initial version | medium — tested against 3+ diverse inputs | high — tested against 10+ diverse inputs with consistent results] Version: [from the specification's YAML frontmatter framework_version]
-
-    Present the registry entry alongside the framework specification. Instruct the user (or agent) to save the entry to the framework registry file and index it in ChromaDB's knowledge collection.
-
-7. Present outputs with a summary of decisions made, gaps identified, and recommendations for refinement.
-
----
-
-## Section XII: Operational Safeguards and Reference
-
-This section preserves the concise v2.2 execution safeguards that complement the full structural specification above.
-
-### 12.1 Approval and Change-Control Gates
-
-Apply these gates in every mode:
-
-1. **F-Design:** Restate the task, enumerate hard requirements, resolve structure-changing ambiguities, and announce the proposed mode structure and deliverable before drafting. Wait for explicit approval or correction.
-2. **F-Convert:** Inventory the existing structure and deviations, then state exactly what will change and what will be preserved. Wait for explicit approval before converting. Preserve substance; modernize structure.
-3. **F-Render:** Confirm the rationale for an additional file before rendering. Treat the consolidated framework as canonical, preserve all domain logic, and use an unambiguous `-agent-mode` or `-reasoning-model` suffix.
-4. **F-Audit:** Score the framework and propose concrete fixes, but do not modify files during the audit. Apply changes only after user approval.
-
-Frameworks are authored and modified through PFF or another guided framework, not by ungrounded direct editing. If direct edits occurred, the next guided session must revisit the relevant Problem Evolution record and verify that the change still serves the original problem before accepting it as canonical.
-
-### 12.2 Compact Audit Rules
-
-Use `Pass / Flag / Fail` when diagnostic nuance is useful; production-ready output still requires every applicable item to pass.
-
-- **Pass:** present, correct, internally consistent, and operationally usable.
-- **Flag:** present but ambiguous, suboptimal, or at risk; user judgment is required.
-- **Fail:** absent, incorrect, contradictory, or non-executable; remediation is required.
-
-For every flag or failure, cite the exact location and propose a concrete correction. Run the audit top-down and bottom-up. Cross-check Setup Questions, Execution, and Output Contract in both directions. Count hard limits mechanically; do not estimate them. A Setup Question is orphaned if Intake, Execution, and Output Contract never consume it.
-
-### 12.3 File-Proliferation Gate
-
-The default output of F-Design and F-Convert is exactly one consolidated framework file. Before delivery, verify:
-
-1. The Output Contract promises only what Execution produces.
-2. Execution produces everything the Output Contract promises.
-3. No additional rendering exists without an explicit request, a stated rationale, and user acceptance.
-4. Any requested variant faithfully renders the corrected consolidated source rather than accumulating its own canonical changes.
-
-### 12.4 Quality Bars
-
-**Production-ready** requires all standard sections to be present and non-empty, zero audit failures or flags, valid cross-references, picker copy within its hard limits, consistency between Execution and Output Contract, and at least one real-input test.
-
-**Draft** requires all standard sections, zero failures, flags explicitly recorded, approximate Execution/Output consistency, draft picker copy, and a declared cross-reference-validation status.
-
-**Rough sketch** requires at minimum an Execution section and Output Contract. Other sections may remain absent, and the audit need not yet have run.
-
-### 12.5 Named Operational Failure Modes
-
-**FM-1 — Scope creep during F-Design.** The design grows beyond confirmed hard requirements. *Recovery:* remove every element that no confirmed requirement, quality criterion, or accepted gap assessment justifies.
-
-**FM-2 — Conversion loses domain logic.** Structural normalization strips load-bearing content. *Recovery:* compare source and conversion before delivery; restore or explicitly escalate every omitted substantive element.
-
-**FM-3 — Audit misses a failure.** A top-down pass overlooks a contradiction. *Recovery:* repeat the audit bottom-up and explicitly cross-check Output Contract against Execution.
-
-**FM-4 — Picker text exceeds runtime limits.** Display Name exceeds 60 characters or Display Description exceeds 500 characters. *Recovery:* count mechanically and revise before delivery.
-
-**FM-5 — Mode confusion.** Input matches multiple modes or none. *Recovery:* resolve the mode during intake; ask one discriminating question when the ambiguity cannot be resolved from provided context.
-
-**FM-6 — Unsolicited variants.** PFF produces files the user did not request. *Recovery:* retain only the consolidated canonical and surface optional variants as choices.
-
-**FM-7 — Stale cross-references.** A referenced framework or vault artifact was renamed, archived, or materially changed. *Recovery:* validate existence and semantic compatibility against current canonical state.
-
-**FM-8 — Version mismatch.** Version metadata, body labels, and end markers disagree. *Recovery:* establish one version and update every declaration before delivery.
-
-### 12.6 Research Basis Preserved from v2.1
-
-The v2.1 design synthesis recorded five operational findings that remain part of PFF's rationale:
-
-1. Structured decomposition reduced hallucination and improved completeness relative to monolithic prompts; therefore every non-trivial framework uses phases with explicit deliverables.
-2. Restate-and-confirm intake reduced downstream error propagation; therefore intake is a load-bearing control rather than optional conversational scaffolding.
-3. Explicit output contracts reduced structural variance; therefore exact deliverable, format, file count, and naming are runtime quality gates.
-4. Named failure modes reduced recurrence through attentional priming; therefore generic cautions are replaced with named patterns and recovery instructions.
-5. Deliverable-first picker descriptions reduced selection errors; therefore Display Description is user-routing infrastructure, not decorative copy.
-
-These findings are design inputs, not a substitute for current empirical testing. When a source study, internal synthesis, or runtime limit changes, update the affected rule and record the change in the version history.
-
-### 12.7 Compact Glossary
-
-- **Consolidated framework file:** the single canonical, executable framework specification used inside and outside Ora.
-- **Execution variant:** an opt-in rendering for a specific environment; never an independent source of truth.
-- **Hard requirement:** a confirmed non-negotiable constraint captured during intake.
-- **Intake Protocol:** pre-execution confirmation, ambiguity resolution, and approval steps.
-- **Orphan question:** a setup question that no downstream instruction consumes.
-- **Output Contract:** the exact deliverable, format, file count, destination, and quality promise.
-- **Phase bleed:** work assigned to one phase being performed in another, obscuring boundaries and handoffs.
-- **Self-audit:** applying F-Audit to a draft before delivery.
-
-### 12.8 Version History
-
-- **v1.0:** Four-mode baseline with structural format, picker fields, and audit checklist.
-- **v2.0:** Added research basis and quality benchmarks; strengthened picker validation.
-- **v2.1:** Integrated multi-step prompting findings and tightened operational guidance.
-- **v2.2:** Made one consolidated file the F-Design/F-Convert default; gated additional variants behind explicit rationale and approval; integrated milestone, recovery, variable-fidelity, CFF/OFF, and full rendering contracts into this single canonical.
-- **v2.3:** Reconciled two divergent v2.2 lines into this single canonical. Preserved the richer full specification and the concise operational safeguards, standardized the Display Description limit at 500 characters, corrected the framework end marker, and restored exact vault-to-Ora body parity.
+1. Identify F-Design, F-Convert, F-Render, or F-Audit from an exact first-token mode when supplied. If no mode is exact and intent is genuinely ambiguous, ask one discriminating question.
+2. Validate required inputs before the selected METHOD runs. Preserve the user's original text and explicit contributors.
+3. State which context lanes and capabilities are actually available. Refuse or return INCOMPLETE for required unavailable dependencies; disclose optional limitations and continue.
+4. Execute only the selected mode's milestones in declared order.
+5. Apply each milestone's verification criterion before representing it as complete.
+6. F-Design and F-Convert return one canonical plus a truthful admission state. They do not save, mirror, register, approve, expose, or activate it by implication.
+7. F-Render uses only an implemented registered deterministic transformer or exporter with a passing health check. If unavailable, return INCOMPLETE.
+8. F-Audit remains non-mutating and reports exact blockers with remediation.
+9. Preserve completed outputs and a usable handoff when later work is incomplete or fails.
+10. End with the actual result, limitations, admission state, and essential next plan. Do not manufacture completion.
+
+## Version History
+
+- **v1.0:** Established the four-mode meta-framework.
+- **v2.0–v2.3:** Developed the former anatomy, rubric, layer, recovery, and single-file consolidation model.
+- **v3.0 (2026-08-29):** Replaced LAYER execution and independently authored variants with strict METHOD contracts, workload-derived milestones, one dual-use canonical, deterministic derivation, explicit context/capability health and provenance, bounded Programming handoff, and truthful private/inactive admission.
 
 ---
 
 ## USER INPUT
 
-[State Mode F-Design (new framework, default single-file output), Mode F-Convert (modernize existing, default single-file output), Mode F-Render (generate an additional execution variant from an existing framework — explicit opt-in path), or Mode F-Audit (evaluate against standards) — or let the AI auto-detect from your input. Then provide your input materials.]
+State F-Design, F-Convert, F-Render, or F-Audit, then provide the required inputs and any exact wording, contributors, context, capabilities, constraints, and approval boundaries.
 
 ---
 
-**END OF PROCESS FORMALIZATION FRAMEWORK v2.3**
+**END OF PROCESS FORMALIZATION FRAMEWORK v3.0**

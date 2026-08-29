@@ -88,17 +88,17 @@ Each framework has one entry with these fields:
 
 ### Process Formalization
 
-- **Purpose:** Design, convert, render, or audit an AI instruction framework, using one consolidated file by default
-- **Problem Class:** Framework design, modernization, explicit optional rendering, and quality audit
-- **Input Summary:** F-Design: task and deliverable requirements. F-Convert/F-Audit: an existing framework. F-Render: an existing framework plus the explicitly requested additional execution variant and rationale.
-- **Output Summary:** One consolidated executable Markdown framework by default; one additional rendering only when explicitly requested; or a bounded audit
-- **Proven Applications:** v2.3 reconciled the single-file default with the full framework anatomy, milestone, recovery, and quality standards
-- **Known Limitations:** PFF specifies instructions; it does not create a persistent runtime, register capabilities, activate automation, or execute standalone Programming.
+- **Purpose:** Design or convert one dual-use AI instruction canonical, request a deterministic derived view, or audit a framework without mutation
+- **Problem Class:** Framework authoring, semantic-preserving conversion, deterministic derivation, admission readiness, and quality audit
+- **Input Summary:** F-Design: known procedure, outcome, authority, context, capability, and quality requirements. F-Convert/F-Audit: complete existing framework and controlling sources. F-Render: admitted canonical, deterministic target, and implemented registered transformer/exporter.
+- **Output Summary:** F-Design/F-Convert: one strict METHOD canonical plus truthful private/inactive admission state. F-Render: one deterministic derived view or explicit INCOMPLETE result. F-Audit: evidence-bound blockers and remediation without mutation.
+- **Proven Applications:** v3.0 establishes strict preflight-ready METHOD authoring, workload-derived milestones, one dual-use canonical, deterministic-only derivation, and truthful admission/incomplete handoffs
+- **Known Limitations:** PFF authors contracts; it does not implement durable code, provide Dialogue-owned retrieval, independently rewrite runtime/Skill variants, save or synchronize files, register capabilities, approve admission, or activate products. Missing required context, capability, exporter, proof, registration, or approval keeps material private, inactive, or INCOMPLETE.
 - **File Location:** ~/Documents/vault/Projects/Ora/Framework — Process Formalization.md (canonical); frameworks/book/process-formalization.md (exact Ora runtime mirror)
 - **Provenance:** human-created
 - **Confidence:** high
-- **Version:** 2.3
-- **Delivers:** Consolidated new framework (F-Design); consolidated converted framework (F-Convert); one requested additional rendering (F-Render); framework quality audit (F-Audit)
+- **Version:** 3.0
+- **Delivers:** Design Basis then one authored canonical plus admission state (F-Design); Semantic Preservation Map then one converted canonical plus admission state (F-Convert); one deterministic derived view or exact incomplete blocker (F-Render); non-mutating framework audit with exact remediation (F-Audit)
 
 ### Corpus Formalization
 
@@ -106,7 +106,7 @@ Each framework has one entry with these fields:
 - **Problem Class:** Knowledge corpus design and template management
 - **Input Summary:** C-Design: workflow description + sources + outputs. C-Modify: existing template + change description. C-Instance: template + period identifier. C-Validate: template + populated instance.
 - **Output Summary:** Corpus template (C-Design, C-Modify); deployed corpus instance ready for PFF writes (C-Instance); completeness report identifying which OFFs can render (C-Validate)
-- **Proven Applications:** Shipped 2026-04 as the C in the PFF/CFF/OFF triad; current sibling canonicals are Process Formalization v2.3 and Output Formalization v1.1
+- **Proven Applications:** Shipped 2026-04 as the C in the PFF/CFF/OFF triad; current sibling canonicals are Process Formalization v3.0 and Output Formalization v1.1
 - **Known Limitations:** Requires a clear concept of what a workflow "accumulates" as a body — does not help when the unit of accumulation is unclear; chain relationships add complexity that must be designed deliberately
 - **File Location:** frameworks/book/corpus-formalization.md (executable); ~/Documents/vault/Projects/Ora/Framework — Corpus Formalization.md (canonical)
 - **Provenance:** human-created
@@ -120,7 +120,7 @@ Each framework has one entry with these fields:
 - **Problem Class:** Output rendering and bespoke output-framework design
 - **Input Summary:** O-Design: exemplar / template / verbal description / medium-plus-genre. O-Modify: existing bespoke OFF + change description. O-Render: bespoke OFF + content (from CFF, PFF, or supplied). O-Audit: existing bespoke OFF.
 - **Output Summary:** Bespoke output framework composing content/craft/style/render layers (O-Design, O-Modify); rendered artifact in target medium (O-Render); quality audit with remediation recommendations (O-Audit)
-- **Proven Applications:** Shipped 2026-04 as the O in the PFF/CFF/OFF triad; current sibling canonicals are Process Formalization v2.3 and Corpus Formalization v1.1; also integrates with MindSpec voice for style consistency
+- **Proven Applications:** Shipped 2026-04 as the O in the PFF/CFF/OFF triad; current sibling canonicals are Process Formalization v3.0 and Corpus Formalization v1.1; also integrates with MindSpec voice for style consistency
 - **Known Limitations:** O-Design quality depends on input modality clarity; voice consistency depends on a populated MindSpec or equivalent style profile; medium-specific render details may need user iteration
 - **File Location:** frameworks/book/output-formalization.md (executable); ~/Documents/vault/Projects/Ora/Framework — Output Formalization.md (canonical)
 - **Provenance:** human-created
