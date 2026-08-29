@@ -1478,6 +1478,10 @@ def _config_state(
     from orchestrator import retrieval_config
 
     config = _strict_json(path, "Chroma config")
+    try:
+        config = retrieval_config.validate_chromadb_config(config, path)
+    except Exception as exc:
+        raise RebuildError(f"Chroma config identity is invalid: {exc}") from exc
     collections, histories = config.get("collections"), config.get("collection_history")
     if not isinstance(collections, dict) or collections.get("conversations") != expected:
         found = collections.get("conversations") if isinstance(collections, dict) else None
@@ -1510,16 +1514,25 @@ def _profile_key(profile: dict[str, Any]) -> tuple[str, str, int]:
 
 
 def _flip_mapping(path: Path, config: dict[str, Any], expected: str, target: str) -> list[str]:
+    from orchestrator import retrieval_config
+
     if config["collections"].get("conversations") != expected:
         raise RebuildError("conversation mapping changed before atomic flip")
     histories = config.get("collection_history") or {}
     history = histories.get("conversations") or []
     history = [history] if isinstance(history, str) else history
-    config["collections"] = {**config["collections"], "conversations": target}
     new_history = [expected, *(name for name in history if name not in {expected, target})]
-    config["collection_history"] = {**histories, "conversations": new_history}
+    candidate = {
+        **config,
+        "collections": {**config["collections"], "conversations": target},
+        "collection_history": {**histories, "conversations": new_history},
+    }
+    try:
+        candidate = retrieval_config.validate_chromadb_config(candidate, path)
+    except Exception as exc:
+        raise RebuildError(f"Chroma config cutover candidate is invalid: {exc}") from exc
     rp.atomic_write_text(
-        path, json.dumps(config, ensure_ascii=False, indent=2) + "\n",
+        path, json.dumps(candidate, ensure_ascii=False, indent=2) + "\n",
         mode=stat.S_IMODE(path.lstat().st_mode),
     )
     return new_history
