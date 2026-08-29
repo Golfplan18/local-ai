@@ -19421,11 +19421,6 @@ def _load_routing_config():
     except Exception:
         return {}
 
-def _save_routing_config(cfg):
-    with open(_routing_config_write_path(), "w") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
-
 
 def _reload_pipeline_router_after_config_change() -> bool:
     """Invalidate the singleton ``boot._router_instance`` so the next
@@ -19495,19 +19490,37 @@ def routing_slots_post():
     updates = data.get("slots")
     if not isinstance(updates, dict):
         return json.dumps({"ok": False, "error": "slots must be an object"}), 400
-    cfg = _load_routing_config()
-    slots = cfg.setdefault("slots", {})
+    validated_updates = {}
     for slot_name, patch in updates.items():
         if not isinstance(patch, dict):
             return json.dumps(
                 {"ok": False,
                  "error": f"slot {slot_name!r} patch must be an object"}), 400
-        current = slots.setdefault(slot_name, {})
-        for key, value in patch.items():
-            if key.startswith("_"):
-                continue
-            current[key] = value
-    _save_routing_config(cfg)
+        validated_updates[slot_name] = {
+            key: value for key, value in patch.items()
+            if not key.startswith("_")
+        }
+
+    # Every routing-config writer shares this sidecar lock.  Reread only after
+    # acquiring it so two Settings processes editing disjoint slots merge onto
+    # the latest state rather than last-writer-wins clobbering one another.
+    target = _routing_config_write_path()
+    with rp.locked_file(target):
+        try:
+            with open(target) as f:
+                cfg = json.load(f)
+        except Exception:
+            # Preserve the endpoint's established missing/unreadable fallback;
+            # the transaction change is serialization, not a schema-policy
+            # change.  The atomic replacement still prevents torn readers.
+            cfg = {}
+        slots = cfg.setdefault("slots", {})
+        for slot_name, patch in validated_updates.items():
+            current = slots.setdefault(slot_name, {})
+            current.update(patch)
+        rp.atomic_write_text(
+            target, json.dumps(cfg, indent=2) + "\n", mode=0o644,
+        )
     reloaded = _reload_pipeline_router_after_config_change()
     return json.dumps({"ok": True, "router_reloaded": reloaded})
 

@@ -15,6 +15,7 @@ Run after the Models registry/catalog refresh so the pipeline's endpoint
 universe stays in sync with what the UI offers.
 """
 import argparse
+import contextlib
 import json
 import os
 import sys
@@ -47,6 +48,7 @@ CONFIGURATIONS_DIR = Path(
 )
 
 sys.path.insert(0, str(ORA / "orchestrator"))
+import runtime_paths as _rp
 try:
     import provider_registry as _preg
     import vendor_catalog_registry as _vcr
@@ -345,8 +347,6 @@ def main() -> int:
     args = ap.parse_args()
 
     catalog = json.loads(CATALOG_PATH.read_text())
-    routing = _read_routing_config()
-
     models = catalog.get("models", [])
     text_models = [
         m for m in models if "text" in (m.get("output_modalities") or [])
@@ -357,45 +357,48 @@ def main() -> int:
         m["id"]: build_endpoint(m, vendor_listed) for m in text_models
     }
 
-    existing = routing.get("endpoints", [])
-    by_id = {(e.get("id") or e.get("name")): e for e in existing}
+    lock = (_rp.locked_file(ROUTING_PATH)
+            if not args.dry_run else contextlib.nullcontext())
+    with lock:
+        # The catalog is immutable input for this transaction.  The routing
+        # state is not: reread it only after the shared cross-process lock so a
+        # concurrent Settings slot save cannot be overwritten by endpoint sync.
+        routing = _read_routing_config()
 
-    overwritten = 0
-    added = 0
-    direct_count = 0
-    openrouter_count = 0
-    for cid, new_ep in catalog_endpoints.items():
-        if cid in by_id:
-            overwritten += 1
+        existing = routing.get("endpoints", [])
+        by_id = {(e.get("id") or e.get("name")): e for e in existing}
+
+        overwritten = 0
+        added = 0
+        direct_count = 0
+        openrouter_count = 0
+        for cid, new_ep in catalog_endpoints.items():
+            if cid in by_id:
+                overwritten += 1
+            else:
+                added += 1
+            if new_ep["dispatch"] == "direct":
+                direct_count += 1
+            else:
+                openrouter_count += 1
+            by_id[cid] = new_ep
+
+        # Vendor-catalogue-authoritative inversion (flag-gated, default on): replace
+        # each keyed authoritative vendor's OpenRouter endpoints with its native
+        # direct endpoints. No-op unless ORA_VENDOR_CATALOG_AUTHORITATIVE is on.
+        va = {"skipped": "flag off"}
+        if _vcr and _vcr.enabled():
+            va = apply_vendor_authoritative(by_id, routing)
+
+        routing["endpoints"] = list(by_id.values())
+
+        if args.dry_run:
+            print("DRY RUN — nothing written.")
         else:
-            added += 1
-        if new_ep["dispatch"] == "direct":
-            direct_count += 1
-        else:
-            openrouter_count += 1
-        by_id[cid] = new_ep
-
-    # Vendor-catalogue-authoritative inversion (flag-gated, default on): replace
-    # each keyed authoritative vendor's OpenRouter endpoints with its native
-    # direct endpoints. No-op unless ORA_VENDOR_CATALOG_AUTHORITATIVE is on.
-    va = {"skipped": "flag off"}
-    if _vcr and _vcr.enabled():
-        va = apply_vendor_authoritative(by_id, routing)
-
-    routing["endpoints"] = list(by_id.values())
-
-    if args.dry_run:
-        print("DRY RUN — nothing written.")
-    else:
-        # Atomic replace: this script runs from the server's registry refresh
-        # while threaded Flask handlers read (and occasionally write)
-        # routing-config.json — a torn read of a half-written file must not be
-        # possible. (Last-writer-wins races with /config POSTs remain; the
-        # window is the subprocess's ~0.5s runtime.)
-        ROUTING_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = str(ROUTING_PATH) + ".tmp"
-        Path(tmp_path).write_text(json.dumps(routing, indent=2) + "\n")
-        os.replace(tmp_path, ROUTING_PATH)
+            _rp.atomic_write_text(
+                ROUTING_PATH, json.dumps(routing, indent=2) + "\n",
+                mode=0o644,
+            )
 
     print(f"Catalog text-output models:  {len(text_models)}")
     print(f"Endpoints added:             {added}")

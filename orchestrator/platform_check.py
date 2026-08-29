@@ -86,41 +86,43 @@ def startup_check() -> list[str]:
         except Exception as exc:
             msgs.append(f"[platform] AppContainer recovery failed: {exc}")
 
-    if not os.path.exists(ROUTING_CONFIG_JSON):
-        msgs.append(
-            f"[platform] No routing-config.json found. Copy the template and "
-            f"configure your models. Recommended engine: {recommended}"
-        )
-        return msgs
+    with _rp.locked_file(ROUTING_CONFIG_JSON):
+        if not os.path.exists(ROUTING_CONFIG_JSON):
+            msgs.append(
+                f"[platform] No routing-config.json found. Copy the template and "
+                f"configure your models. Recommended engine: {recommended}"
+            )
+            return msgs
 
-    try:
-        # Read RAW: this is a read-modify-write of one field (endpoints'
-        # engine) and the file is saved back below. Expanding ${ORA_*} here
-        # would bake this machine's absolute paths into the checked-in seed
-        # on the next save — the very thing the placeholders exist to stop.
-        with open(ROUTING_CONFIG_JSON) as f:
-            config = json.load(f)
-    except Exception as e:
-        msgs.append(f"[platform] Could not read routing-config.json: {e}")
-        return msgs
-
-    # Resolve any engine: "auto" entries
-    modified = False
-    for ep in config.get("endpoints", []):
-        if ep.get("type") == "local" and ep.get("engine") == "auto":
-            ep["engine"] = recommended
-            if recommended == "ollama" and "url" not in ep:
-                ep["url"] = "http://localhost:11434"
-            ep_label = ep.get("id") or ep.get("display_name") or ep.get("name", "?")
-            msgs.append(f"[platform] {ep_label}: engine auto → {recommended}")
-            modified = True
-
-    if modified:
         try:
-            with open(ROUTING_CONFIG_JSON, "w") as f:
-                json.dump(config, f, indent=2)
+            # Read RAW after acquiring the shared routing-config lock: this is
+            # a read-modify-write of one field (endpoints' engine). Expanding
+            # ${ORA_*} here would bake this machine's absolute paths into the
+            # checked-in seed on the next save.
+            with open(ROUTING_CONFIG_JSON) as f:
+                config = json.load(f)
         except Exception as e:
-            msgs.append(f"[platform] Could not save routing-config.json: {e}")
+            msgs.append(f"[platform] Could not read routing-config.json: {e}")
+            return msgs
+
+        # Resolve any engine: "auto" entries.
+        modified = False
+        for ep in config.get("endpoints", []):
+            if ep.get("type") == "local" and ep.get("engine") == "auto":
+                ep["engine"] = recommended
+                if recommended == "ollama" and "url" not in ep:
+                    ep["url"] = "http://localhost:11434"
+                ep_label = ep.get("id") or ep.get("display_name") or ep.get("name", "?")
+                msgs.append(f"[platform] {ep_label}: engine auto → {recommended}")
+                modified = True
+
+        if modified:
+            try:
+                _rp.atomic_write_text(
+                    ROUTING_CONFIG_JSON, json.dumps(config, indent=2), mode=0o644,
+                )
+            except Exception as e:
+                msgs.append(f"[platform] Could not save routing-config.json: {e}")
 
     if not msgs:
         msgs.append(f"[platform] {plat['os']} {plat['arch']} — engine: {recommended} — OK")

@@ -31,6 +31,8 @@ from pathlib import Path
 WORKSPACE = Path(__file__).resolve().parent.parent
 ROUTING_CONFIG = WORKSPACE / "config" / "routing-config.json"
 BACKUP = WORKSPACE / "config" / "routing-config.json.pre-server-install"
+sys.path.insert(0, str(WORKSPACE / "orchestrator"))
+import runtime_paths as _rp
 
 # Picks chosen for cheap continuous publication routed through OpenRouter.
 # Using OpenRouter for everything means the server only needs ONE API key
@@ -158,74 +160,74 @@ def log(msg: str) -> None:
 
 
 def main() -> int:
-    if not ROUTING_CONFIG.exists():
-        log(f"✗ {ROUTING_CONFIG} not found. Did the git clone complete?")
-        return 1
+    with _rp.locked_file(ROUTING_CONFIG):
+        if not ROUTING_CONFIG.exists():
+            log(f"✗ {ROUTING_CONFIG} not found. Did the git clone complete?")
+            return 1
 
-    with open(ROUTING_CONFIG) as f:
-        cfg = json.load(f)
+        # Installer validation and overrides are one routing transaction.  Read
+        # only after the shared lock so an already-running maintenance writer's
+        # disjoint update is part of the server-flavor candidate.
+        with open(ROUTING_CONFIG) as f:
+            cfg = json.load(f)
 
-    # Synthesize any missing free-model endpoints before the validation pass
-    # so a clean install doesn't fail on the trinity chain not yet existing
-    # in endpoints[].
-    added = _synthesize_missing_endpoints(cfg)
-    if added:
-        log(f"  ✓ Synthesized {added} missing free-model endpoint entries")
+        # Synthesize any missing free-model endpoints before the validation pass
+        # so a clean install doesn't fail on the trinity chain not yet existing
+        # in endpoints[].
+        added = _synthesize_missing_endpoints(cfg)
+        if added:
+            log(f"  ✓ Synthesized {added} missing free-model endpoint entries")
 
-    endpoint_ids = {e.get("id") for e in cfg.get("endpoints", []) if e.get("id")}
-    needed_ids = (
-        set(SERVER_SLOT_ASSIGNMENTS.values())
-        | {SERVER_DEFAULT_ENDPOINT}
-        | set(PREMIUM_BUCKET_CHAIN)
-        | set(FAST_BUCKET_CHAIN)
-    )
-    missing = needed_ids - endpoint_ids
-    if missing:
-        log(f"✗ routing-config.json::endpoints[] is missing: {sorted(missing)}")
-        log("  Run 'python scripts/refresh-catalog.py' first, or pick "
-            "different endpoints below in SERVER_SLOT_ASSIGNMENTS.")
-        return 2
+        endpoint_ids = {e.get("id") for e in cfg.get("endpoints", []) if e.get("id")}
+        needed_ids = (
+            set(SERVER_SLOT_ASSIGNMENTS.values())
+            | {SERVER_DEFAULT_ENDPOINT}
+            | set(PREMIUM_BUCKET_CHAIN)
+            | set(FAST_BUCKET_CHAIN)
+        )
+        missing = needed_ids - endpoint_ids
+        if missing:
+            log(f"✗ routing-config.json::endpoints[] is missing: {sorted(missing)}")
+            log("  Run 'python scripts/refresh-catalog.py' first, or pick "
+                "different endpoints below in SERVER_SLOT_ASSIGNMENTS.")
+            return 2
 
-    # Backup once.
-    if not BACKUP.exists():
-        shutil.copy2(ROUTING_CONFIG, BACKUP)
-        log(f"  ✓ Backed up original to {BACKUP.name}")
-    else:
-        log(f"  ✓ Backup already at {BACKUP.name} (kept)")
+        # Backup once, while the file is stable under the same lock.
+        if not BACKUP.exists():
+            shutil.copy2(ROUTING_CONFIG, BACKUP)
+            log(f"  ✓ Backed up original to {BACKUP.name}")
+        else:
+            log(f"  ✓ Backup already at {BACKUP.name} (kept)")
 
-    # Apply server-flavor overrides.
-    cfg["slot_assignments"] = SERVER_SLOT_ASSIGNMENTS
-    cfg["default_endpoint"] = SERVER_DEFAULT_ENDPOINT
-    cfg["gear4_overrides"]  = SERVER_GEAR4_OVERRIDES
+        # Apply server-flavor overrides.
+        cfg["slot_assignments"] = SERVER_SLOT_ASSIGNMENTS
+        cfg["default_endpoint"] = SERVER_DEFAULT_ENDPOINT
+        cfg["gear4_overrides"] = SERVER_GEAR4_OVERRIDES
 
-    # Reorder both buckets so the bucket-walk fallback delivers only free
-    # models. Writing slots walk the premium bucket; utility slots walk
-    # the fast bucket. NO paid models in either — silent rollover to paid
-    # is the failure mode we're protecting against.
-    cfg.setdefault("buckets", {})["premium"] = list(PREMIUM_BUCKET_CHAIN)
-    cfg["buckets"]["fast"] = list(FAST_BUCKET_CHAIN)
+        # Reorder both buckets so the bucket-walk fallback delivers only free
+        # models. Writing slots walk the premium bucket; utility slots walk
+        # the fast bucket. NO paid models in either.
+        cfg.setdefault("buckets", {})["premium"] = list(PREMIUM_BUCKET_CHAIN)
+        cfg["buckets"]["fast"] = list(FAST_BUCKET_CHAIN)
 
-    # operational_context — keep "api" available everywhere on the server;
-    # remove "local" so any code that still walks transports doesn't try
-    # to pick a local model that doesn't exist on this host.
-    cfg["operational_context"] = {
-        "interactive": ["api"],
-        "autonomous":  ["api"],
-        "agent":       ["api"],
-    }
+        cfg["operational_context"] = {
+            "interactive": ["api"],
+            "autonomous": ["api"],
+            "agent": ["api"],
+        }
 
-    # Marker so a future install / sync can detect this file is server-flavor.
-    cfg.setdefault("_schema_notes", {})
-    cfg["_schema_notes"]["server_install_overrides_applied"] = (
-        "Slot assignments + default_endpoint + gear4_overrides + "
-        "operational_context were rewritten to API-only picks by "
-        "scripts/install-server.sh. The original Mac-flavor file is "
-        "backed up at routing-config.json.pre-server-install. To revert, "
-        "swap the backup back in place and re-run the orchestrator."
-    )
+        cfg.setdefault("_schema_notes", {})
+        cfg["_schema_notes"]["server_install_overrides_applied"] = (
+            "Slot assignments + default_endpoint + gear4_overrides + "
+            "operational_context were rewritten to API-only picks by "
+            "scripts/install-server.sh. The original Mac-flavor file is "
+            "backed up at routing-config.json.pre-server-install. To revert, "
+            "swap the backup back in place and re-run the orchestrator."
+        )
 
-    with open(ROUTING_CONFIG, "w") as f:
-        json.dump(cfg, f, indent=2)
+        _rp.atomic_write_text(
+            ROUTING_CONFIG, json.dumps(cfg, indent=2), mode=0o644,
+        )
 
     log(f"  ✓ Rewrote {ROUTING_CONFIG.name}")
     log("    slot_assignments → API-only picks:")
