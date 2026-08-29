@@ -3127,7 +3127,7 @@ def vision_capable_for_endpoint(endpoint: dict | None) -> bool:
     return False
 
 
-def get_active_endpoint(config: dict) -> dict | None:
+def get_active_endpoint(config: dict, config_name: str | None = None) -> dict | None:
     """Returns a general-purpose endpoint. Uses v2 router if available.
 
     The Router-failure fallback path below identifies endpoints by their
@@ -3138,9 +3138,12 @@ def get_active_endpoint(config: dict) -> dict | None:
     """
     router = _get_router()
     if router:
-        ep = router.resolve_utility_slot("step1_cleanup", "interactive")
+        ep = router.resolve_utility_slot(
+            "step1_cleanup", "interactive", config_name=config_name)
         if ep:
             return router._to_v1_endpoint(ep)
+    if config_name is not None:
+        return None
     # Router-failure fallback: walk the raw config.
     slot = config.get("slot_assignments", {}).get("breadth")
     endpoints = config.get("endpoints", [])
@@ -3215,7 +3218,7 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
             if ep is None:
                 ep = router.resolve_endpoint(slot, 3, context, config_name=config_name)
         else:
-            ep = router.resolve_utility_slot("step1_cleanup", context, config_name=config_name)
+            ep = router.resolve_capability_slot(slot)
 
         if ep:
             return router._to_v1_endpoint(ep)
@@ -3821,44 +3824,84 @@ def _prepare_image_routing(
     execution_context: str = "interactive",
 ) -> str | None:
     """Route one turn's image after its raw-image recipients are resolved."""
+    temporary_image_path = None
     if not context_pkg.get("image_path"):
-        return None
+        attachment = next((
+            image for image in (images or [])
+            if isinstance(image, dict)
+            and isinstance(image.get("base64"), str)
+            and image.get("base64")
+        ), None)
+        if attachment is None:
+            return None
+        try:
+            import base64 as _base64
+            import tempfile as _tempfile
 
-    error = _codex_subscription_image_input_error(
-        endpoints, images, user_text,
-    )
-    if error:
-        context_pkg["_vision_routing_prepared"] = True
-        context_pkg["_terminal_input_error"] = error
-        context_pkg["_trace_terminal_status"] = "error"
-        return error
+            image_bytes = _base64.b64decode(
+                attachment["base64"], validate=True,
+            )
+            suffix = Path(str(attachment.get("name") or "")).suffix.lower()
+            if suffix not in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff"}:
+                suffix = ".img"
+            fd, temporary_image_path = _tempfile.mkstemp(
+                prefix="ora-direct-image-", suffix=suffix,
+            )
+            with os.fdopen(fd, "wb") as image_file:
+                image_file.write(image_bytes)
+            context_pkg["image_path"] = temporary_image_path
+        except Exception as exc:
+            print(f"[visual-routing] byte-image preparation failed: {exc}")
+            if temporary_image_path:
+                try:
+                    os.unlink(temporary_image_path)
+                except OSError:
+                    pass
+            return None
 
-    # Raw SDK image input is available only when the request carries bytes.
-    # A mixed recipient set still needs the established text extractor for
-    # whichever analyst cannot see the image.
-    direct_endpoint = None
-    if images and endpoints and all(
-        vision_capable_for_endpoint(endpoint) for endpoint in endpoints
-    ):
-        direct_endpoint = endpoints[0]
-    desired_mode = "direct" if direct_endpoint is not None else "extractor"
-    current_mode = context_pkg.get("_vision_routing_mode")
-    if current_mode == "extractor" or current_mode == desired_mode:
-        return None
     try:
-        route_for_image_input(
-            context_pkg,
-            requested_model=direct_endpoint,
-            execution_context=execution_context,
+        error = _codex_subscription_image_input_error(
+            endpoints, images, user_text,
         )
-    except Exception as exc:
-        # Preserve the established fail-open behavior for extractor/runtime
-        # faults. Subscription shape/modality rejection happened above and is
-        # never swallowed here.
-        print(f"[visual-routing] gate skipped due to error: {exc}")
-    context_pkg["_vision_routing_prepared"] = True
-    context_pkg["_vision_routing_mode"] = desired_mode
-    return None
+        if error:
+            context_pkg["_vision_routing_prepared"] = True
+            context_pkg["_terminal_input_error"] = error
+            context_pkg["_trace_terminal_status"] = "error"
+            return error
+
+        # Raw SDK image input is available only when the request carries bytes.
+        # A mixed recipient set still needs the established text extractor for
+        # whichever analyst cannot see the image.
+        direct_endpoint = None
+        if images and endpoints and all(
+            vision_capable_for_endpoint(endpoint) for endpoint in endpoints
+        ):
+            direct_endpoint = endpoints[0]
+        desired_mode = "direct" if direct_endpoint is not None else "extractor"
+        current_mode = context_pkg.get("_vision_routing_mode")
+        if current_mode == "extractor" or current_mode == desired_mode:
+            return None
+        try:
+            route_for_image_input(
+                context_pkg,
+                requested_model=direct_endpoint,
+                execution_context=execution_context,
+            )
+        except Exception as exc:
+            # Preserve the established fail-open behavior for extractor/runtime
+            # faults. Subscription shape/modality rejection happened above and
+            # is never swallowed here.
+            print(f"[visual-routing] gate skipped due to error: {exc}")
+        context_pkg["_vision_routing_prepared"] = True
+        context_pkg["_vision_routing_mode"] = desired_mode
+        return None
+    finally:
+        if temporary_image_path:
+            context_pkg.pop("image_path", None)
+            try:
+                os.unlink(temporary_image_path)
+            except OSError:
+                pass
 
 
 def _append_codex_canvas_image_notice(

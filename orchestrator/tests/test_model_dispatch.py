@@ -96,6 +96,13 @@ class TestInvokeChat(unittest.TestCase):
         _, kwargs = slot_mock.call_args
         self.assertIn("depth", slot_mock.call_args[0])
 
+    def test_selected_config_name_is_passed_exactly(self):
+        self._mock_boot(response="ok")
+        invoke_chat("s", "u", slot="vision_input", config_name="publisher-exact")
+        slot_mock = sys.modules["orchestrator.boot"].get_slot_endpoint
+        self.assertEqual(slot_mock.call_args.kwargs["config_name"], "publisher-exact")
+        self.assertEqual(slot_mock.call_args.args[1], "vision_input")
+
     def test_no_endpoint_for_slot_raises(self):
         # get_slot_endpoint returns None.
         boot_stub = mock.MagicMock()

@@ -45,7 +45,11 @@ def _registry_path() -> Path:
 _registry: dict | None = None
 _load_lock = threading.Lock()
 
-DEFAULT_CONTEXT_WINDOW = 256_000
+# A genuinely unknown model window must not inherit the largest window Ora
+# commonly routes.  This is an admission floor, not a claim about the model.
+CONSERVATIVE_ADMISSION_CONTEXT_WINDOW = 32_000
+# Compatibility name for callers that need the shared unknown-capacity value.
+DEFAULT_CONTEXT_WINDOW = CONSERVATIVE_ADMISSION_CONTEXT_WINDOW
 CONTEXT_CAPACITY_KEYS = ("context_window", "context_length", "max_context_length")
 
 
@@ -195,8 +199,12 @@ def context_window_for_model(
     record = lookup(model_id)
     if not record:
         return default
-    candidates = [_positive_int(record.get(key)) for key in CONTEXT_CAPACITY_KEYS]
+    for key in CONTEXT_CAPACITY_KEYS:
+        capacity = _positive_int(record.get(key))
+        if capacity is not None:
+            return capacity
     provenance = record.get("_provenance") or {}
+    candidates: list[int] = []
     if isinstance(provenance, dict):
         for source in provenance.values():
             if isinstance(source, dict):
@@ -205,7 +213,9 @@ def context_window_for_model(
                     for key in ("max_input_tokens", "context_length")
                 )
     capacities = [value for value in candidates if value is not None]
-    return max(capacities, default=default)
+    # When sources disagree and the curated top-level record has not resolved
+    # the discrepancy, admit only the smallest declared window.
+    return min(capacities, default=default)
 
 
 def load_registry(force: bool = False) -> dict:
@@ -273,14 +283,24 @@ def overlay_routing_config(rc: dict) -> dict:
     for ep in endpoints:
         if not isinstance(ep, dict):
             continue
-        model_id = ep.get("id") or ep.get("model_id") or ep.get("model")
-        if not model_id:
-            continue
-        reg = lookup(str(model_id))
+        reg = None
+        registry_model_id = None
+        # Endpoint ``id`` is sometimes only Ora's transport handle (for
+        # example ``openai-api-gpt4o``).  Keep walking until an identifier
+        # actually resolves instead of letting that handle hide the canonical
+        # provider model id carried beside it.
+        for identifier in (ep.get("id"), ep.get("model_id"), ep.get("model")):
+            if not identifier:
+                continue
+            candidate = lookup(str(identifier))
+            if candidate is not None:
+                reg = candidate
+                registry_model_id = str(identifier)
+                break
         if reg is None:
             continue
         registry_capacity = context_window_for_model(
-            str(model_id), default=DEFAULT_CONTEXT_WINDOW)
+            registry_model_id, default=DEFAULT_CONTEXT_WINDOW)
         declared_capacities = [
             _positive_int(ep.get(key)) for key in CONTEXT_CAPACITY_KEYS
         ]
@@ -466,6 +486,7 @@ def _empty_registry() -> dict:
 
 
 __all__ = [
+    "CONSERVATIVE_ADMISSION_CONTEXT_WINDOW",
     "DEFAULT_CONTEXT_WINDOW",
     "load_registry",
     "reload",

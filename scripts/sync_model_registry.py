@@ -58,7 +58,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
-from orchestrator import network_policy
+from orchestrator import network_policy, runtime_paths
 
 # ──────────────────────────────────────────────────────────────────────────
 # Paths
@@ -74,10 +74,9 @@ ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
 # at 81,920, so anything in 82,000–127,000 selects the identical set.
 MIN_CONTEXT_LENGTH = 120_000
 
-REGISTRY_PATH = Path(
-    os.environ.get("ORA_MODEL_REGISTRY_PATH")
-    or (ORA_HOME / "config" / "model-registry.json")
-)
+REGISTRY_PATH = Path(os.environ["ORA_MODEL_REGISTRY_PATH"]) \
+    if os.environ.get("ORA_MODEL_REGISTRY_PATH") \
+    else runtime_paths.model_registry_path()
 DISCREPANCY_PATH = Path(
     os.environ.get("ORA_MODEL_REGISTRY_DISCREPANCY_PATH")
     or (ORA_HOME / "data" / "model-registry-discrepancies.jsonl")

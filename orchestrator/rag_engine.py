@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import os
 import json
+import copy
 import subprocess
 import re
 import sys
@@ -151,21 +152,47 @@ def get_model_capabilities(config: dict, model_id: str) -> dict:
     Returns:
         {tool_access, file_system_access, web_access, retrieval_approach, context_window}
     """
-    for ep in config.get("endpoints", []):
-        if ep.get("name") == model_id:
+    try:
+        try:
+            from orchestrator.router import Router
+            from orchestrator.model_registry import (
+                CONSERVATIVE_ADMISSION_CONTEXT_WINDOW,
+            )
+        except ImportError:
+            from router import Router
+            from model_registry import CONSERVATIVE_ADMISSION_CONTEXT_WINDOW
+        normalized_config = copy.deepcopy(config)
+        for endpoint in normalized_config.get("endpoints", []) or []:
+            if isinstance(endpoint, dict) and "id" not in endpoint and endpoint.get("name"):
+                endpoint["id"] = endpoint["name"]
+        router = Router(config_dict=normalized_config)
+        resolved_id = router._resolve_endpoint_id(model_id)
+        endpoint = router._endpoints.get(resolved_id)
+        normalized = router._to_v1_endpoint(endpoint) if endpoint else None
+        if normalized:
             return {
-                "tool_access": ep.get("tool_access", False),
-                "file_system_access": ep.get("file_system_access", False),
-                "web_access": ep.get("web_access", False),
-                "retrieval_approach": ep.get("retrieval_approach", "pre-assembled"),
-                "context_window": ep.get("context_window", 1_000_000),
+                "tool_access": normalized.get("tool_access", False),
+                "file_system_access": normalized.get("file_system_access", False),
+                "web_access": normalized.get("web_access", False),
+                "retrieval_approach": normalized.get(
+                    "retrieval_approach", "pre-assembled"),
+                "context_window": normalized.get(
+                    "context_window", CONSERVATIVE_ADMISSION_CONTEXT_WINDOW),
             }
+    except Exception:
+        # Capability enrichment is optional. Unknown stays conservative below.
+        try:
+            from orchestrator.model_registry import (
+                CONSERVATIVE_ADMISSION_CONTEXT_WINDOW,
+            )
+        except ImportError:
+            from model_registry import CONSERVATIVE_ADMISSION_CONTEXT_WINDOW
     return {
         "tool_access": False,
         "file_system_access": False,
         "web_access": False,
         "retrieval_approach": "pre-assembled",
-        "context_window": 1_000_000,
+        "context_window": CONSERVATIVE_ADMISSION_CONTEXT_WINDOW,
     }
 
 
@@ -515,7 +542,7 @@ class RAGEngine:
 
         # Get target model's context window
         caps = get_model_capabilities(self.config, target_model)
-        context_window = caps.get("context_window", 1_000_000)
+        context_window = caps["context_window"]
 
         if approach == "agentic" and gear >= 2:
             # Agentic path: model navigates files itself

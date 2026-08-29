@@ -30,6 +30,30 @@ if _ORCHESTRATOR not in sys.path:
     sys.path.insert(0, _ORCHESTRATOR)
 
 import rag_engine  # noqa: E402
+
+
+class TestCanonicalEndpointCapabilities(unittest.TestCase):
+    def test_nested_canonical_capabilities_are_visible_to_rag(self):
+        config = {"endpoints": [{
+            "id": "vendor/canonical-rag", "type": "api",
+            "service": "openrouter", "model_id": "vendor/canonical-rag",
+            "enabled": True, "status": "active", "context_window": 131_072,
+            "capabilities": {
+                "tool_access": True,
+                "file_system_access": True,
+                "web_access": False,
+                "retrieval_approach": "agentic",
+            },
+        }]}
+        caps = rag_engine.get_model_capabilities(config, "vendor/canonical-rag")
+        self.assertTrue(caps["tool_access"])
+        self.assertTrue(caps["file_system_access"])
+        self.assertEqual(caps["retrieval_approach"], "agentic")
+        self.assertEqual(caps["context_window"], 131_072)
+
+    def test_unknown_model_window_is_conservative(self):
+        caps = rag_engine.get_model_capabilities({"endpoints": []}, "typo/model")
+        self.assertEqual(caps["context_window"], 32_000)
 from tools import web_corroboration  # noqa: E402
 
 from orchestrator.embedding import install_test_stub  # noqa: E402
