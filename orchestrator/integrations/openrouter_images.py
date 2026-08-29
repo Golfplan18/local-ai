@@ -39,9 +39,10 @@ Failure-signal contract (Image Spec §5.8.1 v2.0):
   gpt-5-image as the deeper fallback) walk past a refusing provider
   instead of silently stopping the cascade.
 
-Video generation is registered for surface visibility but the call path
-is stubbed — OpenRouter's video models have provider-specific request
-shapes (Kling, Veo, Wan, Seedance all differ) and need per-model adapters.
+Video generation uses the same persistent Ora job queue as the other async
+capabilities.  The handler returns the queue descriptor immediately; a bounded
+worker runs the existing OpenRouter submit/poll/download path and publishes an
+owned artifact route when it completes.
 """
 
 from __future__ import annotations
@@ -50,12 +51,14 @@ import base64
 from contextlib import contextmanager
 import json
 import os
+from pathlib import Path
 import re
 import signal
 import sys
 import threading
 import time
 import urllib.error
+from urllib.parse import urljoin, urlsplit
 from typing import Any, Callable
 
 try:
@@ -64,10 +67,19 @@ except ImportError:  # pragma: no cover
     import network_policy
 
 _OPENROUTER_CATALOG_PATH = os.path.expanduser("~/ora/config/openrouter-catalog.json")
-_API_BASE                = "https://openrouter.ai/api/v1"
-_OPENROUTER_ORIGIN       = "https://openrouter.ai"
+_API_BASE                = network_policy.OPENROUTER_API_BASE
+_OPENROUTER_ORIGIN       = network_policy.OPENROUTER_ORIGIN
 _OPENROUTER_IMAGE_TIMEOUT_SECONDS = float(
     os.environ.get("OPENROUTER_IMAGE_TIMEOUT_SECONDS", "120"))
+_video_dispatch_context = threading.local()
+
+
+class _VideoJobCancelled(Exception):
+    """The provider or Ora queue ended one video job by cancellation."""
+
+    def __init__(self, message: str, *, remote: bool = False):
+        self.remote = remote
+        super().__init__(message)
 
 _ASPECT_HINTS = {
     "1:1": (
@@ -248,6 +260,41 @@ def _decode_image_url_to_bytes(url: str) -> bytes:
             ) from exc
 
     raise ValueError(f"unsupported image URL scheme: {url[:64]}...")
+
+
+def _is_exact_openrouter_origin(value: str) -> bool:
+    """Recognize only HTTPS URLs on the credential's exact API origin."""
+    if not isinstance(value, str) or not value or value != value.strip():
+        return False
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+        trusted = urlsplit(_OPENROUTER_ORIGIN)
+        trusted_port = trusted.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme.casefold() == trusted.scheme.casefold()
+        and (parsed.hostname or "").rstrip(".").casefold()
+        == (trusted.hostname or "").rstrip(".").casefold()
+        and (port or 443) == (trusted_port or 443)
+        and parsed.username is None
+        and parsed.password is None
+    )
+
+
+def _resolve_openrouter_api_url(value: str) -> str:
+    """Resolve a provider-relative API URL without expanding authority."""
+    if not isinstance(value, str) or not value:
+        raise network_policy.NetworkPolicyError(
+            "OpenRouter API URL is missing or malformed",
+        )
+    resolved = urljoin(_API_BASE.rstrip("/") + "/", value)
+    if not _is_exact_openrouter_origin(resolved):
+        raise network_policy.NetworkPolicyError(
+            "OpenRouter API URL is outside its trusted origin",
+        )
+    return resolved
 
 
 def _resolve_key() -> str:
@@ -438,7 +485,12 @@ def _call_image_model(model_id: str, prompt: str,
 def _call_video_model(model_id: str, prompt: str,
                        poll_interval_s: float = 5.0,
                        max_wait_s: float = 600.0,
-                       slot: str = "video_generates") -> bytes:
+                       slot: str = "video_generates",
+                       duration: int | float | None = None,
+                       style: str | None = None,
+                       resolution: str | None = None,
+                       cancel_requested: Callable[[], bool] | None = None,
+                       ) -> bytes:
     """Submit an OpenRouter video-generation job and poll until done,
     then fetch the video bytes.
 
@@ -446,10 +498,11 @@ def _call_video_model(model_id: str, prompt: str,
     returns ``{"id":..., "polling_url":..., "status":"pending"}``. The
     polling URL returns the same envelope with ``status`` transitioning
     to ``completed`` and result links in ``unsigned_urls``. Authenticated
-    polling is origin-locked to OpenRouter; public result assets receive no
-    bearer header.
+    polling is origin-locked to OpenRouter. Results on that same exact origin
+    receive the bearer; external/CDN result assets never do.
 
-    Raises ``CapabilityError`` on any failure so the cascade walks.
+    Raises ``CapabilityError`` on provider failure and
+    ``_VideoJobCancelled`` when provider or local queue cancellation wins.
     Verified end-to-end against ``google/veo-3.1-fast`` (~77s, ~1 MB MP4).
     """
     key = _resolve_key()
@@ -468,38 +521,57 @@ def _call_video_model(model_id: str, prompt: str,
     }
     started = time.time()
 
+    def stop_if_cancelled() -> None:
+        if cancel_requested is not None and cancel_requested():
+            raise _VideoJobCancelled("Ora video job cancellation requested.")
+
     # ── Submit job
+    stop_if_cancelled()
     try:
-        body = json.dumps({"model": model_id, "prompt": prompt}).encode()
-        payload, _destination = network_policy.urllib_request_bytes(
+        request_body = {"model": model_id, "prompt": prompt}
+        for name, value in (
+            ("duration", duration),
+            ("style", style),
+            ("resolution", resolution),
+        ):
+            if value is not None:
+                request_body[name] = value
+        body = json.dumps(request_body).encode()
+        payload, _destination = network_policy.openrouter_request_bytes(
             _API_BASE + "/videos",
             data=body,
             headers=headers,
             timeout=60,
-            required_origin="https://openrouter.ai",
-            max_redirects=0,
         )
         job = json.loads(payload.decode("utf-8"))
     except Exception as exc:
         raise _classify_openrouter_failure(exc, slot=slot) from exc
 
-    poll_url = job.get("polling_url")
+    raw_poll_url = job.get("polling_url")
     job_id   = job.get("id")
-    if not poll_url:
+    if not raw_poll_url:
         raise _capability_error("model_unavailable",
             "OpenRouter video submit returned no polling URL.", slot=slot)
+    try:
+        poll_url = _resolve_openrouter_api_url(raw_poll_url)
+    except Exception as exc:
+        raise _capability_error(
+            "model_unavailable",
+            "OpenRouter video submit returned an untrusted polling URL.",
+            slot=slot,
+        ) from exc
 
     # ── Poll for completion
     last_state = None
     while time.time() - started < max_wait_s:
+        stop_if_cancelled()
         time.sleep(poll_interval_s)
+        stop_if_cancelled()
         try:
-            payload, _destination = network_policy.urllib_request_bytes(
+            payload, _destination = network_policy.openrouter_request_bytes(
                 poll_url,
                 headers={"Authorization": f"Bearer {key}"},
                 timeout=30,
-                required_origin="https://openrouter.ai",
-                max_redirects=0,
             )
             last_state = json.loads(payload.decode("utf-8"))
         except Exception as exc:
@@ -507,25 +579,45 @@ def _call_video_model(model_id: str, prompt: str,
 
         status = (last_state or {}).get("status", "").lower()
         if status in ("completed", "complete", "success", "succeeded"):
+            stop_if_cancelled()
             url = _extract_video_url(last_state)
             if not url:
                 raise _capability_error("model_unavailable",
                     f"Video job {job_id} completed but no URL was present.",
                     slot=slot)
-            # ── Fetch the public result bytes without provider authority.
+            # OpenRouter-hosted results require the same bearer as polling.
+            # External/CDN results must never receive that credential.
             try:
-                payload, _destination = network_policy.urllib_request_bytes(
-                    url, timeout=180,
-                )
+                if _is_exact_openrouter_origin(url):
+                    payload, _destination = (
+                        network_policy.openrouter_request_bytes(
+                            url,
+                            headers={"Authorization": f"Bearer {key}"},
+                            timeout=180,
+                        )
+                    )
+                else:
+                    payload, _destination = network_policy.urllib_request_bytes(
+                        url, timeout=180,
+                    )
+                stop_if_cancelled()
                 return payload
+            except _VideoJobCancelled:
+                raise
             except Exception as exc:
                 raise _capability_error("model_unavailable",
                     "Video fetch failed for "
                     f"{network_policy.safe_url_label(url)}: {type(exc).__name__}",
                     slot=slot) from exc
-        if status in ("failed", "error", "errored"):
+        if status in ("cancelled", "canceled"):
+            raise _VideoJobCancelled(
+                f"OpenRouter video job {job_id} was cancelled.",
+                remote=True,
+            )
+        if status in ("failed", "error", "errored", "expired"):
             raise _capability_error("model_unavailable",
-                f"OpenRouter video job {job_id} failed.",
+                f"OpenRouter video job {job_id} ended with terminal status "
+                f"'{status}'.",
                 slot=slot)
         # pending / running / queued — continue polling
 
@@ -534,13 +626,227 @@ def _call_video_model(model_id: str, prompt: str,
         slot=slot)
 
 
+@contextmanager
+def video_conversation(conversation_id: str):
+    """Bind one HTTP request's Dialogue to an OpenRouter async dispatch."""
+    missing = object()
+    previous = getattr(_video_dispatch_context, "conversation_id", missing)
+    _video_dispatch_context.conversation_id = conversation_id
+    try:
+        yield
+    finally:
+        if previous is missing:
+            try:
+                del _video_dispatch_context.conversation_id
+            except AttributeError:
+                pass
+        else:
+            _video_dispatch_context.conversation_id = previous
+
+
+def _active_video_conversation() -> str:
+    conversation_id = getattr(_video_dispatch_context, "conversation_id", None)
+    if not isinstance(conversation_id, str) or not conversation_id:
+        raise _capability_error(
+            "missing_required_input",
+            "OpenRouter video generation requires a bound Dialogue.",
+            slot="video_generates",
+        )
+    return conversation_id
+
+
+def _video_job_queue():
+    """Return the package-qualified singleton used by server job routes."""
+    from orchestrator.job_queue import get_default_queue
+    return get_default_queue()
+
+
+def _materialize_video_bytes(
+    queue: Any,
+    conversation_id: str,
+    job_id: str,
+    payload: bytes,
+) -> dict[str, str]:
+    """Store provider bytes under the existing authenticated artifact route."""
+    if not isinstance(payload, (bytes, bytearray)) or not payload:
+        raise ValueError("OpenRouter returned no video bytes.")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", str(job_id or "")):
+        raise ValueError("OpenRouter job identity is malformed.")
+
+    from orchestrator import runtime_paths as _rp
+
+    root = Path(getattr(queue, "_root", _rp.ORA_HOME / "sessions"))
+    conversation_dir = _rp.safe_owned_subdir(root, conversation_id)
+    if not conversation_dir.is_dir() or conversation_dir.is_symlink():
+        raise ValueError("OpenRouter output owner is no longer available.")
+    uploads = _rp.safe_owned_subdir(conversation_dir, "uploads")
+    try:
+        uploads.mkdir()
+    except FileExistsError:
+        pass
+    if not uploads.is_dir() or uploads.is_symlink():
+        raise ValueError("OpenRouter output directory is unavailable.")
+
+    filename = f"openrouter-{job_id}.mp4"
+    _rp.atomic_write_bytes(uploads / filename, bytes(payload))
+    return {
+        "video_url": (
+            f"/api/jobs/{conversation_id}/{job_id}/artifacts/{filename}"
+        ),
+    }
+
+
+def _run_video_job(
+    queue: Any,
+    conversation_id: str,
+    job_id: str,
+    model_id: str,
+    prompt: str,
+    duration: int | float | None,
+    style: str | None,
+    resolution: str | None,
+) -> None:
+    """Complete one queued OpenRouter job without blocking its HTTP request."""
+    try:
+        queue.mark_in_progress(conversation_id, job_id)
+
+        def cancellation_requested() -> bool:
+            snapshot = queue.get_job(conversation_id, job_id)
+            return (
+                snapshot.get("status") == "cancelled"
+                or bool(snapshot.get("cancel_requested"))
+            )
+
+        payload = _call_video_model(
+            model_id,
+            prompt,
+            slot="video_generates",
+            duration=duration,
+            style=style,
+            resolution=resolution,
+            cancel_requested=cancellation_requested,
+        )
+        snapshot = queue.get_job(conversation_id, job_id)
+        if (
+            snapshot.get("status") == "cancelled"
+            or snapshot.get("cancel_requested")
+        ):
+            if snapshot.get("status") != "cancelled":
+                queue.cancel_job(conversation_id, job_id)
+            return
+        result_ref = _materialize_video_bytes(
+            queue, conversation_id, job_id, payload,
+        )
+        queue.mark_complete(conversation_id, job_id, result_ref)
+    except _VideoJobCancelled:
+        try:
+            snapshot = queue.get_job(conversation_id, job_id)
+            if snapshot.get("status") != "cancelled":
+                queue.cancel_job(conversation_id, job_id)
+        except Exception:
+            pass
+    except Exception as exc:
+        try:
+            snapshot = queue.get_job(conversation_id, job_id)
+            if snapshot.get("status") in {"complete", "failed", "cancelled"}:
+                return
+            detail = network_policy.redact_sensitive_text(str(exc))[:500]
+            queue.mark_failed(
+                conversation_id,
+                job_id,
+                detail or f"OpenRouter video failure: {type(exc).__name__}",
+            )
+        except Exception:
+            pass
+
+
+def _start_video_worker(*args: Any) -> None:
+    queue, _conversation_id, job_id, model_id, *_rest = args
+    worker = threading.Thread(
+        target=_run_video_job,
+        args=args,
+        name=f"openrouter-video-{model_id}-{job_id}",
+        daemon=True,
+    )
+    worker.start()
+
+
+def _dispatch_video_model(
+    model_id: str,
+    prompt: str,
+    *,
+    duration: int | float | None = None,
+    style: str | None = None,
+    resolution: str | None = None,
+) -> dict:
+    """Queue the real OpenRouter handler and return its async descriptor."""
+    conversation_id = _active_video_conversation()
+    if not _resolve_key():
+        raise _capability_error(
+            "model_unavailable", "OpenRouter API key not set.",
+            slot="video_generates",
+        )
+    if not prompt:
+        raise _capability_error(
+            "missing_required_input",
+            "Video generation requires a non-empty prompt.",
+            slot="video_generates",
+        )
+
+    parameters = {"prompt": prompt}
+    for name, value in (
+        ("duration", duration),
+        ("style", style),
+        ("resolution", resolution),
+    ):
+        if value is not None:
+            parameters[name] = value
+
+    queue = _video_job_queue()
+    job = queue.dispatch(
+        conversation_id=conversation_id,
+        capability="video_generates",
+        parameters=parameters,
+        metadata={
+            "provider": f"openrouter:{model_id}",
+            "model": model_id,
+        },
+    )
+    try:
+        _start_video_worker(
+            queue,
+            conversation_id,
+            job["id"],
+            model_id,
+            prompt,
+            duration,
+            style,
+            resolution,
+        )
+    except Exception as exc:
+        try:
+            queue.mark_failed(
+                conversation_id,
+                job["id"],
+                f"OpenRouter worker could not start: {type(exc).__name__}",
+            )
+        finally:
+            raise _capability_error(
+                "model_unavailable",
+                "OpenRouter video worker could not start.",
+                slot="video_generates",
+            ) from exc
+    return job
+
+
 def _extract_video_url(state: dict) -> str | None:
     """Walk a video-job-complete envelope for the actual video URL.
     The exact field name varies upstream — try several common shapes.
 
     OpenRouter's observed completion shape carries the result URL in
-    ``unsigned_urls`` (a list). Public result assets are fetched without the
-    OpenRouter bearer. ``signed_urls`` covers time-limited public links.
+    ``unsigned_urls`` (a list). External/CDN assets are fetched without the
+    OpenRouter bearer; same-origin results receive it. ``signed_urls`` covers
+    time-limited public links.
     """
     if not isinstance(state, dict):
         return None
@@ -580,7 +886,13 @@ def _extract_video_url(state: dict) -> str | None:
 def _video_handler_factory(model_id: str) -> Callable[[dict], Any]:
     def _handler(params: dict) -> Any:
         prompt = params.get("prompt") or params.get("text") or params.get("input") or ""
-        return _call_video_model(model_id, prompt, slot="video_generates")
+        return _dispatch_video_model(
+            model_id,
+            prompt,
+            duration=params.get("duration"),
+            style=params.get("style"),
+            resolution=params.get("resolution"),
+        )
     return _handler
 
 
