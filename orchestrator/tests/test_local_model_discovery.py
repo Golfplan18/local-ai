@@ -9,12 +9,13 @@ refresh() round-trip that preserves commercial_models + top-level keys.
 from __future__ import annotations
 
 import json
+import multiprocessing
 import shutil
 import sys
 import tempfile
 import types
 import unittest
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from unittest import mock
 
@@ -59,6 +60,52 @@ def _make_fake_model_dir(
         with open(path, "wb") as f:
             f.truncate(per_file)
     return model_dir
+
+
+def _write_inventory_while_holding_shared_lock(
+    models_json, ready, release, errors,
+):
+    """Cross-process test writer for an unrelated inventory key."""
+    try:
+        path = Path(models_json)
+        with local_model_discovery._rp.locked_file(path):
+            document = json.loads(path.read_text(encoding="utf-8"))
+            ready.set()
+            if not release.wait(10):
+                raise TimeoutError("test did not release inventory writer")
+            document["concurrent_writer_key"] = {"preserved": True}
+            local_model_discovery._rp.atomic_write_text(
+                path, json.dumps(document, indent=2) + "\n",
+            )
+        errors.put(None)
+    except BaseException as exc:
+        errors.put(f"writer: {type(exc).__name__}: {exc}")
+
+
+def _refresh_with_observed_shared_lock(
+    models_json, models_dir, attempting, acquired, results,
+):
+    """Run refresh in another process and expose its actual lock boundary."""
+    original_locked_file = local_model_discovery._rp.locked_file
+
+    @contextmanager
+    def observed_locked_file(path, *args, **kwargs):
+        attempting.set()
+        with original_locked_file(path, *args, **kwargs):
+            acquired.set()
+            yield
+
+    local_model_discovery._rp.locked_file = observed_locked_file
+    try:
+        result = refresh(
+            models_json=Path(models_json),
+            models_dir=Path(models_dir),
+            routing_config=None,
+            write=True,
+        )
+        results.put(("ok", result))
+    except BaseException as exc:
+        results.put(("error", f"{type(exc).__name__}: {exc}"))
 
 
 # ----------------------------------------------------------------------
@@ -430,6 +477,107 @@ class RefreshRoundTrip(unittest.TestCase):
         # local_models now contains the discovered entry, not the stale one.
         self.assertEqual(len(loaded["local_models"]), 1)
         self.assertEqual(loaded["local_models"][0]["id"], "local-mlx-qwen-test")
+
+    def test_present_unreadable_inventory_is_error_and_byte_identical(self):
+        original = b'{"local_models": [\xff broken inventory'
+        self.models_json.write_bytes(original)
+        _make_fake_model_dir(
+            self.models_dir, "qwen-test",
+            {"architectures": ["LlamaForCausalLM"],
+             "quantization": {"bits": 4}},
+            safetensors_bytes=2_000_000_000,
+        )
+
+        with self.assertRaisesRegex(
+            LocalModelDiscoveryError,
+            "present model inventory is unreadable",
+        ):
+            refresh(
+                models_json=self.models_json,
+                models_dir=self.models_dir,
+                routing_config=None,
+                write=True,
+            )
+
+        self.assertEqual(self.models_json.read_bytes(), original)
+
+    def test_concurrent_disjoint_writer_survives_refresh(self):
+        self._seed_models_json({
+            "local_models": [{"id": "local-mlx-outgoing"}],
+            "commercial_models": [{"id": "cloud-model"}],
+        })
+        _make_fake_model_dir(
+            self.models_dir, "incoming",
+            {"architectures": ["LlamaForCausalLM"],
+             "quantization": {"bits": 4}},
+            safetensors_bytes=2_000_000_000,
+        )
+
+        context = multiprocessing.get_context("spawn")
+        writer_ready = context.Event()
+        release_writer = context.Event()
+        refresh_attempting_lock = context.Event()
+        refresh_acquired_lock = context.Event()
+        errors = context.Queue()
+        results = context.Queue()
+        writer = context.Process(
+            target=_write_inventory_while_holding_shared_lock,
+            args=(
+                self.models_json, writer_ready, release_writer, errors,
+            ),
+        )
+        refresher = context.Process(
+            target=_refresh_with_observed_shared_lock,
+            args=(
+                self.models_json, self.models_dir,
+                refresh_attempting_lock, refresh_acquired_lock, results,
+            ),
+        )
+
+        writer.start()
+        try:
+            self.assertTrue(writer_ready.wait(10), "writer did not acquire lock")
+            refresher.start()
+            self.assertTrue(
+                refresh_attempting_lock.wait(10),
+                "refresh did not reach the shared inventory lock",
+            )
+            self.assertFalse(
+                refresh_acquired_lock.wait(0.5),
+                "refresh acquired the inventory lock while another process held it",
+            )
+        finally:
+            release_writer.set()
+            for process in (writer, refresher):
+                if process.pid is None:
+                    continue
+                process.join(10)
+                if process.is_alive():
+                    process.terminate()
+                    process.join(5)
+
+        self.assertFalse(writer.is_alive(), "writer process did not terminate")
+        self.assertFalse(refresher.is_alive(), "refresh process did not terminate")
+        self.assertEqual(writer.exitcode, 0)
+        self.assertEqual(refresher.exitcode, 0)
+        self.assertIsNone(errors.get(timeout=5))
+        status, detail = results.get(timeout=5)
+        self.assertEqual(status, "ok", detail)
+        self.assertTrue(detail["wrote"])
+        errors.close()
+        results.close()
+        errors.join_thread()
+        results.join_thread()
+
+        loaded = json.loads(self.models_json.read_text(encoding="utf-8"))
+        self.assertEqual(
+            loaded["concurrent_writer_key"], {"preserved": True},
+        )
+        self.assertEqual(
+            [entry["id"] for entry in loaded["local_models"]],
+            ["local-mlx-incoming"],
+        )
+        self.assertEqual(loaded["commercial_models"], [{"id": "cloud-model"}])
 
     def test_readable_empty_directory_no_longer_clears_inventory(self):
         """A readable-but-wrong directory must not truncate a good inventory.
