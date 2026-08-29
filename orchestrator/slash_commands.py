@@ -133,7 +133,19 @@ def run_runtime_command(
     """
     stripped = (user_input or "").strip()
     try:
-        argv = shlex.split(stripped)
+        posix = os.name != "nt"
+        argv = shlex.split(stripped, posix=posix)
+        if not posix:
+            # Windows-mode shlex preserves path backslashes, but also retains
+            # balanced argument quotes. Quotes delimit paths; they are not part
+            # of the path delivered to a command handler.
+            argv = [
+                token[1:-1]
+                if (len(token) >= 2 and token[0] == token[-1]
+                    and token[0] in ('"', "'"))
+                else token
+                for token in argv
+            ]
     except ValueError as exc:
         return f"[Slash command parse error: {exc}]"
     if not argv:

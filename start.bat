@@ -81,12 +81,16 @@ timeout /t 1 /nobreak >nul
 REM Execution Review loop + tiered persistence (mirrors start.sh).
 set "ORA_EXECUTION_LOOP=1"
 
-REM Start server in background and record the PID this launcher owns. Python
+REM Start server in background with oversight enabled by default; the explicit
+REM --no-oversight diagnostic opt-out is consumed here, exactly as on POSIX.
+REM Record the PID this launcher owns. Python
 REM performs the spawn because cmd's 'start' reports no PID back to the script,
 REM and the window title 'start' would set is not a usable identity for
 REM stop.bat. CREATE_NEW_PROCESS_GROUP reproduces 'start /B': the server keeps
 REM this console for its output and ignores the console's Ctrl+C.
-%PYTHON% -c "import os,pathlib,subprocess,sys; child=subprocess.Popen([sys.executable, os.environ['ORA_SERVER_TARGET']] + sys.argv[1:], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP); pathlib.Path(os.environ['ORA_SERVER_PID_FILE']).write_text(str(child.pid), encoding='ascii')" %*
+setlocal DisableDelayedExpansion
+%PYTHON% -c "import os,pathlib,subprocess,sys; enable_oversight='--no-oversight' not in sys.argv[1:]; args=[arg for arg in sys.argv[1:] if arg != '--no-oversight']; server_args=(['--oversight'] if enable_oversight else []) + args; child=subprocess.Popen([sys.executable, os.environ['ORA_SERVER_TARGET']] + server_args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP); pathlib.Path(os.environ['ORA_SERVER_PID_FILE']).write_text(str(child.pid), encoding='ascii')" %*
+endlocal
 
 REM Wait up to 30s. An explicit PORT is exact; otherwise scan 5000-5010.
 set "FOUND_PORT="

@@ -226,6 +226,36 @@ class TestCrossPlatformDirectArgv(unittest.TestCase):
             ],
         )
 
+    def test_windows_slash_commands_preserve_native_paths(self):
+        import slash_commands
+        command = (
+            r'/render "C:\Ora Files\spec.md" '
+            r'"\\server\share\Input Files\instance.md" '
+            r'"D:\Output Here"'
+        )
+        with mock.patch.object(slash_commands.os, "name", "nt"), \
+             mock.patch.object(
+                 slash_commands, "_cmd_render", return_value="rendered",
+             ) as render:
+            self.assertEqual(slash_commands.run_runtime_command(command), "rendered")
+        render.assert_called_once_with([
+            r"C:\Ora Files\spec.md",
+            r"\\server\share\Input Files\instance.md",
+            r"D:\Output Here",
+        ])
+
+    def test_posix_slash_command_tokenization_is_unchanged(self):
+        import shlex
+        import slash_commands
+        command = r"/render '/tmp/Ora Files/spec.md' /tmp/input\ file.md /tmp/output"
+        expected = shlex.split(command)[1:]
+        with mock.patch.object(slash_commands.os, "name", "posix"), \
+             mock.patch.object(
+                 slash_commands, "_cmd_render", return_value="rendered",
+             ) as render:
+            self.assertEqual(slash_commands.run_runtime_command(command), "rendered")
+        render.assert_called_once_with(expected)
+
     def test_windows_foreground_uses_prepared_argv_without_shell(self):
         import bash_execute
         prepared = bash_execute.prepare_command("echo hi")
