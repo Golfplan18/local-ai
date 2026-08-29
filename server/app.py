@@ -94,7 +94,8 @@ from boot import (
     run_step1_cleanup, run_step2_context_assembly, build_system_prompt_for_gear,
     _single_pass_system_prompt, _compose_output_style, _resolve_effective_style_id,
     run_gear3, run_gear4, _run_model_with_tools, run_single_pass_with_tools,
-    run_pipeline, parse_user_command,
+    run_pipeline, parse_user_command, framework_dispatch_input,
+    effective_framework_dispatch,
     route_output, TOOLS_AVAILABLE, compare_intent_with_mode,
     list_pickable_frameworks, vision_capable_for_endpoint,
     compose_dispatch_announcement, stage3_input_completeness_check,
@@ -161,6 +162,12 @@ app = Flask(__name__)
 def _sse(event_type, **kwargs):
     """Format a server-sent event."""
     return f"data: {json.dumps({'type': event_type, **kwargs})}\n\n"
+
+
+def _framework_terminal_sse(text, status):
+    """Encode refusal as a typed control outcome, never inferred from prose."""
+    event_type = "framework_preflight_refusal" if status == "refused" else "response"
+    return _sse(event_type, text=text)
 
 
 def _boot_context_api():
@@ -2905,9 +2912,146 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         print(f"[server visual-diagnostics] skipped: {_vd_exc}")
 
 
+def _preflight_framework_turn(
+    user_input, history, panel_id, framework_selected, extra_context,
+    config_name=None,
+):
+    """Run the shared Framework boundary before this server opens a turn."""
+    dispatch_input = framework_dispatch_input(user_input)
+    context = extra_context if isinstance(extra_context, dict) else {}
+    try:
+        import framework_elicitation
+        from framework_preflight import (
+            is_framework_command_syntax,
+            preflight_framework_command,
+            prepare_framework_execution,
+        )
+    except ImportError:  # package import in isolated callers
+        from orchestrator import framework_elicitation
+        from orchestrator.framework_preflight import (
+            is_framework_command_syntax,
+            preflight_framework_command,
+            prepare_framework_execution,
+        )
+    continuation_ctx = framework_elicitation.is_continuation(history or [])
+    selected = (framework_selected or "").strip()
+    is_command = is_framework_command_syntax(dispatch_input)
+    trace_debug_context = context.get("trace_debug")
+    is_trace_debug = (
+        isinstance(trace_debug_context, dict)
+        and bool(str(trace_debug_context.get("trace_ref") or "").strip())
+        and not trace_debug_context.get("error")
+    )
+    if continuation_ctx is None and not selected and not is_command and not is_trace_debug:
+        return None
+    project_nexus = _framework_project_nexus(context)
+    if is_trace_debug:
+        try:
+            import trace_debug as _trace_debug_preflight
+        except ImportError:
+            from orchestrator import trace_debug as _trace_debug_preflight
+        return preflight_framework_command(
+            _trace_debug_preflight.build_framework_command(
+                "preflight contract resolution",
+            ),
+            project_nexus=project_nexus,
+            one_run_profile=config_name,
+            input_context=context,
+        )
+    if continuation_ctx is not None:
+        return framework_elicitation.preflight_continuation(
+            history or [],
+            dispatch_input,
+            conversation_id=panel_id,
+            current_project_nexus=project_nexus,
+            input_context=context,
+        )
+    if selected:
+        return prepare_framework_execution(
+            selected,
+            dispatch_input,
+            project_nexus=project_nexus,
+            one_run_profile=config_name,
+            input_context=context,
+        )
+    return preflight_framework_command(
+        dispatch_input,
+        project_nexus=project_nexus,
+        one_run_profile=config_name,
+        input_context=context,
+    )
+
+
+def _framework_admission_context(panel_id, conversation_tag, base=None):
+    """Capture project identity and every explicit contributor before effects."""
+    context = _apply_project_model_locks(dict(base or {}))
+    bundle = build_contributor_bundle(
+        panel_id, target_tag=conversation_tag or "",
+    )
+    if bundle.get("sources"):
+        context["contributor_bundle"] = bundle
+    return context
+
+
+def _rebind_prepared_framework_turn(
+    prepared, user_input, history, panel_id, framework_selected, context,
+    config_name=None,
+):
+    """Bind newly assembled request bytes to the admitted contract snapshot."""
+    if prepared is None:
+        return None
+    dispatch_input = framework_dispatch_input(user_input)
+    try:
+        import framework_elicitation
+        from framework_preflight import (
+            is_framework_command_syntax,
+            parse_framework_command_bytes,
+            reuse_prepared_framework,
+        )
+    except ImportError:
+        from orchestrator import framework_elicitation
+        from orchestrator.framework_preflight import (
+            is_framework_command_syntax,
+            parse_framework_command_bytes,
+            reuse_prepared_framework,
+        )
+    continuation = framework_elicitation.is_continuation(history or [])
+    if continuation is not None:
+        return framework_elicitation.preflight_continuation(
+            history or [],
+            dispatch_input,
+            conversation_id=panel_id,
+            current_project_nexus=prepared.project_nexus,
+            input_context=context,
+            prepared=prepared,
+        )
+    selected = (framework_selected or "").strip()
+    if selected:
+        return reuse_prepared_framework(
+            prepared,
+            selected,
+            dispatch_input,
+            project_nexus=prepared.project_nexus,
+            one_run_profile=config_name,
+            input_context=context,
+        )
+    if is_framework_command_syntax(dispatch_input):
+        canonical, query, profile = parse_framework_command_bytes(dispatch_input)
+        return reuse_prepared_framework(
+            prepared,
+            canonical,
+            query,
+            project_nexus=prepared.project_nexus,
+            one_run_profile=profile or config_name,
+            input_context=context,
+        )
+    return prepared
+
+
 def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_context=None,
                        manual_mode_selection="", manual_lens_selection="",
-                       framework_selected="", config_name=None, conversation_tag=""):
+                       framework_selected="", config_name=None, conversation_tag="",
+                       framework_prepared=None, raw_user_input=None):
     """Generator: run the full pipeline with SSE stage events.
 
     Trace-manifest wrapper (Chunk 0). The turn body lives in
@@ -2931,6 +3075,30 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         "milestone_id": None,
         "child_refs": [],
     }
+    try:
+        if framework_prepared is None:
+            framework_prepared = _preflight_framework_turn(
+                user_input, history, panel_id, framework_selected, extra_context,
+                config_name,
+            )
+        else:
+            framework_prepared = _rebind_prepared_framework_turn(
+                framework_prepared,
+                user_input,
+                history,
+                panel_id,
+                framework_selected,
+                extra_context if isinstance(extra_context, dict) else {},
+                config_name,
+            )
+    except Exception as exc:
+        turn_state["kind"] = "framework_preflight_refusal"
+        turn_state["status"] = "refused"
+        yield _sse(
+            "framework_preflight_refusal",
+            text=f"Framework preflight refusal: {exc}",
+        )
+        return
     # Scope every invocation, including tests and future direct callers that
     # bypass ``agentic_loop_stream``.  The implementation intentionally sets
     # several per-turn contexts as the trace and risk tier become known; these
@@ -2970,7 +3138,10 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                     manual_lens_selection=manual_lens_selection,
                     framework_selected=framework_selected,
                     config_name=config_name,
-                    conversation_tag=turn_tag, turn_state=turn_state)
+                    conversation_tag=turn_tag,
+                    framework_prepared=framework_prepared,
+                    raw_user_input=raw_user_input,
+                    turn_state=turn_state)
             except GeneratorExit:
                 # Client disconnect — not an error. The finalizer derives
                 # completed (step-health present / completed hint) vs abandoned.
@@ -3000,6 +3171,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
 def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, extra_context=None,
                             manual_mode_selection="", manual_lens_selection="",
                             framework_selected="", config_name=None, conversation_tag="",
+                            framework_prepared=None, raw_user_input=None,
                             turn_state=None):
     """Generator: run the full pipeline with SSE stage events.
 
@@ -3016,14 +3188,33 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     once Phase 3-6 land.
     """
     if turn_state is None:
-        # Direct invocation (tests, future callers) — still track locally so
-        # the branch assignments below never need a guard.
-        turn_state = {"trace_dir": None, "kind": "unknown", "status": None,
-                      "mode": None, "gear": None, "parent_ref": None}
+        # Preserve admission, finalization, and context cleanup for direct
+        # callers of the implementation seam.
+        yield from _pipeline_stream(
+            user_input,
+            history,
+            panel_id=panel_id,
+            images=images,
+            extra_context=extra_context,
+            manual_mode_selection=manual_mode_selection,
+            manual_lens_selection=manual_lens_selection,
+            framework_selected=framework_selected,
+            config_name=config_name,
+            conversation_tag=conversation_tag,
+            framework_prepared=framework_prepared,
+            raw_user_input=raw_user_input,
+        )
+        return
     execution_context = (extra_context or {}).get("execution_context", "interactive")
     manual_mode_selection = (manual_mode_selection or "").strip()
     manual_lens_selection = (manual_lens_selection or "").strip()
     framework_selected = (framework_selected or "").strip()
+
+    def _admitted_framework_project(context):
+        if framework_prepared is not None:
+            return framework_prepared.project_nexus
+        return _framework_project_nexus(context)
+
     if framework_selected:
         try:
             framework_selected = _resolve_selected_framework(framework_selected)
@@ -3079,7 +3270,11 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             from orchestrator import pipeline_trace as _pt
             trace_dir = _pt.start_trace(
                 conversation_id=panel_id,
-                raw_input=user_input,
+                raw_input=(
+                    raw_user_input
+                    if isinstance(raw_user_input, str)
+                    else user_input
+                ),
                 ambiguity_mode="assume",
                 stealth=(_conv_tag == "stealth"),
                 conversation_tag=_conv_tag,
@@ -3219,17 +3414,22 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
                 config, trace_dir=trace_dir, conversation_tag=_conv_tag,
                 trace_context=_trace_ctx,
-                project_nexus=_framework_project_nexus(extra_context),
+                project_nexus=_admitted_framework_project(extra_context),
                 one_run_profile=config_name,
-                style_context=extra_context)
-            try:
-                _tdbg.record_diagnosis_learning(panel_id, _trace_debug_payload.get("trace_ref"), result_text, stealth=(_conv_tag == "stealth"))
-            except Exception:
-                pass
+                style_context=extra_context,
+                input_context=extra_context,
+                prepared=framework_prepared)
             turn_state["status"] = _trace_ctx.get("status") or "completed"
             turn_state["framework_id"] = _trace_ctx.get("framework_id")
             turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
             turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
+            if turn_state["status"] == "refused":
+                yield _framework_terminal_sse(result_text, "refused")
+                return
+            try:
+                _tdbg.record_diagnosis_learning(panel_id, _trace_debug_payload.get("trace_ref"), result_text, stealth=(_conv_tag == "stealth"))
+            except Exception:
+                pass
             if trace_dir:
                 _pt_dbg.write_step(
                     trace_dir, "step-debug-result",
@@ -3377,17 +3577,24 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 continuation_ctx, history or [], config,
                 latest_user_text=user_input,
                 conversation_id=panel_id,
-                current_project_nexus=_framework_project_nexus(extra_context),
+                current_project_nexus=_admitted_framework_project(extra_context),
                 style_context=extra_context,
                 input_context=_continuation_context,
                 images=images,
                 trace_dir=trace_dir,
                 conversation_tag=_conv_tag,
                 trace_context=_continuation_trace_ctx,
+                prepared=framework_prepared,
             )
         except Exception as exc:
             turn_state["status"] = "error"
             yield _sse("error", text=f"Framework elicitation error: {exc}")
+            return
+        turn_state["status"] = (
+            _continuation_trace_ctx.get("status") or "completed"
+        )
+        if turn_state["status"] == "refused":
+            yield _framework_terminal_sse(text, "refused")
             return
         # Interactive framework continuation also bypasses the ordinary gear
         # tail. Run only a completed milestone response through the shared
@@ -3486,8 +3693,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         )
         _picker_trace_ctx = {"conversation_tag": _conv_tag}
         _picker_command = f"/framework {framework_selected}"
-        if user_input.strip():
-            _picker_command += f" {user_input.strip()}"
+        if user_input:
+            _picker_command += f" {user_input}"
         try:
             import framework_elicitation
             if user_input.strip():
@@ -3535,11 +3742,12 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                         _picker_command, config, trace_dir=trace_dir,
                         conversation_tag=_conv_tag,
                         trace_context=_picker_trace_ctx,
-                        project_nexus=_framework_project_nexus(_framework_context),
+                        project_nexus=_admitted_framework_project(_framework_context),
                         one_run_profile=config_name,
                         style_context=_framework_context,
                         input_context=_framework_context,
                         images=images,
+                        prepared=framework_prepared,
                     )
                 except Exception:
                     try:
@@ -3556,6 +3764,9 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 turn_state["child_refs"] = list(
                     _picker_trace_ctx.get("child_trace_refs") or []
                 )
+                if turn_state["status"] == "refused":
+                    yield _framework_terminal_sse(result_text, "refused")
+                    return
                 # Picker output bypasses the ordinary gear tail just like the
                 # typed /framework path. Give it the same terminal visual
                 # authority and copy its durable outcome into the existing
@@ -3596,7 +3807,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             )
             text = framework_elicitation.start_elicitation(
                 framework_selected, history or [], config,
-                project_nexus=_framework_project_nexus(_framework_context),
+                conversation_id=panel_id,
+                project_nexus=_admitted_framework_project(_framework_context),
                 one_run_profile=config_name,
                 style_context=_framework_context,
                 input_context=_framework_context,
@@ -3604,11 +3816,12 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 trace_dir=trace_dir,
                 conversation_tag=_conv_tag,
                 trace_context=_picker_trace_ctx,
+                prepared=framework_prepared,
             )
             turn_state["status"] = _picker_trace_ctx.get("status") or "completed"
             turn_state["framework_id"] = _picker_trace_ctx.get("framework_id")
             turn_state["mode"] = _picker_trace_ctx.get("mode") or turn_state["mode"]
-            yield _sse("response", text=text)
+            yield _framework_terminal_sse(text, turn_state["status"])
             return
         except Exception as exc:
             turn_state["status"] = "error"
@@ -3668,11 +3881,12 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                     user_input, config, trace_dir=trace_dir,
                     conversation_tag=_conv_tag,
                     trace_context=_trace_ctx,
-                    project_nexus=_framework_project_nexus(extra_context),
+                    project_nexus=_admitted_framework_project(extra_context),
                     one_run_profile=config_name,
                     style_context=extra_context,
                     input_context=extra_context,
-                    images=images)
+                    images=images,
+                    prepared=framework_prepared)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
@@ -3686,6 +3900,9 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                         (panel_id, _fw_ts_srv or ""), risk_tier=_fw_tier_srv)
                 except Exception:
                     pass
+                return
+            if turn_state["status"] == "refused":
+                yield _framework_terminal_sse(result_text, "refused")
                 return
             # Framework/milestone output bypasses ordinary gear dispatch, so
             # hand its final prose to the shared terminal visual authority
@@ -3729,7 +3946,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         try:
             text = framework_elicitation.start_elicitation(
                 framework_name, history or [], config,
-                project_nexus=_framework_project_nexus(extra_context),
+                conversation_id=panel_id,
+                project_nexus=_admitted_framework_project(extra_context),
                 one_run_profile=config_name,
                 style_context=extra_context,
                 input_context=extra_context,
@@ -3737,12 +3955,14 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 trace_dir=trace_dir,
                 conversation_tag=_conv_tag,
                 trace_context=_trace_ctx,
+                prepared=framework_prepared,
             )
         except Exception as exc:
             turn_state["status"] = "error"
             yield _sse("error", text=f"Framework elicitation error: {exc}")
             return
-        yield _sse("response", text=text)
+        turn_state["status"] = _trace_ctx.get("status") or "completed"
+        yield _framework_terminal_sse(text, turn_state["status"])
         return
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
@@ -4565,7 +4785,8 @@ def _traced_direct_entry_stream(user_input, history, images=None,
 def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main", images=None, extra_context=None,
                           manual_mode_selection="", manual_lens_selection="",
                           framework_selected="", config_name=None,
-                          conversation_tag=""):
+                          conversation_tag="", framework_prepared=None,
+                          raw_user_input=None):
     """Route to pipeline or direct stream based on mode.
 
     ``extra_context`` (WP-3.3): optional merged-input dict threaded into the
@@ -4605,7 +4826,7 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                 f"for {panel_id}: {exc}", file=sys.stderr, flush=True,
             )
         with scope:
-            if use_pipeline:
+            if use_pipeline or framework_prepared is not None:
                 yield from _pipeline_stream(
                     user_input, history, panel_id=panel_id,
                     images=images, extra_context=extra_context,
@@ -4614,6 +4835,8 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                     framework_selected=framework_selected,
                     config_name=config_name,
                     conversation_tag=turn_tag,
+                    framework_prepared=framework_prepared,
+                    raw_user_input=raw_user_input,
                 )
             else:
                 yield from _traced_direct_entry_stream(
@@ -6415,7 +6638,16 @@ def framework_analyze_inputs():
     prior_responses = data.get("prior_responses") or {}
 
     try:
+        project_context = _apply_project_model_locks({})
+        project_nexus = _framework_project_nexus(project_context)
+    except Exception as e:
+        return _json_response({
+            "error": f"Framework preflight refusal: {e}",
+        }, 409)
+
+    try:
         from framework_input_gap import analyze_framework_inputs
+        from framework_preflight import FrameworkPreflightError
     except Exception as e:
         return json.dumps({"error": f"analyzer unavailable: {e}"}), 500
 
@@ -6426,7 +6658,11 @@ def framework_analyze_inputs():
             attachments=attachments,
             canvas_summary=canvas_summary,
             prior_responses=prior_responses,
+            project_nexus=project_nexus,
+            input_context=project_context,
         )
+    except FrameworkPreflightError as e:
+        return json.dumps({"error": f"Framework preflight refusal: {e}"}), 409
     except Exception as e:
         return json.dumps({"error": f"analyze failed: {e}"}), 500
 
@@ -7768,6 +8004,13 @@ def _active_project_model_nexus():
 
 def _apply_project_model_locks(extra_context):
     """Thread exact project visual locks into the same turn as its text snapshot."""
+    if (isinstance(extra_context, dict)
+            and extra_context.get("model_profile_project_nexus")):
+        # The HTTP entry boundary already captured and authenticated this
+        # turn's project. Preserve that one identity throughout the request;
+        # a later active-project switch must not rebind an admitted run.
+        _framework_project_nexus(extra_context)
+        return extra_context
     nexus, locks = _active_project_model_context()
     if nexus is None and locks is None:
         return extra_context
@@ -7977,7 +8220,8 @@ def _authoritative_dialogue_history(
 def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
                                manual_mode_selection="", manual_lens_selection="",
                                framework_selected="", submission_id="", output_destination="",
-                               config_name=None, style_audience=""):
+                               config_name=None, style_audience="",
+                               framework_prepared=None):
     """Shared pipeline helper — runs the pipeline synchronously, persists the
     chunk file, and returns a plain JSON reply.
 
@@ -8022,19 +8266,35 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     ):
         return json.dumps({"error": "empty message"}), 400
 
-    # Parse /direct, /save, /saveboth, /style commands from input
-    clean_input, use_pipeline, output_target, style_override = parse_user_command(user_input)
+    # Normalize the existing outer/risk wrappers once, retaining raw input for
+    # audit and carrying every recognized directive to the runtime lanes.
+    dispatch = effective_framework_dispatch(user_input)
+    clean_input = dispatch.effective_input
+    use_pipeline = dispatch.use_pipeline
+    output_target = dispatch.output_target
+    style_override = (
+        {"style_id": dispatch.style_id} if dispatch.style_was_set else None
+    )
     # /style <id> one-off — fold onto extra_context so it lands on context_pkg
     # (overriding any project/engine default; "" clears the style this turn).
     if style_override is not None:
         extra_context = dict(extra_context or {})
         extra_context["style_id"] = style_override["style_id"]
+    if dispatch.risk_override is not None:
+        extra_context = dict(extra_context or {})
+        extra_context["risk_override"] = dispatch.risk_override
 
     # G1.36 honne/tatemae — an "internal" audience (the input-pane toggle) makes
     # this turn read in the active project's INTERACTION style rather than the
     # default OUTPUT style. An explicit /style one-off above still wins.
     extra_context = _apply_style_audience(extra_context, style_audience)
-    extra_context = _apply_project_model_locks(extra_context)
+    try:
+        extra_context = _apply_project_model_locks(extra_context)
+    except Exception as exc:
+        _delete_pending_submission(submission_id)
+        return json.dumps({
+            "error": f"Framework preflight refusal: {exc}",
+        }), 409
     # Framework markers carry this bounded identity only.  The continuation
     # handler resolves the existing pending/processed record; image bytes
     # never enter the marker or this reference itself.
@@ -8069,6 +8329,18 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
             panel_id, history,
         )
 
+    try:
+        if framework_prepared is None:
+            framework_prepared = _preflight_framework_turn(
+                clean_input, history, panel_id, framework_selected, extra_context,
+                config_name,
+            )
+    except Exception as exc:
+        _delete_pending_submission(submission_id)
+        return json.dumps({
+            "error": f"Framework preflight refusal: {exc}",
+        }), 409
+
     # Mark the conversation as Pending for the duration of the run so the
     # sidebar list endpoint can group it correctly. Cleared in finally.
     _pending_conversations.add(panel_id)
@@ -8080,6 +8352,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     chunk_id       = None
     envelope_persisted = False
     failure_summary = None
+    framework_refusal = None
     cfg            = None
     ep             = None
     trace_ref      = None
@@ -8134,7 +8407,9 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     manual_lens_selection=manual_lens_selection,
                     framework_selected=framework_selected,
                     config_name=config_name,
-                    conversation_tag=tag):
+                    conversation_tag=tag,
+                    framework_prepared=framework_prepared,
+                    raw_user_input=user_input):
                 try:
                     d = json.loads(chunk[6:])
                 except Exception:
@@ -8142,6 +8417,8 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                 t = d.get("type")
                 if t == "response":
                     final_response = d.get("text", "")
+                elif t == "framework_preflight_refusal":
+                    framework_refusal = d.get("text", "")
                 elif t == "pipeline_stage":
                     last_stage = d.get("stage")
                     if d.get("mode"):
@@ -8161,6 +8438,16 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
             # boot it surfaces as an errored chunk via orphan recovery.
             failure_summary = f"pipeline crashed: {e}"
             print(f"[ERROR] _invoke_pipeline pipeline crash: {e}")
+
+        # A Framework refusal is a typed admission outcome, not assistant
+        # prose. Do not route, save, or leave a pending submission behind.
+        if framework_refusal is not None:
+            _delete_pending_submission(submission_id)
+            return (
+                json.dumps({"error": framework_refusal}),
+                409,
+                {"X-Ora-Outcome": "framework_preflight_refusal"},
+            )
 
         if final_response is not None:
             # Meta-layer oversight health check — if any watcher is
@@ -8433,7 +8720,7 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,
                      extra_context=None, tag="", manual_mode_selection="",
                      manual_lens_selection="", framework_selected="",
                      submission_id="", output_destination="", config_name=None,
-                     style_audience=""):
+                     style_audience="", framework_prepared=None):
     """Run one conversation turn under its lifecycle lock.
 
     Delete Forever marks a tombstone before waiting on this lock. That lets an
@@ -8458,13 +8745,22 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,
                 "conversation_id": panel_id,
             }), 409
         effective_tag = _effective_conversation_tag(panel_id, tag)
-        effective_context = dict(extra_context or {})
-        effective_context.pop("contributor_bundle", None)
-        contributor_bundle = build_contributor_bundle(
-            panel_id, target_tag=effective_tag,
-        )
-        if contributor_bundle.get("sources"):
-            effective_context["contributor_bundle"] = contributor_bundle
+        if framework_prepared is not None:
+            try:
+                from framework_preflight import prepared_input_context
+            except ImportError:
+                from orchestrator.framework_preflight import prepared_input_context
+            effective_context = prepared_input_context(
+                framework_prepared, extra_context,
+            )
+        else:
+            effective_context = dict(extra_context or {})
+            effective_context.pop("contributor_bundle", None)
+            contributor_bundle = build_contributor_bundle(
+                panel_id, target_tag=effective_tag,
+            )
+            if contributor_bundle.get("sources"):
+                effective_context["contributor_bundle"] = contributor_bundle
         return _invoke_pipeline_unlocked(
             user_input, history, panel_id, is_main,
             images=images, extra_context=effective_context or None,
@@ -8476,6 +8772,7 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,
             output_destination=output_destination,
             config_name=config_name,
             style_audience=style_audience,
+            framework_prepared=framework_prepared,
         )
 
 
@@ -8484,7 +8781,7 @@ def chat():
     """Ordinary Inquiry. Programming uses only the explicit /api/programming routes."""
 
     data = request.get_json(force=True)
-    user_input = str(data.get("message") or "").strip()
+    user_input = str(data.get("message") or "")
     supplied_history = data.get("history", [])
     history = []
     panel_id = str(data.get("panel_id") or data.get("conversation_id") or "main").strip()
@@ -8511,7 +8808,7 @@ def chat():
     trace_debug_payload = (
         data.get("trace_debug") if isinstance(data.get("trace_debug"), dict) else None
     )
-    if not user_input and not trace_debug_payload and not framework_selected:
+    if not user_input.strip() and not trace_debug_payload and not framework_selected:
         return _json_response({"error": "empty message"}, 400)
     if not _valid_live_conversation_id(panel_id):
         return _json_response({"error": "invalid conversation_id"}, 400)
@@ -8529,6 +8826,44 @@ def chat():
         history, history_state = _authoritative_dialogue_history(
             panel_id, supplied_history,
         )
+        try:
+            preflight_context = _framework_admission_context(
+                panel_id,
+                tag,
+                ({"trace_debug": trace_debug_payload}
+                 if isinstance(trace_debug_payload, dict) else {})
+            )
+            framework_prepared = _preflight_framework_turn(
+                user_input,
+                history,
+                panel_id,
+                framework_selected,
+                preflight_context,
+                config_name,
+            )
+        except Exception as exc:
+            return _json_response({
+                "error": f"Framework preflight refusal: {exc}",
+            }, 409)
+        # Only an admitted contract may inspect request-carried attachments.
+        # Rebinding uses the same in-memory contract and does not reread it.
+        text_parts, images = _process_attachments(data.get("attachments", []))
+        if text_parts:
+            user_input += "\n\n" + "\n\n".join(text_parts)
+            try:
+                framework_prepared = _rebind_prepared_framework_turn(
+                    framework_prepared,
+                    user_input,
+                    history,
+                    panel_id,
+                    framework_selected,
+                    preflight_context,
+                    config_name,
+                )
+            except Exception as exc:
+                return _json_response({
+                    "error": f"Framework preflight refusal: {exc}",
+                }, 409)
         submission_id = _log_pending_submission({
             "endpoint": "/chat",
             "conversation_id": panel_id,
@@ -8551,10 +8886,7 @@ def chat():
             "trace_debug": trace_debug_payload,
         })
 
-    text_parts, images = _process_attachments(data.get("attachments", []))
-    if text_parts:
-        user_input += "\n\n" + "\n\n".join(text_parts)
-    extra_context = {}
+    extra_context = dict(preflight_context)
     if manual_visual_type:
         extra_context["visual_kind"] = manual_visual_type
     if image_provider_override:
@@ -8572,6 +8904,7 @@ def chat():
         output_destination=output_destination,
         config_name=config_name,
         style_audience=style_audience,
+        framework_prepared=framework_prepared,
     )
 
 
@@ -8668,7 +9001,7 @@ def chat_multipart():
       4. Returns SSE exactly like /chat.
     """
     form = request.form
-    user_input = (form.get("message") or "").strip()
+    user_input = form.get("message") or ""
     conversation_id = (form.get("conversation_id") or form.get("panel_id") or "main").strip()
     panel_id = (form.get("panel_id") or conversation_id).strip() or "main"
     is_main = (form.get("is_main_feed", "true").lower() not in {"false", "0", "no"})
@@ -8727,7 +9060,7 @@ def chat_multipart():
         }, 400)
     if visual_native_file is not None and visual_editor not in {"excalidraw", "konva"}:
         return _json_response({"error": "invalid visual_editor"}, 400)
-    if not user_input and not framework_selected and visual_native_file is None:
+    if not user_input.strip() and not framework_selected and visual_native_file is None:
         return json.dumps({"error": "empty message"}), 400
     if not conversation_id:
         return json.dumps({"error": "missing conversation_id"}), 400
@@ -8828,6 +9161,24 @@ def chat_multipart():
         history, history_state = _authoritative_dialogue_history(
             panel_id, supplied_history,
         )
+        try:
+            admission_base = {}
+            if spatial_rep is not None:
+                admission_base["spatial_representation"] = spatial_rep
+            if annotations_payload is not None:
+                admission_base["annotations"] = annotations_payload
+            preflight_context = _framework_admission_context(
+                panel_id, tag, admission_base,
+            )
+            framework_prepared = _preflight_framework_turn(
+                user_input, history, panel_id, framework_selected,
+                preflight_context,
+                config_name,
+            )
+        except Exception as exc:
+            return _json_response({
+                "error": f"Framework preflight refusal: {exc}",
+            }, 409)
 
         # Allocate the existing submission identity before any checkpoint
         # write. It names both immutable visual files and the pending marker.
@@ -8835,13 +9186,16 @@ def chat_multipart():
 
         created_paths: list[str] = []
 
-        def reject_uncommitted(payload, status):
+        def cleanup_uncommitted_paths():
             for path in created_paths:
                 try:
                     if os.path.isfile(path) and not os.path.islink(path):
                         os.remove(path)
                 except OSError:
                     pass
+
+        def reject_uncommitted(payload, status):
+            cleanup_uncommitted_paths()
             return _json_response(payload, status)
 
         # Optional image upload — saved first so the pending record can carry
@@ -9014,7 +9368,7 @@ def chat_multipart():
             return reject_uncommitted({"error": "submission commit failed"}, 500)
 
     # Build extra_context threaded into the pipeline
-    extra_context = {}
+    extra_context = dict(preflight_context)
     if manual_visual_type:
         extra_context["visual_kind"] = manual_visual_type
     if image_provider_override:
@@ -9122,7 +9476,7 @@ def chat_multipart():
           f"manual_lens={manual_lens_selection or 'none'} "
           f"prior_spatial={'yes' if extra_context.get('prior_spatial_representation') else 'no'}")
 
-    return _invoke_pipeline(
+    pipeline_result = _invoke_pipeline(
         user_input, history, panel_id, is_main,
         images=model_images or None,
         extra_context=extra_context or None,
@@ -9134,7 +9488,24 @@ def chat_multipart():
         output_destination=output_destination,
         config_name=config_name,
         style_audience=style_audience,
+        framework_prepared=framework_prepared,
     )
+    # A defense-in-depth refusal from downstream is still a refusal, never an
+    # ordinary response. Roll back every multipart artifact and pending marker.
+    outcome_headers = (
+        pipeline_result[2]
+        if isinstance(pipeline_result, tuple) and len(pipeline_result) >= 3
+        else None
+    )
+    typed_refusal = (
+        isinstance(outcome_headers, dict)
+        and outcome_headers.get("X-Ora-Outcome")
+        == "framework_preflight_refusal"
+    )
+    if typed_refusal:
+        _delete_pending_submission(submission_id)
+        cleanup_uncommitted_paths()
+    return pipeline_result
 
 
 # ── WP-7.4.8: canvas save / autosave persistence ─────────────────────────────

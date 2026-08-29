@@ -1157,6 +1157,27 @@ def _approval_auth_key() -> bytes:
         return value
 
 
+def _read_approval_auth_key() -> bytes:
+    """Read existing approval authentication material without creating it."""
+    path = _approval_key_path()
+    if os.path.islink(path):
+        raise RuntimeError("approval authentication key is a symlink")
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except FileNotFoundError as exc:
+        raise RuntimeError("approval authentication key is unavailable") from exc
+    try:
+        value = os.read(fd, 33)
+    finally:
+        os.close(fd)
+    if len(value) != 32:
+        raise RuntimeError("approval authentication key is invalid")
+    return value
+
+
 def _approval_store_mac(data: dict, key: bytes) -> str:
     body = {k: v for k, v in data.items() if k != "store_mac"}
     encoded = json.dumps(

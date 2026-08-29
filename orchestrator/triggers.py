@@ -142,6 +142,16 @@ def _safe_text(value: Any, label: str, *, limit: int = 4000, minimum: int = 1) -
     return exact
 
 
+def _exact_text(value: Any, label: str, *, limit: int = 4000) -> str:
+    """Validate request text without rewriting its whitespace or line bytes."""
+    exact = str(value or "")
+    if not exact.strip() or len(exact) > limit:
+        raise TriggerInputRequired(
+            f"{label} must contain 1-{limit} characters"
+        )
+    return exact
+
+
 def _excerpt(value: Any) -> str:
     text = value if isinstance(value, str) else _canonical_json(value)
     text = text.strip()
@@ -411,7 +421,7 @@ def _validate_action(raw: Any) -> dict:
         action = {
             "kind": kind,
             "framework": _safe_text(raw.get("framework"), "framework", limit=200),
-            "input": _safe_text(raw.get("input"), "framework input", limit=4000),
+            "input": _exact_text(raw.get("input"), "framework input", limit=4000),
         }
         if raw.get("project_nexus"):
             action["project_nexus"] = _safe_id(raw["project_nexus"], "project_nexus")
@@ -481,6 +491,41 @@ def normalize_spec(raw: Mapping[str, Any]) -> dict:
 # ── action binding ───────────────────────────────────────────────────────
 
 
+def _resolve_framework_action_binding(
+    action: Mapping[str, Any],
+) -> tuple[dict, Any]:
+    try:
+        from framework_preflight import prepare_framework_execution
+        from framework_parser import FRAMEWORKS_DIR
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator.framework_preflight import prepare_framework_execution
+        from orchestrator.framework_parser import FRAMEWORKS_DIR
+    try:
+        prepared = prepare_framework_execution(
+            action["framework"],
+            action["input"],
+            project_nexus=action.get("project_nexus"),
+        )
+    except Exception as exc:
+        raise TriggerConflict(f"Framework preflight refusal: {exc}") from exc
+    path = Path(FRAMEWORKS_DIR) / prepared.canonical_filename
+    if not path.is_file():
+        raise TriggerConflict(f"framework file is missing: {path}")
+    identity = artifact_identity(path)
+    contract_digest = "sha256:" + hashlib.sha256(
+        prepared.contract_text.encode("utf-8")
+    ).hexdigest()
+    return ({
+        "kind": "framework",
+        "framework": prepared.canonical_filename,
+        "path": identity["path"],
+        # Approval binds the exact composed contract, not merely its base file.
+        "command_digest": contract_digest,
+        "project_nexus": prepared.project_nexus,
+        "project_profile": prepared.project_profile,
+    }, prepared)
+
+
 def resolve_action_binding(action: Mapping[str, Any]) -> dict:
     """Authenticate that the named unit of work exists, and bind its identity.
 
@@ -515,28 +560,8 @@ def resolve_action_binding(action: Mapping[str, Any]) -> dict:
             "command_digest": _digest(list(command)),
         }
     if kind == "framework":
-        try:
-            from framework_invocability import resolve_user_invocable_framework
-            from framework_parser import FRAMEWORKS_DIR
-        except ImportError:  # pragma: no cover - package import context
-            from orchestrator.framework_invocability import (
-                resolve_user_invocable_framework,
-            )
-            from orchestrator.framework_parser import FRAMEWORKS_DIR
-        try:
-            filename = resolve_user_invocable_framework(action["framework"])
-        except Exception as exc:
-            raise TriggerConflict(str(exc)) from exc
-        path = Path(FRAMEWORKS_DIR) / filename
-        if not path.is_file():
-            raise TriggerConflict(f"framework file is missing: {path}")
-        identity = artifact_identity(path)
-        return {
-            "kind": kind,
-            "framework": filename,
-            "path": identity["path"],
-            "command_digest": "sha256:" + identity["sha256"],
-        }
+        binding, _prepared = _resolve_framework_action_binding(action)
+        return binding
     if kind == "email_send":
         try:
             try:
@@ -1069,6 +1094,28 @@ class TriggerService:
             if current.get("status") == "retired":
                 raise TriggerConflict("a retired Trigger cannot be fired")
             spec = current["spec"]
+            framework_binding = None
+            framework_prepared = None
+            if spec["action"]["kind"] == "framework":
+                # Resolve and compare the exact composed contract before a
+                # firing claim exists.  The same in-memory snapshot is handed
+                # to execution; neither step rereads the Framework.
+                framework_binding, framework_prepared = (
+                    _resolve_framework_action_binding(spec["action"])
+                )
+                if current.get("status") == "active":
+                    if current.get("approved_spec_digest") != _digest(spec):
+                        raise TriggerConflict(
+                            "the approved specification no longer matches this "
+                            "Trigger; re-review and re-activate it"
+                        )
+                    approved = current.get("approved_action_binding")
+                    if approved != framework_binding:
+                        raise TriggerConflict(
+                            "action_definition_drifted: what this Trigger would run "
+                            "has changed since it was approved. Re-review and "
+                            "re-activate it."
+                        )
             subject = {
                 "trigger_id": trigger_id,
                 "spec_digest": _digest(spec),
@@ -1099,16 +1146,31 @@ class TriggerService:
                         "receipt": receipt}
             _RUNNING[trigger_id] = event_id
         self._executor(lambda: self._execute(
-            trigger_id, event_id, extra_receipt=extra_receipt))
+            trigger_id, event_id, extra_receipt=extra_receipt,
+            framework_binding=framework_binding,
+            framework_prepared=framework_prepared,
+            claimed_spec_digest=_digest(spec),
+        ))
         return {"event_id": event_id, "status": "claimed"}
 
     def _execute(self, trigger_id: str, event_id: str, *,
-                 extra_receipt: dict | None = None) -> None:
+                 extra_receipt: dict | None = None,
+                 framework_binding: dict | None = None,
+                 framework_prepared=None,
+                 claimed_spec_digest: str | None = None) -> None:
         ledger = self.ledger
         try:
             record = self._require(trigger_id)
             spec = record["spec"]
-            binding = resolve_action_binding(spec["action"])
+            if claimed_spec_digest and _digest(spec) != claimed_spec_digest:
+                raise TriggerConflict(
+                    "the Trigger specification changed after its firing was claimed"
+                )
+            binding = (
+                framework_binding
+                if framework_binding is not None
+                else resolve_action_binding(spec["action"])
+            )
             approved = record.get("approved_action_binding")
             if record.get("status") == "active":
                 if record.get("approved_spec_digest") != _digest(spec):
@@ -1128,6 +1190,7 @@ class TriggerService:
                 binding = {**binding, "trigger_id": trigger_id}
             receipt = _execute_action(
                 spec["action"], binding,
+                prepared=framework_prepared,
                 on_provider_contact=lambda: ledger.transition(
                     event_id, {"claimed"}, "claimed",
                     receipt={"outcome": "sending", "provider_contacted": True},
@@ -1221,6 +1284,7 @@ def _spawn_firing_thread(work: Callable[[], None]) -> None:
 
 def _execute_action(
     action: Mapping[str, Any], binding: Mapping[str, Any], *,
+    prepared=None,
     on_provider_contact: Callable[[], None] | None = None,
 ) -> dict:
     """Run one already-authenticated unit of work and describe the result."""
@@ -1243,6 +1307,8 @@ def _execute_action(
             "output_excerpt": _excerpt(result) if result is not None else "",
         }
     if action["kind"] == "framework":
+        if prepared is None:
+            _binding, prepared = _resolve_framework_action_binding(action)
         try:
             import milestone_executor as _me
             import pipeline_trace as _pt
@@ -1262,6 +1328,8 @@ def _execute_action(
                 project_nexus=action.get("project_nexus"),
                 trace_dir=trace_dir,
                 conversation_tag="trigger",
+                input_context=dict(prepared.input_context),
+                prepared=prepared,
             )
             if not getattr(result, "success", False):
                 raise TriggerConflict(

@@ -16,6 +16,7 @@ import hashlib
 import glob as globmod
 import contextvars
 from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -3989,7 +3990,11 @@ def list_pickable_frameworks() -> list[dict]:
     return rows
 
 
-def parse_framework_input_spec(framework_id: str) -> dict | None:
+def parse_framework_input_spec(
+    framework_id: str,
+    *,
+    spec_text: str | None = None,
+) -> dict | None:
     """V3 Input Handling Phase 7 — read a framework's input declaration.
 
     Returns a dict with both the structured Setup Questions (deterministic
@@ -4013,20 +4018,32 @@ def parse_framework_input_spec(framework_id: str) -> dict | None:
     ``input_contract`` is the raw text under `## INPUT CONTRACT`. The LLM
     gap analyzer consumes this when no structured questions are declared.
 
-    Returns ``None`` if the framework file does not exist.
+    ``spec_text`` lets an authenticated caller supply the already-composed
+    contract that passed Framework preflight. When omitted, the historical
+    picker behavior reads the registered base file. Returns ``None`` if that
+    file does not exist.
     """
-    path = os.path.join(FRAMEWORKS_DIR, framework_id + ".md")
-    try:
-        with open(path, "r") as f:
-            text = f.read()
-    except FileNotFoundError:
+    canonical_id = os.path.basename(str(framework_id or "").strip())
+    if canonical_id.endswith(".md"):
+        canonical_id = canonical_id[:-3]
+    if not canonical_id:
         return None
+
+    if spec_text is None:
+        path = os.path.join(FRAMEWORKS_DIR, canonical_id + ".md")
+        try:
+            with open(path, "r") as f:
+                text = f.read()
+        except FileNotFoundError:
+            return None
+    else:
+        text = spec_text
 
     setup_questions = _parse_setup_questions(text)
     input_contract = _extract_section(text, "INPUT CONTRACT") or None
 
     return {
-        "id": framework_id,
+        "id": canonical_id,
         "setup_questions": setup_questions,
         "input_contract": input_contract,
     }
@@ -11770,6 +11787,122 @@ def _execution_review_terminal(ro: dict | None, response: str, context_pkg: dict
         return response
 
 
+def _preflight_cli_framework_turn(
+    user_input: str,
+    history: list | None,
+    conversation_id: str | None,
+    extra_context: dict | None,
+    config_name: str | None = None,
+):
+    """Apply the shared Framework boundary before CLI trace/config work."""
+    user_input = framework_dispatch_input(user_input)
+    try:
+        import framework_elicitation
+        from framework_preflight import is_framework_command_syntax
+    except ImportError:
+        from orchestrator import framework_elicitation
+        from orchestrator.framework_preflight import is_framework_command_syntax
+    continuation = framework_elicitation.is_continuation(history or [])
+    is_command = is_framework_command_syntax(user_input)
+    trace_debug_payload = None
+    if continuation is None and not is_command:
+        try:
+            try:
+                import trace_debug as _trace_debug_preflight
+            except ImportError:
+                from orchestrator import trace_debug as _trace_debug_preflight
+            if _trace_debug_preflight.parse_probe_cli_command(user_input) is None:
+                trace_debug_payload = _trace_debug_preflight.parse_cli_command(user_input)
+                if trace_debug_payload is None:
+                    trace_debug_payload = (
+                        _trace_debug_preflight.parse_natural_language_request(user_input)
+                    )
+        except Exception:
+            trace_debug_payload = None
+    is_trace_debug = (
+        isinstance(trace_debug_payload, dict)
+        and bool(str(trace_debug_payload.get("trace_ref") or "").strip())
+        and not trace_debug_payload.get("error")
+    )
+    if continuation is None and not is_command and not is_trace_debug:
+        return None
+    project_nexus = _framework_project_nexus()
+    if is_trace_debug:
+        try:
+            from framework_preflight import preflight_framework_command
+        except ImportError:
+            from orchestrator.framework_preflight import preflight_framework_command
+        return preflight_framework_command(
+            _trace_debug_preflight.build_framework_command(
+                "preflight contract resolution",
+            ),
+            project_nexus=project_nexus,
+            one_run_profile=config_name,
+            input_context=extra_context,
+        )
+    if continuation is not None:
+        return framework_elicitation.preflight_continuation(
+            history or [],
+            user_input,
+            conversation_id=conversation_id,
+            current_project_nexus=project_nexus,
+            input_context=extra_context,
+        )
+    try:
+        from framework_preflight import preflight_framework_command
+    except ImportError:
+        from orchestrator.framework_preflight import preflight_framework_command
+    return preflight_framework_command(
+        user_input,
+        project_nexus=project_nexus,
+        one_run_profile=config_name,
+        input_context=extra_context,
+    )
+
+
+def _rebind_cli_framework_turn(
+    prepared, user_input, history, conversation_id, extra_context,
+    config_name=None,
+):
+    """Validate a direct wrapper caller against its admitted CLI snapshot."""
+    user_input = framework_dispatch_input(user_input)
+    try:
+        import framework_elicitation
+        from framework_preflight import (
+            is_framework_command_syntax,
+            parse_framework_command_bytes,
+            reuse_prepared_framework,
+        )
+    except ImportError:
+        from orchestrator import framework_elicitation
+        from orchestrator.framework_preflight import (
+            is_framework_command_syntax,
+            parse_framework_command_bytes,
+            reuse_prepared_framework,
+        )
+    continuation = framework_elicitation.is_continuation(history or [])
+    if continuation is not None:
+        return framework_elicitation.preflight_continuation(
+            history or [],
+            user_input,
+            conversation_id=conversation_id,
+            current_project_nexus=prepared.project_nexus,
+            input_context=extra_context,
+            prepared=prepared,
+        )
+    if is_framework_command_syntax(user_input):
+        canonical, query, profile = parse_framework_command_bytes(user_input)
+        return reuse_prepared_framework(
+            prepared,
+            canonical,
+            query,
+            project_nexus=prepared.project_nexus,
+            one_run_profile=profile or config_name,
+            input_context=extra_context,
+        )
+    return prepared
+
+
 def run_pipeline(user_input: str, history: list = None,
                  output_target: str = "screen",
                  execution_context: str = "interactive",
@@ -11780,7 +11913,9 @@ def run_pipeline(user_input: str, history: list = None,
                  conversation_tag: str = "",
                  style_id: str | None = None,
                  style_register: str | None = None,
-                 extra_context: dict | None = None) -> str:
+                 extra_context: dict | None = None,
+                 framework_prepared=None,
+                 raw_user_input: str | None = None) -> str:
     """Trace-manifest wrapper (Trace Walk Chunk 0). Owns the single
     try/except/finally that finalizes the turn's trace-manifest.json on
     every exit path — normal return, caught-error-and-return, and
@@ -11800,6 +11935,24 @@ def run_pipeline(user_input: str, history: list = None,
         "framework_id": None, "milestone_id": None, "child_refs": [],
         "mode_text": None,
     }
+    try:
+        if framework_prepared is None:
+            framework_prepared = _preflight_cli_framework_turn(
+                user_input, history, conversation_id, extra_context, config_name,
+            )
+        else:
+            framework_prepared = _rebind_cli_framework_turn(
+                framework_prepared,
+                user_input,
+                history,
+                conversation_id,
+                extra_context,
+                config_name,
+            )
+    except Exception as exc:
+        turn_state["kind"] = "framework_preflight_refusal"
+        turn_state["status"] = "refused"
+        return f"[Framework preflight refusal: {exc}]"
     effective_tag = conversation_tag or ("stealth" if stealth else "")
     tag_token = set_conversation_tag_context(effective_tag)
     try:
@@ -11808,6 +11961,8 @@ def run_pipeline(user_input: str, history: list = None,
             conversation_id, ambiguity_mode, stealth, config_name,
             conversation_tag, style_id, style_register,
             extra_context=extra_context,
+            framework_prepared=framework_prepared,
+            raw_user_input=raw_user_input,
             turn_state=turn_state)
     except TerminalInputAbort as exc:
         turn_state["status"] = "error"
@@ -11865,6 +12020,8 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                        style_id: str | None = None,
                        style_register: str | None = None,
                        extra_context: dict | None = None,
+                       framework_prepared=None,
+                       raw_user_input: str | None = None,
                        turn_state: dict | None = None) -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
@@ -11911,6 +12068,8 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             style_id,
             style_register,
             extra_context=extra_context,
+            framework_prepared=framework_prepared,
+            raw_user_input=raw_user_input,
         )
     config = load_routing_config()
     framework_style_context = dict(extra_context or {})
@@ -11918,6 +12077,11 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         framework_style_context["style_id"] = style_id
     if style_register is not None:
         framework_style_context["style_register"] = style_register
+
+    def _admitted_framework_project():
+        if framework_prepared is not None:
+            return framework_prepared.project_nexus
+        return _framework_project_nexus()
 
     # --- Pipeline forensic trace — open the per-turn directory now so
     # every downstream step lands in the same place. Failure here is
@@ -11928,7 +12092,11 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     if PIPELINE_TRACE_AVAILABLE:
         trace_dir = pipeline_trace.start_trace(
             conversation_id=conversation_id,
-            raw_input=user_input,
+            raw_input=(
+                raw_user_input
+                if isinstance(raw_user_input, str)
+                else user_input
+            ),
             ambiguity_mode=ambiguity_mode,
             style_id=style_id,
             style_register=style_register,
@@ -12059,17 +12227,21 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                 _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
                 config, trace_dir=trace_dir, conversation_tag=conversation_tag,
                 trace_context=_trace_ctx,
-                project_nexus=_framework_project_nexus(),
+                project_nexus=_admitted_framework_project(),
                 one_run_profile=config_name,
-                style_context=framework_style_context)
-            try:
-                _tdbg.record_diagnosis_learning(conversation_id or "_orphan", _trace_debug_payload.get("trace_ref"), result_text, stealth=bool(stealth))
-            except Exception:
-                pass
+                style_context=framework_style_context,
+                input_context=framework_style_context,
+                prepared=framework_prepared)
             turn_state["status"] = _trace_ctx.get("status") or "completed"
             turn_state["framework_id"] = _trace_ctx.get("framework_id")
             turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
             turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
+            if turn_state["status"] == "refused":
+                return result_text
+            try:
+                _tdbg.record_diagnosis_learning(conversation_id or "_orphan", _trace_debug_payload.get("trace_ref"), result_text, stealth=bool(stealth))
+            except Exception:
+                pass
             if trace_dir:
                 pipeline_trace.write_step(
                     trace_dir, "step-debug-result",
@@ -12115,8 +12287,10 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             continuation_ctx, history or [], config,
             latest_user_text=user_input,
             conversation_id=conversation_id,
-            current_project_nexus=_framework_project_nexus(),
+            current_project_nexus=_admitted_framework_project(),
             style_context=framework_style_context,
+            input_context=framework_style_context,
+            prepared=framework_prepared,
         )
         if not framework_elicitation.MARKER_PATTERN.search(result_text or ""):
             result_text = _run_visual_hook(result_text, {
@@ -12178,13 +12352,17 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                     user_input, config, trace_dir=trace_dir,
                     conversation_tag=conversation_tag,
                     trace_context=_trace_ctx,
-                    project_nexus=_framework_project_nexus(),
+                    project_nexus=_admitted_framework_project(),
                     one_run_profile=config_name,
-                    style_context=framework_style_context)
+                    style_context=framework_style_context,
+                    input_context=framework_style_context,
+                    prepared=framework_prepared)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
                 turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
+                if turn_state["status"] == "refused":
+                    return _fw_out
                 # Framework execution bypasses the ordinary gear tail, so it
                 # must still pass through the same terminal visual authority.
                 _fw_out = _run_visual_hook(_fw_out, {
@@ -12198,9 +12376,10 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                 return _fw_out
             finally:
                 try:
-                    _rgate.record_route_observed(
-                        trace_dir or (conversation_id, _fw_ts or ""),
-                        risk_tier=_fw_tier, output_text=_fw_out)
+                    if _trace_ctx.get("status") != "refused":
+                        _rgate.record_route_observed(
+                            trace_dir or (conversation_id, _fw_ts or ""),
+                            risk_tier=_fw_tier, output_text=_fw_out)
                 except Exception:
                     pass
         try:
@@ -12211,9 +12390,12 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         turn_state["kind"] = "framework_elicitation"
         return framework_elicitation.start_elicitation(
             framework_name, history or [], config,
-            project_nexus=_framework_project_nexus(),
+            conversation_id=conversation_id,
+            project_nexus=_admitted_framework_project(),
             one_run_profile=config_name,
             style_context=framework_style_context,
+            input_context=framework_style_context,
+            prepared=framework_prepared,
         )
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
@@ -18593,7 +18775,9 @@ def strip_tool_calls(text: str) -> str:
 def run_agentic_loop(user_input: str, history: list = None,
                      use_pipeline: bool = True,
                      output_target: str = "screen",
-                     extra_context: dict | None = None) -> str:
+                     extra_context: dict | None = None,
+                     framework_prepared=None,
+                     raw_user_input: str | None = None) -> str:
     """Main entry point: routes through the full pipeline or direct model call.
 
     Args:
@@ -18609,6 +18793,32 @@ def run_agentic_loop(user_input: str, history: list = None,
         return run_pipeline(
             user_input, history, output_target,
             extra_context=extra_context,
+            framework_prepared=framework_prepared,
+            raw_user_input=raw_user_input,
+        )
+
+    # A command wrapper may request direct mode, but it cannot turn an
+    # admitted Framework command into ordinary model input. Resolve/refuse
+    # before the direct trace, configuration load, or model dispatch, then
+    # route the cleaned Framework command through its normal executor path.
+    dispatch_input = framework_dispatch_input(user_input)
+    if framework_prepared is None:
+        try:
+            framework_prepared = _preflight_cli_framework_turn(
+                dispatch_input, history, None, extra_context,
+            )
+        except Exception as exc:
+            return f"[Framework preflight refusal: {exc}]"
+    if framework_prepared is not None:
+        return run_pipeline(
+            dispatch_input, history, output_target,
+            extra_context=extra_context,
+            framework_prepared=framework_prepared,
+            raw_user_input=(
+                raw_user_input
+                if isinstance(raw_user_input, str)
+                else user_input
+            ),
         )
 
     # Legacy direct mode — bypass pipeline
@@ -18784,6 +18994,76 @@ def parse_user_command(user_input: str) -> tuple:
     return clean_input, use_pipeline, output_target, style_override
 
 
+@dataclass(frozen=True)
+class EffectiveFrameworkDispatch:
+    """One normalized view of the existing outer and risk wrappers."""
+
+    raw_input: str
+    effective_input: str
+    use_pipeline: bool
+    output_target: str
+    style_id: str | None
+    style_was_set: bool
+    risk_override: str | None
+
+
+def effective_framework_dispatch(user_input: str) -> EffectiveFrameworkDispatch:
+    """Apply supported wrappers in runtime order until dispatch is exposed.
+
+    The operation is deliberately limited to the two existing parsers.
+    Unknown or malformed wrappers make no progress and remain ordinary text.
+    """
+    try:
+        import risk_gate as _framework_risk_gate
+    except ImportError:
+        from orchestrator import risk_gate as _framework_risk_gate
+    current = user_input
+    use_pipeline = True
+    output_target = "screen"
+    style_id = None
+    style_was_set = False
+    risk_override = None
+    seen = set()
+    while current not in seen:
+        seen.add(current)
+        progressed = False
+        clean, parsed_pipeline, parsed_target, parsed_style = parse_user_command(
+            current
+        )
+        if clean != current:
+            progressed = True
+            current = clean
+            if not parsed_pipeline:
+                use_pipeline = False
+            if parsed_target != "screen":
+                output_target = parsed_target
+            if parsed_style is not None:
+                style_was_set = True
+                style_id = parsed_style["style_id"]
+        clean, parsed_risk = _framework_risk_gate.strip_risk_prefix(current)
+        if clean != current:
+            progressed = True
+            current = clean
+            if parsed_risk is not None:
+                risk_override = parsed_risk
+        if not progressed:
+            break
+    return EffectiveFrameworkDispatch(
+        raw_input=user_input,
+        effective_input=current,
+        use_pipeline=use_pipeline,
+        output_target=output_target,
+        style_id=style_id,
+        style_was_set=style_was_set,
+        risk_override=risk_override,
+    )
+
+
+def framework_dispatch_input(user_input: str) -> str:
+    """Return the authenticated effective input while preserving raw input."""
+    return effective_framework_dispatch(user_input).effective_input
+
+
 def main():
     """Interactive terminal interface."""
     print("Local AI — Terminal Interface (Pipeline Enabled)")
@@ -18812,19 +19092,29 @@ def main():
 
     while True:
         try:
-            user_input = input("You: ").strip()
-            if not user_input:
+            user_input = input("You: ")
+            if not user_input.strip():
                 continue
-            if user_input.lower() in ("exit", "quit", "bye"):
+            if user_input.strip().lower() in ("exit", "quit", "bye"):
                 print("Goodbye.")
                 break
 
-            clean_input, use_pipeline, output_target, _style_override = parse_user_command(user_input)
+            dispatch = effective_framework_dispatch(user_input)
+            clean_input = dispatch.effective_input
+            use_pipeline = dispatch.use_pipeline
+            output_target = dispatch.output_target
+            extra_context = {}
+            if dispatch.style_was_set:
+                extra_context["style_id"] = dispatch.style_id
+            if dispatch.risk_override is not None:
+                extra_context["risk_override"] = dispatch.risk_override
 
             response = run_agentic_loop(
                 clean_input, history,
                 use_pipeline=use_pipeline,
-                output_target=output_target
+                output_target=output_target,
+                extra_context=extra_context or None,
+                raw_user_input=user_input,
             )
             print(f"\nAI: {response}\n")
 
