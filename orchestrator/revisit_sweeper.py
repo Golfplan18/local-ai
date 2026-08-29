@@ -24,6 +24,11 @@ try:
 except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator import runtime_paths as _rp
 
+try:
+    from runtime_hygiene import event_identity
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator.runtime_hygiene import event_identity
+
 
 # Roots flow from runtime_paths (ORA_HOME-relocatable) with the rest of
 # the watcher/heartbeat family.
@@ -70,6 +75,7 @@ class RevisitTriggerEvent:
     project_nexus: str
     triggers_fired: list = field(default_factory=list)
     timestamp: str = ""
+    publication_id: str = ""
 
 
 def evaluate_working_assumption_triggers(ped: ParsedPED) -> list[str]:
@@ -163,8 +169,8 @@ def sweep_project(nexus: str, ped_path: str) -> Optional[RevisitTriggerEvent]:
         print(f"[revisit_sweeper] Failed to parse {ped_path}: {e}")
         return None
 
-    fired_triggers: list[str] = []
-    fired_triggers.extend(evaluate_working_assumption_triggers(ped))
+    working_assumption_triggers = evaluate_working_assumption_triggers(ped)
+    fired_triggers: list[str] = list(working_assumption_triggers)
     age_review = evaluate_age_based_review(ped)
     if age_review:
         fired_triggers.append(age_review)
@@ -177,6 +183,23 @@ def sweep_project(nexus: str, ped_path: str) -> Optional[RevisitTriggerEvent]:
         project_nexus=nexus,
         triggers_fired=fired_triggers,
         timestamp=_now_iso(),
+        publication_id=event_identity("watcher_publication", {
+            "watcher": "revisit_sweeper",
+            "event_type": "PEFIterateNeeded",
+            "project_nexus": nexus,
+            "ped_path": os.path.abspath(ped_path),
+            "working_assumption_triggers": working_assumption_triggers,
+            # The displayed age changes every day, but the condition does
+            # not. Bind the source iteration and its exact review deadline so
+            # one unchanged overdue condition retains one publication id.
+            "age_review": ({
+                "latest_iteration": max(
+                    ped.iteration_history,
+                    key=lambda item: item.get("iteration", 0),
+                ).get("iteration", 0),
+                "deadline": age_review_deadline(ped),
+            } if age_review else None),
+        }),
     )
 
 
@@ -192,10 +215,7 @@ def sweep(emit_event=None) -> list[RevisitTriggerEvent]:
         if evt:
             events.append(evt)
             if emit_event:
-                try:
-                    emit_event(evt)
-                except Exception as e:
-                    print(f"[revisit_sweeper] emit_event raised: {e}")
+                emit_event(evt)
     return events
 
 

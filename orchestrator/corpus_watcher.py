@@ -36,6 +36,11 @@ try:
 except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator import runtime_paths as _rp
 
+try:
+    from runtime_hygiene import event_identity
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator.runtime_hygiene import event_identity
+
 
 # Roots flow from runtime_paths (ORA_HOME-relocatable) with the rest of
 # the watcher/heartbeat family.
@@ -92,6 +97,20 @@ class CorpusEvent:
     dependent_corpora: list = field(default_factory=list)
     propagation_reason: str = ""
     timestamp: str = ""
+    publication_id: str = ""
+
+
+def _publication_id(workflow_id: str, instance_path: str,
+                    prior_state: Optional[dict], event_type: str,
+                    **details) -> str:
+    return event_identity("watcher_publication", {
+        "watcher": "corpus_watcher",
+        "event_type": event_type,
+        "workflow_id": workflow_id,
+        "instance_path": os.path.abspath(instance_path),
+        "prior_snapshot_at": (prior_state or {}).get("snapshot_at"),
+        **details,
+    })
 
 
 def workflow_pointer_path(workflow_id: str) -> str:
@@ -163,8 +182,10 @@ def load_corpus_state(workflow_id: str, instance_filename: str) -> Optional[dict
 def write_corpus_state(workflow_id: str, instance_filename: str, state: dict):
     workflow_dir = os.path.join(_oversight_data_dir(), workflow_id)
     os.makedirs(workflow_dir, exist_ok=True)
-    with open(corpus_state_path(workflow_id, instance_filename), "w") as f:
-        json.dump(state, f, indent=2)
+    _rp.atomic_write_text(
+        corpus_state_path(workflow_id, instance_filename),
+        json.dumps(state, indent=2) + "\n",
+    )
 
 
 def diff_corpus_sections(
@@ -277,13 +298,14 @@ def sweep_workflow(
                 project_nexus=project_nexus,
                 corpus_instance_path=instance_path,
                 timestamp=_now_iso(),
+                publication_id=_publication_id(
+                    workflow_id, instance_path, prior_state,
+                    "CorpusInstanceCreated",
+                ),
             )
             events.append(evt)
             if emit_event:
-                try:
-                    emit_event(evt)
-                except Exception as e:
-                    print(f"[corpus_watcher] emit_event raised: {e}")
+                emit_event(evt)
         else:
             section_changes = diff_corpus_sections(prior_state, current_state)
             for section_id, change_kind in section_changes:
@@ -298,13 +320,16 @@ def sweep_workflow(
                         writer_framework_id=writer,
                         write_summary=f"section {change_kind}",
                         timestamp=_now_iso(),
+                        publication_id=_publication_id(
+                            workflow_id, instance_path, prior_state,
+                            "CorpusSectionPopulated",
+                            section_id=section_id,
+                            change_kind=change_kind,
+                        ),
                     )
                     events.append(evt)
                     if emit_event:
-                        try:
-                            emit_event(evt)
-                        except Exception as e:
-                            print(f"[corpus_watcher] emit_event raised: {e}")
+                        emit_event(evt)
 
             # If sections changed and there are dependent corpora, emit ChainPropagationRequired
             if section_changes and spec:
@@ -319,15 +344,19 @@ def sweep_workflow(
                         propagation_reason="section_updated",
                         affected_sections=[s for s, _ in section_changes],
                         timestamp=_now_iso(),
+                        publication_id=_publication_id(
+                            workflow_id, instance_path, prior_state,
+                            "ChainPropagationRequired",
+                            dependent_corpora=dependents,
+                            section_changes=section_changes,
+                        ),
                     )
                     events.append(evt)
                     if emit_event:
-                        try:
-                            emit_event(evt)
-                        except Exception as e:
-                            print(f"[corpus_watcher] emit_event raised: {e}")
+                        emit_event(evt)
 
-        write_corpus_state(workflow_id, filename, current_state)
+        if emit_event is not None:
+            write_corpus_state(workflow_id, filename, current_state)
 
     return events
 

@@ -11,6 +11,7 @@ Run::
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -23,6 +24,7 @@ if str(HERE) not in sys.path:
 
 import oversight_daemon as od  # noqa: E402
 from orchestrator import runtime_hygiene  # noqa: E402
+from orchestrator import triggers  # noqa: E402
 
 
 class RuntimePathTests(unittest.TestCase):
@@ -83,6 +85,9 @@ class RuntimePathTests(unittest.TestCase):
         daemon = od.OversightDaemon()
         queue = mock.MagicMock()
         thread = mock.MagicMock()
+        trigger_service = mock.MagicMock()
+        trigger_service.replay_completion_deliveries.return_value = []
+        order = []
         with (
             mock.patch.dict(
                 "sys.modules", {"oversight_router": mock.MagicMock()},
@@ -92,13 +97,50 @@ class RuntimePathTests(unittest.TestCase):
                 runtime_hygiene, "recover_retention_intents",
                 return_value={"registered": ["intent-a"], "failed": []},
             ) as recover,
+            mock.patch.object(
+                runtime_hygiene, "restore_incomplete_events",
+                side_effect=lambda: order.append("orphan-recovery") or [],
+            ) as restore,
+            mock.patch.object(
+                triggers, "service", return_value=trigger_service,
+            ),
             mock.patch.object(daemon, "_ensure_daily_note_deadline") as daily,
             mock.patch.object(od.threading, "Thread", return_value=thread),
         ):
+            trigger_service.replay_completion_deliveries.side_effect = (
+                lambda: order.append("completion-replay") or []
+            )
+            thread.start.side_effect = lambda: order.append("lane-start")
             daemon.start()
+        restore.assert_called_once_with()
         recover.assert_called_once_with(queue=queue)
         daily.assert_called_once_with()
         self.assertEqual(thread.start.call_count, 4)
+        self.assertEqual(order[:2], ["orphan-recovery", "completion-replay"])
+
+    def test_event_lane_restart_does_not_fail_current_live_work(self):
+        daemon = od.OversightDaemon()
+        daemon._running = True
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            runtime_hygiene._rp, "DATA_DIR_STR", tmp,
+        ):
+            ledger = runtime_hygiene.EventLedger()
+            event_id = runtime_hygiene.event_identity(
+                "trigger_firing", {"trigger_id": "live"}
+            )
+            ledger.claim(
+                event_id=event_id, event_type="trigger_firing",
+                subject={"trigger_id": "live"},
+            )
+            with mock.patch(
+                "orchestrator.runtime_event_dispatcher.run", return_value=None,
+            ) as run:
+                daemon._event_loop()
+                daemon._event_loop()
+            self.assertEqual(run.call_count, 2)
+            self.assertEqual(ledger.get(event_id)["status"], "claimed")
+            ledger.transition(event_id, {"claimed"}, "completed")
+            self.assertEqual(ledger.get(event_id)["status"], "completed")
 
     def test_run_once_keeps_manual_maintenance_paths(self):
         daemon = od.OversightDaemon()
