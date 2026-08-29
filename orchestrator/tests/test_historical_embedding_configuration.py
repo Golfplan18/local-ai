@@ -2,15 +2,235 @@
 
 from __future__ import annotations
 
+import importlib.util
+import json
+import shutil
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from orchestrator import embedding
+from orchestrator import retrieval_config
 from orchestrator.historical import phase_b_vault_extraction as phase_b
 from orchestrator.historical import phase_c_relationship_extraction as phase_c
+from orchestrator.tools import chroma_source_rebuild as chroma_rebuild
+
+
+def _load_isolated_embedding(config: object = None, *, raw: str | None = None):
+    """Load a fresh embedding module against a disposable config directory."""
+    with tempfile.TemporaryDirectory(prefix="ora-r13-embedding-") as temp_dir:
+        root = Path(temp_dir)
+        module_path = root / "orchestrator" / "embedding.py"
+        module_path.parent.mkdir(parents=True)
+        shutil.copyfile(Path(embedding.__file__), module_path)
+        if raw is not None or config is not None:
+            config_path = root / "config" / "chromadb.json"
+            config_path.parent.mkdir(parents=True)
+            config_path.write_text(
+                raw if raw is not None else json.dumps(config),
+                encoding="utf-8",
+            )
+        spec = importlib.util.spec_from_file_location(
+            f"_ora_r13_embedding_{id(root)}", module_path
+        )
+        assert spec is not None and spec.loader is not None
+        isolated = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(isolated)
+        return isolated
+
+
+def _valid_chromadb_config() -> dict:
+    return {
+        "embedder": {
+            "profile_id": "ollama:bge-m3",
+            "provider": "ollama",
+            "model": "bge-m3",
+            "dim": 1024,
+        },
+        "collections": {
+            "knowledge": "knowledge",
+            "conversations": "conversations",
+            "atomics": "atomic_dedup",
+            "conversations_incognito": "conversations-incognito",
+            "help": "help",
+        },
+    }
+
+
+class TestChromaConfigurationIdentity(unittest.TestCase):
+    def test_absent_configuration_uses_documented_defaults(self):
+        isolated = _load_isolated_embedding()
+
+        self.assertEqual(isolated.EMBEDDING_PROVIDER, "ollama")
+        self.assertEqual(isolated.EMBEDDING_MODEL, "bge-m3")
+        self.assertEqual(isolated.EMBEDDING_DIM, 1024)
+        self.assertEqual(isolated.resolve_collection("knowledge"), "knowledge")
+
+    def test_present_invalid_configuration_refuses_before_collection_access(self):
+        valid = _valid_chromadb_config()
+        partial = _valid_chromadb_config()
+        partial["collections"] = {"knowledge": "knowledge"}
+        inconsistent = _valid_chromadb_config()
+        inconsistent["embedder"]["profile_id"] = "ollama:another-model"
+        cases = {
+            "unreadable": {"raw": "{"},
+            "non-object": {"config": []},
+            "partial": {"config": partial},
+            "inconsistent": {"config": inconsistent},
+        }
+
+        for label, kwargs in cases.items():
+            client = mock.Mock()
+            with self.subTest(label=label), self.assertRaisesRegex(
+                RuntimeError, "Chroma configuration"
+            ):
+                isolated = _load_isolated_embedding(**kwargs)
+                isolated.get_or_create_collection(client, "knowledge")
+            client.get_or_create_collection.assert_not_called()
+
+    def test_known_model_wrong_dimension_refuses_before_collection_access(self):
+        wrong_dimension = _valid_chromadb_config()
+        wrong_dimension["embedder"]["dim"] = 768
+        client = mock.Mock()
+
+        with self.assertRaisesRegex(
+            RuntimeError, "expected 1024, found 768"
+        ):
+            isolated = _load_isolated_embedding(config=wrong_dimension)
+            isolated.get_or_create_collection(client, "knowledge")
+
+        client.get_or_create_collection.assert_not_called()
+
+    def test_reranker_writer_seeds_complete_identity_only_when_file_is_absent(self):
+        with tempfile.TemporaryDirectory(prefix="ora-r13-retrieval-") as temp_dir:
+            root = Path(temp_dir)
+            config_path = root / "config" / "chromadb.json"
+            reranker = {"id": "none", "provider": "none", "model": ""}
+            with mock.patch.object(
+                retrieval_config, "CONFIG_DIR", config_path.parent
+            ), mock.patch.object(
+                retrieval_config, "CHROMADB_CONFIG_PATH", config_path
+            ):
+                written = retrieval_config.update_active_reranker(reranker)
+
+            validated = embedding.validate_chromadb_config(written, config_path)
+            self.assertEqual(validated["embedder"]["profile_id"], "ollama:bge-m3")
+            self.assertEqual(
+                validated["collections"], _valid_chromadb_config()["collections"]
+            )
+            self.assertEqual(written["reranker"]["id"], "none")
+
+    def test_settings_writer_preserves_present_invalid_bytes(self):
+        invalid_documents = (b"{", b"[]", b'{"reranker": {"id": "none"}}')
+        reranker = {"id": "none", "provider": "none", "model": ""}
+
+        for original in invalid_documents:
+            with self.subTest(original=original):
+                with tempfile.TemporaryDirectory(prefix="ora-r13-retrieval-") as temp_dir:
+                    root = Path(temp_dir)
+                    config_path = root / "config" / "chromadb.json"
+                    config_path.parent.mkdir(parents=True)
+                    config_path.write_bytes(original)
+                    with mock.patch.object(
+                        retrieval_config, "CONFIG_DIR", config_path.parent
+                    ), mock.patch.object(
+                        retrieval_config, "CHROMADB_CONFIG_PATH", config_path
+                    ), self.assertRaisesRegex(RuntimeError, "Chroma configuration"):
+                        retrieval_config.update_active_reranker(reranker)
+
+                    self.assertEqual(config_path.read_bytes(), original)
+
+    def test_invalid_collection_names_cannot_overwrite_valid_config(self):
+        with tempfile.TemporaryDirectory(prefix="ora-r13-retrieval-") as temp_dir:
+            root = Path(temp_dir)
+            config_path = root / "config" / "chromadb.json"
+            config_path.parent.mkdir(parents=True)
+            original = json.dumps(_valid_chromadb_config(), indent=1).encode("utf-8")
+            config_path.write_bytes(original)
+            profile = retrieval_config.DEFAULT_EMBEDDING_PROFILES[0]
+
+            with mock.patch.object(
+                retrieval_config, "CONFIG_DIR", config_path.parent
+            ), mock.patch.object(
+                retrieval_config, "CHROMADB_CONFIG_PATH", config_path
+            ), self.assertRaisesRegex(RuntimeError, "Chroma configuration"):
+                retrieval_config.update_active_embedding_profile(
+                    profile, collection_names={"knowledge": ""},
+                )
+
+            self.assertEqual(config_path.read_bytes(), original)
+            self.assertFalse(config_path.with_suffix(".json.tmp").exists())
+
+    def test_promotion_and_rollback_reject_incomplete_identity_before_chroma(self):
+        partial = _valid_chromadb_config()
+        partial["collections"] = {"conversations": "conversations_old"}
+        inconsistent = _valid_chromadb_config()
+        inconsistent["collections"]["conversations"] = "conversations_old"
+        inconsistent["embedder"]["profile_id"] = "ollama:another-model"
+
+        for operation in ("promotion", "rollback"):
+            for label, config in (("partial", partial), ("inconsistent", inconsistent)):
+                with self.subTest(operation=operation, label=label):
+                    with tempfile.TemporaryDirectory(
+                        prefix="ora-r13-rebuild-"
+                    ) as temp_dir:
+                        root = Path(temp_dir)
+                        inactive = root / "inactive"
+                        active = root / "active"
+                        home = root / "ora-home"
+                        for path in (inactive, active, home):
+                            path.mkdir()
+                        config_path = root / "chromadb.json"
+                        original = json.dumps(config, indent=1).encode("utf-8")
+                        config_path.write_bytes(original)
+                        client_factory = mock.Mock()
+                        embedding_factory = mock.Mock()
+                        common = {
+                            "expected_current_physical": "conversations_old",
+                            "active_chromadb_path": active,
+                            "config_path": config_path,
+                            "ora_home": home,
+                            "client_factory": client_factory,
+                            "embedding_function_factory": embedding_factory,
+                            "ora_active_probe": lambda _home: [],
+                        }
+
+                        if operation == "promotion":
+                            evidence = {
+                                "profile": {
+                                    "provider": "ollama",
+                                    "model": "bge-m3",
+                                    "dimension": 1024,
+                                    "physical_collection": "replay_source",
+                                },
+                                "count": 1,
+                                "fingerprint": "0" * 64,
+                            }
+                            with mock.patch.object(
+                                chroma_rebuild, "_replay_evidence", return_value=evidence,
+                            ), self.assertRaisesRegex(
+                                chroma_rebuild.RebuildError, "Chroma config identity",
+                            ):
+                                chroma_rebuild.promote_conversation_replay(
+                                    inactive_chromadb_path=inactive,
+                                    target_physical_collection="conversations_new",
+                                    **common,
+                                )
+                        else:
+                            with self.assertRaisesRegex(
+                                chroma_rebuild.RebuildError, "Chroma config identity",
+                            ):
+                                chroma_rebuild.rollback_conversation_mapping(
+                                    restore_physical_collection="conversations_older",
+                                    **common,
+                                )
+
+                        client_factory.assert_not_called()
+                        embedding_factory.assert_not_called()
+                        self.assertEqual(config_path.read_bytes(), original)
 
 
 class TestSingleTextEmbeddingAdapter(unittest.TestCase):

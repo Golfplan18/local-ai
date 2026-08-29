@@ -16,6 +16,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+try:
+    from orchestrator.embedding import KNOWN_EMBEDDING_DIMS as _KNOWN_DIMS
+except ImportError:  # pragma: no cover - direct-module import shim
+    from embedding import KNOWN_EMBEDDING_DIMS as _KNOWN_DIMS
+
 ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
 CONFIG_DIR = ORA_HOME / "config"
 CHROMADB_CONFIG_PATH = CONFIG_DIR / "chromadb.json"
@@ -106,29 +111,63 @@ DEFAULT_RERANKERS: list[dict[str, Any]] = [
     },
 ]
 
-_KNOWN_DIMS = {
-    "baai/bge-m3": 1024,
-    "bge-m3": 1024,
-    "nomic-embed-text": 768,
-    "qwen/qwen3-embedding-8b": 4096,
-    "openai/text-embedding-3-large": 3072,
-    "openai/text-embedding-3-small": 1536,
-    "openai/text-embedding-ada-002": 1536,
-    "mistralai/mistral-embed": 1024,
-}
+class RetrievalConfigurationError(RuntimeError):
+    """The present retrieval configuration cannot be read without data loss."""
+
+
+def validate_chromadb_config(
+    data: object, config_path: Path | None = None,
+) -> dict[str, Any]:
+    """Validate one complete Chroma identity through the runtime reader."""
+    path = config_path or CHROMADB_CONFIG_PATH
+    try:
+        from orchestrator.embedding import validate_chromadb_config as validate
+    except ImportError:  # pragma: no cover - direct-module import shim
+        from embedding import validate_chromadb_config as validate
+    return validate(data, path)
+
+
+def _default_chromadb_config() -> dict[str, Any]:
+    profile = DEFAULT_EMBEDDING_PROFILES[0]
+    collections = dict(DEFAULT_COLLECTIONS)
+    return {
+        "_schema_version": 1,
+        "embedder": {
+            "profile_id": profile["id"],
+            "provider": profile["provider"],
+            "model": profile["model"],
+            "dim": int(profile["dimensions"]),
+            "base_url": profile["base_url"],
+            "url": profile["base_url"],
+        },
+        "collections": collections,
+        "collection_history": {
+            logical: [physical] for logical, physical in collections.items()
+        },
+    }
 
 
 def read_chromadb_config() -> dict[str, Any]:
-    if not CHROMADB_CONFIG_PATH.exists():
+    try:
+        CHROMADB_CONFIG_PATH.lstat()
+    except FileNotFoundError:
         return {}
+    except OSError as exc:
+        raise RetrievalConfigurationError(
+            f"Chroma configuration path is unreadable: {CHROMADB_CONFIG_PATH}: {exc}"
+        ) from exc
     try:
         data = json.loads(CHROMADB_CONFIG_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-    return data if isinstance(data, dict) else {}
+    except Exception as exc:
+        raise RetrievalConfigurationError(
+            f"Chroma configuration is present but unreadable: "
+            f"{CHROMADB_CONFIG_PATH}: {exc}"
+        ) from exc
+    return validate_chromadb_config(data, CHROMADB_CONFIG_PATH)
 
 
 def write_chromadb_config(data: dict[str, Any]) -> None:
+    validate_chromadb_config(data, CHROMADB_CONFIG_PATH)
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     tmp = CHROMADB_CONFIG_PATH.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -314,7 +353,8 @@ def target_collections_for_profile(profile_id: str) -> dict[str, str]:
 def update_active_embedding_profile(profile: dict[str, Any], *,
                                     collection_names: dict[str, str] | None = None) -> dict[str, Any]:
     cfg = read_chromadb_config()
-    cfg.setdefault("_schema_version", 1)
+    if not cfg:
+        cfg = _default_chromadb_config()
     cfg["embedder"] = {
         "profile_id": profile["id"],
         "provider": profile["provider"],
@@ -336,7 +376,8 @@ def update_active_embedding_profile(profile: dict[str, Any], *,
 
 def update_active_reranker(reranker: dict[str, Any]) -> dict[str, Any]:
     cfg = read_chromadb_config()
-    cfg.setdefault("_schema_version", 1)
+    if not cfg:
+        cfg = _default_chromadb_config()
     rid = reranker.get("id") or _profile_id(reranker.get("provider", "auto"), reranker.get("model", ""))
     known = option_by_id(list_reranker_options(), rid) or {}
     provider = reranker.get("provider") or known.get("provider") or "auto"

@@ -45,6 +45,20 @@ _DEFAULT_EMBEDDING_DIM = 1024
 _DEFAULT_OLLAMA_URL = "http://localhost:11434"
 _DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1"
 
+# Dimensions Ora can establish from its supported profiles and tracked model
+# catalogue.  Unknown/custom models remain valid when they declare a positive
+# dimension; these entries are the identities whose dimensions are fixed.
+KNOWN_EMBEDDING_DIMS = {
+    "baai/bge-m3": 1024,
+    "bge-m3": 1024,
+    "nomic-embed-text": 768,
+    "qwen/qwen3-embedding-8b": 4096,
+    "openai/text-embedding-3-large": 3072,
+    "openai/text-embedding-3-small": 1536,
+    "openai/text-embedding-ada-002": 1536,
+    "mistralai/mistral-embed": 1024,
+}
+
 # Logical name -> physical ChromaDB collection name. Call sites pass logical
 # names; the get_collection / get_or_create_collection / delete_collection
 # helpers translate via resolve_collection(). Unknown logical names pass
@@ -61,29 +75,148 @@ _DEFAULT_COLLECTIONS = {
 _CHROMADB_CONFIG_PATH = Path(__file__).parent.parent / "config" / "chromadb.json"
 
 
-def _load_chromadb_config() -> dict:
-    """Load chromadb.json once at module import.
+class ChromaConfigurationError(RuntimeError):
+    """The present machine-specific Chroma identity cannot be trusted."""
 
-    Missing file or parse error returns an empty dict so defaults apply.
+
+def validate_chromadb_config(data: object, config_path: Path) -> dict:
+    """Return one complete, internally consistent Chroma storage identity."""
+    if not isinstance(data, dict):
+        raise ChromaConfigurationError(
+            f"Chroma configuration must be a JSON object: {config_path}"
+        )
+
+    embedder = data.get("embedder")
+    if not isinstance(embedder, dict):
+        raise ChromaConfigurationError(
+            f"Chroma configuration embedder must be an object: {config_path}"
+        )
+    provider = embedder.get("provider")
+    model = embedder.get("model")
+    dim = embedder.get("dim")
+    if not isinstance(provider, str) or not provider.strip():
+        raise ChromaConfigurationError(
+            f"Chroma configuration embedder.provider is required: {config_path}"
+        )
+    provider = provider.strip()
+    if provider not in {"ollama", "openrouter"}:
+        raise ChromaConfigurationError(
+            f"Chroma configuration embedder.provider is unsupported: {config_path}"
+        )
+    if not isinstance(model, str) or not model.strip():
+        raise ChromaConfigurationError(
+            f"Chroma configuration embedder.model is required: {config_path}"
+        )
+    model = model.strip()
+    if isinstance(dim, bool) or not isinstance(dim, int) or dim < 1:
+        raise ChromaConfigurationError(
+            f"Chroma configuration embedder.dim must be a positive integer: {config_path}"
+        )
+    known_dim = KNOWN_EMBEDDING_DIMS.get(model.lower())
+    if known_dim is not None and dim != known_dim:
+        raise ChromaConfigurationError(
+            "Chroma configuration embedder.dim is inconsistent with known model "
+            f"{model!r} (expected {known_dim}, found {dim}): {config_path}"
+        )
+    profile_id = embedder.get("profile_id")
+    if profile_id is not None and profile_id != f"{provider}:{model}":
+        raise ChromaConfigurationError(
+            f"Chroma configuration embedder.profile_id is inconsistent: {config_path}"
+        )
+    for field in ("base_url", "url", "function_name"):
+        value = embedder.get(field)
+        if value is not None and (
+            not isinstance(value, str) or not value.strip()
+        ):
+            raise ChromaConfigurationError(
+                f"Chroma configuration embedder.{field} is invalid: {config_path}"
+            )
+
+    collections = data.get("collections")
+    if not isinstance(collections, dict):
+        raise ChromaConfigurationError(
+            f"Chroma configuration collections must be an object: {config_path}"
+        )
+    for logical, physical in collections.items():
+        if (
+            not isinstance(logical, str)
+            or not logical.strip()
+            or not isinstance(physical, str)
+            or not physical.strip()
+        ):
+            raise ChromaConfigurationError(
+                f"Chroma configuration collection identities must be non-empty strings: "
+                f"{config_path}"
+            )
+    missing_collections = sorted(set(_DEFAULT_COLLECTIONS) - set(collections))
+    if missing_collections:
+        raise ChromaConfigurationError(
+            "Chroma configuration is missing collection identities "
+            f"({', '.join(missing_collections)}): {config_path}"
+        )
+
+    history = data.get("collection_history", {})
+    if not isinstance(history, dict):
+        raise ChromaConfigurationError(
+            f"Chroma configuration collection_history must be an object: {config_path}"
+        )
+    for logical, physical_names in history.items():
+        names = [physical_names] if isinstance(physical_names, str) else physical_names
+        if (
+            not isinstance(logical, str)
+            or not logical.strip()
+            or not isinstance(names, list)
+            or any(not isinstance(name, str) or not name.strip() for name in names)
+        ):
+            raise ChromaConfigurationError(
+                f"Chroma configuration collection history is invalid: {config_path}"
+            )
+
+    normalized = dict(data)
+    normalized["embedder"] = {
+        **embedder,
+        "provider": provider,
+        "model": model,
+        "dim": dim,
+    }
+    return normalized
+
+
+def _load_chromadb_config(path: Path | None = None) -> dict:
+    """Load and validate chromadb.json once at module import.
+
+    Defaults are valid only for a genuinely absent file.  A present file is an
+    explicit storage-identity decision, so unreadable, partial, or inconsistent
+    identity fields must stop startup rather than redirecting reads and writes
+    to the default collections.
     """
-    if not _CHROMADB_CONFIG_PATH.exists():
-        return {}
+    config_path = path or _CHROMADB_CONFIG_PATH
     try:
-        with open(_CHROMADB_CONFIG_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception:
+        config_path.lstat()
+    except FileNotFoundError:
         return {}
-    return data if isinstance(data, dict) else {}
+    except OSError as exc:
+        raise ChromaConfigurationError(
+            f"Chroma configuration path is unreadable: {config_path}: {exc}"
+        ) from exc
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as exc:
+        raise ChromaConfigurationError(
+            f"Chroma configuration is present but unreadable: {config_path}: {exc}"
+        ) from exc
+    return validate_chromadb_config(data, config_path)
 
 
 _CONFIG = _load_chromadb_config()
 _embedder_cfg = _CONFIG.get("embedder", {}) or {}
 
 EMBEDDING_PROVIDER = (
-    _embedder_cfg.get("provider") or _DEFAULT_EMBEDDING_PROVIDER
-).strip() or _DEFAULT_EMBEDDING_PROVIDER
-EMBEDDING_MODEL = _embedder_cfg.get("model") or _DEFAULT_EMBEDDING_MODEL
-EMBEDDING_DIM = int(_embedder_cfg.get("dim") or _DEFAULT_EMBEDDING_DIM)
+    _embedder_cfg["provider"] if _CONFIG else _DEFAULT_EMBEDDING_PROVIDER
+)
+EMBEDDING_MODEL = _embedder_cfg["model"] if _CONFIG else _DEFAULT_EMBEDDING_MODEL
+EMBEDDING_DIM = _embedder_cfg["dim"] if _CONFIG else _DEFAULT_EMBEDDING_DIM
 EMBEDDING_BASE_URL = (
     _embedder_cfg.get("base_url")
     or _embedder_cfg.get("url")
@@ -97,7 +230,9 @@ EMBEDDING_BASE_URL = (
 OLLAMA_URL = EMBEDDING_BASE_URL if EMBEDDING_PROVIDER == "ollama" else _DEFAULT_OLLAMA_URL
 EMBEDDING_FUNCTION_NAME = (_embedder_cfg.get("function_name") or "").strip() or None
 
-COLLECTIONS = {**_DEFAULT_COLLECTIONS, **(_CONFIG.get("collections") or {})}
+COLLECTIONS = (
+    dict(_CONFIG["collections"]) if _CONFIG else dict(_DEFAULT_COLLECTIONS)
+)
 COLLECTION_HISTORY = _CONFIG.get("collection_history") or {}
 
 
@@ -741,6 +876,9 @@ def uninstall_test_stub() -> None:
 
 
 __all__ = [
+    "ChromaConfigurationError",
+    "KNOWN_EMBEDDING_DIMS",
+    "validate_chromadb_config",
     "EMBEDDING_PROVIDER",
     "EMBEDDING_MODEL",
     "EMBEDDING_DIM",
