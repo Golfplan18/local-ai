@@ -41,7 +41,6 @@ LEGACY_LAYER_FRAMEWORKS = frozenset({
     "mission-objectives-milestones.md",
     "output-formalization.md",
     "problem-evolution.md",
-    "process-formalization.md",
     "process-inference.md",
     "terrain-mapping.md",
 })
