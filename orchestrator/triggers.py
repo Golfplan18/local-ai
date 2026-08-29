@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import contextlib
 import copy
-import fcntl
 import hashlib
 import json
 import os
@@ -186,14 +185,10 @@ def _lock_path() -> Path:
 
 @contextlib.contextmanager
 def _exclusive():
-    path = _lock_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    # locked_file adds ``.lock`` itself. Removing the suffix preserves the
+    # established ``.triggers.lock`` sidecar rather than creating a second lock.
+    with _rp.locked_file(_lock_path().with_suffix("")):
+        yield
 
 
 def _load() -> dict:
