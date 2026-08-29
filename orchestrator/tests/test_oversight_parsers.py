@@ -242,6 +242,80 @@ class TestCorpusParser(unittest.TestCase):
         self.assertEqual(rel.direction, "output")
         self.assertEqual(rel.other_corpus, "company_quarterly_rollup")
 
+    def test_malformed_frontmatter_is_explicitly_invalid(self):
+        malformed = dedent("""\
+            ---
+            type: [corpus_template
+            template_version: 1.0
+            ---
+
+            # Broken Corpus
+
+            ## Sections
+            """)
+        corpus = parse_corpus_text(malformed, "broken.md")
+        self.assertFalse(corpus.is_valid)
+        self.assertIsNone(corpus.is_template)
+        self.assertIn("Invalid YAML frontmatter", corpus.parse_error)
+
+    def test_falsey_non_mapping_frontmatter_is_explicitly_invalid(self):
+        body = "# Corpus\n\n## Sections\n\n### Section SalesQ2 — Quarterly Sales\n"
+        for frontmatter in ("[]", "false", "0", "null"):
+            with self.subTest(frontmatter=frontmatter):
+                corpus = parse_corpus_text(
+                    f"---\n{frontmatter}\n---\n\n{body}",
+                    "falsey-frontmatter.md",
+                )
+                self.assertFalse(corpus.is_valid)
+                self.assertIsNone(corpus.is_template)
+                self.assertIn("expected a mapping", corpus.parse_error)
+
+    def test_falsey_non_collection_tags_are_explicitly_invalid(self):
+        body = "# Corpus\n\n## Sections\n\n### Section SalesQ2 — Quarterly Sales\n"
+        for tags in ("{}", "false", "0", "null"):
+            with self.subTest(tags=tags):
+                corpus = parse_corpus_text(
+                    f"---\ntype: incubator\ntags: {tags}\n---\n\n{body}",
+                    "falsey-tags.md",
+                )
+                self.assertFalse(corpus.is_valid)
+                self.assertIsNone(corpus.is_template)
+                self.assertIn("tags must be a string or list", corpus.parse_error)
+
+    def test_explicit_section_id_case_is_preserved(self):
+        corpus = parse_corpus_text(dedent("""\
+            ---
+            type: corpus_template
+            ---
+
+            # Case-Sensitive Corpus
+
+            ## Sections
+
+            ### Section SalesQ2 — Quarterly Sales
+
+            ### Auto Generated Name
+            """), "case.md")
+        self.assertTrue(corpus.is_valid)
+        self.assertEqual(
+            [section.section_id for section in corpus.sections],
+            ["SalesQ2", "auto_generated_name"],
+        )
+
+    def test_canonical_incubator_tag_is_detected_as_instance(self):
+        corpus = parse_corpus_text(dedent("""\
+            ---
+            type: incubator
+            tags: [corpus-instance]
+            period_identifier: Q2 2026
+            ---
+
+            # Quarterly Corpus — Q2 2026
+            """), "instance.md")
+        self.assertTrue(corpus.is_valid)
+        self.assertFalse(corpus.is_template)
+        self.assertEqual(corpus.instance_period, "Q2 2026")
+
 
 # ---------- Workflow spec parser tests ----------
 

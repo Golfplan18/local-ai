@@ -459,7 +459,18 @@ def _load_workflow_level_context(event: dict, bundle: OversightContextBundle):
     template: Optional[ParsedCorpus] = None
     if template_path and os.path.isfile(template_path):
         try:
-            template = parse_corpus_file(template_path)
+            parsed_template = parse_corpus_file(template_path)
+            if not parsed_template.is_valid:
+                bundle.load_errors.append(
+                    f"Failed to parse corpus template {template_path!r}: "
+                    f"{parsed_template.parse_error}"
+                )
+            elif parsed_template.is_template is not True:
+                bundle.load_errors.append(
+                    f"Corpus template path {template_path!r} identifies an instance."
+                )
+            else:
+                template = parsed_template
         except Exception as e:
             bundle.load_errors.append(f"Failed to parse corpus template {template_path!r}: {e}")
     else:

@@ -104,6 +104,13 @@ def o_render(
         corpus = parse_corpus_file(corpus_instance_path)
     except Exception as e:
         return RenderResult(success=False, error=f"Failed to parse corpus: {e}")
+    if not corpus.is_valid:
+        return RenderResult(
+            success=False,
+            error=f"Failed to parse corpus: {corpus.parse_error}",
+        )
+    if corpus.is_template is not False:
+        return RenderResult(success=False, error="Corpus input is not an instance.")
 
     section_map = {s.section_id: s for s in corpus.sections}
 

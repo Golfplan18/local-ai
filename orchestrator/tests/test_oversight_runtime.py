@@ -21,6 +21,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 from corpus_runtime import c_instance, c_validate  # noqa: E402
+from corpus_parser import parse_corpus_file  # noqa: E402
 from output_runtime import o_render, parse_off_spec  # noqa: E402
 from oversight_events import register_handler, clear_handlers  # noqa: E402
 from oversight_sandbox import redirect_oversight_logs  # noqa: E402
@@ -118,6 +119,46 @@ class TestCInstance(_TempWorkspace):
         self.assertIn("### Section weekly_sales — Weekly Sales", content)
         self.assertIn("### Section campaigns — Campaign Performance", content)
 
+    def test_rejects_malformed_template_frontmatter(self):
+        with open(self.template_path, "w") as f:
+            f.write("---\ntype: [corpus_template\n---\n# Broken\n")
+        result = c_instance(self.template_path, "2026-05", self.instance_dir)
+        self.assertFalse(result.success)
+        self.assertIn("Invalid YAML frontmatter", result.error)
+        self.assertFalse(os.path.exists(self.instance_dir))
+
+    def test_rejects_falsey_non_mapping_frontmatter_and_invalid_tags(self):
+        body = "# Corpus\n\n## Sections\n\n### Section SalesQ2 — Quarterly Sales\n"
+        cases = {
+            "empty-list-root": "[]",
+            "false-root": "false",
+            "zero-root": "0",
+            "null-root": "null",
+            "empty-mapping-tags": "type: incubator\ntags: {}",
+            "false-tags": "type: incubator\ntags: false",
+            "zero-tags": "type: incubator\ntags: 0",
+            "null-tags": "type: incubator\ntags: null",
+        }
+        for label, frontmatter in cases.items():
+            with self.subTest(case=label):
+                with open(self.template_path, "w") as f:
+                    f.write(f"---\n{frontmatter}\n---\n\n{body}")
+                destination = os.path.join(self.tmp, f"instances-{label}")
+                result = c_instance(self.template_path, "2026-05", destination)
+                self.assertFalse(result.success)
+                self.assertIn("Invalid YAML frontmatter", result.error)
+                self.assertFalse(os.path.exists(destination))
+                self.assertNotIn("CorpusInstanceCreated", self.events)
+
+    def test_period_with_colon_round_trips_through_valid_yaml(self):
+        period = "Q2 2026: revised"
+        result = c_instance(self.template_path, period, self.instance_dir)
+        self.assertTrue(result.success, result.error)
+        parsed = parse_corpus_file(result.instance_path)
+        self.assertTrue(parsed.is_valid, parsed.parse_error)
+        self.assertFalse(parsed.is_template)
+        self.assertEqual(parsed.instance_period, period)
+
 
 class TestCValidate(_TempWorkspace):
 
@@ -173,6 +214,14 @@ class TestCValidate(_TempWorkspace):
         self.assertEqual(result.overall_status, "FAIL")
         self.assertIn("not found", result.error)
 
+    def test_rejects_malformed_instance_frontmatter(self):
+        with open(self.instance_path, "w") as f:
+            f.write("---\ntype: [corpus_instance\n---\n# Broken\n")
+        result = c_validate(self.instance_path, self.template_path)
+        self.assertFalse(result.success)
+        self.assertEqual(result.overall_status, "FAIL")
+        self.assertIn("Invalid YAML frontmatter", result.error)
+
 
 class TestORender(_TempWorkspace):
 
@@ -218,6 +267,15 @@ class TestORender(_TempWorkspace):
         result = o_render("/nonexistent/off.md", self.instance_path, self.output_dir)
         self.assertFalse(result.success)
         self.assertIn("not found", result.error)
+
+    def test_rejects_malformed_corpus_frontmatter_without_artifact_or_event(self):
+        with open(self.instance_path, "w") as f:
+            f.write("---\ntype: [corpus_instance\n---\n# Broken\n")
+        result = o_render(self.off_path, self.instance_path, self.output_dir)
+        self.assertFalse(result.success)
+        self.assertIn("Invalid YAML frontmatter", result.error)
+        self.assertFalse(os.path.exists(self.output_dir))
+        self.assertNotIn("OFFRendered", self.events)
 
 
 class TestORenderPPTX(_TempWorkspace):
@@ -512,6 +570,59 @@ class TestEndToEndShape4(_TempWorkspace):
         # 5. Events
         for expected in ("CorpusInstanceCreated", "CorpusValidated", "OFFRendered"):
             self.assertIn(expected, self.events, f"Missing event: {expected}")
+
+    def test_mixed_case_section_id_survives_instance_validation_and_render(self):
+        with open(self.template_path, "w") as f:
+            f.write(dedent("""\
+                ---
+                type: corpus_template
+                template_version: 1.0
+                ---
+
+                # Quarterly Corpus Template
+
+                ## Sections
+
+                ### Section SalesQ2 — Quarterly Sales
+
+                *Source PFF:* `pff-quarterly-sales`
+                *Missing-data behavior:* hold-and-warn
+                """))
+        with open(self.off_path, "w") as f:
+            f.write(dedent("""\
+                ---
+                name: quarterly-memo
+                medium: markdown
+                sections:
+                  - section: SalesQ2
+                    heading: Quarterly Sales
+                ---
+                """))
+
+        created = c_instance(self.template_path, "2026-Q2", self.instance_dir)
+        self.assertTrue(created.success, created.error)
+        self.assertEqual(created.sections_created, ["SalesQ2"])
+
+        with open(created.instance_path) as f:
+            content = f.read().replace(
+                "<!-- Section content goes here. -->",
+                "Mixed-case identity reached the corpus body.",
+            )
+        with open(created.instance_path, "w") as f:
+            f.write(content)
+
+        parsed = parse_corpus_file(created.instance_path)
+        self.assertEqual([s.section_id for s in parsed.sections], ["SalesQ2"])
+
+        validated = c_validate(created.instance_path, self.template_path)
+        self.assertTrue(validated.success, validated.error)
+        self.assertEqual([s.section_id for s in validated.sections], ["SalesQ2"])
+
+        rendered = o_render(self.off_path, created.instance_path, self.output_dir)
+        self.assertTrue(rendered.success, rendered.error)
+        self.assertEqual(rendered.sections_read, ["SalesQ2"])
+        with open(rendered.artifact_path) as f:
+            self.assertIn("Mixed-case identity reached the corpus body.", f.read())
 
 
 if __name__ == "__main__":

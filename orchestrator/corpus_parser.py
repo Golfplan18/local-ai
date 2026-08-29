@@ -59,7 +59,11 @@ class ChainRelationship:
 @dataclass
 class ParsedCorpus:
     file_path: str
-    is_template: bool  # True for template, False for instance
+    # True for template, False for instance, None when metadata was unreadable.
+    # Callers must reject an invalid parse rather than treating None as either.
+    is_template: Optional[bool]
+    is_valid: bool = True
+    parse_error: str = ""
     frontmatter: dict = field(default_factory=dict)
     title: str = ""
     template_version: str = ""
@@ -80,20 +84,58 @@ def parse_corpus_file(path: str) -> ParsedCorpus:
 def parse_corpus_text(content: str, file_path: str = "") -> ParsedCorpus:
     """Parse corpus content from a string."""
     fm, body = _split_frontmatter(content)
-    parsed = ParsedCorpus(file_path=file_path, is_template=True)
+    parsed = ParsedCorpus(file_path=file_path, is_template=None)
 
-    if fm and yaml is not None:
+    if fm is None:
+        # A leading delimiter without a closing delimiter is unreadable
+        # metadata, not a metadata-free legacy template.
+        if re.match(r"^---[ \t]*(?:\r?\n|$)", content):
+            parsed.is_valid = False
+            parsed.parse_error = "Invalid YAML frontmatter: closing delimiter is missing."
+            return parsed
+        # Preserve the legacy metadata-free template form. There is no
+        # unreadable identity to guess from in this case.
+        parsed.is_template = True
+    elif yaml is None:
+        parsed.is_valid = False
+        parsed.parse_error = "Invalid YAML frontmatter: YAML support is unavailable."
+        return parsed
+    else:
         try:
-            parsed.frontmatter = yaml.safe_load(fm) or {}
-        except yaml.YAMLError:
-            parsed.frontmatter = {}
+            frontmatter = yaml.safe_load(fm)
+        except yaml.YAMLError as exc:
+            parsed.is_valid = False
+            parsed.parse_error = f"Invalid YAML frontmatter: {exc}"
+            return parsed
+        if not isinstance(frontmatter, dict):
+            parsed.is_valid = False
+            parsed.parse_error = "Invalid YAML frontmatter: expected a mapping."
+            return parsed
+        parsed.frontmatter = frontmatter
+
+        fm_type = parsed.frontmatter.get("type", "")
+        if not isinstance(fm_type, str):
+            parsed.is_valid = False
+            parsed.parse_error = "Invalid YAML frontmatter: type must be a string."
+            return parsed
+        raw_tags = parsed.frontmatter.get("tags", [])
+        if isinstance(raw_tags, str):
+            tags = [raw_tags]
+        elif isinstance(raw_tags, list):
+            tags = raw_tags
+        else:
+            parsed.is_valid = False
+            parsed.parse_error = "Invalid YAML frontmatter: tags must be a string or list."
+            return parsed
+        instance_tagged = any(str(tag).lower() == "corpus-instance" for tag in tags)
+        parsed.is_template = not ("instance" in fm_type.lower() or instance_tagged)
 
     # Determine template vs instance from frontmatter
-    fm_type = parsed.frontmatter.get("type", "").lower()
-    if "instance" in fm_type:
-        parsed.is_template = False
     parsed.template_version = parsed.frontmatter.get("template_version", "")
-    parsed.instance_period = parsed.frontmatter.get("period", "")
+    parsed.instance_period = parsed.frontmatter.get(
+        "period",
+        parsed.frontmatter.get("period_identifier", ""),
+    )
 
     # Title
     title_match = re.search(r"^#\s+(.+)$", body, re.MULTILINE)
@@ -114,10 +156,10 @@ def parse_corpus_text(content: str, file_path: str = "") -> ParsedCorpus:
 _FRONTMATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
-def _split_frontmatter(content: str) -> tuple[str, str]:
+def _split_frontmatter(content: str) -> tuple[Optional[str], str]:
     m = _FRONTMATTER_PATTERN.match(content)
     if not m:
-        return ("", content)
+        return (None, content)
     return (m.group(1), content[m.end():])
 
 
@@ -219,7 +261,9 @@ def _parse_sections_markdown(body: str) -> list[CorpusSection]:
             explicit_id = m.group(1)
             section_name = m.group(2).strip()
             if explicit_id:
-                section_id = explicit_id.lower()
+                # Explicit IDs are external identities. Preserve them exactly;
+                # only IDs derived by Ora from a heading are normalized.
+                section_id = explicit_id
             else:
                 section_id = re.sub(r"[^a-z0-9]+", "_", section_name.lower()).strip("_")
             current = CorpusSection(section_id=section_id, name=section_name)
@@ -286,6 +330,8 @@ def section_state_summary(parsed: ParsedCorpus) -> dict[str, dict]:
     The watcher uses body_hash to detect content changes without storing full
     section text.
     """
+    if not parsed.is_valid:
+        raise ValueError(parsed.parse_error or "Invalid corpus metadata")
     import hashlib
     out: dict[str, dict] = {}
     for s in parsed.sections:
@@ -306,6 +352,9 @@ if __name__ == "__main__":
         print("Usage: python corpus_parser.py <path-to-corpus-file>")
         sys.exit(1)
     parsed = parse_corpus_file(sys.argv[1])
+    if not parsed.is_valid:
+        print(f"Invalid corpus: {parsed.parse_error}")
+        sys.exit(2)
     print(f"Title: {parsed.title}")
     print(f"Type: {'template' if parsed.is_template else 'instance'}")
     print(f"Sections: {len(parsed.sections)}")

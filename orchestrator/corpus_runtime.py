@@ -112,7 +112,13 @@ def c_instance(
     except Exception as e:
         return InstantiateResult(success=False, error=f"Failed to parse template: {e}")
 
-    if not template.is_template:
+    if not template.is_valid:
+        return InstantiateResult(
+            success=False,
+            error=f"Failed to parse template: {template.parse_error}",
+        )
+
+    if template.is_template is not True:
         return InstantiateResult(
             success=False,
             error=f"File at {template_path!r} is not a template (frontmatter type != corpus_template)",
@@ -137,8 +143,37 @@ def c_instance(
             error=f"Instance already exists at {instance_path}; refusing to overwrite.",
         )
 
-    # Build the instance content
-    content = _build_instance_content(template, template_path, period, chain_inputs or [])
+    # Build the instance content, then reparse it before any file is committed.
+    # This verifies both the emitted YAML and the exact section identities that
+    # downstream validation/rendering will consume.
+    try:
+        content = _build_instance_content(template, template_path, period, chain_inputs or [])
+        reparsed = parse_corpus_text(content, file_path=instance_path)
+    except Exception as e:
+        return InstantiateResult(success=False, error=f"Failed to serialize instance: {e}")
+
+    if not reparsed.is_valid:
+        return InstantiateResult(
+            success=False,
+            error=f"Generated instance frontmatter is invalid: {reparsed.parse_error}",
+        )
+    if reparsed.is_template is not False:
+        return InstantiateResult(
+            success=False,
+            error="Generated instance did not reparse as a corpus instance.",
+        )
+    if reparsed.instance_period != period:
+        return InstantiateResult(
+            success=False,
+            error="Generated instance period did not round-trip exactly.",
+        )
+    expected_ids = [section.section_id for section in template.sections]
+    reparsed_ids = [section.section_id for section in reparsed.sections]
+    if reparsed_ids != expected_ids:
+        return InstantiateResult(
+            success=False,
+            error="Generated instance section identities did not round-trip exactly.",
+        )
 
     try:
         with open(instance_path, "w", encoding="utf-8") as f:
@@ -187,19 +222,28 @@ def _build_instance_content(
     chain_inputs: list,
 ) -> str:
     """Construct the markdown body of a fresh corpus instance."""
+    if yaml is None:
+        raise RuntimeError("YAML support is unavailable")
+
     lines: list[str] = []
 
     # Frontmatter
-    lines.append("---")
-    lines.append("type: corpus_instance")
-    lines.append(f"template: {os.path.basename(template_path)}")
-    lines.append(f"template_version: {template.template_version or 'unknown'}")
-    lines.append(f"period: {period}")
-    lines.append(f"created_at: {_now_iso()}")
+    frontmatter = {
+        "type": "corpus_instance",
+        "template": os.path.basename(template_path),
+        "template_version": str(template.template_version or "unknown"),
+        "period": period,
+        "created_at": _now_iso(),
+    }
     if chain_inputs:
-        lines.append("chain_inputs:")
-        for ci in chain_inputs:
-            lines.append(f"  - {ci}")
+        frontmatter["chain_inputs"] = [str(item) for item in chain_inputs]
+    emitted_frontmatter = yaml.safe_dump(
+        frontmatter,
+        sort_keys=False,
+        allow_unicode=True,
+    ).rstrip()
+    lines.append("---")
+    lines.append(emitted_frontmatter)
     lines.append("---")
     lines.append("")
 
@@ -268,6 +312,15 @@ def c_validate(
                               error=f"Failed to parse instance: {e}",
                               overall_status="FAIL")
 
+    if not instance.is_valid:
+        return ValidateResult(success=False, instance_path=instance_path,
+                              error=f"Failed to parse instance: {instance.parse_error}",
+                              overall_status="FAIL")
+    if instance.is_template is not False:
+        return ValidateResult(success=False, instance_path=instance_path,
+                              error="File is not a corpus instance.",
+                              overall_status="FAIL")
+
     # Resolve template path: explicit arg, or from instance frontmatter
     if not template_path:
         template_filename = instance.frontmatter.get("template", "")
@@ -286,9 +339,28 @@ def c_validate(
     if template_path and os.path.isfile(template_path):
         try:
             template = parse_corpus_file(template_path)
-            template_sections = template.sections
-        except Exception:
-            pass
+        except Exception as e:
+            return ValidateResult(
+                success=False,
+                instance_path=instance_path,
+                error=f"Failed to parse template: {e}",
+                overall_status="FAIL",
+            )
+        if not template.is_valid:
+            return ValidateResult(
+                success=False,
+                instance_path=instance_path,
+                error=f"Failed to parse template: {template.parse_error}",
+                overall_status="FAIL",
+            )
+        if template.is_template is not True:
+            return ValidateResult(
+                success=False,
+                instance_path=instance_path,
+                error="Template path does not identify a corpus template.",
+                overall_status="FAIL",
+            )
+        template_sections = template.sections
     if not template_sections:
         # Fall back: validate against the instance's own section list
         template_sections = instance.sections

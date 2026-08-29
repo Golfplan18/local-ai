@@ -255,9 +255,15 @@ def sweep_workflow(
         except Exception as e:
             print(f"[corpus_watcher] Failed to parse corpus {instance_path}: {e}")
             continue
+        if not parsed.is_valid:
+            print(
+                f"[corpus_watcher] Failed to parse corpus {instance_path}: "
+                f"{parsed.parse_error}"
+            )
+            continue
 
         # Skip the template itself if it's in the same directory
-        if parsed.is_template:
+        if parsed.is_template is not False:
             continue
 
         current_state = state_from_corpus(parsed)
