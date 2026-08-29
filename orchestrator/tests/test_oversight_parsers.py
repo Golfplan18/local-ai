@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from textwrap import dedent
+from types import SimpleNamespace
 from unittest import mock
 
 # Make orchestrator/ importable
@@ -454,6 +456,280 @@ class TestPEDWatcherDiff(unittest.TestCase):
         # New milestone completed counts as a change
         changes = diff_milestones(prior, current)
         self.assertIn(("M2", False, True), changes)
+
+    def test_publication_failure_is_retried_once_before_checkpoint(self):
+        import ped_watcher
+        from oversight_events import clear_handlers, emit, register_handler
+        import oversight_events
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "oversight"
+            ped_path = root / "ped.md"
+            ped_path.write_text(
+                "# Test\n\n## Active Milestones\n\n- [ ] Durable transition\n",
+                encoding="utf-8",
+            )
+            with (
+                mock.patch.object(
+                    ped_watcher, "OVERSIGHT_DATA_DIR", str(data), create=True,
+                ),
+                mock.patch.object(
+                    oversight_events, "EVENT_LOG_PATH", str(root / "events.jsonl"),
+                ),
+            ):
+                ped_watcher.write_ped_pointer("fixture", str(ped_path))
+                ped_watcher.sweep(emit_event=lambda _event: None)
+                ped_path.write_text(
+                    "# Test\n\n## Active Milestones\n\n- [x] Durable transition\n",
+                    encoding="utf-8",
+                )
+
+                attempted = []
+                def fail_publication(event):
+                    attempted.append(event.publication_id)
+                    raise OSError("durable publication unavailable")
+
+                with self.assertRaisesRegex(OSError, "publication unavailable"):
+                    ped_watcher.sweep(emit_event=fail_publication)
+                self.assertFalse(
+                    ped_watcher.load_last_state("fixture")["milestones"][
+                        "Durable transition"
+                    ]
+                )
+
+                delivered = []
+                clear_handlers()
+                self.addCleanup(clear_handlers)
+                register_handler(lambda event: delivered.append(event))
+                events = ped_watcher.sweep(emit_event=emit)
+                self.assertEqual(events[0].publication_id, attempted[0])
+                self.assertEqual(len(delivered), 1)
+                self.assertEqual(ped_watcher.sweep(emit_event=emit), [])
+
+    def test_stable_publication_is_idempotent_when_checkpoint_retries(self):
+        import ped_watcher
+        from oversight_events import clear_handlers, emit, register_handler
+        import oversight_events
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "oversight"
+            ped_path = root / "ped.md"
+            ped_path.write_text(
+                "# Test\n\n## Active Milestones\n\n- [ ] Stable identity\n",
+                encoding="utf-8",
+            )
+            with (
+                mock.patch.object(
+                    ped_watcher, "OVERSIGHT_DATA_DIR", str(data), create=True,
+                ),
+                mock.patch.object(
+                    oversight_events, "EVENT_LOG_PATH", str(root / "events.jsonl"),
+                ),
+            ):
+                ped_watcher.write_ped_pointer("fixture", str(ped_path))
+                ped_watcher.sweep(emit_event=lambda _event: None)
+                ped_path.write_text(
+                    "# Test\n\n## Active Milestones\n\n- [x] Stable identity\n",
+                    encoding="utf-8",
+                )
+                delivered = []
+                clear_handlers()
+                self.addCleanup(clear_handlers)
+                register_handler(lambda event: delivered.append(event))
+                with mock.patch.object(
+                    ped_watcher, "write_state",
+                    side_effect=OSError("checkpoint unavailable"),
+                ):
+                    with self.assertRaisesRegex(OSError, "checkpoint unavailable"):
+                        ped_watcher.sweep(emit_event=emit)
+                ped_watcher.sweep(emit_event=emit)
+                self.assertEqual(len(delivered), 1)
+                lines = (root / "events.jsonl").read_text(
+                    encoding="utf-8"
+                ).splitlines()
+                self.assertEqual(len(lines), 1)
+
+    def test_ped_and_corpus_checkpoints_preserve_prior_bytes_on_failure(self):
+        import corpus_watcher
+        import ped_watcher
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "oversight"
+            with (
+                mock.patch.object(
+                    ped_watcher, "OVERSIGHT_DATA_DIR", str(data), create=True,
+                ),
+                mock.patch.object(
+                    corpus_watcher, "OVERSIGHT_DATA_DIR", str(data), create=True,
+                ),
+            ):
+                ped_watcher.write_state("fixture", {"snapshot_at": "old-ped"})
+                ped_path = Path(ped_watcher.project_state_path("fixture"))
+                ped_before = ped_path.read_bytes()
+                with mock.patch.object(
+                    ped_watcher._rp, "atomic_write_text",
+                    side_effect=OSError("checkpoint interrupted"),
+                ):
+                    with self.assertRaisesRegex(OSError, "interrupted"):
+                        ped_watcher.write_state(
+                            "fixture", {"snapshot_at": "new-ped"},
+                        )
+                self.assertEqual(ped_path.read_bytes(), ped_before)
+
+                corpus_watcher.write_corpus_state(
+                    "workflow", "instance.md", {"snapshot_at": "old-corpus"},
+                )
+                corpus_path = Path(corpus_watcher.corpus_state_path(
+                    "workflow", "instance.md",
+                ))
+                corpus_before = corpus_path.read_bytes()
+                with mock.patch.object(
+                    corpus_watcher._rp, "atomic_write_text",
+                    side_effect=OSError("checkpoint interrupted"),
+                ):
+                    with self.assertRaisesRegex(OSError, "interrupted"):
+                        corpus_watcher.write_corpus_state(
+                            "workflow", "instance.md",
+                            {"snapshot_at": "new-corpus"},
+                        )
+                self.assertEqual(corpus_path.read_bytes(), corpus_before)
+
+    def test_revisit_publication_id_uses_stable_deadline_not_rendered_age(self):
+        import revisit_sweeper
+
+        ped = SimpleNamespace(
+            constraints=[],
+            iteration_history=[{"iteration": 7, "raw_text": "2026-01-01"}],
+        )
+        with (
+            mock.patch.object(revisit_sweeper, "parse_ped_file", return_value=ped),
+            mock.patch.object(
+                revisit_sweeper, "evaluate_age_based_review",
+                side_effect=[
+                    "Last iteration was 31 days ago (latest iteration #7)",
+                    "Last iteration was 32 days ago (latest iteration #7)",
+                ],
+            ),
+            mock.patch.object(
+                revisit_sweeper, "age_review_deadline",
+                return_value="2026-01-31T00:00:00+00:00",
+            ),
+        ):
+            first = revisit_sweeper.sweep_project("fixture", "/tmp/ped.md")
+            second = revisit_sweeper.sweep_project("fixture", "/tmp/ped.md")
+        self.assertNotEqual(first.triggers_fired, second.triggers_fired)
+        self.assertEqual(first.publication_id, second.publication_id)
+
+    def test_deregistration_publishes_after_move_and_retries(self):
+        import corpus_watcher
+        import workflow_spec_sweeper
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "oversight"
+            spec_path = str(Path(tmp) / "missing-workflow-spec.md")
+            with (
+                mock.patch.object(
+                    corpus_watcher, "OVERSIGHT_DATA_DIR", str(data), create=True,
+                ),
+                mock.patch.object(
+                    workflow_spec_sweeper, "OVERSIGHT_DATA_DIR",
+                    str(data), create=True,
+                ),
+            ):
+                corpus_watcher.write_workflow_pointer(
+                    "workflow", "project", spec_path, "", "",
+                )
+                pointer = corpus_watcher.load_workflow_pointer("workflow")
+                state = {
+                    "pointer_registered_at": pointer["registered_at"],
+                    "workflow_spec_path": spec_path,
+                    "consecutive_misses": 3,
+                    "first_missed_at": "2026-01-01T00:00:00+00:00",
+                    "last_missed_at": "2026-01-01T00:10:00+00:00",
+                    "drift_emitted": True,
+                }
+                workflow_spec_sweeper._save_sweeper_state("workflow", state)
+                pointer_path = Path(corpus_watcher.workflow_pointer_path("workflow"))
+                tombstone = Path(str(pointer_path) + ".deregistered")
+                attempts = []
+
+                def flaky_emit(event):
+                    self.assertFalse(pointer_path.exists())
+                    self.assertTrue(tombstone.exists())
+                    attempts.append(event["publication_id"])
+                    if len(attempts) == 1:
+                        raise OSError("publication interrupted")
+
+                with self.assertRaisesRegex(OSError, "publication interrupted"):
+                    workflow_spec_sweeper._deregister_workflow(
+                        "workflow", pointer, state, flaky_emit,
+                    )
+                workflow_spec_sweeper._recheck_one_tombstone(
+                    str(data), "workflow", flaky_emit,
+                )
+                self.assertEqual(attempts, [attempts[0], attempts[0]])
+                self.assertIsNone(
+                    workflow_spec_sweeper._load_sweeper_state(
+                        "workflow", pointer,
+                    ) or None
+                )
+
+    def test_reregistration_publishes_after_restore_and_retries(self):
+        import corpus_watcher
+        import workflow_spec_sweeper
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "oversight"
+            spec = Path(tmp) / "workflow-spec.md"
+            with (
+                mock.patch.object(
+                    corpus_watcher, "OVERSIGHT_DATA_DIR", str(data), create=True,
+                ),
+                mock.patch.object(
+                    workflow_spec_sweeper, "OVERSIGHT_DATA_DIR",
+                    str(data), create=True,
+                ),
+            ):
+                corpus_watcher.write_workflow_pointer(
+                    "workflow", "project", str(spec), "", "",
+                )
+                pointer = corpus_watcher.load_workflow_pointer("workflow")
+                state = {
+                    "pointer_registered_at": pointer["registered_at"],
+                    "workflow_spec_path": str(spec),
+                    "consecutive_misses": 3,
+                    "first_missed_at": "2026-01-01T00:00:00+00:00",
+                    "last_missed_at": "2026-01-01T00:10:00+00:00",
+                    "drift_emitted": True,
+                }
+                workflow_spec_sweeper._save_sweeper_state("workflow", state)
+                workflow_spec_sweeper._deregister_workflow(
+                    "workflow", pointer, state, lambda _event: None,
+                )
+                spec.write_text("# restored\n", encoding="utf-8")
+                pointer_path = Path(corpus_watcher.workflow_pointer_path("workflow"))
+                tombstone = Path(str(pointer_path) + ".deregistered")
+                attempts = []
+
+                def flaky_emit(event):
+                    self.assertTrue(pointer_path.exists())
+                    self.assertTrue(tombstone.exists())
+                    attempts.append(event["publication_id"])
+                    if len(attempts) == 1:
+                        raise OSError("publication interrupted")
+
+                with self.assertRaisesRegex(OSError, "publication interrupted"):
+                    workflow_spec_sweeper._recheck_one_tombstone(
+                        str(data), "workflow", flaky_emit,
+                    )
+                workflow_spec_sweeper._recheck_one_tombstone(
+                    str(data), "workflow", flaky_emit,
+                )
+                self.assertEqual(attempts, [attempts[0], attempts[0]])
+                self.assertTrue(pointer_path.exists())
+                self.assertFalse(tombstone.exists())
 
 
 # ---------- Event classification ----------

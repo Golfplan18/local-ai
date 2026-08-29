@@ -29,7 +29,10 @@ import contextlib
 import copy
 import hashlib
 import json
+import multiprocessing
 import os
+import signal
+import subprocess
 import threading
 import time
 from datetime import date, datetime, time as clock_time, timedelta, timezone
@@ -87,6 +90,7 @@ FIRING_TIMEOUT_SEC = int(os.environ.get("ORA_TRIGGER_FIRING_TIMEOUT_SEC") or 360
 #: Characters of action output retained on a firing receipt. The full output
 #: belongs to the tool or the framework, not to this evidence record.
 RECEIPT_EXCERPT_CHARS = 600
+TERMINATION_GRACE_SEC = 5.0
 
 _PROCESS_LOCK = threading.RLock()
 #: trigger_id -> event_id of the firing currently executing in this process.
@@ -195,9 +199,16 @@ def _load() -> dict:
     try:
         value = json.loads(_store_path().read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {"schema_version": SCHEMA_VERSION, "triggers": {}}
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "triggers": {},
+            "completion_deliveries": {},
+        }
     if not isinstance(value, dict) or value.get("schema_version") != SCHEMA_VERSION:
         raise TriggerConflict("unsupported trigger store schema")
+    value.setdefault("completion_deliveries", {})
+    if not isinstance(value["completion_deliveries"], dict):
+        raise TriggerConflict("unsupported completion-delivery state")
     return value
 
 
@@ -620,11 +631,23 @@ class TriggerService:
 
     def __init__(self, *, queue: DeadlineQueue | None = None,
                  ledger: EventLedger | None = None,
-                 executor: Callable[[Callable[[], None]], None] | None = None):
+                 executor: Callable[[Callable[[], None]], None] | None = None,
+                 firing_timeout_sec: float | None = None,
+                 terminate_actions: bool | None = None):
         self._queue = queue
         self._ledger = ledger
         # Injectable so tests run a firing inline instead of racing a thread.
         self._executor = executor or _spawn_firing_thread
+        # Production action work crosses a process boundary so the declared
+        # whole-firing deadline can stop real work. Existing inline test
+        # executors stay direct unless the test explicitly exercises timeout.
+        self._terminate_actions = (
+            executor is None if terminate_actions is None else terminate_actions
+        )
+        self._firing_timeout_sec = (
+            FIRING_TIMEOUT_SEC if firing_timeout_sec is None
+            else float(firing_timeout_sec)
+        )
 
     @property
     def queue(self) -> DeadlineQueue:
@@ -1183,20 +1206,34 @@ class TriggerService:
             # not part of the provider binding digest itself.
             if spec["action"]["kind"] in {"email_send", "framework"}:
                 binding = {**binding, "trigger_id": trigger_id}
-            receipt = _execute_action(
-                spec["action"], binding,
-                prepared=framework_prepared,
-                on_provider_contact=lambda: ledger.transition(
-                    event_id, {"claimed"}, "claimed",
-                    receipt={"outcome": "sending", "provider_contacted": True},
-                    provider_contacted=True,
-                ),
+            on_provider_contact = lambda: ledger.transition(
+                event_id, {"claimed"}, "claimed",
+                receipt={"outcome": "sending", "provider_contacted": True},
+                provider_contacted=True,
             )
+            if self._terminate_actions:
+                receipt = _execute_action_with_deadline(
+                    spec["action"], binding,
+                    prepared=framework_prepared,
+                    on_provider_contact=on_provider_contact,
+                    timeout_sec=self._firing_timeout_sec,
+                )
+            else:
+                receipt = _execute_action(
+                    spec["action"], binding,
+                    prepared=framework_prepared,
+                    on_provider_contact=on_provider_contact,
+                )
             if extra_receipt:
                 receipt.update(extra_receipt)
-            ledger.transition(event_id, {"claimed"}, "completed",
-                              receipt=receipt, completed_at=_now())
-            self._dispatch_completion(trigger_id, event_id)
+            self._stage_completion_deliveries(trigger_id, event_id)
+            completed = ledger.transition(
+                event_id, {"claimed"}, "completed",
+                receipt=receipt, completed_at=_now(),
+            )
+            self._dispatch_completion(
+                trigger_id, event_id, source_completion=completed,
+            )
         except BaseException as exc:
             # Record before anything else: a firing that dies without evidence
             # is indistinguishable from one that never ran.
@@ -1214,23 +1251,149 @@ class TriggerService:
                 if _RUNNING.get(trigger_id) == event_id:
                     _RUNNING.pop(trigger_id, None)
 
-    def _dispatch_completion(self, source_trigger_id: str, source_event_id: str) -> None:
-        """One authenticated firing completion may activate its dependants."""
-        for view in self.list_triggers():
-            spec = view["spec"]
-            if spec["cause"] != "trigger_completion" or view["status"] != "active":
-                continue
-            if spec["condition"]["source_trigger_id"] != source_trigger_id:
-                continue
-            try:
-                record = self._require(spec["trigger_id"])
-                self._fire(record, "trigger_completion", {
+    def _stage_completion_deliveries(self, source_trigger_id: str,
+                                     source_event_id: str) -> None:
+        """Persist exact dependant deliveries before exposing completion."""
+        with _PROCESS_LOCK, _exclusive():
+            state = _load()
+            source_record = state["triggers"].get(source_trigger_id)
+            if source_record is None:
+                raise TriggerConflict(
+                    f"completion source {source_trigger_id!r} no longer exists"
+                )
+            source_spec_digest = _digest(source_record["spec"])
+            changed = False
+            for record in state["triggers"].values():
+                spec = record["spec"]
+                if (spec["cause"] != "trigger_completion"
+                        or record.get("status") != "active"
+                        or spec["condition"]["source_trigger_id"] != source_trigger_id):
+                    continue
+                subject = {
                     "source_trigger_id": source_trigger_id,
                     "source_event_id": source_event_id,
-                })
+                    "dependent_trigger_id": spec["trigger_id"],
+                    "dependent_spec_digest": _digest(spec),
+                }
+                delivery_id = event_identity("trigger_completion_delivery", subject)
+                if delivery_id in state["completion_deliveries"]:
+                    continue
+                state["completion_deliveries"][delivery_id] = {
+                    "delivery_id": delivery_id,
+                    **subject,
+                    "source_event_type": FIRING_EVENT_TYPE,
+                    "source_spec_digest": source_spec_digest,
+                    "created_at": _now(),
+                }
+                changed = True
+            if changed:
+                _save(state)
+
+    def _pending_completion_deliveries(
+        self, source_event_id: str | None = None,
+    ) -> list[dict]:
+        with _PROCESS_LOCK, _exclusive():
+            deliveries = list(_load()["completion_deliveries"].values())
+        if source_event_id is not None:
+            deliveries = [
+                delivery for delivery in deliveries
+                if delivery.get("source_event_id") == source_event_id
+            ]
+        return sorted(deliveries, key=lambda item: (
+            item.get("created_at", ""), item.get("delivery_id", "")
+        ))
+
+    def _finish_completion_delivery(self, delivery_id: str) -> None:
+        with _PROCESS_LOCK, _exclusive():
+            state = _load()
+            if state["completion_deliveries"].pop(delivery_id, None) is not None:
+                _save(state)
+
+    def _deliver_completion(self, delivery: Mapping[str, Any]) -> None:
+        target = str(delivery["dependent_trigger_id"])
+        record = self._require(target)
+        spec = record["spec"]
+        if record.get("status") != "active" or _digest(spec) != delivery.get(
+            "dependent_spec_digest"
+        ):
+            raise TriggerConflict(
+                f"completion delivery target {target!r} changed after publication"
+            )
+        self._fire(record, "trigger_completion", {
+            "source_trigger_id": delivery["source_trigger_id"],
+            "source_event_id": delivery["source_event_id"],
+        })
+        self._finish_completion_delivery(str(delivery["delivery_id"]))
+
+    def _dispatch_completion(
+        self, source_trigger_id: str, source_event_id: str, *,
+        source_completion: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Persist completion eligibility, then deliver each dependant."""
+        if source_completion is not None:
+            source_subject = source_completion.get("subject") or {}
+            proof = {
+                "event_id": source_completion.get("event_id"),
+                "event_type": source_completion.get("event_type"),
+                "trigger_id": source_subject.get("trigger_id"),
+                "spec_digest": source_subject.get("spec_digest"),
+                "completed_at": source_completion.get("completed_at"),
+            }
+            if (source_completion.get("status") != "completed"
+                    or proof["event_id"] != source_event_id
+                    or proof["event_type"] != FIRING_EVENT_TYPE
+                    or proof["trigger_id"] != source_trigger_id
+                    or not proof["spec_digest"]
+                    or not proof["completed_at"]):
+                raise TriggerConflict(
+                    "completion delivery requires a completed source firing"
+                )
+            with _PROCESS_LOCK, _exclusive():
+                state = _load()
+                changed = False
+                for delivery in state["completion_deliveries"].values():
+                    if delivery.get("source_event_id") == source_event_id:
+                        delivery["source_completion"] = proof
+                        changed = True
+                if changed:
+                    _save(state)
+        for delivery in self._pending_completion_deliveries(source_event_id):
+            try:
+                self._deliver_completion(delivery)
             except Exception as exc:
                 print(f"[triggers] completion dispatch to "
-                      f"{spec['trigger_id']} failed: {exc}")
+                      f"{delivery.get('dependent_trigger_id')} failed: {exc}")
+
+    def replay_completion_deliveries(self) -> list[str]:
+        """Replay each unfinished dependant delivery once at process startup."""
+        delivered: list[str] = []
+        for delivery in self._pending_completion_deliveries():
+            source_event_id = str(delivery.get("source_event_id") or "")
+            proof = delivery.get("source_completion")
+            source_completed = (
+                isinstance(proof, dict)
+                and proof.get("event_id") == source_event_id
+                and proof.get("event_type") == FIRING_EVENT_TYPE
+                and proof.get("trigger_id") == delivery.get("source_trigger_id")
+                and proof.get("spec_digest") == delivery.get(
+                    "source_spec_digest"
+                )
+                and bool(proof.get("completed_at"))
+            )
+            source = None if source_completed else self.ledger.get(source_event_id)
+            if not source_completed and (
+                source is None or source.get("status") != "completed"
+            ):
+                if source is not None and source.get("status") == "failed":
+                    self._finish_completion_delivery(str(delivery["delivery_id"]))
+                continue
+            try:
+                self._deliver_completion(delivery)
+                delivered.append(str(delivery["delivery_id"]))
+            except Exception as exc:
+                print(f"[triggers] startup completion replay to "
+                      f"{delivery.get('dependent_trigger_id')} failed: {exc}")
+        return delivered
 
     # ---- inspection ----
 
@@ -1277,6 +1440,130 @@ def _spawn_firing_thread(work: Callable[[], None]) -> None:
     threading.Thread(target=work, daemon=True, name="ora-trigger-firing").start()
 
 
+def _action_process_main(connection, action: dict, binding: dict) -> None:
+    """Process-side action entry point; reports provider contact and outcome."""
+    if os.name == "posix":
+        os.setsid()
+        if action.get("kind") == "project_tool":
+            # The project tool is a child process in this group. Let it
+            # acknowledge SIGTERM and let invoke_project_tool reap it before
+            # this supervisor exits; exec resets this caught handler to the
+            # default disposition in the tool itself.
+            signal.signal(signal.SIGTERM, lambda *_args: None)
+    try:
+        receipt = _execute_action(
+            action, binding, prepared=None,
+            on_provider_contact=lambda: connection.send(
+                ("provider_contact", None)
+            ),
+        )
+        connection.send(("result", receipt))
+    except BaseException as exc:
+        with contextlib.suppress(Exception):
+            connection.send(("error", f"{type(exc).__name__}: {exc}"))
+    finally:
+        connection.close()
+
+
+def _terminate_action_process(process) -> None:
+    """Terminate the whole action process group and wait for acknowledgment."""
+    if process.pid is None:
+        return
+    if os.name == "posix":
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGTERM)
+        # If the child had not reached setsid yet, there was no process group
+        # to signal. Terminating the wrapper still closes that startup race.
+        with contextlib.suppress(ProcessLookupError):
+            process.terminate()
+    else:  # pragma: no cover - exercised at the Windows release checkpoint
+        with contextlib.suppress(OSError):
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True, check=False,
+            )
+    process.join(TERMINATION_GRACE_SEC)
+    if process.is_alive():
+        if os.name == "posix":
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+        elif hasattr(process, "kill"):
+            process.kill()
+        else:  # pragma: no cover - old Python fallback
+            process.terminate()
+        process.join()
+    if process.is_alive():
+        raise RuntimeError("Trigger action did not acknowledge termination")
+
+
+def _execute_action_with_deadline(
+    action: Mapping[str, Any], binding: Mapping[str, Any], *, prepared,
+    on_provider_contact: Callable[[], None] | None, timeout_sec: float,
+) -> dict:
+    """Run real action work across a boundary the deadline can terminate."""
+    if timeout_sec <= 0:
+        raise ValueError("Trigger firing timeout must be positive")
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    process = context.Process(
+        target=_action_process_main,
+        args=(send, dict(action), dict(binding)),
+        daemon=True,
+        name="ora-trigger-action",
+    )
+    try:
+        # Include start itself in the cleanup boundary: a platform launcher
+        # can create the OS process and then fail while finishing the parent
+        # bookkeeping. If a pid exists, finally must still reap it.
+        process.start()
+        send.close()
+        deadline = time.monotonic() + timeout_sec
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                _terminate_action_process(process)
+                raise TimeoutError(
+                    f"Trigger firing exceeded its {timeout_sec:g}s deadline"
+                )
+            if receive.poll(min(remaining, 0.1)):
+                try:
+                    kind, payload = receive.recv()
+                except EOFError:
+                    kind, payload = "closed", None
+                if kind == "provider_contact":
+                    if on_provider_contact is not None:
+                        on_provider_contact()
+                    continue
+                process.join(TERMINATION_GRACE_SEC)
+                if process.is_alive():
+                    _terminate_action_process(process)
+                    raise RuntimeError(
+                        "Trigger action returned without terminating"
+                    )
+                if kind == "result":
+                    return payload
+                if kind == "error":
+                    raise TriggerError(str(payload))
+                raise RuntimeError("Trigger action exited without a result")
+            if not process.is_alive():
+                process.join()
+                raise RuntimeError(
+                    f"Trigger action process exited with code {process.exitcode}"
+                )
+    finally:
+        with contextlib.suppress(Exception):
+            send.close()
+        receive.close()
+        # No parent-side failure may release TriggerService._RUNNING while
+        # action work still exists. This covers callback errors and all other
+        # exceptions outside the explicit timeout/result branches.
+        if process.pid is not None:
+            if process.is_alive():
+                _terminate_action_process(process)
+            else:
+                process.join()
+
+
 def _execute_action(
     action: Mapping[str, Any], binding: Mapping[str, Any], *,
     prepared=None,
@@ -1303,7 +1590,15 @@ def _execute_action(
         }
     if action["kind"] == "framework":
         if prepared is None:
-            _binding, prepared = _resolve_framework_action_binding(action)
+            current_binding, prepared = _resolve_framework_action_binding(action)
+            if binding.get("trigger_id"):
+                current_binding = {
+                    **current_binding, "trigger_id": binding["trigger_id"],
+                }
+            if current_binding != dict(binding):
+                raise TriggerConflict(
+                    "action_definition_drifted before the action process started"
+                )
         try:
             import milestone_executor as _me
             import pipeline_trace as _pt

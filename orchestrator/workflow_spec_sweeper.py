@@ -54,6 +54,11 @@ try:
 except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator import runtime_paths as _rp
 
+try:
+    from runtime_hygiene import event_identity
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator.runtime_hygiene import event_identity
+
 
 # Roots flow from runtime_paths (ORA_HOME-relocatable) with the rest of
 # the watcher/heartbeat family.
@@ -131,6 +136,18 @@ class WorkflowSpecDriftEvent:
     issues_summary: list  # list[dict] for serialization
     severe: bool
     timestamp: str
+    publication_id: str
+
+
+def _publication_id(event_type: str, workflow_id: str, pointer: dict,
+                    **details) -> str:
+    return event_identity("watcher_publication", {
+        "watcher": "workflow_spec_sweeper",
+        "event_type": event_type,
+        "workflow_id": workflow_id,
+        "pointer_registered_at": pointer.get("registered_at", ""),
+        **details,
+    })
 
 
 def sweep_workflow(workflow_id: str, pointer: dict) -> WorkflowDriftReport:
@@ -286,10 +303,10 @@ def sweep(emit_event=None) -> list[WorkflowDriftReport]:
     return reports
 
 
-def _emit_drift_event(workflow_id: str, pointer: dict, report: WorkflowDriftReport, emit_event) -> bool:
-    """Emit a WorkflowSpecDrift event. Returns True on success, False if the
-    emitter raised — the missing-spec path uses this to retry a first-detection
-    event next sweep instead of marking it emitted and losing it."""
+def _emit_drift_event(workflow_id: str, pointer: dict,
+                      report: WorkflowDriftReport, emit_event) -> None:
+    """Durably publish one stable drift transition or raise."""
+    signature = _issues_signature(report.issues)
     evt = WorkflowSpecDriftEvent(
         event_type="WorkflowSpecDrift",
         workflow_id=workflow_id,
@@ -300,13 +317,12 @@ def _emit_drift_event(workflow_id: str, pointer: dict, report: WorkflowDriftRepo
         ],
         severe=report.is_severe(),
         timestamp=_now_iso(),
+        publication_id=_publication_id(
+            "WorkflowSpecDrift", workflow_id, pointer,
+            issue_signature=signature,
+        ),
     )
-    try:
-        emit_event(evt)
-        return True
-    except Exception as e:
-        print(f"[workflow_spec_sweeper] emit_event raised: {e}")
-        return False
+    emit_event(evt)
 
 
 # ---------- sweeper sidecar state ----------
@@ -453,15 +469,12 @@ def _handle_persistent_drift(workflow_id: str, pointer: dict, report: WorkflowDr
     already_reported = state.get("last_issue_signature") == signature
     if not already_reported:
         new_state["last_issue_emitted_at"] = _now_iso()
-    # Record-then-emit: if persistence fails we stay silent and retry next
-    # sweep, rather than reverting to a per-sweep event flood. A rare emit
-    # failure after a successful record is an at-most-once miss of one
-    # notification (the condition persists; the next distinct-signature change
-    # re-emits) — deliberately preferred over reintroducing the flood.
-    if not _save_sweeper_state(workflow_id, new_state):
-        return
     if not already_reported:
         _emit_drift_event(workflow_id, pointer, report, emit_event)
+    # The signature advances only after durable publication. If this write
+    # fails, the stable publication id makes the next sweep a harmless
+    # redelivery before it retries the checkpoint.
+    _save_sweeper_state(workflow_id, new_state)
 
 
 # ---------- stale-registration handling (spec file vanished) ----------
@@ -526,34 +539,48 @@ def _handle_missing_spec(workflow_id: str, pointer: dict, report: WorkflowDriftR
         _deregister_workflow(workflow_id, pointer, new_state, emit_event)
         return
 
-    # Persist the advancing counter first: a failed write degrades to silence
-    # (no flood) and next sweep retries. The drift_emitted flag is only set
-    # after a SUCCESSFUL emit, so a transient emit failure re-attempts the
-    # first-detection event next sweep instead of marking it done and losing it.
     first_detection = not new_state["drift_emitted"]
-    if not _save_sweeper_state(workflow_id, new_state):
-        return
     if first_detection and report.issues:
-        if _emit_drift_event(workflow_id, pointer, report, emit_event):
-            new_state["drift_emitted"] = True
-            _save_sweeper_state(workflow_id, new_state)
+        _emit_drift_event(workflow_id, pointer, report, emit_event)
+        new_state["drift_emitted"] = True
+    _save_sweeper_state(workflow_id, new_state)
 
 
 def _deregister_workflow(workflow_id: str, pointer: dict, state: dict, emit_event):
     """Archive the pointer file so list_known_workflows() stops returning this
     workflow. The tombstone keeps the registration inspectable and is restored
     by _recheck_tombstones if the recorded spec path ever exists again."""
-    # Clear the sidecar BEFORE archiving: a crash in between leaves the
-    # pointer live with a fresh counter (the safe direction), never an
-    # orphaned counter that a future registration could inherit.
-    _clear_sweeper_state(workflow_id)
     pointer_path = workflow_pointer_path(workflow_id)
     tombstone = pointer_path + ".deregistered"
+    # Persist the exact missing-spec episode before moving the pointer. This
+    # is retry evidence, not a completed-transition claim: if the rename
+    # fails, the next ordinary sweep may safely retry it.
+    if not _save_sweeper_state(workflow_id, state):
+        return
     try:
         os.replace(pointer_path, tombstone)
     except OSError as e:
         print(f"[workflow_spec_sweeper] failed to deregister {workflow_id}: {e}")
         return
+    # The sidecar remains until publication succeeds. If the process stops or
+    # emission fails here, the tombstone recheck has both the completed
+    # filesystem transition and the exact episode facts needed to retry.
+    emit_event({
+        "event_type": "WorkflowWatcherDeregistered",
+        "workflow_id": workflow_id,
+        "project_nexus": pointer.get("project_nexus", ""),
+        "workflow_spec_path": pointer.get("workflow_spec_path", ""),
+        "consecutive_misses": state["consecutive_misses"],
+        "first_missed_at": state.get("first_missed_at", ""),
+        "pointer_tombstone": tombstone,
+        "reason": "workflow spec file missing; watcher auto-deregistered",
+        "timestamp": _now_iso(),
+        "publication_id": _publication_id(
+            "WorkflowWatcherDeregistered", workflow_id, pointer,
+            first_missed_at=state.get("first_missed_at", ""),
+        ),
+    })
+    _clear_sweeper_state(workflow_id)
 
     print(
         f"[workflow_spec_sweeper] deregistered watcher for '{workflow_id}': "
@@ -561,20 +588,6 @@ def _deregister_workflow(workflow_id: str, pointer: dict, state: dict, emit_even
         f"since {state.get('first_missed_at', '?')} "
         f"(pointer archived at {tombstone})"
     )
-    try:
-        emit_event({
-            "event_type": "WorkflowWatcherDeregistered",
-            "workflow_id": workflow_id,
-            "project_nexus": pointer.get("project_nexus", ""),
-            "workflow_spec_path": pointer.get("workflow_spec_path", ""),
-            "consecutive_misses": state["consecutive_misses"],
-            "first_missed_at": state.get("first_missed_at", ""),
-            "pointer_tombstone": tombstone,
-            "reason": "workflow spec file missing; watcher auto-deregistered",
-            "timestamp": _now_iso(),
-        })
-    except Exception as e:
-        print(f"[workflow_spec_sweeper] emit_event raised: {e}")
 
 
 def _recheck_tombstones(emit_event):
@@ -599,9 +612,6 @@ def _recheck_one_tombstone(base: str, name: str, emit_event):
     if not os.path.isfile(tombstone):
         return
     pointer_path = workflow_pointer_path(name)
-    if os.path.isfile(pointer_path):
-        # Re-registered independently; leave the tombstone as forensics.
-        return
     try:
         with open(tombstone) as f:
             pointer = json.load(f)
@@ -609,36 +619,82 @@ def _recheck_one_tombstone(base: str, name: str, emit_event):
         return
     if not isinstance(pointer, dict):
         return
+    # A crash or publication failure after pointer -> tombstone leaves the
+    # existing episode sidecar intact. Publish the already-completed
+    # deregistration before considering restoration, then clear its retry
+    # evidence. Stable publication ids make a post-append retry harmless.
+    state = _load_sweeper_state(name, pointer)
+    if state.get("consecutive_misses"):
+        emit_event({
+            "event_type": "WorkflowWatcherDeregistered",
+            "workflow_id": name,
+            "project_nexus": pointer.get("project_nexus", ""),
+            "workflow_spec_path": pointer.get("workflow_spec_path", ""),
+            "consecutive_misses": state["consecutive_misses"],
+            "first_missed_at": state.get("first_missed_at", ""),
+            "pointer_tombstone": tombstone,
+            "reason": "workflow spec file missing; watcher auto-deregistered",
+            "timestamp": _now_iso(),
+            "publication_id": _publication_id(
+                "WorkflowWatcherDeregistered", name, pointer,
+                first_missed_at=state.get("first_missed_at", ""),
+            ),
+        })
+        _clear_sweeper_state(name)
+
     spec_path = pointer.get("workflow_spec_path", "")
     if not isinstance(spec_path, str) or not spec_path or not os.path.isfile(spec_path):
         return
-    # Restore by writing a FRESH pointer via exclusive create (O_EXCL), then
-    # dropping the tombstone. O_EXCL fails if a pointer already exists, so a
-    # concurrent vault-scan registration written between the isfile check above
-    # and here is never clobbered. Writing a fresh inode (rather than hardlinking
-    # the tombstone into place) means that if the tombstone removal below fails,
-    # the two files are independent — a later _deregister_workflow os.replace
-    # still archives correctly, and an in-place re-registration can't corrupt
-    # the tombstone through a shared inode.
-    try:
-        fd = os.open(pointer_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-    except FileExistsError:
-        # Lost the race to a concurrent re-registration; leave the tombstone.
-        return
-    except OSError as e:
-        print(f"[workflow_spec_sweeper] failed to restore pointer for {name}: {e}")
-        return
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(pointer, f, indent=2)
-    except OSError as e:
-        print(f"[workflow_spec_sweeper] failed to write restored pointer for {name}: {e}")
-        # Don't leave a partial/corrupt pointer behind.
+    tombstone_stat = os.stat(tombstone)
+    if os.path.isfile(pointer_path):
         try:
-            os.remove(pointer_path)
-        except OSError:
-            pass
-        return
+            with open(pointer_path) as f:
+                current_pointer = json.load(f)
+        except (json.JSONDecodeError, OSError, ValueError):
+            return
+        if current_pointer != pointer:
+            # Re-registered independently; leave the tombstone as forensics.
+            return
+    else:
+        # Restore by writing a FRESH pointer via exclusive create (O_EXCL).
+        # The tombstone is retained until the completed transition has been
+        # durably published, so a crash can retry the same stable event.
+        try:
+            fd = os.open(pointer_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+        except FileExistsError:
+            return
+        except OSError as e:
+            print(f"[workflow_spec_sweeper] failed to restore pointer for {name}: {e}")
+            return
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(pointer, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+        except OSError as e:
+            print(f"[workflow_spec_sweeper] failed to write restored pointer for {name}: {e}")
+            try:
+                os.remove(pointer_path)
+            except OSError:
+                pass
+            return
+
+    emit_event({
+        "event_type": "WorkflowWatcherReregistered",
+        "workflow_id": name,
+        "project_nexus": pointer.get("project_nexus", ""),
+        "workflow_spec_path": spec_path,
+        "reason": "workflow spec file reappeared; archived pointer restored",
+        "timestamp": _now_iso(),
+        "publication_id": _publication_id(
+            "WorkflowWatcherReregistered", name, pointer,
+            workflow_spec_path=os.path.abspath(spec_path),
+            tombstone_inode=tombstone_stat.st_ino,
+        ),
+    })
+    # Restore by writing a FRESH pointer via exclusive create (O_EXCL), then
+    # dropping the tombstone. At this point the restored pointer exists and
+    # its past-tense event is durable.
     try:
         os.remove(tombstone)
     except OSError:
@@ -648,17 +704,6 @@ def _recheck_one_tombstone(base: str, name: str, emit_event):
         f"[workflow_spec_sweeper] restored watcher for '{name}': "
         f"spec reappeared at {spec_path}"
     )
-    try:
-        emit_event({
-            "event_type": "WorkflowWatcherReregistered",
-            "workflow_id": name,
-            "project_nexus": pointer.get("project_nexus", ""),
-            "workflow_spec_path": spec_path,
-            "reason": "workflow spec file reappeared; archived pointer restored",
-            "timestamp": _now_iso(),
-        })
-    except Exception as e:
-        print(f"[workflow_spec_sweeper] emit_event raised: {e}")
 
 
 def _write_heartbeat():

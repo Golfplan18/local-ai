@@ -33,6 +33,11 @@ try:
 except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator import runtime_paths as _rp
 
+try:
+    from runtime_hygiene import event_identity
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator.runtime_hygiene import event_identity
+
 
 # Roots flow from runtime_paths (ORA_HOME-relocatable); the whole
 # watcher/heartbeat family moves together so pointer/state writers and
@@ -86,6 +91,7 @@ class MilestoneClaimedEvent:
     claimed_at: str  # ISO timestamp
     claimer: str  # "user" / "framework" / "system"
     timestamp: str
+    publication_id: str
 
 
 def project_pointer_path(nexus: str) -> str:
@@ -148,8 +154,7 @@ def write_state(nexus: str, state: dict):
     nexus_dir = os.path.join(_oversight_data_dir(), nexus)
     os.makedirs(nexus_dir, exist_ok=True)
     path = project_state_path(nexus)
-    with open(path, "w") as f:
-        json.dump(state, f, indent=2)
+    _rp.atomic_write_text(path, json.dumps(state, indent=2) + "\n")
 
 
 def diff_milestones(prior: dict, current: dict) -> list[tuple[str, bool, bool]]:
@@ -215,16 +220,25 @@ def sweep(emit_event=None) -> list[MilestoneClaimedEvent]:
                     claimed_at=_now_iso(),
                     claimer="user",  # default; framework hooks set this differently
                     timestamp=_now_iso(),
+                    publication_id=event_identity("watcher_publication", {
+                        "watcher": "ped_watcher",
+                        "event_type": "MilestoneClaimed",
+                        "project_nexus": nexus,
+                        "ped_path": os.path.abspath(ped_path),
+                        "milestone_text": statement,
+                        "prior_snapshot_at": (
+                            prior_state or {}
+                        ).get("snapshot_at"),
+                    }),
                 )
                 events.append(evt)
                 if emit_event is not None:
-                    try:
-                        emit_event(evt)
-                    except Exception as e:
-                        print(f"[ped_watcher] emit_event raised: {e}")
+                    emit_event(evt)
 
-        # Always write the new state (even if no changes — keeps snapshot timestamp fresh)
-        write_state(nexus, current_state)
+        # Observation-only calls cannot consume a transition. Production
+        # advances only after every detected event is durably published.
+        if emit_event is not None:
+            write_state(nexus, current_state)
 
     return events
 
