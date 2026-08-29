@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -31,6 +32,7 @@ def _entry(
         "paired": "pair",
         "missing_runtime": "missing",
         "no_runtime_twin": "no-twin",
+        "specified_not_built": "specified",
     }[disposition]
     pair_id = f"{prefix}:{hashlib.sha256(canonical.encode()).hexdigest()[:16]}"
     return {
@@ -58,6 +60,9 @@ def _write_manifest(path: Path, entries: list[dict]) -> None:
             entry["disposition"] == "no_runtime_twin" for entry in entries
         ),
         "paired": sum(entry["disposition"] == "paired" for entry in entries),
+        "specified_not_built": sum(
+            entry["disposition"] == "specified_not_built" for entry in entries
+        ),
         "total_entries": len(entries),
     }
     document = {
@@ -90,6 +95,8 @@ class TemporaryManifestCase(unittest.TestCase):
         (self.vault / "Projects" / "Ora").mkdir(parents=True)
         (self.vault / "Projects" / "MSI").mkdir(parents=True)
         (self.ora / "frameworks" / "book").mkdir(parents=True)
+        (self.ora / "config").mkdir(parents=True)
+        self.write_invocability()
         self.manifest = root / "manifest.md"
         self.queue = root / "queue.md"
         self.queue.write_text(
@@ -118,6 +125,26 @@ class TemporaryManifestCase(unittest.TestCase):
         path = self.ora / "frameworks" / "book" / name
         path.write_text(body, encoding="utf-8")
         return path.relative_to(self.ora).as_posix()
+
+    def write_invocability(
+        self,
+        *,
+        invocable: list[str] | None = None,
+        pickable: list[str] | None = None,
+        aliases: dict[str, str] | None = None,
+    ) -> None:
+        (self.ora / "config" / "framework-invocability.json").write_text(
+            json.dumps(
+                {
+                    "_schema_version": 1,
+                    "invocable_frameworks": invocable or [],
+                    "pickable_frameworks": pickable or [],
+                    "aliases": aliases or {},
+                    "internal_only_frameworks": [],
+                }
+            ),
+            encoding="utf-8",
+        )
 
     def evaluate(self):
         return VERIFY.evaluate_framework_pair_manifest(
@@ -200,6 +227,168 @@ class FrameworkPairManifestAdversarialTests(TemporaryManifestCase):
         self.assertEqual(
             finding.payload["finding_type"], "unapproved_runtime_twin_present"
         )
+
+    def test_specified_not_built_requires_banner_absence_and_no_registration(self):
+        body = f"# A\n\n{VERIFY.SPECIFIED_NOT_BUILT_BANNER}\n"
+        canonical = self.write_canonical("Framework — A.md", body)
+        _write_manifest(
+            self.manifest,
+            [_entry(canonical, "frameworks/book/a.md", "specified_not_built")],
+        )
+
+        evaluation = self.evaluate()
+
+        self.assertEqual(evaluation.findings, ())
+        self.assertEqual(evaluation.specified_not_built, 1)
+
+    def test_specified_not_built_missing_exact_banner_fails(self):
+        canonical = self.write_canonical("Framework — A.md")
+        _write_manifest(
+            self.manifest,
+            [_entry(canonical, "frameworks/book/a.md", "specified_not_built")],
+        )
+
+        finding_types = {
+            finding.payload["finding_type"] for finding in self.evaluate().findings
+        }
+
+        self.assertIn("specified_not_built_banner_missing", finding_types)
+
+    def test_hidden_or_example_banner_does_not_satisfy_lifecycle_state(self):
+        hidden_forms = {
+            "backtick fence": (
+                "# A\n\n```markdown\n"
+                f"{VERIFY.SPECIFIED_NOT_BUILT_BANNER}\n"
+                "```\n"
+            ),
+            "tilde fence": (
+                "# A\n\n~~~markdown\n"
+                f"{VERIFY.SPECIFIED_NOT_BUILT_BANNER}\n"
+                "~~~\n"
+            ),
+            "multiline HTML comment": (
+                "# A\n\n<!--\n"
+                f"{VERIFY.SPECIFIED_NOT_BUILT_BANNER}\n"
+                "-->\n"
+            ),
+        }
+
+        for label, body in hidden_forms.items():
+            with self.subTest(label=label):
+                canonical = self.write_canonical("Framework — A.md", body)
+                _write_manifest(
+                    self.manifest,
+                    [
+                        _entry(
+                            canonical,
+                            "frameworks/book/a.md",
+                            "specified_not_built",
+                        )
+                    ],
+                )
+
+                finding_types = {
+                    finding.payload["finding_type"]
+                    for finding in self.evaluate().findings
+                }
+
+                self.assertIn(
+                    "specified_not_built_banner_missing", finding_types
+                )
+
+    def test_hidden_h2_does_not_end_preamble_before_visible_banner(self):
+        hidden_h2_forms = {
+            "backtick fence": "```markdown\n## Example\n```",
+            "tilde fence": "~~~markdown\n## Example\n~~~",
+            "multiline HTML comment": "<!--\n## Example\n-->",
+        }
+
+        for label, hidden_h2 in hidden_h2_forms.items():
+            with self.subTest(label=label):
+                body = (
+                    f"# A\n\n{hidden_h2}\n\n"
+                    f"{VERIFY.SPECIFIED_NOT_BUILT_BANNER}\n\n"
+                    "## Real section\n"
+                )
+                canonical = self.write_canonical("Framework — A.md", body)
+                _write_manifest(
+                    self.manifest,
+                    [
+                        _entry(
+                            canonical,
+                            "frameworks/book/a.md",
+                            "specified_not_built",
+                        )
+                    ],
+                )
+
+                self.assertEqual(self.evaluate().findings, ())
+
+    def test_specified_not_built_runtime_or_invocability_exposure_fails(self):
+        body = f"# A\n\n{VERIFY.SPECIFIED_NOT_BUILT_BANNER}\n"
+        canonical = self.write_canonical("Framework — A.md", body)
+        runtime = self.write_runtime("a.md", body)
+        self.write_invocability(
+            invocable=["a.md"],
+            pickable=["a"],
+            aliases={"public-a": "a.md"},
+        )
+        _write_manifest(
+            self.manifest,
+            [_entry(canonical, runtime, "specified_not_built")],
+        )
+
+        finding_types = {
+            finding.payload["finding_type"] for finding in self.evaluate().findings
+        }
+
+        self.assertEqual(
+            finding_types,
+            {
+                "specified_not_built_runtime_present",
+                "specified_not_built_registered",
+            },
+        )
+
+    def test_paired_entry_cannot_carry_either_approved_banner(self):
+        body = f"# A\n\n{VERIFY.SPECIFIED_NOT_BUILT_BANNER}\n"
+        canonical = self.write_canonical("Framework — A.md", body)
+        runtime = self.write_runtime("a.md", body)
+        _write_manifest(self.manifest, [_entry(canonical, runtime, "paired")])
+
+        finding_types = {
+            finding.payload["finding_type"] for finding in self.evaluate().findings
+        }
+
+        self.assertEqual(
+            finding_types, {"paired_carries_specified_not_built_banner"}
+        )
+
+    def test_later_explanatory_banner_quote_is_not_lifecycle_state(self):
+        body = (
+            "# A\n\nActive framework.\n\n## Lifecycle examples\n\n"
+            f"{VERIFY.SPECIFIED_NOT_BUILT_BANNER}\n"
+        )
+        canonical = self.write_canonical("Framework — A.md", body)
+        runtime = self.write_runtime("a.md", body)
+        _write_manifest(self.manifest, [_entry(canonical, runtime, "paired")])
+
+        self.assertEqual(self.evaluate().findings, ())
+
+    def test_legacy_manifest_count_envelope_remains_accepted(self):
+        canonical = self.write_canonical("Framework — A.md")
+        runtime = self.write_runtime("a.md")
+        _write_manifest(self.manifest, [_entry(canonical, runtime)])
+        content = self.manifest.read_text(encoding="utf-8")
+        self.manifest.write_text(
+            re.sub(r'\n\s*"specified_not_built": 0,', "", content),
+            encoding="utf-8",
+        )
+
+        evaluation = self.evaluate()
+
+        self.assertEqual(evaluation.findings, ())
+        self.assertNotIn("specified_not_built", evaluation.manifest.expected_counts)
 
     def test_path_escape_is_rejected_before_filesystem_access(self):
         canonical = self.write_canonical("Framework — A.md")
@@ -572,18 +761,29 @@ class AcceptedG114BaselineTests(unittest.TestCase):
         # paired_clean/paired_drifted are MEASURED against the live trees, so
         # the 49/14 recorded at the 2026-07-22 acceptance is a snapshot of that
         # day, not an invariant: remediating a drifted pair moves one from
-        # drifted to clean, which is the point of the audit. Assert the
-        # conservation laws instead — they hold on any machine at any time and
-        # still catch an entry being double-counted or silently dropped.
+        # drifted to clean, which is the point of the audit. Video/D35 is the
+        # one protected paired entry whose declared runtime path is absent; it
+        # is neither clean nor body-drifted. Assert the conservation law with
+        # that exact state included, without misclassifying it as clean.
+        paired_runtime_missing = sum(
+            finding.payload["finding_type"] == "paired_runtime_missing"
+            and finding.payload["disposition"] == "paired"
+            for finding in evaluation.findings
+        )
+        self.assertEqual(paired_runtime_missing, 1)
         self.assertEqual(
-            evaluation.paired_clean + evaluation.paired_drifted,
+            evaluation.paired_clean
+            + evaluation.paired_drifted
+            + paired_runtime_missing,
             counts["paired"],
         )
         self.assertEqual(
             evaluation.paired_clean
             + evaluation.paired_drifted
+            + paired_runtime_missing
             + evaluation.missing_runtime
-            + evaluation.no_runtime_twin,
+            + evaluation.no_runtime_twin
+            + evaluation.specified_not_built,
             counts["total_entries"],
         )
 
@@ -595,6 +795,7 @@ class AcceptedG114BaselineTests(unittest.TestCase):
             {
                 "missing_runtime_twin",
                 "normalized_body_drift",
+                "paired_runtime_missing",
                 "unregistered_runtime_framework",
                 "unregistered_canonical_framework",
             },
@@ -613,6 +814,31 @@ class AcceptedG114BaselineTests(unittest.TestCase):
         for finding in evaluation.findings:
             if finding.payload["finding_type"] == "missing_runtime_twin":
                 self.assertEqual(finding.payload["severity"], "missing-feature")
+
+        # These two protected findings stay exactly with their external
+        # owners. The lifecycle transition for the seven candidates must not
+        # absorb or rename either identity.
+        findings_by_identity = {
+            (finding.payload["finding_type"], finding.payload["pair_id"]): finding
+            for finding in evaluation.findings
+        }
+        system_protection = findings_by_identity[
+            (
+                "unregistered_canonical_framework",
+                "unregistered-canonical:0e9383eef0b192d1",
+            )
+        ]
+        self.assertEqual(
+            system_protection.payload["canonical_path"],
+            "Projects/Ora/Framework — System Protection and Outbound Security.md",
+        )
+        video = findings_by_identity[
+            ("paired_runtime_missing", "pair:c82da19f72e570a5")
+        ]
+        self.assertEqual(
+            video.payload["runtime_path"],
+            "frameworks/book/video-editing-suggestions.md",
+        )
 
         # No finding invented and none swallowed.
         self.assertEqual(
@@ -702,8 +928,43 @@ class AcceptedG114BaselineTests(unittest.TestCase):
         content = VERIFY.FRAMEWORK_ESCALATION_QUEUE_FILE.read_text(encoding="utf-8")
         receipts = VERIFY.verify_framework_finding_receipts(content)
 
-        # The accepted G1.14 tranche: exactly 21 detector-issued receipts.
-        self.assertEqual(content.count("(G1.14 deterministic detector)"), 21)
+        # Freeze the exact accepted 2026-07-22 tranche. Later runs and the two
+        # externally owned findings may add authenticated receipts, so a count
+        # of every detector-tagged line is not the historical contract.
+        accepted_manifest = (
+            "17775559f49b5459f2a9cd1f196de90051cef8cc1150699aa12fc99582d78a46"
+        )
+        expected_accepted_digests = {
+            "94488f13b08f9100595f9aa2aa81b499fcf734c92e6639f0271c7628188233dd",
+            "73a8d6825ef055a4f6120afb5712c1d950646547ef71fb0960e8aee9cf026be6",
+            "a88d3a7cdacf182ea077c603e916c789c01013ad0675850e036c7940520fdcc4",
+            "22fd5dbfdc31788bdf5d6e0f4f075a0962402dbf2f39b04b2383d5588a13876f",
+            "86055318febe7c62c1a21f0b92d2feb6dd4b39e429b792c837a15f82302c3e5f",
+            "426d24034c4224f83d72f687d8dc746d719cb4bba34fdf9101f31501a4e89076",
+            "3dde581e131993ea369cba8c0bfc3d015d29a74f57dd07e55d91971175d0e408",
+            "8bdfc4f6e806ee9ee68a8c00d99919fb26594224d097afb2f8d3670969a3d8b9",
+            "7f0c88f4887362d1a492d21b7b72ee687c1fccbb27534baf2ac837a9664da4f5",
+            "f0b3e259d2c09f2fd2c4f3376cacee66c103a9ea3b2d2215b4d15100ce5e67b3",
+            "ccba42e23d4ed9062f3adabf87ea354f29d90731d9457f1036f193a1319bd1a9",
+            "f25061cd9f6de66419ee0525bde8a0fbdccc3ef18451ab16b6ea833a93610e6a",
+            "01ca7632eed1b7a30a8d715f442dfe9586e9733b07e585814d6643c4d3fcad16",
+            "284611894cdf72bbd8c0a707eaccd18b72bfd89c84f1c449b6dda6a6b96ed52c",
+            "d2191491c75aa8d1c098fed7c723f0a9a52beac9ff1cecd7c189ba98e6c0726b",
+            "335fce40a1acd104625d59f199c104e637bdbeb881e470f0976931159e4e00a1",
+            "8d9ef5f321c84c5469d619c4f500024e29b16f29e9259295e7a6df96a8c05f3c",
+            "996002cf07a3a11c0689e6f7b20352e3b9dd25cd0e43d664f3e8d259d796d080",
+            "b75c68f48c7b7cc93b7a7207b58a7231a4411b3431bca2b8ede7eed791ab1159",
+            "2d27c64989cd9faaad9cfb0fbc496a43143f0cd57345941ef5756775ddb9315c",
+            "733127eab5556268e45d0956b74f60532344b72504c0dafb11c77403aa6f1fef",
+        }
+        accepted_receipts = {
+            receipt.finding_digest
+            for receipt in receipts
+            if receipt.payload["manifest_sha256"] == accepted_manifest
+            and receipt.payload["finding_type"]
+            in {"missing_runtime_twin", "normalized_body_drift"}
+        }
+        self.assertEqual(accepted_receipts, expected_accepted_digests)
 
         # The queue is append-only. Later escalations (E-093, the deferred
         # unregistered-canonical finding) add receipts; none may disappear.
