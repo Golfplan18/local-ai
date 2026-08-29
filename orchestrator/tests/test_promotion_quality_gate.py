@@ -218,6 +218,136 @@ def test_review_writer_creates_its_directory(tmp_path):
     assert written.startswith(str(target))
 
 
+def test_batch_processor_writes_one_approved_and_one_review_note(
+        tmp_path, monkeypatch):
+    """A successful file is complete only after both note queues land."""
+    from orchestrator.tools import batch_processor as batch_module
+    from orchestrator.tools import deduplication
+    from orchestrator.tools import format_convert
+    from orchestrator.tools import input_detect
+    from orchestrator.tools import knowledge_index
+
+    staging = tmp_path / "staging"
+    review = tmp_path / "review"
+    source = tmp_path / "source.md"
+    source.write_text("source", encoding="utf-8")
+    monkeypatch.setattr(batch_module, "STAGING_DIR", str(staging))
+    monkeypatch.setattr(batch_module, "REVIEW_DIR", str(review))
+    monkeypatch.setattr(format_convert, "convert_to_markdown", lambda _path: "source")
+    monkeypatch.setattr(
+        input_detect,
+        "detect_input_type",
+        lambda _markdown: {"type": "short_document", "hcp": False},
+    )
+    monkeypatch.setattr(
+        knowledge_index,
+        "make_title_similarity_search",
+        lambda: (lambda _title: 0.0),
+    )
+    monkeypatch.setattr(
+        deduplication,
+        "DeduplicationEngine",
+        lambda: SimpleNamespace(
+            check_batch=lambda notes: [
+                SimpleNamespace(action="keep") for _note in notes
+            ],
+        ),
+    )
+
+    approved = _note(
+        title="Cache locality improves retrieval",
+        body=_solid_body(),
+    )
+    needs_review = _note(
+        title="Fallback extraction requires human review",
+        body=(
+            "- Source-grounded fallback preserves the original claim for inspection.\n"
+            "- Human review prevents degraded generation from entering memory unattended."
+        ),
+    )
+    needs_review.generation_mode = "deterministic_fallback"
+    needs_review.degraded_reason = "model output unavailable"
+
+    processor = batch_module.BatchProcessor()
+    monkeypatch.setattr(
+        processor,
+        "_run_extraction",
+        lambda *_args, **_kwargs: [approved, needs_review],
+    )
+
+    status = processor.process_single(str(source))
+
+    assert status.status == "completed", status.error
+    assert status.notes_approved == 1
+    assert status.notes_review == 1
+    approved_paths = list(staging.glob("*.md"))
+    review_paths = list(review.glob("*.json"))
+    assert len(approved_paths) == 1
+    assert len(review_paths) == 1
+    assert "# Cache locality improves retrieval" in approved_paths[0].read_text()
+    assert '"status": "pending"' in review_paths[0].read_text()
+
+
+def test_batch_processor_review_write_failure_stays_failed(
+        tmp_path, monkeypatch):
+    """A failed review write cannot be followed by a completed manifest state."""
+    from orchestrator.tools import batch_processor as batch_module
+    from orchestrator.tools import deduplication
+    from orchestrator.tools import format_convert
+    from orchestrator.tools import input_detect
+    from orchestrator.tools import knowledge_index
+
+    source = tmp_path / "source.md"
+    source.write_text("source", encoding="utf-8")
+    monkeypatch.setattr(batch_module, "STAGING_DIR", str(tmp_path / "staging"))
+    monkeypatch.setattr(batch_module, "REVIEW_DIR", str(tmp_path / "review"))
+    monkeypatch.setattr(format_convert, "convert_to_markdown", lambda _path: "source")
+    monkeypatch.setattr(
+        input_detect,
+        "detect_input_type",
+        lambda _markdown: {"type": "short_document", "hcp": False},
+    )
+    monkeypatch.setattr(
+        knowledge_index,
+        "make_title_similarity_search",
+        lambda: (lambda _title: 0.0),
+    )
+    monkeypatch.setattr(
+        deduplication,
+        "DeduplicationEngine",
+        lambda: SimpleNamespace(check_batch=lambda _notes: []),
+    )
+
+    needs_review = _note(
+        title="Fallback extraction requires human review",
+        body=(
+            "- Source-grounded fallback preserves the original claim for inspection.\n"
+            "- Human review prevents degraded generation from entering memory unattended."
+        ),
+    )
+    needs_review.generation_mode = "deterministic_fallback"
+    needs_review.degraded_reason = "model output unavailable"
+
+    processor = batch_module.BatchProcessor()
+    monkeypatch.setattr(
+        processor,
+        "_run_extraction",
+        lambda *_args, **_kwargs: [needs_review],
+    )
+
+    def fail_review_write(*_args, **_kwargs):
+        raise OSError("injected review write failure")
+
+    monkeypatch.setattr(batch_module, "write_review_note", fail_review_write)
+
+    status = processor.process_single(str(source))
+
+    assert status.status == "failed"
+    assert status.error == "injected review write failure"
+    assert processor.stats.failed == 1
+    assert processor.stats.processed == 0
+
+
 def test_duplicate_title_check_runs_when_search_is_supplied():
     """The gate skips duplicate checking entirely without a callback.
 

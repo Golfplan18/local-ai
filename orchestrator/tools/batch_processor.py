@@ -443,43 +443,6 @@ class BatchProcessor:
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
 
-def write_review_note(note, gate_result, review_dir: str) -> str:
-    """Persist one human-review note and return the path written.
-
-    Shared by the batch processor and the runtime pipeline. The runtime
-    path previously counted its review notes and dropped them, so every
-    note the gate flagged for human judgement in a chat session was lost
-    silently. One implementation, so the two paths cannot diverge again.
-    """
-    os.makedirs(review_dir, exist_ok=True)
-    title = getattr(note, "title", "Untitled")
-    safe_title = _sanitize_filename(title)
-    path = os.path.join(review_dir, f"{safe_title}.json")
-
-    review_data = {
-        "title": title,
-        "note_type": getattr(note, "note_type", ""),
-        "subtype": getattr(note, "subtype", None),
-        "body": getattr(note, "body", ""),
-        "yaml_frontmatter": getattr(note, "yaml_frontmatter", {}),
-        "relationships": getattr(note, "relationships", []),
-        "source_file": getattr(note, "source_file", ""),
-        "review_reasons": getattr(gate_result, "reasons", []),
-        "checks": getattr(gate_result, "checks", {}),
-        "status": "pending",  # pending, approved, rejected, edited
-        "reviewed_at": None,
-    }
-
-    counter = 1
-    while os.path.exists(path):
-        path = os.path.join(review_dir, f"{safe_title}-{counter}.json")
-        counter += 1
-
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(review_data, f, indent=2)
-    return path
-
-
     def _write_to_review(self, note, gate_result):
         """Write a note to the human review queue.
 
@@ -603,6 +566,43 @@ def write_review_note(note, gate_result, review_dir: str) -> str:
         os.makedirs(os.path.dirname(self.manifest_path), exist_ok=True)
         with open(self.manifest_path, "w") as f:
             json.dump(self._manifest, f, indent=2)
+
+
+def write_review_note(note, gate_result, review_dir: str) -> str:
+    """Persist one human-review note and return the path written.
+
+    Shared by the batch processor and the runtime pipeline. The runtime
+    path previously counted its review notes and dropped them, so every
+    note the gate flagged for human judgement in a chat session was lost
+    silently. One implementation, so the two paths cannot diverge again.
+    """
+    os.makedirs(review_dir, exist_ok=True)
+    title = getattr(note, "title", "Untitled")
+    safe_title = _sanitize_filename(title)
+    path = os.path.join(review_dir, f"{safe_title}.json")
+
+    review_data = {
+        "title": title,
+        "note_type": getattr(note, "note_type", ""),
+        "subtype": getattr(note, "subtype", None),
+        "body": getattr(note, "body", ""),
+        "yaml_frontmatter": getattr(note, "yaml_frontmatter", {}),
+        "relationships": getattr(note, "relationships", []),
+        "source_file": getattr(note, "source_file", ""),
+        "review_reasons": getattr(gate_result, "reasons", []),
+        "checks": getattr(gate_result, "checks", {}),
+        "status": "pending",  # pending, approved, rejected, edited
+        "reviewed_at": None,
+    }
+
+    counter = 1
+    while os.path.exists(path):
+        path = os.path.join(review_dir, f"{safe_title}-{counter}.json")
+        counter += 1
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(review_data, f, indent=2)
+    return path
 
 
 def _sanitize_filename(title: str) -> str:
