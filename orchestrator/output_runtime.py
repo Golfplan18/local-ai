@@ -48,6 +48,8 @@ class OFFSpec:
     sections: list = field(default_factory=list)  # list[OFFSectionSpec]
     missing_section_behavior: str = "note"  # "note" / "skip" / "fail"
     raw_frontmatter: dict = field(default_factory=dict)
+    is_valid: bool = True
+    parse_error: str = ""
 
 
 @dataclass
@@ -92,6 +94,11 @@ def o_render(
         off_spec = parse_off_spec(off_spec_path)
     except Exception as e:
         return RenderResult(success=False, error=f"Failed to parse OFF spec: {e}")
+    if not off_spec.is_valid:
+        return RenderResult(
+            success=False,
+            error=f"Failed to parse OFF spec: {off_spec.parse_error}",
+        )
 
     medium = off_spec.medium.lower()
     if medium not in ("markdown", "md", "html", "docx", "word", "pptx", "powerpoint", "xlsx", "excel"):
@@ -193,31 +200,70 @@ def parse_off_spec(path: str) -> OFFSpec:
         content = f.read()
 
     fm, body = _split_frontmatter(content)
-    spec = OFFSpec()
+    spec = OFFSpec(name=os.path.splitext(os.path.basename(path))[0])
 
-    if fm and yaml is not None:
+    if fm is None:
+        if re.match(r"^---[ \t]*(?:\r?\n|$)", content):
+            spec.is_valid = False
+            spec.parse_error = "Invalid YAML frontmatter: closing delimiter is missing."
+            return spec
+    elif yaml is None:
+        spec.is_valid = False
+        spec.parse_error = "Invalid YAML frontmatter: YAML support is unavailable."
+        return spec
+    else:
         try:
-            data = yaml.safe_load(fm) or {}
-        except yaml.YAMLError:
-            data = {}
-        if isinstance(data, dict):
-            spec.raw_frontmatter = data
-            spec.name = str(data.get("name", os.path.splitext(os.path.basename(path))[0]))
-            spec.medium = str(data.get("medium", "markdown")).lower()
-            spec.title_template = str(data.get("title", ""))
-            spec.intro_text = str(data.get("intro", ""))
-            spec.missing_section_behavior = str(data.get("missing_section_behavior", "note"))
+            data = yaml.safe_load(fm)
+        except yaml.YAMLError as exc:
+            spec.is_valid = False
+            spec.parse_error = f"Invalid YAML frontmatter: {exc}"
+            return spec
+        if not isinstance(data, dict):
+            spec.is_valid = False
+            spec.parse_error = "Invalid YAML frontmatter: expected a mapping."
+            return spec
 
-            # Sections list may live in frontmatter
-            for s in data.get("sections", []) or []:
-                if not isinstance(s, dict):
-                    continue
-                spec.sections.append(OFFSectionSpec(
-                    corpus_section_id=str(s.get("section", "")),
-                    heading=str(s.get("heading", "")),
-                    heading_level=int(s.get("heading_level", 2) or 2),
-                    intro=str(s.get("intro", "")),
-                ))
+        spec.raw_frontmatter = data
+        spec.name = str(data.get("name", spec.name))
+        spec.medium = str(data.get("medium", "markdown")).lower()
+        spec.title_template = str(data.get("title", ""))
+        spec.intro_text = str(data.get("intro", ""))
+        spec.missing_section_behavior = str(data.get("missing_section_behavior", "note"))
+
+        # Sections list may live in frontmatter. An empty list can still use
+        # the documented body-marker authoring style below, but malformed
+        # declared entries are invalid rather than silently discarded.
+        declared_sections = data.get("sections", [])
+        if not isinstance(declared_sections, list):
+            spec.is_valid = False
+            spec.parse_error = "Invalid OFF sections: expected a list."
+            return spec
+        for index, section_data in enumerate(declared_sections, start=1):
+            if not isinstance(section_data, dict):
+                spec.is_valid = False
+                spec.parse_error = f"Invalid OFF section {index}: expected a mapping."
+                return spec
+            section_id = section_data.get("section")
+            if not isinstance(section_id, str) or not section_id.strip():
+                spec.is_valid = False
+                spec.parse_error = (
+                    f"Invalid OFF section {index}: required 'section' identity is missing."
+                )
+                return spec
+            try:
+                heading_level = int(section_data.get("heading_level", 2) or 2)
+            except (TypeError, ValueError):
+                spec.is_valid = False
+                spec.parse_error = (
+                    f"Invalid OFF section {index}: heading_level must be an integer."
+                )
+                return spec
+            spec.sections.append(OFFSectionSpec(
+                corpus_section_id=section_id.strip(),
+                heading=str(section_data.get("heading", "")),
+                heading_level=heading_level,
+                intro=str(section_data.get("intro", "")),
+            ))
 
     if not spec.name:
         spec.name = os.path.splitext(os.path.basename(path))[0]
@@ -232,14 +278,21 @@ def parse_off_spec(path: str) -> OFFSpec:
                 heading_level=2,
             ))
 
+    if not spec.sections:
+        spec.is_valid = False
+        spec.parse_error = (
+            "OFF spec declares no sections; add frontmatter 'sections' entries "
+            "or body '## Section: <id>' markers."
+        )
+
     return spec
 
 
-def _split_frontmatter(content: str) -> tuple[str, str]:
+def _split_frontmatter(content: str) -> tuple[Optional[str], str]:
     pat = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
     m = pat.match(content)
     if not m:
-        return ("", content)
+        return (None, content)
     return (m.group(1), content[m.end():])
 
 
@@ -416,7 +469,7 @@ def _md_to_html_body(md: str) -> str:
         if "|" in line and line.strip().startswith("|"):
             flush_paragraph()
             in_table = True
-            cells = [c for c in line.strip().strip("|").split("|")]
+            cells = _tokenize_markdown_table_row(line)
             table_rows.append(cells)
             continue
         if in_table:
@@ -466,6 +519,47 @@ def _md_inline_to_html(s: str) -> str:
 
 def _html_escape(s: str) -> str:
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def _tokenize_markdown_table_row(line: str) -> list[str]:
+    r"""Split one pipe-table row without treating ``\|`` as a cell boundary."""
+    text = line.strip()
+    if text.startswith("|"):
+        text = text[1:]
+
+    if text.endswith("|"):
+        backslashes = 0
+        index = len(text) - 2
+        while index >= 0 and text[index] == "\\":
+            backslashes += 1
+            index -= 1
+        if backslashes % 2 == 0:
+            text = text[:-1]
+
+    cells: list[str] = []
+    cell: list[str] = []
+    escaped = False
+    for char in text:
+        if char == "\\":
+            if escaped:
+                cell.append("\\")
+                escaped = False
+            else:
+                escaped = True
+            continue
+        if char == "|" and not escaped:
+            cells.append("".join(cell))
+            cell = []
+            continue
+        if escaped:
+            if char != "|":
+                cell.append("\\")
+            escaped = False
+        cell.append(char)
+    if escaped:
+        cell.append("\\")
+    cells.append("".join(cell))
+    return cells
 
 
 # ---------- DOCX rendering (via python-docx) ----------
@@ -536,7 +630,7 @@ def _markdown_to_docx(md_text: str, output_path: str, off_spec: OFFSpec, corpus:
         if "|" in line and line.strip().startswith("|"):
             flush_paragraph()
             in_table = True
-            table_rows.append([c for c in line.strip().strip("|").split("|")])
+            table_rows.append(_tokenize_markdown_table_row(line))
             continue
         if in_table:
             flush_table()
@@ -676,24 +770,35 @@ def _split_md_into_render_blocks(md_text: str) -> list:
     current: _RenderBlock = _RenderBlock()
     seen_h1 = False
     in_subtitle_zone = False
+    in_code_fence = False
 
     lines = md_text.split("\n")
     for raw in lines:
         line = raw.rstrip()
 
-        h1 = re.match(r"^#\s+(.+)$", line)
-        if h1 and not seen_h1:
-            current.title = _strip_inline_md(h1.group(1))
-            seen_h1 = True
-            in_subtitle_zone = True
+        # Fence state changes before heading recognition. A heading-shaped
+        # line inside a fence belongs to the current block; the fence itself
+        # stays in the body so the medium renderer can preserve the code.
+        if line.startswith("```"):
+            in_code_fence = not in_code_fence
+            in_subtitle_zone = False
+            current.body_lines.append(line)
             continue
 
-        h2 = re.match(r"^##\s+(.+)$", line)
-        if h2:
-            blocks.append(current)
-            current = _RenderBlock(title=_strip_inline_md(h2.group(1)))
-            in_subtitle_zone = False
-            continue
+        if not in_code_fence:
+            h1 = re.match(r"^#\s+(.+)$", line)
+            if h1 and not seen_h1:
+                current.title = _strip_inline_md(h1.group(1))
+                seen_h1 = True
+                in_subtitle_zone = True
+                continue
+
+            h2 = re.match(r"^##\s+(.+)$", line)
+            if h2:
+                blocks.append(current)
+                current = _RenderBlock(title=_strip_inline_md(h2.group(1)))
+                in_subtitle_zone = False
+                continue
 
         if in_subtitle_zone:
             # Italicized metadata lines feed the title subtitle until we hit
@@ -815,7 +920,7 @@ def _add_content_slide(prs, block: _RenderBlock):
             continue
 
         if "|" in line and line.strip().startswith("|"):
-            current_table.append([c for c in line.strip().strip("|").split("|")])
+            current_table.append(_tokenize_markdown_table_row(line))
             continue
         if current_table:
             flush_table()
@@ -1085,7 +1190,7 @@ def _extract_tables_and_prose(body_lines: list) -> tuple:
             prose.append(line)
             continue
         if "|" in line and line.strip().startswith("|"):
-            cells = [c for c in line.strip().strip("|").split("|")]
+            cells = _tokenize_markdown_table_row(line)
             current_table.append(cells)
             continue
         if current_table:
