@@ -26,7 +26,10 @@ not yet wired in (an executor TODO).
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import os
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -74,6 +77,8 @@ class MilestoneResult:
     drift_status: str  # "IN_SCOPE", "DRIFT_DETECTED", or "DRIFT_CHECK_SKIPPED"
     drift_reasoning: str
     attempts: int
+    completed: bool = True
+    deliverable_path: str = ""
 
 
 @dataclass
@@ -88,11 +93,43 @@ class FrameworkExecutionResult:
     duration_seconds: float = 0.0
     mode: str = "all"             # "all" for single-mode; mode name for multi-mode
     mode_reasoning: str = ""       # how the mode was selected (for transparency)
+    terminal_state: str = "succeeded"
+    failed_milestone_id: Optional[str] = None
+    resume_available: bool = False
+    recovery_path: Optional[str] = None
+    resumed: bool = False
 
 
 class MilestoneExecutionError(Exception):
     """Raised when a milestone fails after MAX_RETRIES attempts."""
-    pass
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        milestone_id: Optional[str] = None,
+        terminal_state: str = "failed",
+        candidate: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.milestone_id = milestone_id
+        self.terminal_state = terminal_state
+        self.candidate = candidate
+
+
+class FrameworkPipelineError(Exception):
+    """A Gear pipeline returned an unshippable Framework candidate."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        candidate: str = "",
+        terminal_state: str = "failed",
+    ) -> None:
+        super().__init__(message)
+        self.candidate = candidate
+        self.terminal_state = terminal_state
 
 
 # ---------- Public API ----------
@@ -200,6 +237,121 @@ def _authenticated_project_visual_locks(project_nexus: Optional[str]) -> dict | 
     return model_profiles.validate_project_binding(record, expected_nexus=nexus)
 
 
+def _framework_conversation_id(
+    explicit: Optional[str], trace_context: Optional[dict],
+) -> Optional[str]:
+    """Resolve the owning conversation identity without inventing one."""
+    if isinstance(explicit, str) and explicit.strip():
+        return explicit.strip()
+    if isinstance(trace_context, dict):
+        value = trace_context.get("conversation_id")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    try:
+        try:
+            import tool_events as _tool_events
+        except ImportError:
+            from orchestrator import tool_events as _tool_events
+        value = _tool_events.get_turn_context().get("conversation_id")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    except Exception:
+        pass
+    return None
+
+
+def _contract_digest(prepared: PreparedFramework) -> str:
+    return "sha256:" + hashlib.sha256(
+        prepared.contract_text.encode("utf-8")
+    ).hexdigest()
+
+
+def _resume_identity_payload(
+    prepared: PreparedFramework,
+    *,
+    selected_mode: str,
+    effective_input: str,
+) -> dict:
+    """Return the deterministic admitted identity needed to verify resume."""
+    contracts = prepared.framework.milestones_by_mode.get(selected_mode)
+    if not contracts:
+        raise FrameworkPreflightError(
+            "Framework resume identity has no selected milestone contracts"
+        )
+    return {
+        "schema_version": 1,
+        "canonical_filename": prepared.canonical_filename,
+        "original_input": prepared.original_input,
+        "exact_mode": prepared.exact_mode,
+        "selected_mode": selected_mode,
+        "effective_input": effective_input,
+        "project_nexus": prepared.project_nexus,
+        "project_profile": prepared.project_profile,
+        "one_run_profile": prepared.one_run_profile,
+        "selector_profile_resolution": _thaw_value(
+            prepared.selector_profile_resolution
+        ),
+        "input_context": _thaw_value(prepared.input_context),
+        "milestone_contracts": [
+            {
+                "mode": contract.mode,
+                "milestone_id": contract.milestone_id,
+                "name": contract.name,
+                "endpoint_produced": contract.endpoint_produced,
+                "methods": [
+                    {
+                        "id": method.id,
+                        "name": method.name,
+                        "body": method.body,
+                        "legacy": method.legacy,
+                    }
+                    for method in contract.methods
+                ],
+                "required_prior": list(contract.required_prior),
+                "external_prerequisites": [
+                    [key, _thaw_value(value)]
+                    for key, value in contract.external_prerequisites
+                ],
+                "verification_criterion": contract.verification_criterion,
+                "output_specification": contract.output_format,
+                "gear": contract.gear,
+                "gear4_purpose": contract.gear4_purpose,
+                "drift_check_question": contract.drift_check_question,
+                "conditional_layers": contract.conditional_layers,
+                "declared_model_profile": contract.declared_model_profile,
+                "model_profile_resolution": _thaw_value(
+                    contract.model_profile_resolution
+                ),
+            }
+            for contract in contracts
+        ],
+    }
+
+
+def _resume_identity_digest(
+    prepared: PreparedFramework,
+    *,
+    selected_mode: str,
+    effective_input: str,
+) -> str:
+    try:
+        encoded = json.dumps(
+            _resume_identity_payload(
+                prepared,
+                selected_mode=selected_mode,
+                effective_input=effective_input,
+            ),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise FrameworkPreflightError(
+            "Framework resume identity is not deterministically serializable"
+        ) from exc
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
 def _maybe_persist_self_mindspec(framework_name, mode, final_output):
     """Archive MSI-Self and compile one inactive Persona.
 
@@ -253,11 +405,16 @@ def execute_framework(
     input_context: Optional[dict] = None,
     images: Optional[list] = None,
     prepared: Optional[PreparedFramework] = None,
+    conversation_id: Optional[str] = None,
+    _resume: bool = False,
+    _resume_selected_mode: Optional[str] = None,
+    _resume_mode_reasoning: Optional[str] = None,
 ) -> FrameworkExecutionResult:
     """Execute a framework on the given user input.
 
     Returns a FrameworkExecutionResult. On success, scratch is cleaned up.
-    On failure, scratch is preserved for inspection or resume.
+    On a normal failure, scratch is preserved for inspection or resume.
+    Stealth scratch is removed on every terminal path.
 
     Multi-mode frameworks (PEF, MOM, Process Formalization, etc.): the
     executor calls ``select_mode`` to choose which mode to run, then
@@ -367,7 +524,21 @@ def execute_framework(
     project_visual_locks = _authenticated_project_visual_locks(project_nexus)
 
     if fw.is_multi_mode:
-        if prepared.exact_mode:
+        if _resume:
+            if (
+                not isinstance(_resume_selected_mode, str)
+                or _resume_selected_mode not in fw.modes
+            ):
+                raise FrameworkPreflightError(
+                    "Framework resume refused because its selected mode is invalid"
+                )
+            selected_mode = _resume_selected_mode
+            mode_reasoning = (
+                _resume_mode_reasoning
+                or "stored admitted Framework mode selection"
+            )
+            effective_input = prepared.effective_input
+        elif prepared.exact_mode:
             selected_mode = prepared.exact_mode
             mode_reasoning = prepared.mode_reasoning or "exact mode"
             effective_input = prepared.effective_input
@@ -405,9 +576,13 @@ def execute_framework(
                 f"mechanical mode {selected_mode!r} must be the exact first token"
             )
     else:
+        if _resume and _resume_selected_mode not in (None, "all"):
+            raise FrameworkPreflightError(
+                "Framework resume refused because its selected mode changed"
+            )
         selected_mode = "all"
         mode_reasoning = "single-mode framework"
-        effective_input = user_input
+        effective_input = prepared.effective_input
         if trace_context is not None:
             trace_context["mode"] = selected_mode
         milestones = fw.milestones_by_mode.get("all", [])
@@ -423,34 +598,166 @@ def execute_framework(
                 f"Framework {fw.name!r} declared no milestones to execute."
             )
 
-    scratch = ScratchSession.create(fw.name, execution_id=execution_id)
+    conversation_id = _framework_conversation_id(conversation_id, trace_context)
+    if trace_context is not None and conversation_id:
+        trace_context["conversation_id"] = conversation_id
+
+    scratch: Optional[ScratchSession] = None
+    setup_error: Optional[BaseException] = None
+    try:
+        if _resume:
+            if not execution_id:
+                raise ValueError("resume requires an execution id")
+            scratch = ScratchSession.attach(execution_id)
+            resume_manifest = scratch.manifest()
+            expected = {
+                "framework_name": fw.name,
+                "canonical_filename": prepared.canonical_filename,
+                "selected_mode": selected_mode,
+                "contract_digest": _contract_digest(prepared),
+                "original_input": prepared.original_input,
+                "effective_input": effective_input,
+                "exact_mode": prepared.exact_mode,
+                "project_nexus": prepared.project_nexus,
+                "project_profile": prepared.project_profile,
+                "one_run_profile": prepared.one_run_profile,
+                "input_context": _thaw_value(prepared.input_context),
+                "resume_identity_digest": _resume_identity_digest(
+                    prepared,
+                    selected_mode=selected_mode,
+                    effective_input=effective_input,
+                ),
+            }
+            mismatched = [
+                key for key, value in expected.items()
+                if resume_manifest.get(key) != value
+            ]
+            if mismatched:
+                raise FrameworkPreflightError(
+                    "Framework resume refused because the admitted run identity "
+                    f"changed: {', '.join(mismatched)}"
+                )
+            if resume_manifest.get("conversation_tag") == "stealth":
+                raise FrameworkPreflightError(
+                    "Stealth Framework runs cannot be resumed"
+                )
+            if resume_manifest.get("original_input") != user_input:
+                raise FrameworkPreflightError(
+                    "Framework resume refused because the original input changed"
+                )
+            scratch.mark_resumed()
+        else:
+            scratch = ScratchSession.create(
+                fw.name,
+                execution_id=execution_id,
+                conversation_id=conversation_id,
+                conversation_tag=conversation_tag,
+            )
+            scratch.record_run(
+                canonical_filename=prepared.canonical_filename,
+                contract_digest=_contract_digest(prepared),
+                original_input=prepared.original_input,
+                effective_input=effective_input,
+                exact_mode=prepared.exact_mode,
+                selected_mode=selected_mode,
+                mode_reasoning=mode_reasoning,
+                project_nexus=project_nexus,
+                project_profile=prepared.project_profile,
+                one_run_profile=config_name,
+                input_context=_thaw_value(prepared.input_context),
+                resume_identity_digest=_resume_identity_digest(
+                    prepared,
+                    selected_mode=selected_mode,
+                    effective_input=effective_input,
+                ),
+            )
+    except BaseException as exc:
+        if scratch is None:
+            raise
+        setup_error = exc
+
+    if scratch is None:
+        raise RuntimeError("Framework scratch lifecycle did not initialize")
+
     if trace_context is not None:
         trace_context["execution_id"] = scratch.execution_id
     started = time.time()
     results: list[MilestoneResult] = []
+    current_milestone_id: Optional[str] = None
     parent_trace_ref = None
-    if trace_dir:
-        try:
-            import pipeline_trace
-            parent_trace_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
-        except ImportError:
-            from orchestrator import pipeline_trace
-            parent_trace_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
-
-    # ---- Oversight hook: FrameworkStarted ----
-    emit_oversight_event({
-        "event_type": "FrameworkStarted",
-        "framework_id": fw.name,
-        "mode": selected_mode,
-        "mode_reasoning": mode_reasoning,
-        "execution_id": scratch.execution_id,
-        "project_nexus": project_nexus,
-        "user_input": effective_input,
-    })
+    completed_ids: set[str] = set()
+    declared_ids = [milestone.id for milestone in milestones]
 
     try:
+        if setup_error is not None:
+            raise setup_error
+        if trace_dir:
+            try:
+                import pipeline_trace
+                parent_trace_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
+            except ImportError:
+                from orchestrator import pipeline_trace
+                parent_trace_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
+
+        completed_ids = set(scratch.completed_milestone_ids())
+        unknown_completed = completed_ids - set(declared_ids)
+        expected_prefix = declared_ids[:len(completed_ids)]
+        if unknown_completed or expected_prefix != [
+            milestone_id for milestone_id in declared_ids
+            if milestone_id in completed_ids
+        ]:
+            raise FrameworkPreflightError(
+                "Framework resume refused because completed milestone state is "
+                "not a valid declared prefix"
+            )
+
+        emit_oversight_event({
+            "event_type": "FrameworkStarted",
+            "framework_id": fw.name,
+            "mode": selected_mode,
+            "mode_reasoning": mode_reasoning,
+            "execution_id": scratch.execution_id,
+            "project_nexus": project_nexus,
+            "user_input": effective_input,
+            "resumed": bool(_resume),
+            "ephemeral_handoff": {
+                "kind": "framework_scratch_manifest",
+                "path": scratch.manifest_path,
+                "lifetime": "until terminal lifecycle handling",
+            },
+        })
+
         for milestone in milestones:
-            profile_resolution = milestone.model_profile_resolution
+            current_milestone_id = milestone.id
+            contract = prepared.contract_for(selected_mode, milestone.id)
+            if milestone.id in completed_ids:
+                metadata = scratch.milestone_result_metadata(milestone.id)
+                if metadata.get("drift_status") != "IN_SCOPE":
+                    raise FrameworkPreflightError(
+                        f"Framework resume refused invalid completed state for {milestone.id}"
+                    )
+                completed_deliverable = scratch.read_milestone(milestone.id)
+                completed_digest = "sha256:" + hashlib.sha256(
+                    completed_deliverable.encode("utf-8")
+                ).hexdigest()
+                if metadata.get("deliverable_digest") != completed_digest:
+                    raise FrameworkPreflightError(
+                        "Framework resume refused because completed milestone "
+                        f"{milestone.id} changed"
+                    )
+                results.append(MilestoneResult(
+                    milestone_id=milestone.id,
+                    name=metadata.get("name") or milestone.name,
+                    deliverable=completed_deliverable,
+                    drift_status="IN_SCOPE",
+                    drift_reasoning=metadata.get("drift_reasoning") or "",
+                    attempts=int(metadata.get("attempts") or 1),
+                    completed=True,
+                    deliverable_path=scratch.milestone_path(milestone.id),
+                ))
+                continue
+
+            profile_resolution = contract.model_profile_resolution
             effective_profile = profile_resolution["selected"]["runtime_name"]
             if trace_context is not None:
                 trace_context["model_profile_resolution"] = _thaw_value(
@@ -460,7 +767,7 @@ def execute_framework(
                     _thaw_value(profile_resolution)
                 )
             result = _run_milestone(
-                fw, milestone, milestone,
+                fw, milestone, contract,
                 scratch, effective_input, config,
                 config_name=effective_profile, parent_trace_dir=trace_dir,
                 parent_trace_ref=parent_trace_ref,
@@ -474,7 +781,15 @@ def execute_framework(
                 images=images)
             results.append(result)
 
-            # ---- Oversight hook: MilestoneComplete ----
+            if result.drift_status != "IN_SCOPE":
+                raise MilestoneExecutionError(
+                    f"Milestone {milestone.id} stopped at the boundary with "
+                    f"{result.drift_status}: {result.drift_reasoning}",
+                    milestone_id=milestone.id,
+                    terminal_state=result.drift_status.lower(),
+                    candidate=result.deliverable,
+                )
+
             emit_oversight_event({
                 "event_type": "MilestoneComplete",
                 "framework_id": fw.name,
@@ -482,47 +797,54 @@ def execute_framework(
                 "execution_id": scratch.execution_id,
                 "milestone_id": milestone.id,
                 "milestone_name": milestone.name,
-                "deliverable_path": str(getattr(scratch, "session_dir", "")),
+                "deliverable_path": result.deliverable_path,
+                "deliverable_location": {
+                    "kind": "ephemeral_framework_handoff",
+                    "path": result.deliverable_path,
+                    "lifetime": "through synchronous event dispatch",
+                },
                 "drift_status": result.drift_status,
                 "drift_reasoning": result.drift_reasoning,
                 "project_nexus": project_nexus,
                 "model_profile": profile_resolution["selected"],
             })
 
-            if result.drift_status == "DRIFT_DETECTED":
-                # MVP behavior: log and continue. Future: pause / surface.
-                # Drift is recorded in result.drift_reasoning.
-                pass
-
-        # Final output = last milestone's deliverable
         final_output = results[-1].deliverable if results else ""
         persistence_notice = _maybe_persist_self_mindspec(
             fw.name, selected_mode, final_output)
         if persistence_notice:
             final_output = final_output.rstrip() + "\n\n---\n\n" + persistence_notice
+        final_output_path = scratch.write_final_output(final_output)
         scratch.mark_complete()
 
-        # ---- Oversight hook: FrameworkComplete (success) ----
         emit_oversight_event({
             "event_type": "FrameworkComplete",
             "framework_id": fw.name,
             "mode": selected_mode,
             "execution_id": scratch.execution_id,
-            "final_output_path": str(getattr(scratch, "session_dir", "")),
+            "final_output_path": final_output_path,
+            "final_output_location": {
+                "kind": "ephemeral_framework_handoff",
+                "path": final_output_path,
+                "lifetime": "through synchronous event dispatch",
+            },
             "milestones": [
                 {
-                    "milestone_id": r.milestone_id,
-                    "name": r.name,
-                    "drift_status": r.drift_status,
-                    "attempts": r.attempts,
+                    "milestone_id": result.milestone_id,
+                    "name": result.name,
+                    "drift_status": result.drift_status,
+                    "attempts": result.attempts,
+                    "deliverable_path": result.deliverable_path,
                 }
-                for r in results
+                for result in results
             ],
             "project_nexus": project_nexus,
             "success": True,
+            "terminal_state": "succeeded",
         })
 
-        scratch.cleanup()
+        if conversation_tag != "stealth":
+            scratch.cleanup()
         return FrameworkExecutionResult(
             framework_name=fw.name,
             execution_id=scratch.execution_id,
@@ -533,44 +855,73 @@ def execute_framework(
             duration_seconds=time.time() - started,
             mode=selected_mode,
             mode_reasoning=mode_reasoning,
+            terminal_state="succeeded",
+            resumed=bool(_resume),
         )
-    except MilestoneExecutionError as exc:
+    except BaseException as exc:
+        failed_milestone_id = (
+            getattr(exc, "milestone_id", None)
+            or current_milestone_id
+            or next((mid for mid in declared_ids if mid not in completed_ids), None)
+            or "unknown"
+        )
+        terminal_state = getattr(exc, "terminal_state", "failed")
+        candidate = getattr(exc, "candidate", "")
+        candidate_path = ""
+        if isinstance(candidate, str) and candidate.strip():
+            candidate_path = scratch.write_unaccepted_candidate(
+                failed_milestone_id, candidate,
+            )
         scratch.mark_failed(
-            milestone_id=results[-1].milestone_id if results else "unknown",
-            reason=str(exc),
+            milestone_id=failed_milestone_id,
+            reason=f"{type(exc).__name__}: {exc}",
+            terminal_state=terminal_state,
         )
-
-        # ---- Oversight hook: FrameworkComplete (failure) + MilestoneBlocked ----
-        emit_oversight_event({
-            "event_type": "MilestoneBlocked",
-            "framework_id": fw.name,
-            "mode": selected_mode,
-            "execution_id": scratch.execution_id,
-            "milestone_id": results[-1].milestone_id if results else "unknown",
-            "block_reason": str(exc),
-            "block_evidence": "",
-            "project_nexus": project_nexus,
-        })
-        emit_oversight_event({
-            "event_type": "FrameworkComplete",
-            "framework_id": fw.name,
-            "mode": selected_mode,
-            "execution_id": scratch.execution_id,
-            "final_output_path": "",
-            "milestones": [
-                {
-                    "milestone_id": r.milestone_id,
-                    "name": r.name,
-                    "drift_status": r.drift_status,
-                    "attempts": r.attempts,
-                }
-                for r in results
-            ],
-            "project_nexus": project_nexus,
-            "success": False,
-            "failure_reason": str(exc),
-        })
-
+        recovery_path = None if conversation_tag == "stealth" else scratch.folder
+        event_error = ""
+        try:
+            emit_oversight_event({
+                "event_type": "MilestoneBlocked",
+                "framework_id": fw.name,
+                "mode": selected_mode,
+                "execution_id": scratch.execution_id,
+                "milestone_id": failed_milestone_id,
+                "block_reason": str(exc),
+                "block_evidence": candidate_path,
+                "terminal_state": terminal_state,
+                "recovery_path": recovery_path,
+                "project_nexus": project_nexus,
+            })
+            emit_oversight_event({
+                "event_type": "FrameworkComplete",
+                "framework_id": fw.name,
+                "mode": selected_mode,
+                "execution_id": scratch.execution_id,
+                "final_output_path": None,
+                "recovery_path": recovery_path,
+                "milestones": [
+                    {
+                        "milestone_id": result.milestone_id,
+                        "name": result.name,
+                        "drift_status": result.drift_status,
+                        "attempts": result.attempts,
+                        "completed": result.completed,
+                        "deliverable_path": result.deliverable_path,
+                    }
+                    for result in results
+                ],
+                "project_nexus": project_nexus,
+                "success": False,
+                "terminal_state": terminal_state,
+                "failure_reason": str(exc),
+            })
+        except Exception as oversight_exc:
+            event_error = (
+                f"; oversight event delivery also failed: "
+                f"{type(oversight_exc).__name__}: {oversight_exc}"
+            )
+        if not isinstance(exc, Exception):
+            raise
         return FrameworkExecutionResult(
             framework_name=fw.name,
             execution_id=scratch.execution_id,
@@ -578,11 +929,19 @@ def execute_framework(
             milestones=results,
             final_output="",
             success=False,
-            failure_reason=str(exc),
+            failure_reason=f"{exc}{event_error}",
             duration_seconds=time.time() - started,
             mode=selected_mode,
             mode_reasoning=mode_reasoning,
+            terminal_state=terminal_state,
+            failed_milestone_id=failed_milestone_id,
+            resume_available=(conversation_tag != "stealth"),
+            recovery_path=recovery_path,
+            resumed=bool(_resume),
         )
+    finally:
+        if conversation_tag == "stealth":
+            scratch.cleanup()
 
 
 # ---------- Per-milestone execution ----------
@@ -610,20 +969,30 @@ def _run_milestone(
 
     Raises MilestoneExecutionError on 3rd failure.
     """
+    if (
+        milestone.id != contract.milestone_id
+        or milestone.gear != contract.gear
+    ):
+        raise FrameworkPreflightError(
+            "Framework milestone execution does not match its admitted contract"
+        )
     handoff = _build_handoff_packet(
         framework, milestone, contract, scratch, user_input,
     )
 
     last_exception: Optional[Exception] = None
+    last_candidate = ""
+    last_terminal_state = "failed"
     for attempt in range(1, MAX_RETRIES + 1):
         child_trace_dir = _start_child_trace(
             parent_trace_dir, handoff, framework, milestone,
-            parent_trace_ref, selected_mode, milestone.gear,
+            parent_trace_ref, selected_mode, contract.gear,
             conversation_tag, trace_context)
         child_status = "error"
         try:
             deliverable = _run_child_attempt(
                 child_trace_dir, parent_trace_ref, handoff, milestone,
+                contract,
                 config, config_name=config_name, framework_id=framework.name,
                 selected_mode=selected_mode,
                 project_model_locks=project_model_locks,
@@ -632,21 +1001,6 @@ def _run_milestone(
                 style_context=style_context,
                 input_context=input_context,
                 images=images)
-            scratch.write_milestone(milestone.id, deliverable)
-            if child_trace_dir:
-                try:
-                    try:
-                        import pipeline_trace as _pt_terminal
-                    except ImportError:
-                        from orchestrator import pipeline_trace as _pt_terminal
-                    _pt_terminal.record_terminal_output(
-                        child_trace_dir, deliverable,
-                        route="framework-milestone-scratch",
-                        output_target=milestone.id, persisted=True,
-                    )
-                except Exception:
-                    pass
-
             _drift_trace_token, _drift_tool_token = _bind_trace_context(
                 child_trace_dir, stealth=(conversation_tag == "stealth"),
                 surface="framework")
@@ -657,7 +1011,42 @@ def _run_milestone(
                 )
             finally:
                 _reset_trace_context(_drift_trace_token, _drift_tool_token)
-            child_status = "completed"
+            completed = drift_status == "IN_SCOPE"
+            metadata = {
+                "name": milestone.name,
+                "drift_status": drift_status,
+                "drift_reasoning": drift_reasoning,
+                "attempts": attempt,
+                "deliverable_digest": "sha256:" + hashlib.sha256(
+                    deliverable.encode("utf-8")
+                ).hexdigest(),
+            }
+            if completed:
+                deliverable_path = scratch.write_milestone(
+                    milestone.id, deliverable, result_metadata=metadata,
+                )
+            else:
+                deliverable_path = scratch.write_unaccepted_candidate(
+                    milestone.id, deliverable,
+                )
+            if child_trace_dir:
+                try:
+                    try:
+                        import pipeline_trace as _pt_terminal
+                    except ImportError:
+                        from orchestrator import pipeline_trace as _pt_terminal
+                    _pt_terminal.record_terminal_output(
+                        child_trace_dir, deliverable,
+                        route=(
+                            "framework-milestone-scratch"
+                            if completed else "framework-unaccepted-candidate"
+                        ),
+                        output_target=milestone.id,
+                        persisted=bool(deliverable_path),
+                    )
+                except Exception:
+                    pass
+            child_status = "completed" if completed else "error"
             return MilestoneResult(
                 milestone_id=milestone.id,
                 name=milestone.name,
@@ -665,10 +1054,23 @@ def _run_milestone(
                 drift_status=drift_status,
                 drift_reasoning=drift_reasoning,
                 attempts=attempt,
+                completed=completed,
+                deliverable_path=deliverable_path,
             )
+        except FrameworkPipelineError as exc:
+            child_status = "error"
+            last_exception = exc
+            last_candidate = exc.candidate
+            last_terminal_state = exc.terminal_state
+            if attempt < MAX_RETRIES:
+                time.sleep(2 ** (attempt - 1))
         except Exception as exc:
             child_status = "error"
             last_exception = exc
+            last_candidate = getattr(exc, "candidate", last_candidate)
+            last_terminal_state = getattr(
+                exc, "terminal_state", last_terminal_state,
+            )
             # Brief backoff between retries
             if attempt < MAX_RETRIES:
                 time.sleep(2 ** (attempt - 1))
@@ -678,12 +1080,15 @@ def _run_milestone(
         finally:
             _finalize_child_trace(
                 child_trace_dir, child_status, framework.name,
-                milestone.id, selected_mode, milestone.gear,
+                milestone.id, selected_mode, contract.gear,
                 parent_trace_ref)
 
     raise MilestoneExecutionError(
         f"Milestone {milestone.id} ({milestone.name!r}) failed after "
-        f"{MAX_RETRIES} attempts. Last error: {last_exception}"
+        f"{MAX_RETRIES} attempts. Last error: {last_exception}",
+        milestone_id=milestone.id,
+        terminal_state=last_terminal_state,
+        candidate=last_candidate,
     )
 
 
@@ -812,7 +1217,8 @@ def _indent(text: str, prefix: str) -> str:
 # ---------- Gear pipeline invocation ----------
 
 def _run_through_gear_pipeline(
-    handoff_packet: str, milestone: Milestone, config: dict,
+    handoff_packet: str, milestone: Milestone,
+    contract: ResolvedMilestoneContract, config: dict,
     config_name: Optional[str] = None,
     trace_dir: Optional[str] = None,
     parent_trace_ref: Optional[str] = None,
@@ -826,13 +1232,13 @@ def _run_through_gear_pipeline(
 ) -> str:
     """Send the handoff packet through the existing gear pipeline.
 
-    For Gear 4 (default), uses run_gear4 from boot.py. Lower gears fall back
-    to run_gear3 or a single-model pass.
+    Uses exactly the Gear admitted by preflight: Gear 4's genuine dual lane,
+    Gear 3's authoritative sequential lane, or the rare Gear 2 single pass.
 
     Bypasses Phase A.5 cleanup and mode classification — the handoff packet
     is structured framework-generated content, not raw human input. The mode
-    is set to 'synthesis' as a sensible default (gear-4 capable, synthesis-
-    shaped) but the framework's layer instructions in the handoff dominate.
+    is a Framework-native milestone contract; no Dialogue mode supplies hidden
+    authority, retrieval, tool, or project semantics.
 
     ``config_name`` (install Chunk 3) routes the gear pipeline through a
     named configuration. None defers to the Router's context-derived default.
@@ -846,7 +1252,7 @@ def _run_through_gear_pipeline(
     )
 
     context_pkg = _build_context_pkg(
-        handoff_packet, milestone, trace_dir=trace_dir,
+        handoff_packet, milestone, contract, trace_dir=trace_dir,
         parent_trace_ref=parent_trace_ref, framework_id=framework_id,
         selected_mode=selected_mode,
         project_model_locks=project_model_locks,
@@ -865,19 +1271,21 @@ def _run_through_gear_pipeline(
     context_pkg.setdefault("style_deltas", None)
     execution_context = context_pkg.get("execution_context", "interactive")
 
-    if milestone.gear >= 4:
-        return run_gear4(
+    if contract.gear == 4:
+        response = run_gear4(
             context_pkg, config, images=images,
             execution_context=execution_context, config_name=config_name,
         )
-    elif milestone.gear == 3:
-        return run_gear3(context_pkg, config, images=images, config_name=config_name)
+    elif contract.gear == 3:
+        response = run_gear3(
+            context_pkg, config, images=images, config_name=config_name,
+        )
     else:
         # Model-executed contracts admit Gear 2 only on the single-pass path;
         # Gear 1 is reserved for an exact authenticated mechanical redirect.
         from boot import resolve_single_pass_endpoint
         endpoint, endpoint_cell = resolve_single_pass_endpoint(
-            config, milestone.gear, config_name=config_name
+            config, contract.gear, config_name=config_name
         )
         if endpoint is None:
             if trace_dir:
@@ -888,13 +1296,13 @@ def _run_through_gear_pipeline(
                         from orchestrator import pipeline_trace
                     pipeline_trace.write_step(
                         trace_dir, "step3-direct-no-endpoint", {
-                            "gear": milestone.gear,
+                            "gear": contract.gear,
                             "endpoint_available": False,
                         })
                 except Exception:
                     pass
             raise MilestoneExecutionError(
-                f"No endpoint available for gear {milestone.gear} "
+                f"No endpoint available for gear {contract.gear} "
                 f"cell {endpoint_cell!r} in configuration {config_name!r}"
             )
         system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
@@ -905,7 +1313,7 @@ def _run_through_gear_pipeline(
         response = run_single_pass_with_tools(
             messages, endpoint,
             slot=endpoint_cell,
-            gear=milestone.gear,
+            gear=contract.gear,
             config_name=config_name,
             images=images,
             step_name="step3-direct-response",
@@ -919,7 +1327,7 @@ def _run_through_gear_pipeline(
                     from orchestrator import pipeline_trace
                 pipeline_trace.write_step(
                     trace_dir, "step3-direct-response", {
-                        "gear": milestone.gear,
+                            "gear": contract.gear,
                         "raw_response": response,
                         "endpoint": (
                             endpoint.get("name")
@@ -928,36 +1336,60 @@ def _run_through_gear_pipeline(
                     })
             except Exception:
                 pass
-        return response
+    return _validate_framework_pipeline_result(
+        response, context_pkg, declared_gear=contract.gear,
+    )
 
 
 def _build_context_pkg(handoff_packet: str, milestone: Milestone,
+                       contract: ResolvedMilestoneContract,
                        trace_dir: Optional[str] = None,
                        parent_trace_ref: Optional[str] = None,
                        framework_id: Optional[str] = None,
                        selected_mode: Optional[str] = None,
                        project_model_locks: Optional[dict] = None,
                        input_context: Optional[dict] = None) -> dict:
-    """Build the minimal context_pkg that run_gear3/4 expect."""
-    try:
-        from boot import load_mode
-        mode_text = load_mode("synthesis")
-    except Exception:
-        mode_text = ""
+    """Build a Framework-native context package, with no hidden mode."""
+    if (
+        milestone.id != contract.milestone_id
+        or milestone.gear != contract.gear
+    ):
+        raise FrameworkPreflightError(
+            "Framework milestone execution does not match its admitted contract"
+        )
+    method_contract = [
+        {
+            "id": method.id,
+            "name": method.name,
+            "body": method.body,
+            "legacy": method.legacy,
+        }
+        for method in contract.methods
+    ]
     pkg = {
         "cleaned_prompt": handoff_packet,
         "raw_prompt": handoff_packet,
         "natural_language_prompt": handoff_packet,
         "operational_notation": handoff_packet,
-        "mode": "synthesis",  # MVP default; layer instructions dominate
-        "mode_name": "synthesis",
-        "mode_text": mode_text,
-        "gear": milestone.gear,
+        "mode": "framework-milestone",
+        "mode_name": f"{framework_id or 'framework'}:{contract.milestone_id}",
+        "mode_text": "",
+        "gear": contract.gear,
         "triage_tier": 1,
         "conversation_rag": "",
         "concept_rag": "",
         "framework_execution": True,
-        "milestone_id": milestone.id,
+        "milestone_id": contract.milestone_id,
+        "framework_milestone_contract": {
+            "framework_id": framework_id or "",
+            "milestone_id": contract.milestone_id,
+            "milestone_name": contract.name,
+            "methods": method_contract,
+            "output_specification": contract.output_format,
+            "verification_criterion": contract.verification_criterion,
+            "gear": contract.gear,
+            "gear4_purpose": contract.gear4_purpose,
+        },
     }
     if trace_dir:
         pkg["trace_dir"] = trace_dir
@@ -970,8 +1402,55 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone,
     if project_model_locks:
         pkg["model_profile_locks"] = copy.deepcopy(project_model_locks)
     if isinstance(input_context, dict):
+        reserved = {
+            "cleaned_prompt",
+            "raw_prompt",
+            "natural_language_prompt",
+            "operational_notation",
+            "mode",
+            "mode_name",
+            "mode_text",
+            "gear",
+            "triage_tier",
+            "conversation_rag",
+            "concept_rag",
+            "framework_execution",
+            "milestone_id",
+            "framework_milestone_contract",
+            "trace_dir",
+            "parent_trace_ref",
+            "framework_id",
+            "framework_mode",
+            "persona_resolution",
+            "optional_context_units",
+            "context_source_inventory",
+            "framework_execution_state",
+            "framework_convergence",
+            "execution_review",
+        }
+        collisions = sorted(
+            key
+            for key, value in input_context.items()
+            if (
+                value is not None
+                and isinstance(key, str)
+                and (key in reserved or key.startswith("_"))
+            )
+        )
+        if collisions:
+            raise FrameworkPreflightError(
+                "Framework input context cannot replace reserved execution "
+                f"field(s): {', '.join(collisions)}"
+            )
         for key, value in input_context.items():
             if value is not None:
+                if key == "model_profile_locks":
+                    if key not in pkg or value != pkg[key]:
+                        raise FrameworkPreflightError(
+                            "Framework input context changed authenticated "
+                            "Model Profile locks"
+                        )
+                    continue
                 pkg[key] = copy.deepcopy(value)
         contributor_bundle = input_context.get("contributor_bundle")
         if isinstance(contributor_bundle, dict):
@@ -989,6 +1468,70 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone,
                     "global_excluded_units": 0,
                 }
     return pkg
+
+
+def _validate_framework_pipeline_result(
+    response,
+    context_pkg: dict,
+    *,
+    declared_gear: int,
+) -> str:
+    """Admit only a material candidate with truthful terminal quality state."""
+    if not isinstance(response, str):
+        raise FrameworkPipelineError(
+            "Framework Gear pipeline returned the wrong type; expected text",
+        )
+    try:
+        from boot import _step_output_health
+    except ImportError:
+        from orchestrator.boot import _step_output_health
+    healthy, reason = _step_output_health(
+        response, "framework-deliverable", min_chars=30,
+    )
+    if not healthy:
+        raise FrameworkPipelineError(
+            f"Framework Gear pipeline returned no material deliverable: {reason}",
+            candidate=response,
+        )
+    if response.lstrip().startswith("## Deliverable withheld"):
+        raise FrameworkPipelineError(
+            "Framework final criterion did not release the candidate",
+            candidate=response,
+        )
+
+    effective_gear = context_pkg.get("_trace_effective_gear", declared_gear)
+    if effective_gear != declared_gear:
+        raise FrameworkPipelineError(
+            f"Framework Gear {declared_gear} degraded to Gear {effective_gear}; "
+            "the declared execution contract was not completed",
+            candidate=response,
+            terminal_state="degraded",
+        )
+    strict_state = context_pkg.get("framework_execution_state")
+    if isinstance(strict_state, dict) and not strict_state.get("success", False):
+        raise FrameworkPipelineError(
+            str(strict_state.get("reason") or "Framework Gear pipeline degraded"),
+            candidate=response,
+            terminal_state=str(strict_state.get("terminal_state") or "failed"),
+        )
+    if declared_gear in (3, 4):
+        review = context_pkg.get("execution_review")
+        if not isinstance(review, dict):
+            raise FrameworkPipelineError(
+                "Framework final verification criterion was unavailable",
+                candidate=response,
+                terminal_state="degraded",
+            )
+        verdict = str(review.get("verdict") or "").upper()
+        status = str(review.get("status") or "")
+        if verdict != "PASS" or "withheld" in status:
+            raise FrameworkPipelineError(
+                "Framework final verification criterion did not pass "
+                f"(verdict={verdict or 'unavailable'}, status={status or 'unavailable'})",
+                candidate=response,
+                terminal_state=("degraded" if verdict in {"", "BROKEN"} else "failed"),
+            )
+    return response.strip()
 
 
 def _start_child_trace(parent_trace_dir: Optional[str],
@@ -1063,6 +1606,7 @@ def _run_child_attempt(child_trace_dir: Optional[str],
                        parent_trace_ref: Optional[str],
                        handoff_packet: str,
                        milestone: Milestone,
+                       contract: ResolvedMilestoneContract,
                        config: dict,
                        config_name: Optional[str],
                        framework_id: str,
@@ -1077,7 +1621,7 @@ def _run_child_attempt(child_trace_dir: Optional[str],
         child_trace_dir, stealth=stealth, surface="framework")
     try:
         return _run_through_gear_pipeline(
-            handoff_packet, milestone, config, config_name=config_name,
+            handoff_packet, milestone, contract, config, config_name=config_name,
             trace_dir=child_trace_dir, parent_trace_ref=parent_trace_ref,
             framework_id=framework_id, selected_mode=selected_mode,
             project_model_locks=project_model_locks,
@@ -1202,12 +1746,20 @@ def _run_drift_check(
     except Exception as exc:
         return ("DRIFT_CHECK_SKIPPED", f"Drift check call failed: {exc}")
 
+    if not isinstance(response, str) or not response.strip():
+        return (
+            "DRIFT_CHECK_SKIPPED",
+            "Drift check returned no usable text verdict.",
+        )
+
     return _parse_drift_response(response)
 
 
 def _parse_drift_response(response: str) -> tuple[str, str]:
     """Extract STATUS and REASONING from the drift check response."""
     import re
+    if not isinstance(response, str) or not response.strip():
+        return ("DRIFT_CHECK_SKIPPED", "Drift check returned no usable verdict.")
     status = "DRIFT_CHECK_SKIPPED"
     reasoning = response.strip()[:500]
 
@@ -1273,6 +1825,112 @@ def _build_mechanical_redirect(
         duration_seconds=0.0,
         mode=selected_mode,
         mode_reasoning=mode_reasoning,
+    )
+
+
+def resume_framework(
+    execution_id: str,
+    config: Optional[dict] = None,
+    *,
+    trace_dir: Optional[str] = None,
+    trace_context: Optional[dict] = None,
+) -> FrameworkExecutionResult:
+    """Resume a preserved normal run at its first unfinished milestone.
+
+    The current canonical Framework is preflighted again and must have the
+    same contract digest as the failed run. Completed prefix milestones are
+    loaded from scratch and are never re-executed.
+    """
+    scratch = ScratchSession.attach(execution_id)
+    manifest = scratch.manifest()
+    if manifest.get("conversation_tag") == "stealth":
+        raise FrameworkPreflightError("Stealth Framework runs cannot be resumed")
+    canonical = manifest.get("canonical_filename")
+    original_input = manifest.get("original_input")
+    effective_input = manifest.get("effective_input")
+    selected_mode = manifest.get("selected_mode")
+    stored_context = manifest.get("input_context")
+    stored_identity_digest = manifest.get("resume_identity_digest")
+    if not all(isinstance(value, str) for value in (
+        canonical,
+        original_input,
+        effective_input,
+        selected_mode,
+        stored_identity_digest,
+    )) or not isinstance(stored_context, dict):
+        raise FrameworkPreflightError(
+            "Framework resume refused because scratch lacks admitted run identity"
+        )
+    prepared = prepare_framework_execution(
+        canonical,
+        original_input,
+        project_nexus=manifest.get("project_nexus"),
+        one_run_profile=manifest.get("one_run_profile"),
+        input_context=stored_context,
+    )
+    if prepared.effective_input != effective_input:
+        raise FrameworkPreflightError(
+            "Framework resume refused because the admitted effective input changed"
+        )
+    expected_exact_mode = manifest.get("exact_mode")
+    if expected_exact_mode is not None and not isinstance(expected_exact_mode, str):
+        raise FrameworkPreflightError(
+            "Framework resume refused because its exact mode identity is invalid"
+        )
+    if prepared.exact_mode != expected_exact_mode:
+        raise FrameworkPreflightError(
+            "Framework resume refused because its exact mode identity changed"
+        )
+    if (
+        prepared.project_profile != manifest.get("project_profile")
+        or prepared.project_nexus != manifest.get("project_nexus")
+        or prepared.one_run_profile != manifest.get("one_run_profile")
+    ):
+        raise FrameworkPreflightError(
+            "Framework resume refused because its project or profile binding changed"
+        )
+    if _thaw_value(prepared.input_context) != stored_context:
+        raise FrameworkPreflightError(
+            "Framework resume refused because its admitted input context changed"
+        )
+    if (
+        _contract_digest(prepared) != manifest.get("contract_digest")
+        or _resume_identity_digest(
+            prepared,
+            selected_mode=selected_mode,
+            effective_input=effective_input,
+        ) != stored_identity_digest
+    ):
+        raise FrameworkPreflightError(
+            "Framework resume refused because the admitted identity, contract, "
+            "prerequisites, or context changed"
+        )
+    stored_style_context = {
+        key: stored_context[key]
+        for key in ("style_id", "style_register", "style_deltas")
+        if key in stored_context
+    }
+    return execute_framework(
+        canonical,
+        original_input,
+        config=config,
+        execution_id=execution_id,
+        project_nexus=manifest.get("project_nexus"),
+        config_name=manifest.get("one_run_profile"),
+        trace_dir=trace_dir,
+        conversation_tag=str(manifest.get("conversation_tag") or ""),
+        trace_context=trace_context,
+        style_context=stored_style_context,
+        input_context=stored_context,
+        images=None,
+        prepared=prepared,
+        conversation_id=manifest.get("conversation_id"),
+        _resume=True,
+        _resume_selected_mode=selected_mode,
+        _resume_mode_reasoning=str(
+            manifest.get("mode_reasoning")
+            or "stored admitted Framework mode selection"
+        ),
     )
 
 
@@ -1450,6 +2108,30 @@ def _parse_mode_response(
 # ---------- Slash-command invocation ----------
 
 FRAMEWORK_COMMAND_PREFIX = "/framework "
+_FRAMEWORK_RESUME_INTENT_RE = re.compile(
+    r"\A\s*/framework\s+--resume(?=\s|\Z)",
+)
+_FRAMEWORK_RESUME_COMMAND_RE = re.compile(
+    r"\A\s*/framework\s+--resume\s+"
+    r"(?P<execution_id>[A-Za-z0-9][A-Za-z0-9._-]{0,127})\s*\Z",
+)
+
+
+def is_framework_resume_command(user_input: str) -> bool:
+    """Recognize the reserved typed resume form before generic parsing."""
+    return bool(_FRAMEWORK_RESUME_INTENT_RE.match(user_input or ""))
+
+
+def _parse_framework_resume_command(user_input: str) -> Optional[str]:
+    if not is_framework_resume_command(user_input):
+        return None
+    match = _FRAMEWORK_RESUME_COMMAND_RE.match(user_input or "")
+    if match is None:
+        raise ValueError(
+            "resume syntax is `/framework --resume <execution-id>` with no "
+            "additional query or options"
+        )
+    return match.group("execution_id")
 
 
 def is_framework_command(user_input: str) -> bool:
@@ -1499,6 +2181,8 @@ def framework_command_has_query(user_input: str) -> bool:
     (``run_framework_command``) and interactive elicitation
     (``framework_elicitation.start_elicitation``).
     """
+    if is_framework_resume_command(user_input):
+        return True
     try:
         _, query, _ = parse_framework_command(user_input)
     except ValueError:
@@ -1514,15 +2198,60 @@ def format_execution_result(result: FrameworkExecutionResult) -> str:
         else ""
     )
     if not result.success:
-        return (
-            f"[Framework {result.framework_name}{mode_suffix} failed at "
-            f"{len(result.milestones)} milestone(s). {result.failure_reason}]\n\n"
-            f"Scratch preserved at {_rp.SCRATCH_DIR / result.execution_id}/"
-        )
+        completed = [milestone for milestone in result.milestones if milestone.completed]
+        parts = [
+            f"[Framework: {result.framework_name}{mode_suffix} | "
+            f"Execution: {result.execution_id} | "
+            f"Terminal state: {result.terminal_state}]",
+            "",
+            (
+                f"Execution stopped at milestone {result.failed_milestone_id or 'unknown'}: "
+                f"{result.failure_reason or 'no failure reason was recorded'}."
+            ),
+        ]
+        if completed:
+            parts.extend([
+                "",
+                "## Completed milestone deliverables",
+            ])
+            for milestone in completed:
+                parts.extend([
+                    "",
+                    f"### {milestone.milestone_id} — {milestone.name}",
+                    "",
+                    milestone.deliverable,
+                ])
+        terminal_results = [
+            milestone for milestone in result.milestones if not milestone.completed
+        ]
+        for milestone in terminal_results:
+            parts.extend([
+                "",
+                f"## Boundary intervention — {milestone.milestone_id}",
+                "",
+                f"{milestone.drift_status}: {milestone.drift_reasoning}",
+            ])
+        if result.resume_available and result.recovery_path:
+            parts.extend([
+                "",
+                (
+                    f"Resume is available for execution `{result.execution_id}`. "
+                    "Use `/framework --resume "
+                    f"{result.execution_id}` to continue at the first unfinished "
+                    "milestone without repeating the completed work."
+                ),
+                f"Recovery scratch: {result.recovery_path}",
+            ])
+        else:
+            parts.extend([
+                "",
+                "No scratch or resume state was retained for this Stealth execution.",
+            ])
+        return "\n".join(parts)
 
     drift_warnings = []
     for ms in result.milestones:
-        if ms.drift_status == "DRIFT_DETECTED":
+        if ms.drift_status != "IN_SCOPE":
             drift_warnings.append(
                 f"  - {ms.milestone_id} ({ms.name}): {ms.drift_reasoning}"
             )
@@ -1561,6 +2290,49 @@ def run_framework_command(user_input: str, config: dict,
     in the returned string rather than raising, so the chat UI always
     receives a renderable response.
     """
+    try:
+        resume_execution_id = _parse_framework_resume_command(user_input)
+    except ValueError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "error"
+        return f"[Framework command error: {exc}]"
+    if resume_execution_id is not None:
+        try:
+            _parent_trace_token, _parent_tool_token = _bind_trace_context(
+                trace_dir, stealth=False, surface="framework",
+            )
+            try:
+                result = resume_framework(
+                    resume_execution_id,
+                    config=config,
+                    trace_dir=trace_dir,
+                    trace_context=trace_context,
+                )
+            finally:
+                _reset_trace_context(_parent_trace_token, _parent_tool_token)
+        except FileNotFoundError as exc:
+            if trace_context is not None:
+                trace_context["status"] = "error"
+            return f"[Framework resume state not found: {exc}]"
+        except FrameworkPreflightError as exc:
+            if trace_context is not None:
+                trace_context["status"] = "refused"
+            return f"[Framework preflight refusal: {exc}]"
+        except FrameworkParseError as exc:
+            if trace_context is not None:
+                trace_context["status"] = "error"
+            return f"[Framework parse error: {exc}]"
+        except Exception as exc:
+            if trace_context is not None:
+                trace_context["status"] = "error"
+            return f"[Unexpected error during framework resume: {exc}]"
+        if trace_context is not None:
+            trace_context["framework_id"] = result.framework_name
+            trace_context.setdefault(
+                "status", "completed" if result.success else "error",
+            )
+        return format_execution_result(result)
+
     try:
         framework_name, framework_query, command_profile = parse_framework_command(user_input)
     except ValueError as exc:

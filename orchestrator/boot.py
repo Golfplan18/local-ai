@@ -10994,6 +10994,113 @@ def _visual_emission_contract(context_package: dict) -> str:
     )
 
 
+def _build_framework_milestone_system_prompt(
+    context_package: dict,
+    *,
+    slot: str,
+    step: str,
+) -> str:
+    """Build the role prompt from the admitted Framework milestone itself."""
+    contract = context_package.get("framework_milestone_contract")
+    if not isinstance(contract, dict):
+        raise ValueError("Framework execution is missing its resolved milestone contract")
+    methods = contract.get("methods")
+    if not isinstance(methods, list) or not methods:
+        raise ValueError("Framework milestone contract has no resolved methods")
+    criterion = contract.get("verification_criterion")
+    output_specification = contract.get("output_specification")
+    gear = contract.get("gear")
+    purpose = contract.get("gear4_purpose")
+    if not isinstance(criterion, str) or not criterion.strip():
+        raise ValueError("Framework milestone verification criterion is unavailable")
+    if not isinstance(output_specification, str) or not output_specification.strip():
+        raise ValueError("Framework milestone output specification is unavailable")
+    if gear not in (2, 3, 4):
+        raise ValueError("Framework milestone Gear is invalid")
+    if context_package.get("gear") != gear:
+        raise ValueError(
+            "Framework context Gear does not match its admitted milestone contract"
+        )
+    if gear == 4 and purpose not in {
+        "exploration", "independent corroboration", "both",
+    }:
+        raise ValueError("Framework Gear-4 purpose is unavailable")
+
+    persona_resolution = context_package.get("persona_resolution")
+    boot_md = load_boot_md(
+        include_persona=bool(persona_resolution),
+        persona_resolution=persona_resolution,
+    )
+    parts = [_extract_boot_behavioral_preamble(boot_md)]
+    method_sections = []
+    for method in methods:
+        if not isinstance(method, dict):
+            raise ValueError("Framework resolved method is malformed")
+        method_id = method.get("id")
+        method_name = method.get("name")
+        method_body = method.get("body")
+        if not all(isinstance(value, str) and value.strip() for value in (
+            method_id, method_name, method_body,
+        )):
+            raise ValueError("Framework resolved method is incomplete")
+        method_sections.append(
+            f"### METHOD {method_id}: {method_name}\n{method_body.strip()}"
+        )
+
+    parts.append(_fenced(
+        "FRAMEWORK MILESTONE — CONTROLLING CONTRACT",
+        "\n\n".join(method_sections)
+        + "\n\nOUTPUT SPECIFICATION:\n"
+        + output_specification.strip()
+        + "\n\nVERIFICATION CRITERION:\n"
+        + criterion.strip()
+        + f"\n\nEXACT GEAR: {gear}"
+        + (
+            f"\nGEAR 4 SECOND-LANE PURPOSE: {purpose}"
+            if purpose else ""
+        ),
+        note=(
+            "This admitted milestone contract is authoritative. Apply the "
+            "resolved methods exactly and treat its verification criterion as "
+            "the controlling pass gate. Universal F-* role scaffolding may "
+            "structure the work but cannot replace or weaken this contract. "
+            "There is no Synthesis-mode authority, tool catalogue, RAG profile, "
+            "or project binding on this path."
+        ),
+    ))
+
+    role = step
+    if step == "analyst":
+        role = f"analyst — {slot} lane"
+    role_instruction = (
+        f"You are the {role} for this Framework milestone. "
+        "Judge and produce only against the controlling milestone criterion."
+    )
+    if gear == 4:
+        role_instruction += (
+            f" The second-lane purpose is `{purpose}` and governs this role. "
+            "Keep the depth and breadth lane identities distinct. Preserve "
+            "initial independent agreement separately from agreement reached "
+            "after cross-review; later convergence is not independent proof. "
+            "Carry material disagreement forward without averaging it away."
+        )
+        if step == "analyst":
+            role_instruction += (
+                f" Work independently as the {slot} lane; do not assume, imitate, "
+                "or anticipate the other analyst's draft."
+            )
+    parts.append(_fenced("FRAMEWORK ROLE", role_instruction))
+
+    framework_gear = gear
+    if framework_gear >= 3 and step in (
+        "analyst", "reviser", "consolidator", "formatter",
+    ):
+        style_block = _compose_output_style(context_package)
+        if style_block:
+            parts.append(style_block)
+    return "\n".join(parts)
+
+
 def build_system_prompt_for_gear(
     context_package: dict,
     slot: str = "breadth",
@@ -11027,6 +11134,13 @@ def build_system_prompt_for_gear(
         raise ValueError(
             f"build_system_prompt_for_gear: unknown step {step!r}; "
             f"expected one of {sorted(_PIPELINE_STEPS)}"
+        )
+
+    if context_package.get("framework_execution"):
+        return _build_framework_milestone_system_prompt(
+            context_package,
+            slot=slot,
+            step=step,
         )
 
     mode_text = context_package["mode_text"]
@@ -13125,7 +13239,10 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
 
     # Supplemental RAG Protocol — universal anti-confabulation instruction
     # for analytical steps. Loaded once and cached implicitly via load_framework.
-    if step in _SUPPLEMENT_ENABLED_STEPS:
+    if (
+        step in _SUPPLEMENT_ENABLED_STEPS
+        and not context_pkg.get("framework_execution")
+    ):
         try:
             supplement_protocol = _strip_framework_documentation(
                 load_framework("supplemental-rag-protocol.md")
@@ -13139,6 +13256,29 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
             # pipeline. Trace will show no supplement attempts; the spec
             # acknowledges this as a deploy/install-time check.
             pass
+
+    if (
+        context_pkg.get("framework_execution")
+        and framework_name == "f-quality-gate.md"
+    ):
+        contract = context_pkg.get("framework_milestone_contract") or {}
+        step_prompt = step_prompt + "\n" + _fenced(
+            "FRAMEWORK-ONLY TERMINAL RELEASE OVERRIDE — CONTROLLING",
+            (
+                "This instruction is later and controlling for Framework "
+                "execution. Any earlier universal or mode-oriented text that "
+                "says an exhausted FAIL, BROKEN/unavailable review, or missing "
+                "verdict ships the candidate does not apply here. Only a real "
+                "final `VERDICT: PASS` against the admitted criterion releases "
+                "the candidate. `VERDICT: FAIL`, `VERDICT: BROKEN`, an unavailable "
+                "review, a missing verdict, or an exhausted correction budget "
+                "withholds it.\n\n"
+                "ADMITTED VERIFICATION CRITERION:\n"
+                f"{contract.get('verification_criterion') or '<missing>'}\n\n"
+                "ADMITTED OUTPUT SPECIFICATION:\n"
+                f"{contract.get('output_specification') or '<missing>'}"
+            ),
+        )
 
     return _INLINE_DISPATCH_DIRECTIVE + step_prompt
 
@@ -14602,6 +14742,71 @@ def _run_unflagged_claim_scan(
             result.get("per_claim_evidence") or [])
 
 
+class FrameworkExecutionFailure(RuntimeError):
+    """A Framework-only Gear contract reached terminal failure/degradation."""
+
+    def __init__(
+        self,
+        reason: str,
+        *,
+        terminal_state: str = "failed",
+        candidate: str = "",
+    ) -> None:
+        super().__init__(reason)
+        self.terminal_state = terminal_state
+        self.candidate = candidate
+
+
+def _framework_execution_is_strict(context_pkg: dict) -> bool:
+    return bool(
+        isinstance(context_pkg, dict)
+        and context_pkg.get("framework_execution")
+    )
+
+
+def _framework_execution_fail(
+    context_pkg: dict,
+    reason: str,
+    *,
+    terminal_state: str = "failed",
+    candidate: str = "",
+) -> None:
+    if not _framework_execution_is_strict(context_pkg):
+        return
+    context_pkg["framework_execution_state"] = {
+        "success": False,
+        "terminal_state": terminal_state,
+        "reason": reason,
+    }
+    raise FrameworkExecutionFailure(
+        reason,
+        terminal_state=terminal_state,
+        candidate=candidate,
+    )
+
+
+def _framework_require_healthy(
+    context_pkg: dict,
+    step_name: str,
+    healthy: bool,
+    reason: str,
+) -> None:
+    if not healthy:
+        _framework_execution_fail(
+            context_pkg,
+            f"Framework {step_name} failed material-output validation: {reason}",
+        )
+
+
+def _framework_mark_success(context_pkg: dict) -> None:
+    if _framework_execution_is_strict(context_pkg):
+        context_pkg["framework_execution_state"] = {
+            "success": True,
+            "terminal_state": "succeeded",
+            "reason": "all declared Gear stages and final criterion passed",
+        }
+
+
 def run_gear3(context_pkg: dict, config: dict, history: list = None,
               images: list = None, config_name: str | None = None) -> str:
     """Run Gear 3 with one bounded authoritative continuity lane."""
@@ -14714,6 +14919,11 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                 })
             except Exception:
                 pass
+        _framework_execution_fail(
+            context_pkg,
+            diagnostic,
+            terminal_state="degraded",
+        )
         return diagnostic
 
     raw_image_recipients = (
@@ -14729,6 +14939,10 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         execution_context=context_pkg.get("execution_context", "interactive"),
     )
     if image_input_error:
+        _framework_execution_fail(
+            context_pkg,
+            f"Framework image input routing failed: {image_input_error}",
+        )
         return image_input_error
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
@@ -14755,6 +14969,12 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
 
     # Fall back to single model if only one is available — analyst-only.
     if depth_endpoint is None or breadth_endpoint is None:
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 3 requires its complete sequential depth-to-breadth "
+            "lane; an analyst/evaluator endpoint is unavailable",
+            terminal_state="degraded",
+        )
         endpoint = depth_endpoint or breadth_endpoint
         slot = "depth" if depth_endpoint else "breadth"
         system = _assemble_step_prompt(context_pkg, slot=slot,
@@ -14817,6 +15037,7 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         slot="depth", gear=3, config_name=config_name,
     )
     _record("step3-depth", depth_ok, depth_reason)
+    _framework_require_healthy(context_pkg, "Gear 3 analyst", depth_ok, depth_reason)
     _trace_step_g3("step3-depth", {
         "system_prompt": depth_system,
         "user_message": cleaned_prompt,
@@ -14858,6 +15079,7 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         slot="breadth", gear=3, config_name=config_name,
     )
     _record("step4-eval", eval_ok, eval_reason)
+    _framework_require_healthy(context_pkg, "Gear 3 evaluator", eval_ok, eval_reason)
     # Preserve the raw response for the trace BEFORE the empty-eval
     # contingency rewrite, so audits can distinguish what the model
     # actually returned from the [no evaluator feedback...] placeholder.
@@ -14958,6 +15180,7 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         slot="depth", gear=3, config_name=config_name,
     )
     _record("step5-revised", rev_ok, rev_reason)
+    _framework_require_healthy(context_pkg, "Gear 3 reviser", rev_ok, rev_reason)
     raw_revise_response = revised_analysis
     # Contingency mirroring Gear 4: if reviser is degraded, fall back to
     # the original analyst output so the verifier sees real content
@@ -15161,6 +15384,20 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                     f"step6-cycle{cycle + 1}-verifier-BROKEN-structural-fail-re-revising"
                 )
 
+        if broken:
+            _framework_execution_fail(
+                context_pkg,
+                f"Framework Gear 3 verifier was unavailable or broken: "
+                f"{verify_retry_reason}",
+                terminal_state="degraded",
+            )
+        if not passed and cycle + 1 >= max_verify_attempts:
+            _framework_execution_fail(
+                context_pkg,
+                "Framework Gear 3 verification criterion failed after the "
+                "bounded correction cycle",
+            )
+
         if unblocks or cycle + 1 >= max_verify_attempts:
             break
 
@@ -15208,6 +15445,12 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
             context_pkg=context_pkg,
             slot="depth", gear=3, config_name=config_name,
         )
+        _framework_require_healthy(
+            context_pkg,
+            "Gear 3 re-reviser",
+            _re_rev_ok,
+            _re_rev_reason,
+        )
         revised_analysis = _capture_visual_candidates(
             revised_analysis, context_pkg,
             f"gear3-reviser-rerevision-{cycle + 1}", replace=True,
@@ -15229,6 +15472,12 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
         prior_candidate_digest = candidate_digest
         prior_defect_fingerprint = defect_fingerprint
+
+    if not passed:
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 3 verifier did not pass the milestone criterion",
+        )
 
     # --- Step 6.5: Final-output quality gate + correction reinspection ------
     # The verify loop above gates the revision cycle mid-pipeline; this is the
@@ -15286,9 +15535,15 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                 "new candidate identity independently; do not inherit the prior "
                 "verdict.\n\n"
             )
+        criterion_target = (
+            "the controlling Framework milestone VERIFICATION CRITERION and "
+            "declared OUTPUT SPECIFICATION"
+            if _framework_execution_is_strict(context_pkg)
+            else "the mode's `## VERIFICATION CRITERIA` (PASS gate)"
+        )
         gate_user += (
-            "Grade the deliverable against the mode's `## VERIFICATION CRITERIA` "
-            "(PASS gate) and the universal checks. Gear 3 has no separate "
+            f"Grade the deliverable against {criterion_target} and the "
+            "universal checks. Gear 3 has no separate "
             "formatter, so OMIT the PROBLEM line. Conclude with the itemized "
             "checklist, a `## REQUIRED FIXES` section on FAIL, and a final "
             "`VERDICT:` line (PASS / FAIL / BROKEN) per the F-QUALITY-GATE "
@@ -15365,6 +15620,12 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
             context_pkg=context_pkg,
             slot="depth", gear=3, config_name=config_name,
         )
+        _framework_require_healthy(
+            context_pkg,
+            "Gear 3 final-criterion reviser",
+            _qg_redo_ok,
+            _qg_redo_reason,
+        )
         revised_analysis = _capture_visual_candidates(
             revised_analysis, context_pkg, "gear3-reviser-quality-redo",
             replace=True,
@@ -15393,6 +15654,18 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
     else:
         contingencies_fired.append(
             f"step6_5-gear3-quality-gate-{gate_verdict_label}")
+
+    if gate_broken:
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 3 final verification criterion was unavailable",
+            terminal_state="degraded",
+        )
+    if not gate_passed:
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 3 final verification criterion failed",
+        )
 
     release_deliverable = bool(
         gate_passed
@@ -15487,6 +15760,7 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
     # Strip any residual fence from the selected prose without replacing the
     # paired candidate with an empty list after the final prose selection.
     deliverable = _strip_visual_blocks_and_markers(deliverable)
+    _framework_mark_success(context_pkg)
     return deliverable
 
 
@@ -15612,6 +15886,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     )
 
     if depth_endpoint is None or breadth_endpoint is None:
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 4 requires two genuine analyst lanes; endpoint "
+            "resolution did not provide both lanes",
+            terminal_state="degraded",
+        )
         context_pkg["_trace_effective_gear"] = 3
         if PIPELINE_TRACE_AVAILABLE and trace_dir:
             try:
@@ -15633,6 +15913,10 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         execution_context=execution_context,
     )
     if image_input_error:
+        _framework_execution_fail(
+            context_pkg,
+            f"Framework image input routing failed: {image_input_error}",
+        )
         return image_input_error
 
     # parallel_safe is now a UI hint, not a control-flow gate. When False
@@ -15759,6 +16043,11 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             f"retry+fallback ({', '.join(failed)}) — falling back to Gear 3",
             flush=True,
         )
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 4 analyst lane failed after its bounded endpoint "
+            f"recovery: {', '.join(failed)}",
+        )
         if not depth_ok and not breadth_ok:
             contingencies_fired.append(
                 "step3-both-analysts-unrecoverable-fallback-to-gear3")
@@ -15865,6 +16154,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             depth_eval_of_breadth, eval_b_ok, eval_b_reason = f"[Evaluation error: {e}]", False, str(e)
     _record("step4-eval-of-depth", eval_a_ok, eval_a_reason)
     _record("step4-eval-of-breadth", eval_b_ok, eval_b_reason)
+    _framework_require_healthy(
+        context_pkg, "Gear 4 evaluator of depth", eval_a_ok, eval_a_reason,
+    )
+    _framework_require_healthy(
+        context_pkg, "Gear 4 evaluator of breadth", eval_b_ok, eval_b_reason,
+    )
 
     # Preserve the raw model response BEFORE the contingency rewrite so the
     # trace can audit what the broken browser actually returned. Without this
@@ -16016,6 +16311,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             revised_breadth, breadth_rev_ok, breadth_rev_reason = f"[Revision error: {e}]", False, str(e)
     _record("step5-revised-depth", depth_rev_ok, depth_rev_reason)
     _record("step5-revised-breadth", breadth_rev_ok, breadth_rev_reason)
+    _framework_require_healthy(
+        context_pkg, "Gear 4 depth reviser", depth_rev_ok, depth_rev_reason,
+    )
+    _framework_require_healthy(
+        context_pkg, "Gear 4 breadth reviser", breadth_rev_ok, breadth_rev_reason,
+    )
 
     # Contingency: if revised output is degraded, fall back to the original
     # analyst output for that stream — better to give the consolidator real
@@ -16159,15 +16460,52 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         framework_name="f-verify.md",
     )
 
+    def _framework_convergence_handoff() -> str:
+        """Keep independent evidence distinct from post-review convergence."""
+        if not _framework_execution_is_strict(context_pkg):
+            return ""
+        record = {
+            "gear4_purpose": (
+                context_pkg.get("framework_milestone_contract", {})
+                .get("gear4_purpose")
+            ),
+            "initial_independent_drafts": {
+                "depth": depth_analysis,
+                "breadth": breadth_analysis,
+            },
+            "post_cross_review_drafts": {
+                "depth": revised_depth,
+                "breadth": revised_breadth,
+            },
+        }
+        context_pkg["framework_convergence"] = record
+        return (
+            "## INITIAL INDEPENDENT ANALYST DRAFTS\n\n"
+            "Agreement may be called independent only when it is present in "
+            "these two originals. Keep lane identity and material disagreement.\n\n"
+            f"### DEPTH LANE — ORIGINAL\n\n{depth_analysis}\n\n"
+            f"### BREADTH LANE — ORIGINAL\n\n{breadth_analysis}\n\n"
+            "## POST-CROSS-REVIEW DRAFTS\n\n"
+            "Later convergence belongs only to this phase and is not independent "
+            "corroboration. Do not average remaining disagreement.\n\n"
+            f"### DEPTH LANE — REVISED\n\n{revised_depth}\n\n"
+            f"### BREADTH LANE — REVISED\n\n{revised_breadth}"
+        )
+
     MAX_VERIFY_CYCLES = 2
     for cycle in range(MAX_VERIFY_CYCLES + 1):
         depth_verify_error = None
         breadth_verify_error = None
+        framework_convergence_handoff = _framework_convergence_handoff()
         verify_depth_user_message = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-            f"## REVISED DEPTH ANALYSIS\n\n{revised_depth}\n\n"
-            f"## EVALUATOR'S MANDATORY FIXES\n\n"
-            f"{breadth_eval_of_depth}\n\n"
+            + (
+                f"{framework_convergence_handoff}\n\n"
+                if framework_convergence_handoff else ""
+            )
+            + f"## REVISED DEPTH ANALYSIS\n\n{revised_depth}\n\n"
+            + f"## EVALUATOR'S MANDATORY FIXES\n\n"
+            + f"{breadth_eval_of_depth}\n\n"
         )
         if depth_claim_evidence_text:
             verify_depth_user_message += (
@@ -16188,9 +16526,13 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
 
         verify_breadth_user_message = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-            f"## REVISED BREADTH ANALYSIS\n\n{revised_breadth}\n\n"
-            f"## EVALUATOR'S MANDATORY FIXES\n\n"
-            f"{depth_eval_of_breadth}\n\n"
+            + (
+                f"{framework_convergence_handoff}\n\n"
+                if framework_convergence_handoff else ""
+            )
+            + f"## REVISED BREADTH ANALYSIS\n\n{revised_breadth}\n\n"
+            + f"## EVALUATOR'S MANDATORY FIXES\n\n"
+            + f"{depth_eval_of_breadth}\n\n"
         )
         if breadth_claim_evidence_text:
             verify_breadth_user_message += (
@@ -16372,6 +16714,30 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     f"step6-cycle{cycle + 1}-breadth-verifier-BROKEN-structural-fail-re-revising"
                 )
 
+        if not depth_verify_ok or depth_broken:
+            _framework_execution_fail(
+                context_pkg,
+                "Framework Gear 4 depth verifier was unavailable or broken: "
+                f"{depth_verify_reason}",
+                terminal_state="degraded",
+                candidate=revised_depth,
+            )
+        if not breadth_verify_ok or breadth_broken:
+            _framework_execution_fail(
+                context_pkg,
+                "Framework Gear 4 breadth verifier was unavailable or broken: "
+                f"{breadth_verify_reason}",
+                terminal_state="degraded",
+                candidate=revised_breadth,
+            )
+        if cycle == MAX_VERIFY_CYCLES and not (depth_passed and breadth_passed):
+            _framework_execution_fail(
+                context_pkg,
+                "Framework Gear 4 milestone verification criterion failed "
+                "after the bounded correction cycle",
+                candidate=(revised_depth + "\n\n" + revised_breadth),
+            )
+
         # Loop exit: both streams unblocked (PASS or BROKEN), or cycle cap.
         # Re-revision only fires when a stream truly FAILED (broken doesn't
         # benefit from re-revision since the issue is verifier-side).
@@ -16431,6 +16797,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 except Exception as e:
                     revised_depth = f"[Re-revision error: {e}]"
                     _depth_rerev_ok, _depth_rerev_reason = False, str(e)
+                _framework_require_healthy(
+                    context_pkg,
+                    "Gear 4 depth re-reviser",
+                    _depth_rerev_ok,
+                    _depth_rerev_reason,
+                )
                 revised_depth = _capture_visual_candidates(
                     revised_depth, context_pkg,
                     f"gear4-depth-reviser-rerevision-{cycle + 1}",
@@ -16457,6 +16829,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 except Exception as e:
                     revised_breadth = f"[Re-revision error: {e}]"
                     _breadth_rerev_ok, _breadth_rerev_reason = False, str(e)
+                _framework_require_healthy(
+                    context_pkg,
+                    "Gear 4 breadth re-reviser",
+                    _breadth_rerev_ok,
+                    _breadth_rerev_reason,
+                )
                 revised_breadth = _capture_visual_candidates(
                     revised_breadth, context_pkg,
                     f"gear4-breadth-reviser-rerevision-{cycle + 1}",
@@ -16477,7 +16855,23 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     f"{revised_breadth}\n"
                 ))
 
+    if not (depth_passed and breadth_passed):
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 4 milestone verification criterion did not pass",
+            candidate=(revised_depth + "\n\n" + revised_breadth),
+        )
+
+    framework_convergence_handoff = _framework_convergence_handoff()
+
     if external_consolidation:
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 4 cannot skip its declared consolidation, "
+            "formatter, and final criterion judgment",
+            terminal_state="degraded",
+            candidate=(revised_depth + "\n\n" + revised_breadth),
+        )
         _record(
             "step7-external-consolidation-handoff", True,
             "caller will consolidate verified revised streams",
@@ -16520,26 +16914,40 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         context_pkg, slot="breadth", step="consolidator",
         framework_name="f-consolidate.md",
     )
-    consolidate_user_message = (
-        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-        "## REVISED ANALYSES (internal inputs to consolidation)\n\n"
-        "Two independent revised analyses follow, produced from "
-        "independent analytical postures. Produce the consolidated "
-        "corpus per the four operations in the loaded F-CONSOLIDATE "
-        "specification: (1) semantic atom extraction, (2) cross-stream "
-        "deduplication, (3) bloat strip, (4) synthesis per the mode's "
-        "`## CONSOLIDATION GUIDANCE`.\n\n"
-        f"---\n\n{revised_depth}\n\n---\n\n{revised_breadth}\n\n---\n\n"
-        "The output is the **corpus**, not the user-facing deliverable. "
-        "Step 8 (formatter) places this corpus into the prescribed "
-        "deliverable form per the mode's `## OUTPUT FORMAT GUIDANCE`; "
-        "your job here is substance — every atom in, no duplication, no "
-        "bloat. Do NOT label or refer to the inputs as 'first analysis', "
-        "'second analysis', 'analysis 1', 'analysis 2', 'depth stream', "
-        "'breadth stream', or any equivalent — the corpus carries atoms, "
-        "not stream-labelled positions. Do not call any tool — write the "
-        "corpus inline."
-    )
+    if framework_convergence_handoff:
+        consolidate_user_message = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            f"{framework_convergence_handoff}\n\n"
+            "Produce an internal corpus that preserves lane identity and "
+            "source provenance. Record separately: claims shared by both "
+            "original independent drafts; convergence that appeared only "
+            "after cross-review; and material disagreement that remains. "
+            "Never average disagreement or describe later convergence as "
+            "independent corroboration. Then consolidate the substantive "
+            "deliverable content against the controlling Framework milestone "
+            "criterion and output specification. Do not call any tool."
+        )
+    else:
+        consolidate_user_message = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            "## REVISED ANALYSES (internal inputs to consolidation)\n\n"
+            "Two independent revised analyses follow, produced from "
+            "independent analytical postures. Produce the consolidated "
+            "corpus per the four operations in the loaded F-CONSOLIDATE "
+            "specification: (1) semantic atom extraction, (2) cross-stream "
+            "deduplication, (3) bloat strip, (4) synthesis per the mode's "
+            "`## CONSOLIDATION GUIDANCE`.\n\n"
+            f"---\n\n{revised_depth}\n\n---\n\n{revised_breadth}\n\n---\n\n"
+            "The output is the **corpus**, not the user-facing deliverable. "
+            "Step 8 (formatter) places this corpus into the prescribed "
+            "deliverable form per the mode's `## OUTPUT FORMAT GUIDANCE`; "
+            "your job here is substance — every atom in, no duplication, no "
+            "bloat. Do NOT label or refer to the inputs as 'first analysis', "
+            "'second analysis', 'analysis 1', 'analysis 2', 'depth stream', "
+            "'breadth stream', or any equivalent — the corpus carries atoms, "
+            "not stream-labelled positions. Do not call any tool — write the "
+            "corpus inline."
+        )
     consolidate_messages = [
         {"role": "system", "content": consolidate_system},
         {"role": "user", "content": consolidate_user_message},
@@ -16564,6 +16972,9 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         slot="consolidation", gear=4, config_name=config_name,
     )
     _record("step7-consolidated", consol_ok, consol_reason)
+    _framework_require_healthy(
+        context_pkg, "Gear 4 consolidator", consol_ok, consol_reason,
+    )
 
     # Contingency: if consolidator still degraded after retry, fall back to
     # the longer of the two revised streams with a degradation header so the
@@ -16631,24 +17042,37 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         framework_name="f-format.md",
         endpoint_vision_capable=formatter_vision_capable,
     )
-    format_user_message = (
-        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-        f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
-        "Place the corpus into the prescribed deliverable form per the "
-        "mode's `## OUTPUT FORMAT GUIDANCE` (loaded above in the system "
-        "prompt). When the mode's format guidance is absent, default to "
-        "flowing prose addressed to the user with H2 headings derived "
-        "from the corpus's organizational structure. Preserve every "
-        "atom — the formatter places, does not summarise. If an atom does "
-        "not fit a prescribed section, integrate it into the nearest "
-        "section, or add a final `## Additional considerations` section in "
-        "the analytical voice; NEVER drop it and NEVER emit a process-"
-        "labelled heading such as `## Corpus material not captured by the "
-        "prescribed format` (that leaks pipeline machinery and is "
-        "forbidden). If the consolidated corpus contains an `ora-visual` "
-        "fenced JSON block, preserve that block exactly once in the final "
-        "deliverable. Do not call any tool — write the deliverable inline."
-    )
+    if framework_convergence_handoff:
+        format_user_message = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            f"{framework_convergence_handoff}\n\n"
+            f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
+            "Place the corpus into the controlling Framework milestone's "
+            "declared OUTPUT SPECIFICATION. Preserve every substantive atom, "
+            "qualification, source attribution, and material disagreement. "
+            "Do not expose internal lane or pipeline scaffolding, and do not "
+            "turn post-review convergence into a claim of independent proof. "
+            "Do not call any tool; write the complete deliverable inline."
+        )
+    else:
+        format_user_message = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
+            "Place the corpus into the prescribed deliverable form per the "
+            "mode's `## OUTPUT FORMAT GUIDANCE` (loaded above in the system "
+            "prompt). When the mode's format guidance is absent, default to "
+            "flowing prose addressed to the user with H2 headings derived "
+            "from the corpus's organizational structure. Preserve every "
+            "atom — the formatter places, does not summarise. If an atom does "
+            "not fit a prescribed section, integrate it into the nearest "
+            "section, or add a final `## Additional considerations` section in "
+            "the analytical voice; NEVER drop it and NEVER emit a process-"
+            "labelled heading such as `## Corpus material not captured by the "
+            "prescribed format` (that leaks pipeline machinery and is "
+            "forbidden). If the consolidated corpus contains an `ora-visual` "
+            "fenced JSON block, preserve that block exactly once in the final "
+            "deliverable. Do not call any tool — write the deliverable inline."
+        )
     format_messages = [
         {"role": "system", "content": format_system},
         {"role": "user", "content": format_user_message},
@@ -16659,6 +17083,9 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         slot="formatter", gear=4, config_name=config_name,
     )
     _record("step8-formatted", format_ok, format_reason)
+    _framework_require_healthy(
+        context_pkg, "Gear 4 formatter", format_ok, format_reason,
+    )
 
     # Contingency: if the formatter is still degraded after retry, fall
     # back to the step-7 consolidated corpus directly with a degradation
@@ -16701,6 +17128,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 formatted = _re_fmt
                 _record("step8-formatter-leak-fixed", True, "leak cleared on retry")
             else:
+                _framework_execution_fail(
+                    context_pkg,
+                    "Framework Gear 4 formatter retained internal pipeline "
+                    f"scaffolding after correction: {_fmt_reason}",
+                    candidate=_re_fmt or formatted,
+                )
                 formatted, _leak_note = _neutralise_formatter_leak(formatted)
                 _record("step8-formatter-leak-relabelled", True, _fmt_reason)
                 contingencies_fired.append("step8-formatter-leak-relabelled")
@@ -16733,6 +17166,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         # to near-nothing, fall back to the step-7 corpus with the standard
         # degradation banner rather than ship an error/empty body.
         if _scrub_error_marker or len(formatted.strip()) < 30:
+            _framework_execution_fail(
+                context_pkg,
+                "Framework Gear 4 formatter produced an unusable final "
+                "candidate after the deliverable scrub",
+                candidate=formatted,
+            )
             formatted = (
                 "> _Note: the formatted deliverable was unusable (leaked "
                 "pipeline scaffolding or an upstream error); showing the "
@@ -16742,6 +17181,11 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             contingencies_fired.append("step8_5-scrub-fellback-to-consolidated-corpus")
     formatted = _capture_visual_candidates(
         formatted, context_pkg, "gear4-formatter")
+    _framework_require_healthy(
+        context_pkg,
+        "Gear 4 final formatted candidate",
+        *_step_output_health(formatted, "framework-deliverable", min_chars=30),
+    )
 
     _trace_step("step8-formatted", {
         "system_prompt": format_system,
@@ -16782,15 +17226,25 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     gate_passed = False
     gate_broken = True
     gate_verdict_label = "BROKEN"
+    gate_criterion_target = (
+        "the controlling Framework milestone VERIFICATION CRITERION and "
+        "declared OUTPUT SPECIFICATION"
+        if framework_convergence_handoff
+        else "the mode's `## VERIFICATION CRITERIA` (PASS gate)"
+    )
     for _qg_pass in range(3):
         gate_user = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-            "## CONSOLIDATED CORPUS (step-7 analysis — the substance the "
+            + (
+                f"{framework_convergence_handoff}\n\n"
+                if framework_convergence_handoff else ""
+            )
+            + "## CONSOLIDATED CORPUS (step-7 analysis — the substance the "
             f"deliverable must faithfully carry)\n\n{consolidated}\n\n"
             "## CANDIDATE DELIVERABLE (step-8 formatter output — what the user "
             f"will receive)\n\n{formatted}\n\n"
-            "Grade the CANDIDATE DELIVERABLE against the mode's "
-            "`## VERIFICATION CRITERIA` (PASS gate), the universal checks, and "
+            f"Grade the CANDIDATE DELIVERABLE against {gate_criterion_target}, "
+            "the universal checks, and "
             "the corpus-fidelity checks (no loss / no new claims / no "
             "summarising). On FAIL, write a `## REQUIRED FIXES` section, then a "
             "`PROBLEM:` line (ANALYSIS or FORMATTING) and a final `VERDICT:` "
@@ -16891,6 +17345,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             ))
             _record("step8_6-quality-gate-formatting-redo",
                     _qg_fmt_ok, _qg_fmt_reason)
+            _framework_require_healthy(
+                context_pkg,
+                "Gear 4 final-criterion formatter redo",
+                _qg_fmt_ok,
+                _qg_fmt_reason,
+            )
             contingencies_fired.append("step8_6-quality-gate-FAIL-formatting-redo")
             if _qg_fmt_ok and _qg_re_fmt.strip():
                 formatted = _qg_re_fmt
@@ -16940,6 +17400,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             ))
             _record("step8_6-quality-gate-reconsolidate",
                     _qg_rc_ok, _qg_rc_reason)
+            _framework_require_healthy(
+                context_pkg,
+                "Gear 4 final-criterion consolidator redo",
+                _qg_rc_ok,
+                _qg_rc_reason,
+            )
             contingencies_fired.append("step8_6-quality-gate-FAIL-analysis-redo")
             if _qg_rc_ok and _qg_re_consol.strip():
                 consolidated = _strip_consolidator_preamble(_qg_re_consol)
@@ -16950,7 +17416,11 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     {"role": "system", "content": format_system},
                     {"role": "user", "content": (
                         f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                        f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
+                        + (
+                            f"{framework_convergence_handoff}\n\n"
+                            if framework_convergence_handoff else ""
+                        )
+                        + f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
                         "Place the corpus into the prescribed deliverable form "
                         "per the mode's `## OUTPUT FORMAT GUIDANCE`. Preserve "
                         "every atom; the formatter places, does not summarise. "
@@ -16976,6 +17446,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 ))
                 _record("step8_6-quality-gate-reformat",
                         _qg_rf_ok, _qg_rf_reason)
+                _framework_require_healthy(
+                    context_pkg,
+                    "Gear 4 final-criterion reformatter",
+                    _qg_rf_ok,
+                    _qg_rf_reason,
+                )
                 if _qg_rf_ok and _qg_re_fmt2.strip():
                     formatted = _qg_re_fmt2
                     if _env_flag("ORA_DELIVERABLE_SCRUB"):
@@ -17003,6 +17479,20 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         "scope": "text_review",
         "status": review_status,
     }
+
+    if gate_broken:
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 4 final verification criterion was unavailable",
+            terminal_state="degraded",
+            candidate=formatted,
+        )
+    if not gate_passed:
+        _framework_execution_fail(
+            context_pkg,
+            "Framework Gear 4 final verification criterion failed",
+            candidate=formatted,
+        )
 
     # Per-turn step-health summary — captures every step's verdict plus
     # the contingency paths that fired. Lives at ``step-health.json`` in
@@ -17040,6 +17530,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     except Exception:
         pass
 
+    _framework_mark_success(context_pkg)
     return formatted
 
 
@@ -19048,6 +19539,13 @@ def effective_framework_dispatch(user_input: str) -> EffectiveFrameworkDispatch:
                 risk_override = parsed_risk
         if not progressed:
             break
+    # ``/direct`` may bypass an ordinary Dialogue pipeline, but it cannot
+    # demote the reserved Framework resume protocol into model input.  Resume
+    # admission belongs to the stored execution manifest, so keep the exposed
+    # command intact and force it through the Framework pipeline even when an
+    # outer wrapper requested direct mode.
+    if re.match(r"\A\s*/framework\s+--resume(?=\s|\Z)", current or ""):
+        use_pipeline = True
     return EffectiveFrameworkDispatch(
         raw_input=user_input,
         effective_input=current,
@@ -19060,8 +19558,18 @@ def effective_framework_dispatch(user_input: str) -> EffectiveFrameworkDispatch:
 
 
 def framework_dispatch_input(user_input: str) -> str:
-    """Return the authenticated effective input while preserving raw input."""
-    return effective_framework_dispatch(user_input).effective_input
+    """Return effective input for new-run preflight while preserving raw input.
+
+    Resume is admitted from its stored manifest inside ``run_framework_command``;
+    the new-run preflight cannot resolve ``--resume`` as a framework filename.
+    Returning an empty preflight input here makes both the CLI and server wrapper
+    defer that exact typed form to the existing Framework command branch, which
+    still receives the untouched raw command.
+    """
+    effective = effective_framework_dispatch(user_input).effective_input
+    if re.match(r"\A\s*/framework\s+--resume(?=\s|\Z)", effective or ""):
+        return ""
+    return effective
 
 
 def main():

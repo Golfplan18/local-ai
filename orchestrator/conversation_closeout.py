@@ -124,6 +124,25 @@ def _record_error(errors: list[str], label: str, exc: BaseException | str) -> No
     print(f"[WARNING] conversation lifecycle {message}", file=sys.stderr, flush=True)
 
 
+def _purge_framework_scratch_backstop(
+    conversation_id: str,
+    deleted: dict[str, Any],
+    errors: list[str],
+) -> None:
+    """Remove orphaned Stealth Framework scratch owned by this conversation."""
+    deleted["framework_scratch_execution_ids"] = []
+    try:
+        from orchestrator.scratch import purge_conversation_scratch
+
+        result = purge_conversation_scratch(conversation_id)
+        removed = result.get("removed") if isinstance(result, dict) else []
+        deleted["framework_scratch_execution_ids"] = list(removed or [])
+        for error in (result.get("errors") or []) if isinstance(result, dict) else []:
+            _record_error(errors, "framework scratch", error)
+    except Exception as exc:
+        _record_error(errors, "framework scratch", exc)
+
+
 def _atomic_write_text(path: Path, text: str) -> None:
     """Replace ``path`` without exposing a partially-written lifecycle file."""
     _rp.atomic_write_text(path, text)
@@ -2489,6 +2508,13 @@ def _purge_stealth_unlocked(
         deleted["pipeline_traces_paths"] = trace_paths
     except Exception as e:
         _record_error(errors, "pipeline_traces", e)
+
+    # --- Layer 6b: Framework scratch backstop -----------------------------
+    # Framework execution deletes Stealth scratch on each controlled terminal
+    # path. Conversation closeout is the orphan backstop for abrupt process
+    # loss between scratch creation and terminal handling. Manifest ownership
+    # is exact, and normal-run resumable scratch is never selected.
+    _purge_framework_scratch_backstop(conversation_id, deleted, errors)
 
     # --- Layer 6c: corpus-wide visual-emission observability ----------------
     # Unlike per-turn traces, this JSONL is global and therefore is not removed
