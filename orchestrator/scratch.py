@@ -1,30 +1,47 @@
-"""Execution scratch — per-run temporary folder for milestone deliverables.
+"""Temporary, resumable state for milestone-bounded Framework execution.
 
-Each layered framework execution gets its own scratch folder under
-~/ora/scratch/<execution-id>/. Milestone outputs are written here as the
-executor advances. The folder is cleaned up after successful completion;
-preserved on error so the user can inspect or resume.
-
-Conversation logs and other persistent stores are NOT touched — only the
-final framework output enters the conversation log. Intermediate milestone
-deliverables stay in scratch.
+Normal successful runs remove their scratch after the final output and
+synchronous events are safe. Normal failures keep the minimum state needed
+to inspect completed work and resume at the first unfinished milestone.
+Stealth runs never retain scratch; the recorded conversation identity lets
+conversation closeout remove orphaned scratch if a process dies first.
 """
 from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
-SCRATCH_ROOT = os.path.expanduser("~/ora/scratch")
+import runtime_paths as _rp
+
+
+_SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+
+def _scratch_root() -> Path:
+    return Path(_rp.SCRATCH_DIR_STR)
+
+
+def _session_folder(execution_id: str) -> Path:
+    if not isinstance(execution_id, str) or not _SAFE_ID.fullmatch(execution_id):
+        raise ValueError(f"invalid Framework execution id: {execution_id!r}")
+    root = _scratch_root()
+    folder = root / execution_id
+    if not _rp.within_base(folder, root) or folder == root:
+        raise ValueError("Framework scratch path escapes the configured root")
+    return folder
 
 
 @dataclass
 class ScratchSession:
-    """Per-execution scratch folder. Use ScratchSession.create() to instantiate."""
+    """One Framework execution's temporary working folder."""
+
     execution_id: str
     framework_name: str
     folder: str
@@ -32,137 +49,259 @@ class ScratchSession:
     manifest_path: str = ""
 
     @classmethod
-    def create(cls, framework_name: str, execution_id: Optional[str] = None) -> "ScratchSession":
-        """Create a new scratch session folder."""
-        if execution_id is None:
-            execution_id = _new_execution_id()
-        folder = os.path.join(SCRATCH_ROOT, execution_id)
-        os.makedirs(folder, exist_ok=True)
+    def create(
+        cls,
+        framework_name: str,
+        execution_id: Optional[str] = None,
+        *,
+        conversation_id: Optional[str] = None,
+        conversation_tag: str = "",
+    ) -> "ScratchSession":
+        """Create a new scratch session without replacing an existing run."""
+        execution_id = execution_id or _new_execution_id()
+        root = _scratch_root()
+        root.mkdir(parents=True, exist_ok=True)
+        folder_path = _session_folder(execution_id)
+        folder_path.mkdir()
         sess = cls(
             execution_id=execution_id,
             framework_name=framework_name,
-            folder=folder,
-            manifest_path=os.path.join(folder, "manifest.json"),
+            folder=str(folder_path),
+            manifest_path=str(folder_path / "manifest.json"),
         )
-        sess._write_manifest({
-            "execution_id": execution_id,
-            "framework_name": framework_name,
-            "started_at": sess.started_at,
-            "status": "running",
-            "milestones_completed": [],
-        })
+        try:
+            sess._write_manifest({
+                "schema_version": 2,
+                "execution_id": execution_id,
+                "framework_name": framework_name,
+                "started_at": sess.started_at,
+                "status": "running",
+                "terminal_state": "running",
+                "conversation_id": conversation_id or None,
+                "conversation_tag": conversation_tag or "",
+                "milestones_completed": [],
+                "milestone_results": {},
+            })
+        except BaseException:
+            if folder_path.is_dir() and not folder_path.is_symlink():
+                shutil.rmtree(folder_path)
+            raise
         return sess
 
     @classmethod
     def attach(cls, execution_id: str) -> "ScratchSession":
-        """Attach to an existing scratch session for resume / inspection."""
-        folder = os.path.join(SCRATCH_ROOT, execution_id)
-        manifest_path = os.path.join(folder, "manifest.json")
-        if not os.path.isdir(folder):
-            raise FileNotFoundError(f"No scratch session at {folder}")
-        with open(manifest_path) as f:
-            manifest = json.load(f)
+        """Attach to an existing normal-run scratch session for resume."""
+        folder_path = _session_folder(execution_id)
+        manifest_path = folder_path / "manifest.json"
+        if not folder_path.is_dir() or folder_path.is_symlink():
+            raise FileNotFoundError(f"No scratch session at {folder_path}")
+        with open(manifest_path, encoding="utf-8") as stream:
+            manifest = json.load(stream)
+        if not isinstance(manifest, dict):
+            raise ValueError("Framework scratch manifest is not an object")
+        if manifest.get("execution_id") != execution_id:
+            raise ValueError("Framework scratch manifest identity mismatch")
         return cls(
             execution_id=execution_id,
             framework_name=manifest.get("framework_name", "<unknown>"),
-            folder=folder,
+            folder=str(folder_path),
             started_at=manifest.get("started_at", time.time()),
-            manifest_path=manifest_path,
+            manifest_path=str(manifest_path),
         )
+
+    # ---------- Run identity / resume ----------
+
+    def record_run(self, **fields: Any) -> None:
+        """Add the admitted run identity needed for a truthful resume."""
+        manifest = self._read_manifest()
+        manifest.update(fields)
+        self._write_manifest(manifest)
+
+    def manifest(self) -> dict:
+        return self._read_manifest()
+
+    def completed_milestone_ids(self) -> tuple[str, ...]:
+        values = self._read_manifest().get("milestones_completed") or []
+        return tuple(value for value in values if isinstance(value, str))
+
+    def milestone_result_metadata(self, milestone_id: str) -> dict:
+        results = self._read_manifest().get("milestone_results") or {}
+        value = results.get(milestone_id) if isinstance(results, dict) else None
+        return dict(value) if isinstance(value, dict) else {}
+
+    def mark_resumed(self) -> None:
+        manifest = self._read_manifest()
+        manifest["status"] = "running"
+        manifest["terminal_state"] = "running"
+        manifest["resumed_at"] = time.time()
+        manifest["resume_count"] = int(manifest.get("resume_count") or 0) + 1
+        for key in ("failed_at", "failed_milestone", "failure_reason"):
+            manifest.pop(key, None)
+        self._write_manifest(manifest)
 
     # ---------- Read / write milestone deliverables ----------
 
-    def write_milestone(self, milestone_id: str, content: str) -> str:
-        """Write a milestone deliverable. Returns the file path."""
-        path = self._milestone_path(milestone_id)
-        with open(path, "w") as f:
-            f.write(content)
-        # Update manifest
+    def write_milestone(
+        self,
+        milestone_id: str,
+        content: str,
+        *,
+        result_metadata: Optional[dict] = None,
+    ) -> str:
+        """Persist one accepted milestone and mark it completed."""
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("accepted milestone content must be nonempty text")
+        path = self.milestone_path(milestone_id)
+        _rp.atomic_write_text(path, content)
         manifest = self._read_manifest()
         if milestone_id not in manifest.get("milestones_completed", []):
             manifest.setdefault("milestones_completed", []).append(milestone_id)
+        metadata = dict(result_metadata or {})
+        if metadata:
+            manifest.setdefault("milestone_results", {})[milestone_id] = metadata
         self._write_manifest(manifest)
         return path
 
+    def write_unaccepted_candidate(self, milestone_id: str, content: str) -> str:
+        """Preserve a material failed/degraded candidate without completing it."""
+        if not isinstance(content, str) or not content.strip():
+            return ""
+        path = self.candidate_path(milestone_id)
+        _rp.atomic_write_text(path, content)
+        return path
+
+    def write_final_output(self, content: str) -> str:
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("final Framework output must be nonempty text")
+        path = str(Path(self.folder) / "final-output.md")
+        _rp.atomic_write_text(path, content)
+        return path
+
     def read_milestone(self, milestone_id: str) -> str:
-        """Read a previously written milestone deliverable."""
-        path = self._milestone_path(milestone_id)
-        with open(path) as f:
-            return f.read()
+        with open(self.milestone_path(milestone_id), encoding="utf-8") as stream:
+            return stream.read()
 
     def has_milestone(self, milestone_id: str) -> bool:
-        """Check whether a milestone has been written."""
-        return os.path.isfile(self._milestone_path(milestone_id))
+        return os.path.isfile(self.milestone_path(milestone_id))
 
-    def read_all_prior(self, milestone_ids: list[str]) -> dict[str, str]:
-        """Read multiple prior milestone deliverables. Returns dict keyed by id.
-        Missing milestones are silently omitted from the returned dict."""
+    def read_all_prior(
+        self, milestone_ids: list[str] | tuple[str, ...],
+    ) -> dict[str, str]:
         out = {}
-        for mid in milestone_ids:
-            if self.has_milestone(mid):
-                out[mid] = self.read_milestone(mid)
+        for milestone_id in milestone_ids:
+            if self.has_milestone(milestone_id):
+                out[milestone_id] = self.read_milestone(milestone_id)
         return out
+
+    def milestone_path(self, milestone_id: str) -> str:
+        return str(Path(self.folder) / f"milestone-{_safe_milestone_id(milestone_id)}.md")
+
+    def candidate_path(self, milestone_id: str) -> str:
+        return str(
+            Path(self.folder)
+            / f"milestone-{_safe_milestone_id(milestone_id)}-unaccepted.md"
+        )
 
     # ---------- Lifecycle ----------
 
-    def mark_failed(self, milestone_id: str, reason: str) -> None:
-        """Record a failure in the manifest. Does NOT delete the folder."""
+    def mark_failed(
+        self,
+        milestone_id: str,
+        reason: str,
+        *,
+        terminal_state: str = "failed",
+    ) -> None:
         manifest = self._read_manifest()
         manifest["status"] = "failed"
+        manifest["terminal_state"] = terminal_state
         manifest["failed_at"] = time.time()
         manifest["failed_milestone"] = milestone_id
         manifest["failure_reason"] = reason
         self._write_manifest(manifest)
 
     def mark_complete(self) -> None:
-        """Mark the session as successfully completed."""
         manifest = self._read_manifest()
         manifest["status"] = "complete"
+        manifest["terminal_state"] = "succeeded"
         manifest["completed_at"] = time.time()
         self._write_manifest(manifest)
 
     def cleanup(self) -> None:
-        """Delete the scratch folder. Call after successful completion when
-        intermediate outputs are no longer needed."""
-        if os.path.isdir(self.folder):
-            shutil.rmtree(self.folder)
+        """Delete only this validated execution folder."""
+        folder = _session_folder(self.execution_id)
+        if folder.is_symlink():
+            folder.unlink()
+        elif folder.is_dir():
+            shutil.rmtree(folder)
 
     # ---------- Internal ----------
-
-    def _milestone_path(self, milestone_id: str) -> str:
-        # Sanitize: only alphanumeric + dot + dash + underscore allowed
-        safe = "".join(c for c in milestone_id if c.isalnum() or c in "._-")
-        return os.path.join(self.folder, f"milestone-{safe}.md")
 
     def _read_manifest(self) -> dict:
         if not os.path.isfile(self.manifest_path):
             return {}
-        with open(self.manifest_path) as f:
-            return json.load(f)
+        with open(self.manifest_path, encoding="utf-8") as stream:
+            value = json.load(stream)
+        if not isinstance(value, dict):
+            raise ValueError("Framework scratch manifest is not an object")
+        return value
 
     def _write_manifest(self, manifest: dict) -> None:
-        with open(self.manifest_path, "w") as f:
-            json.dump(manifest, f, indent=2)
+        payload = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+        _rp.atomic_write_text(self.manifest_path, payload)
+
+
+def purge_conversation_scratch(conversation_id: str) -> dict[str, Any]:
+    """Delete orphaned Framework scratch owned by one Stealth conversation."""
+    removed: list[str] = []
+    errors: list[str] = []
+    root = _scratch_root()
+    if not root.exists():
+        return {"removed": removed, "errors": errors}
+    if root.is_symlink() or not root.is_dir():
+        return {
+            "removed": removed,
+            "errors": [f"Framework scratch root is not a regular directory: {root}"],
+        }
+    for child in sorted(root.iterdir(), key=lambda path: path.name):
+        if child.is_symlink() or not child.is_dir():
+            continue
+        manifest_path = child / "manifest.json"
+        try:
+            with open(manifest_path, encoding="utf-8") as stream:
+                manifest = json.load(stream)
+            if not isinstance(manifest, dict):
+                continue
+            if manifest.get("conversation_id") != conversation_id:
+                continue
+            if manifest.get("conversation_tag") != "stealth":
+                continue
+            execution_id = manifest.get("execution_id")
+            if execution_id != child.name:
+                raise ValueError("manifest execution id does not match folder")
+            ScratchSession.attach(execution_id).cleanup()
+            removed.append(execution_id)
+        except FileNotFoundError:
+            continue
+        except Exception as exc:
+            errors.append(f"{child}: {type(exc).__name__}: {exc}")
+    return {"removed": removed, "errors": errors}
+
+
+def _safe_milestone_id(milestone_id: str) -> str:
+    safe = "".join(
+        character
+        for character in str(milestone_id)
+        if character.isalnum() or character in "._-"
+    )
+    if not safe:
+        raise ValueError("milestone id has no safe filename characters")
+    return safe
 
 
 def _new_execution_id() -> str:
-    """Return a new execution id: timestamp + short uuid."""
     ts = time.strftime("%Y%m%d-%H%M%S")
     short = uuid.uuid4().hex[:6]
     return f"{ts}-{short}"
 
 
-# ---------- CLI smoke test ----------
-
-if __name__ == "__main__":
-    sess = ScratchSession.create("smoke-test")
-    print(f"Created scratch session at {sess.folder}")
-    sess.write_milestone("M1", "First milestone deliverable.\n\nContent goes here.")
-    sess.write_milestone("M2", "Second milestone.\n\nDepends on M1.")
-    print(f"  has_milestone M1: {sess.has_milestone('M1')}")
-    print(f"  has_milestone M3: {sess.has_milestone('M3')}")
-    prior = sess.read_all_prior(["M1", "M2", "M3"])
-    print(f"  read_all_prior keys: {list(prior.keys())}")
-    sess.mark_complete()
-    sess.cleanup()
-    print(f"  cleaned up; folder exists: {os.path.isdir(sess.folder)}")
+__all__ = ["ScratchSession", "purge_conversation_scratch"]
