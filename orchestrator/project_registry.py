@@ -582,8 +582,8 @@ def _parse_one_framework_configuration(
     """Validate one ``framework_configurations`` entry against Plugin
     Convention §14.
 
-    Raises ManifestError on any problem so the caller can skip just this
-    entry without affecting the rest of the manifest. Per-key type
+    Raises ManifestError on any problem so the executable project
+    configuration is rejected as a whole. Per-key type
     validation of the ``config`` block is deferred to framework-
     invocation time (the framework spec declares the schema in its
     ``## CONFIGURATION INTERFACE`` section); this parser only enforces
@@ -625,6 +625,8 @@ def _parse_one_framework_configuration(
         raise ManifestError(f"{ctx}: 'overlays' must be an array")
 
     overlays: list = []
+    seen_extension_points: set[str] = set()
+    resolved_root = project_root.resolve(strict=True)
     for j, ov in enumerate(overlays_raw):
         ov_ctx = f"{ctx}: overlays[{j}]"
         if not isinstance(ov, dict):
@@ -639,6 +641,11 @@ def _parse_one_framework_configuration(
                 f"{ov_ctx} 'extension_point' must match "
                 f"{_EXTENSION_POINT_RE.pattern}; got {ep!r}"
             )
+        if ep in seen_extension_points:
+            raise ManifestError(
+                f"{ov_ctx}: duplicate overlay extension_point {ep!r}"
+            )
+        seen_extension_points.add(ep)
         fpath = ov.get("file")
         if not isinstance(fpath, str) or not fpath:
             raise ManifestError(
@@ -650,7 +657,14 @@ def _parse_one_framework_configuration(
                 f"{ov_ctx}: 'file' must be relative to the project root; got "
                 f"absolute path {fpath!r}"
             )
-        resolved = (project_root / fpath).resolve()
+        resolved = (resolved_root / fpath).resolve()
+        try:
+            resolved.relative_to(resolved_root)
+        except ValueError as exc:
+            raise ManifestError(
+                f"{ov_ctx}: overlay file {fpath!r} resolves outside the "
+                "project root"
+            ) from exc
         if not resolved.is_file():
             raise ManifestError(
                 f"{ov_ctx}: overlay file {fpath!r} does not exist at "
@@ -671,12 +685,10 @@ def _parse_framework_configurations(
 ) -> list:
     """Parse the ``framework_configurations`` block (Plugin Convention §14).
 
-    Top-level wrong type raises ManifestError (consistent with other
-    parsers). Individual malformed entries are skipped with a printed
-    diagnostic per §14's graceful-degradation rule. Project-shadows-
-    project collisions ((framework, profile_name) declared twice in the
-    same manifest) keep the first entry; the second is dropped with a
-    diagnostic.
+    Framework configuration contributes executable contract text.  Every
+    entry therefore parses strictly: a malformed or duplicate declaration
+    invalidates the captured project manifest instead of disappearing and
+    allowing a project-neutral Framework to run.
     """
     if raw is None:
         return []
@@ -687,23 +699,15 @@ def _parse_framework_configurations(
     seen: set = set()
     out: list = []
     for i, entry in enumerate(raw):
-        try:
-            fc = _parse_one_framework_configuration(
-                entry, i, manifest_path, project_root,
-            )
-        except ManifestError as e:
-            print(
-                f"[project_registry] Skipping framework_configuration in "
-                f"{manifest_path}: {e}"
-            )
-            continue
+        fc = _parse_one_framework_configuration(
+            entry, i, manifest_path, project_root,
+        )
         key = (fc.framework, fc.profile_name)
         if key in seen:
-            print(
-                f"[project_registry] Skipping duplicate framework_configuration "
-                f"({fc.framework!r}, {fc.profile_name!r}) in {manifest_path}"
+            raise ManifestError(
+                f"{manifest_path}: duplicate framework_configuration "
+                f"({fc.framework!r}, {fc.profile_name!r})"
             )
-            continue
         seen.add(key)
         out.append(fc)
     return out
