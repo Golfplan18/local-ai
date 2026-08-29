@@ -187,7 +187,15 @@ def sweep_workflow(workflow_id: str, pointer: dict) -> WorkflowDriftReport:
     if corpus_template_path and os.path.isfile(corpus_template_path):
         try:
             template = parse_corpus_file(corpus_template_path)
-            corpus_template_sections = [s.section_id for s in template.sections]
+            if not template.is_valid:
+                report.issues.append(ReferenceIntegrityIssue(
+                    issue_type="missing_file",
+                    artifact="corpus_template",
+                    identifier=corpus_template_path,
+                    detail=f"Failed to parse corpus template: {template.parse_error}",
+                ))
+            else:
+                corpus_template_sections = [s.section_id for s in template.sections]
         except Exception as e:
             report.issues.append(ReferenceIntegrityIssue(
                 issue_type="missing_file",
