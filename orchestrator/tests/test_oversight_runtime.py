@@ -277,6 +277,131 @@ class TestORender(_TempWorkspace):
         self.assertFalse(os.path.exists(self.output_dir))
         self.assertNotIn("OFFRendered", self.events)
 
+    def test_rejects_malformed_or_structureless_off_before_output_or_event(self):
+        cases = {
+            "malformed-yaml": "---\nname: broken\nsections: [\n---\n",
+            "missing-sections": dedent("""\
+                ---
+                name: no-sections
+                medium: markdown
+                ---
+
+                # This is not a renderable OFF
+                """),
+        }
+        for label, off_text in cases.items():
+            with self.subTest(case=label):
+                off_path = os.path.join(self.tmp, f"{label}.md")
+                output_dir = os.path.join(self.tmp, f"outputs-{label}")
+                with open(off_path, "w") as f:
+                    f.write(off_text)
+                self.events.clear()
+
+                result = o_render(off_path, self.instance_path, output_dir)
+
+                self.assertFalse(result.success)
+                self.assertIn("Failed to parse OFF spec", result.error)
+                self.assertFalse(os.path.exists(output_dir))
+                self.assertNotIn("OFFRendered", self.events)
+
+    def test_valid_minimal_body_marker_off_still_renders(self):
+        minimal_off = os.path.join(self.tmp, "minimal-body-off.md")
+        with open(minimal_off, "w") as f:
+            f.write("## Section: weekly_sales\n")
+
+        result = o_render(minimal_off, self.instance_path, self.output_dir)
+
+        self.assertTrue(result.success, result.error)
+        self.assertTrue(os.path.isfile(result.artifact_path))
+        self.assertEqual(result.sections_read, ["weekly_sales"])
+        self.assertIn("OFFRendered", self.events)
+
+    def test_escaped_pipe_table_has_identical_artifact_cells_in_all_formats(self):
+        with open(self.instance_path) as f:
+            content = f.read()
+        content = content.replace(
+            "Sample content here.",
+            (
+                "| Label | Detail |\n"
+                "| --- | --- |\n"
+                "| Qualified \\| converted | Retained |"
+            ),
+            1,
+        )
+        with open(self.instance_path, "w") as f:
+            f.write(content)
+
+        artifacts = {}
+        for medium in ("html", "docx", "pptx", "xlsx"):
+            off_path = os.path.join(self.tmp, f"off-{medium}.md")
+            with open(off_path, "w") as f:
+                f.write(dedent(f"""\
+                    ---
+                    name: escaped-pipe-{medium}
+                    medium: {medium}
+                    sections:
+                      - section: weekly_sales
+                        heading: Metrics
+                    ---
+                    """))
+            result = o_render(off_path, self.instance_path, self.output_dir)
+            self.assertTrue(result.success, result.error)
+            artifacts[medium] = result.artifact_path
+
+        import html as _html
+        import re as _re
+        with open(artifacts["html"]) as f:
+            html_text = f.read()
+        html_rows = []
+        for row_html in _re.findall(r"<tr>(.*?)</tr>", html_text, _re.DOTALL):
+            cells = _re.findall(r"<t[hd]>(.*?)</t[hd]>", row_html, _re.DOTALL)
+            html_rows.append([_html.unescape(_re.sub(r"<[^>]+>", "", c)) for c in cells])
+
+        from docx import Document
+        doc = Document(artifacts["docx"])
+        docx_rows = [[cell.text for cell in row.cells] for row in doc.tables[0].rows]
+
+        from pptx import Presentation
+        prs = Presentation(artifacts["pptx"])
+        pptx_table = next(
+            shape.table
+            for slide in prs.slides
+            for shape in slide.shapes
+            if shape.has_table
+        )
+        pptx_rows = [[cell.text for cell in row.cells] for row in pptx_table.rows]
+
+        import xml.etree.ElementTree as ET
+        import zipfile
+        spreadsheet_ns = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        with zipfile.ZipFile(artifacts["xlsx"]) as archive:
+            shared_root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
+            shared_strings = [
+                "".join(node.text or "" for node in item.findall(".//x:t", spreadsheet_ns))
+                for item in shared_root.findall("x:si", spreadsheet_ns)
+            ]
+            sheet_root = ET.fromstring(archive.read("xl/worksheets/sheet2.xml"))
+        xlsx_rows = []
+        for row in sheet_root.findall(".//x:sheetData/x:row", spreadsheet_ns):
+            values = []
+            for cell in row.findall("x:c", spreadsheet_ns):
+                value = cell.find("x:v", spreadsheet_ns)
+                self.assertIsNotNone(value)
+                raw = value.text or ""
+                values.append(shared_strings[int(raw)] if cell.get("t") == "s" else raw)
+            xlsx_rows.append(values)
+
+        expected = [
+            ["Label", "Detail"],
+            ["Qualified | converted", "Retained"],
+        ]
+        self.assertEqual(html_rows, expected)
+        self.assertEqual(docx_rows, expected)
+        self.assertEqual(pptx_rows, expected)
+        # XLSX appends its existing Notes area below native table cells. Compare
+        # the table's artifact rows, not that separate prose region.
+        self.assertEqual(xlsx_rows[:len(expected)], expected)
+
 
 class TestORenderPPTX(_TempWorkspace):
 
@@ -363,6 +488,57 @@ class TestORenderPPTX(_TempWorkspace):
         # And we have at least three non-empty paragraphs (one per bullet)
         non_empty = [p for p in body_text_pieces if p.strip()]
         self.assertGreaterEqual(len(non_empty), 3)
+
+    def test_fenced_h2_creates_no_slide_and_following_prose_stays_in_section(self):
+        from pptx import Presentation
+
+        # Put the fenced Markdown in the OFF section intro so it reaches the
+        # shared presentation/spreadsheet splitter. Corpus parsing has its own
+        # heading boundary and is outside the behavior under test here.
+        off_text = self.SAMPLE_PPTX_OFF.replace(
+            "    heading: Weekly Sales\n",
+            (
+                "    heading: Weekly Sales\n"
+                "    intro: |\n"
+                "      Before the fence.\n"
+                "      ```markdown\n"
+                "      ## Fenced Heading\n"
+                "      code body\n"
+                "      ```\n"
+                "      After the closing fence remains prose.\n"
+            ),
+            1,
+        )
+        with open(self.off_path, "w") as f:
+            f.write(off_text)
+
+        result = o_render(self.off_path, self.instance_path, self.output_dir)
+        self.assertTrue(result.success, result.error)
+        prs = Presentation(result.artifact_path)
+        titles = [
+            slide.shapes.title.text if slide.shapes.title is not None else ""
+            for slide in prs.slides
+        ]
+        self.assertNotIn("Fenced Heading", titles)
+
+        weekly_slide = next(
+            slide for slide in prs.slides
+            if slide.shapes.title is not None and slide.shapes.title.text == "Weekly Sales"
+        )
+        weekly_paragraphs = [
+            paragraph
+            for shape in weekly_slide.shapes
+            if shape.has_text_frame and shape != weekly_slide.shapes.title
+            for paragraph in shape.text_frame.paragraphs
+        ]
+        weekly_text = "\n".join(paragraph.text for paragraph in weekly_paragraphs)
+        self.assertIn("## Fenced Heading", weekly_text)
+        following_prose = next(
+            paragraph
+            for paragraph in weekly_paragraphs
+            if paragraph.text == "After the closing fence remains prose."
+        )
+        self.assertTrue(all(run.font.name != "Courier New" for run in following_prose.runs))
 
     def test_unknown_medium_returns_error(self):
         # Sanity: medium=ppt (not pptx) should be rejected by the dispatcher
@@ -493,6 +669,40 @@ class TestORenderXLSX(_TempWorkspace):
         result = o_render(long_off, self.instance_path, self.output_dir)
         self.assertTrue(result.success, result.error)
 
+    def test_fenced_h2_creates_no_sheet_and_following_prose_stays_in_section(self):
+        import re as _re
+        import zipfile
+
+        off_text = self.SAMPLE_XLSX_OFF.replace(
+            "    heading: Revenue Lines\n",
+            (
+                "    heading: Revenue Lines\n"
+                "    intro: |\n"
+                "      Before the fence.\n"
+                "      ```markdown\n"
+                "      ## Fenced Heading\n"
+                "      code body\n"
+                "      ```\n"
+                "      After the closing fence remains prose.\n"
+            ),
+            1,
+        )
+        with open(self.off_path, "w") as f:
+            f.write(off_text)
+
+        result = o_render(self.off_path, self.instance_path, self.output_dir)
+        self.assertTrue(result.success, result.error)
+        with zipfile.ZipFile(result.artifact_path) as archive:
+            workbook_xml = archive.read("xl/workbook.xml").decode()
+            shared_strings = archive.read("xl/sharedStrings.xml").decode()
+            revenue_sheet = archive.read("xl/worksheets/sheet2.xml").decode()
+
+        sheet_names = _re.findall(r'<sheet[^>]+name="([^"]+)"', workbook_xml)
+        self.assertNotIn("Fenced Heading", sheet_names)
+        revenue_strings = self._lookup_strings(shared_strings, revenue_sheet)
+        self.assertIn("## Fenced Heading", revenue_strings)
+        self.assertIn("After the closing fence remains prose.", revenue_strings)
+
     def test_unsupported_xlsx_alias_still_rejected(self):
         # `xls` (legacy) is not in the supported list — must reject cleanly
         bogus = os.path.join(self.tmp, "off-xls.md")
@@ -534,6 +744,34 @@ class TestOFFSpecParsing(unittest.TestCase):
             self.assertEqual(spec.medium, "markdown")
             self.assertEqual(len(spec.sections), 2)
             self.assertEqual(spec.sections[0].corpus_section_id, "weekly_sales")
+        finally:
+            os.unlink(path)
+
+    def test_malformed_or_structureless_spec_is_explicitly_invalid(self):
+        cases = {
+            "malformed-yaml": "---\nsections: [\n---\n",
+            "missing-sections": "---\nname: empty\n---\n# No section markers\n",
+        }
+        for label, content in cases.items():
+            with self.subTest(case=label):
+                with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+                    f.write(content)
+                    path = f.name
+                try:
+                    spec = parse_off_spec(path)
+                    self.assertFalse(spec.is_valid)
+                    self.assertTrue(spec.parse_error)
+                finally:
+                    os.unlink(path)
+
+    def test_body_section_marker_style_remains_valid(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+            f.write("## Section: SalesQ2\n")
+            path = f.name
+        try:
+            spec = parse_off_spec(path)
+            self.assertTrue(spec.is_valid, spec.parse_error)
+            self.assertEqual([section.corpus_section_id for section in spec.sections], ["SalesQ2"])
         finally:
             os.unlink(path)
 
