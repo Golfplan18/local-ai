@@ -75,6 +75,13 @@ import sys
 import threading
 from typing import Any, Callable, Iterable
 
+# Direct execution starts with ``orchestrator/tools`` on ``sys.path``.  Add the
+# repository root before the first package import so the documented
+# ``python3 .../knowledge_index.py`` invocation works from any directory.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 import yaml
 
 def _chromadb_default() -> str:

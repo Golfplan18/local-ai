@@ -491,38 +491,65 @@ def _cmd_project_register(args: list[str]) -> str:
         return "Usage: /project-register <path-to-project-root>"
     protection = None
     try:
-        project = _pr.load_project_at(args[0])
+        manifest_snapshot = _pr.load_project_snapshot(args[0])
+        project = manifest_snapshot.project
         pointer = _pr._pointer_path(project.nexus)
-        manifest = Path(project.root) / _pr.MANIFEST_FILENAME
-        pre_state = _sp.capture_path_identity(pointer)
+        manifest = manifest_snapshot.manifest_path
+        pointer_state = _sp.capture_path_identity(pointer)
+        manifest_state = _sp.capture_path_identity(manifest)
+        if manifest_state.get("content_digest") != manifest_snapshot.manifest_sha256:
+            raise _pr.ManifestError(
+                "project manifest changed while its registration identity was captured"
+            )
         protection = _sp.authorize_server_action(
-            "project_register", selectors=[_sp.path_selector(pointer)],
+            "project_register",
+            selectors=[_sp.path_selector(pointer), _sp.path_selector(manifest)],
             params={
                 "nexus": project.nexus,
                 "root": str(project.root),
-                "manifest_identity": _sp.capture_path_identity(manifest),
+                "manifest_sha256": manifest_snapshot.manifest_sha256,
             },
-            pre_state=[pre_state], surface="slash_command",
+            pre_state=[pointer_state, manifest_state], surface="slash_command",
         )
         with _sp.protected_effect(protection):
-            project = _pr.register_project(args[0])
+            project = _pr.register_project(
+                args[0],
+                expected_manifest_sha256=manifest_snapshot.manifest_sha256,
+            )
         _sp.complete_execution(
             protection, ok=True,
             result={"registered": project.nexus, "root": str(project.root)},
-            post_state=[_sp.capture_path_identity(pointer)],
+            post_state=[
+                _sp.capture_path_identity(pointer),
+                _sp.capture_path_identity(manifest),
+            ],
         )
     except _sp.ProtectionReviewRequired as exc:
         return str(exc)
     except _sp.SystemProtectionError as exc:
         return f"[SYSTEM PROTECTION — {exc}]"
     except _pr.ManifestError as exc:
+        if protection is not None:
+            try:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(exc).__name__},
+                    post_state=[
+                        _sp.capture_path_identity(pointer),
+                        _sp.capture_path_identity(manifest),
+                    ],
+                )
+            except Exception as receipt_error:
+                return f"[SYSTEM PROTECTION BROKEN INFRASTRUCTURE — {receipt_error}]"
         return f"[/project-register: invalid project — {exc}]"
     except Exception as exc:
         if protection is not None:
             try:
                 _sp.complete_execution(
                     protection, ok=False, result={"error": type(exc).__name__},
-                    post_state=[_sp.capture_path_identity(pointer)],
+                    post_state=[
+                        _sp.capture_path_identity(pointer),
+                        _sp.capture_path_identity(manifest),
+                    ],
                 )
             except Exception as receipt_error:
                 return f"[SYSTEM PROTECTION BROKEN INFRASTRUCTURE — {receipt_error}]"
