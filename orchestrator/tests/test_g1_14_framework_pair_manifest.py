@@ -738,7 +738,7 @@ class FrameworkPairManifestAdversarialTests(TemporaryManifestCase):
 
 
 class AcceptedG114BaselineTests(unittest.TestCase):
-    def test_production_manifest_reproduces_g1_13_exactly(self):
+    def test_production_manifest_matches_approved_activation_state(self):
         evaluation = VERIFY.evaluate_framework_pair_manifest()
         counts = evaluation.manifest.expected_counts
 
@@ -746,17 +746,19 @@ class AcceptedG114BaselineTests(unittest.TestCase):
             counts,
             {
                 "active_frameworks": 92,
-                "missing_runtime": 7,
+                "missing_runtime": 0,
                 "no_runtime_twin": 38,
                 "paired": 63,
+                "specified_not_built": 7,
                 "total_entries": 108,
             },
         )
         # Dispositions declared by the manifest itself — invariant under
         # remediation, because fixing a drifted pair does not change which
         # entries the manifest says have no runtime twin.
-        self.assertEqual(evaluation.missing_runtime, 7)
+        self.assertEqual(evaluation.missing_runtime, 0)
         self.assertEqual(evaluation.no_runtime_twin, 38)
+        self.assertEqual(evaluation.specified_not_built, 7)
 
         # paired_clean/paired_drifted are MEASURED against the live trees, so
         # the 49/14 recorded at the 2026-07-22 acceptance is a snapshot of that

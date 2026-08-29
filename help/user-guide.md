@@ -355,6 +355,16 @@ Completion requires final **DONE**, clean accepted-slice commits, and the approv
 
 If a newly discovered finish-line effect would deploy, publish, message, use credentials, or mutate another system without plan authority, Ora returns **ASK USER**.
 
+### Keep documentation and code together
+
+For code-changing work in the vault, Ora, ora-ai-app, ora-ai-org, or MSI, the plan identifies the documentation surface each changed path belongs to. If behavior, a user or operator promise, configuration, route, output, or material failure mode changes, update the owning vault canonical in the same task. If the change truly has no documentation effect, the final task commit records exactly one `Documentation-No-Impact: <surface-id>` line for that surface and the independent reviewer confirms it.
+
+Regenerate registered Ora help mirrors and public-site derivatives from their vault canonicals before final verification. The authoritative check is Ora's focused `documentation-integrity` verifier with explicit roots and base commits for all five task worktrees. It checks declared ownership, references, lifecycle state, task dispositions, and exact derivative parity. It does not determine whether ordinary prose is semantically true; that remains part of independent review.
+
+The blocking pre-push installer exists, but live installation and verification in the five repositories remain a later activation step. Until that activation is verified, the coordinator's explicit five-root check and merge hold are the operative protection. After verified activation, the local pre-push hook blocks owned code when the complete coordinated context is missing. The Ora/vault post-commit framework-pair hook is only a fail-open audit fallback. These hooks are bypassable and do not create remote enforcement or an atomic five-repository commit. The coordinator holds all participating merges until the combined check passes. Recovery is Git revert in reverse landing order.
+
+> **Testing is evidence for the changed behavior, not a second project. Every implementation scope lock must name the complete list of checks before work starts. Run every check on that list and nothing additional. Do not run a full suite, full build, benchmark, broad audit, or extra confidence check unless the user explicitly approves it or the changed surface genuinely cannot be judged by a narrower check. If a new check becomes necessary, stop and revise the scope before running it. Stop testing when the named checks pass and material review is satisfied. The completion report must list every check actually run.**
+
 ### Leave, resume, cancel, or recover
 
 Closing the Programming panel restores ordinary Inquiry; it does not create a persistent browser workflow. Before approval, cancel simply discards the proposal. During or after execution, the plan, task branch, commits, current diff, and checks are the recovery record.
