@@ -10,6 +10,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 
 HERE = Path(__file__).resolve().parent
@@ -20,9 +21,11 @@ sys.path.insert(0, str(ROOT / "server"))
 
 try:
     from server import app as S  # type: ignore  # noqa: E402
+    from orchestrator import project_registry as PR  # noqa: E402
     IMPORT_ERROR = None
 except Exception as exc:  # pragma: no cover - skip path
     S = None
+    PR = None
     IMPORT_ERROR = exc
 
 
@@ -101,6 +104,38 @@ class TestV3ThemeApi(unittest.TestCase):
 
     def response_json(self, response):
         return json.loads(response.get_data(as_text=True))
+
+    def _make_project_theme(self):
+        project_root = self.tmpdir / "project"
+        theme_dir = project_root / "themes" / "publisher" / "deep-theme"
+        theme_dir.mkdir(parents=True)
+        (theme_dir / "manifest.json").write_text(
+            json.dumps({"name": "Deep Project Theme", "version": "1.0.0"}),
+            encoding="utf-8",
+        )
+        (theme_dir / "theme.css").write_text(
+            ".theme-light { --text-normal: #123456; }\n",
+            encoding="utf-8",
+        )
+        (project_root / "ora-project.json").write_text(
+            json.dumps({
+                "nexus": "test-project",
+                "name": "Test Project",
+                "themes": [{
+                    "id": "deep-project",
+                    "name": "Deep Project Theme",
+                    "directory": "themes/publisher/deep-theme",
+                }],
+            }),
+            encoding="utf-8",
+        )
+        return PR.load_project_at(project_root), theme_dir
+
+    def _patch_project_registry(self, project):
+        return (
+            mock.patch.object(PR, "list_projects", return_value=[project]),
+            mock.patch.object(PR, "get_project", return_value=project),
+        )
 
     def test_obsidian_conversion_derives_ora_variables(self):
         converted = S._v3_convert_obsidian_theme(OBSIDIAN_CSS, {"name": "Seed"})
@@ -207,6 +242,95 @@ class TestV3ThemeApi(unittest.TestCase):
         self.assertEqual(data["id"], "zipped-ora")
         css = (self.themes_dir / "zipped-ora" / "theme.css").read_text(encoding="utf-8")
         self.assertEqual(css, ".theme-light { --text-normal: #010203; }\n")
+
+    def test_nested_project_theme_lists_and_serves_nested_asset(self):
+        project, theme_dir = self._make_project_theme()
+        nested = theme_dir / "assets" / "palette.css"
+        nested.parent.mkdir()
+        nested.write_text("/* nested project asset */\n", encoding="utf-8")
+        list_patch, get_patch = self._patch_project_registry(project)
+        with list_patch, get_patch:
+            listed = self.client.get("/api/v3-themes/list")
+            served = self.client.get(
+                "/themes/project/test-project/assets/palette.css",
+            )
+
+        self.assertEqual(listed.status_code, 200)
+        entries = {
+            entry["id"]: entry for entry in self.response_json(listed)["themes"]
+        }
+        self.assertEqual(entries["deep-project"]["origin"], "project:test-project")
+        self.assertEqual(
+            entries["deep-project"]["manifest"]["name"],
+            "Deep Project Theme",
+        )
+        self.assertEqual(
+            entries["deep-project"]["theme_css_url"],
+            "/themes/project/test-project/theme.css",
+        )
+        self.assertEqual(served.status_code, 200)
+        self.assertEqual(served.get_data(as_text=True), "/* nested project asset */\n")
+
+    def test_project_theme_parent_traversal_request_forbidden(self):
+        project, _theme_dir = self._make_project_theme()
+        list_patch, get_patch = self._patch_project_registry(project)
+        with list_patch, get_patch:
+            response = self.client.get(
+                "/themes/project/test-project/%2e%2e/outside.css",
+            )
+        self.assertEqual(response.status_code, 403)
+
+    def test_project_theme_directory_symlink_swap_is_not_listed_or_served(self):
+        project, theme_dir = self._make_project_theme()
+        outside = self.tmpdir / "outside-theme"
+        outside.mkdir()
+        (outside / "manifest.json").write_text(
+            json.dumps({"name": "Outside Secret"}), encoding="utf-8",
+        )
+        (outside / "theme.css").write_text(
+            "/* outside secret css */\n", encoding="utf-8",
+        )
+        shutil.rmtree(theme_dir)
+        theme_dir.symlink_to(outside, target_is_directory=True)
+
+        list_patch, get_patch = self._patch_project_registry(project)
+        with list_patch, get_patch:
+            listed = self.client.get("/api/v3-themes/list")
+            served = self.client.get(
+                "/themes/project/test-project/theme.css",
+            )
+
+        ids = {
+            entry["id"] for entry in self.response_json(listed)["themes"]
+        }
+        self.assertNotIn("deep-project", ids)
+        self.assertEqual(served.status_code, 403)
+        self.assertNotIn(b"outside secret css", served.data)
+
+    def test_project_theme_asset_symlink_swap_blocks_internal_reads(self):
+        project, theme_dir = self._make_project_theme()
+        outside_css = self.tmpdir / "outside-secret.css"
+        outside_css.write_text("/* outside secret css */\n", encoding="utf-8")
+        (theme_dir / "theme.css").unlink()
+        (theme_dir / "theme.css").symlink_to(outside_css)
+
+        list_patch, get_patch = self._patch_project_registry(project)
+        with list_patch, get_patch:
+            listed = self.client.get("/api/v3-themes/list")
+            served = self.client.get(
+                "/themes/project/test-project/theme.css",
+            )
+            exported = self.client.get(
+                "/api/v3-themes/deep-project/export",
+            )
+
+        ids = {
+            entry["id"] for entry in self.response_json(listed)["themes"]
+        }
+        self.assertNotIn("deep-project", ids)
+        self.assertEqual(served.status_code, 403)
+        self.assertNotIn(b"outside secret css", served.data)
+        self.assertEqual(exported.status_code, 404)
 
 
 if __name__ == "__main__":

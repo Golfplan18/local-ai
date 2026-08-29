@@ -121,6 +121,44 @@ class ProjectExecutionBindingError(ToolInvocationError):
     """The reviewed project command no longer matches the live registration."""
 
 
+def _resolve_project_contained_path(
+    project_root: Path, relative: str, *, parent: Path | None = None,
+) -> Path:
+    """Resolve one project-owned path without allowing it to escape.
+
+    ``relative`` must be a genuinely relative path with no parent traversal.
+    Resolution follows symlinks, then proves the result remains inside both the
+    resolved project root and, when supplied, the narrower resolved ``parent``
+    directory.  Callers still decide whether the result must be a file or a
+    directory.
+    """
+    root = Path(project_root).resolve(strict=True)
+    candidate = Path(relative)
+    if candidate.is_absolute() or ".." in candidate.parts:
+        raise ManifestError(
+            f"project path must be relative and contain no parent traversal: "
+            f"{relative!r}"
+        )
+
+    base = root if parent is None else Path(parent).resolve(strict=True)
+    try:
+        base.relative_to(root)
+    except ValueError as exc:
+        raise ManifestError(
+            f"project path base resolves outside the project root: {base}"
+        ) from exc
+
+    resolved = (base / candidate).resolve(strict=True)
+    try:
+        resolved.relative_to(root)
+        resolved.relative_to(base)
+    except ValueError as exc:
+        raise ManifestError(
+            f"project path resolves outside its allowed directory: {relative!r}"
+        ) from exc
+    return resolved
+
+
 # ---------------------------------------------------------------------------
 # Data shapes
 # ---------------------------------------------------------------------------
@@ -179,9 +217,9 @@ class ProjectTheme:
     """A chat-UI theme declared by a project (Plugin Convention §13).
 
     The project ships theme assets (``theme.css`` + ``manifest.json``) at
-    ``<project_root>/<directory>/``. The V3 server's ``_v3_read_index``
-    layers project themes on top of the core themes index at server
-    startup; ``/api/v3-themes/list`` surfaces them with the synthesized
+    ``<project_root>/<directory>/``. The V3 server layers project themes
+    on top of the core themes index on each list request;
+    ``/api/v3-themes/list`` surfaces them with the synthesized
     annotation ``origin = "project:<nexus>"``. Theme assets are served
     at request time from the project's directory via a dedicated route
     (``/themes/project/<nexus>/<filename>``) — no copy or symlink dance
@@ -269,6 +307,30 @@ class Project:
         if p.is_absolute():
             return p
         return (self.root / p).resolve()
+
+    def resolve_theme_asset(self, theme_id: str, relative: str) -> Path:
+        """Resolve one declared theme asset inside its Project-owned directory.
+
+        The root, declared theme directory, and requested asset are resolved on
+        every call so a symlink changed after registration cannot turn a valid
+        theme into an outward file read.
+        """
+        theme = self.themes.get(theme_id)
+        if theme is None:
+            raise ManifestError(
+                f"project {self.nexus!r} declares no theme {theme_id!r}"
+            )
+        asset_dir = _resolve_project_contained_path(self.root, theme.directory)
+        if not asset_dir.is_dir():
+            raise ManifestError(
+                f"theme {theme_id!r} directory is not a directory: {asset_dir}"
+            )
+        target = _resolve_project_contained_path(
+            self.root, relative, parent=asset_dir,
+        )
+        if not target.is_file():
+            raise FileNotFoundError(target)
+        return target
 
     def find_framework_configuration(
         self, framework: str, profile_name: str,
@@ -529,18 +591,34 @@ def _parse_one_theme(
             f"{ctx}: 'directory' must be relative to the project root; got absolute path {directory!r}"
         )
 
-    # Asset-existence check: the directory must exist and contain both
-    # theme.css and manifest.json. Resolved against project_root.
-    asset_dir = (project_root / directory).resolve()
+    # Asset-existence and containment check: the resolved directory and both
+    # required assets must remain inside the resolved project/theme roots.
+    try:
+        asset_dir = _resolve_project_contained_path(project_root, directory)
+    except (ManifestError, OSError) as exc:
+        raise ManifestError(
+            f"{ctx}: 'directory' {directory!r} is unavailable or resolves "
+            "outside the project root"
+        ) from exc
     if not asset_dir.is_dir():
         raise ManifestError(
             f"{ctx}: 'directory' {directory!r} does not resolve to an existing directory "
             f"under the project root (looked at {asset_dir})"
         )
     for required in ("theme.css", "manifest.json"):
-        if not (asset_dir / required).is_file():
+        try:
+            required_path = _resolve_project_contained_path(
+                project_root, required, parent=asset_dir,
+            )
+        except (ManifestError, OSError) as exc:
             raise ManifestError(
-                f"{ctx}: theme assets incomplete — missing {required} in {asset_dir}"
+                f"{ctx}: theme asset {required} is missing or resolves outside "
+                f"the theme directory {asset_dir}"
+            ) from exc
+        if not required_path.is_file():
+            raise ManifestError(
+                f"{ctx}: theme assets incomplete — {required} is not a file "
+                f"in {asset_dir}"
             )
 
     return ProjectTheme(id=tid, name=tname, directory=directory)

@@ -15388,6 +15388,18 @@ def _v3_list_project_themes():
     out = []
     for p in projects:
         for theme_id, theme in (getattr(p, "themes", {}) or {}).items():
+            try:
+                # Re-resolve both required assets on every list request.  The
+                # manifest parser validated them at registration/load time;
+                # this second check closes a later symlink swap.
+                p.resolve_theme_asset(theme_id, "theme.css")
+                p.resolve_theme_asset(theme_id, "manifest.json")
+            except (OSError, _pr.ManifestError) as exc:
+                print(
+                    f"[server] Skipping unsafe or unavailable project theme "
+                    f"{theme_id!r} from {p.nexus!r}: {exc}"
+                )
+                continue
             out.append({
                 "id": theme_id,
                 "name": theme.name,
@@ -15470,13 +15482,10 @@ def _v3_project_theme_asset_path(entry, filename):
     project = _pr.get_project(entry["project_nexus"])
     if project is None:
         return None
-    asset_dir = (project.root / entry["directory"]).resolve()
-    target = (asset_dir / filename).resolve()
     try:
-        target.relative_to(asset_dir)
-    except ValueError:
+        return project.resolve_theme_asset(entry["id"], filename)
+    except (OSError, _pr.ManifestError):
         return None
-    return target if target.is_file() else None
 
 
 def _v3_find_theme_entry(theme_id):
@@ -15604,12 +15613,11 @@ def v3_themes_list_api():
         # directory; core / user-installed themes from server/static/themes/.
         if entry.get("origin", "").startswith("project:"):
             try:
-                from orchestrator import project_registry as _pr
-                project = _pr.get_project(entry["project_nexus"])
-                if project is not None:
-                    manifest_path = (project.root / entry["directory"]
-                                     / "manifest.json")
-                    with open(manifest_path) as f:
+                manifest_path = _v3_project_theme_asset_path(
+                    entry, "manifest.json",
+                )
+                if manifest_path is not None:
+                    with manifest_path.open(encoding="utf-8") as f:
                         manifest = json.load(f)
             except Exception:
                 pass
@@ -15650,11 +15658,10 @@ def v3_themes_project_asset(nexus, filename):
     named asset OR by structuring requests through theme-specific
     subpaths under the directory.
 
-    Path-safety: forbid traversal — no ``..`` segments, no absolute
-    paths — so a crafted URL can't escape the project's theme dir.
+    Path safety is enforced by the Project registry's resolved containment
+    rule, not by string matching: the Project root, theme directory, and
+    requested asset must all remain nested after symlink resolution.
     """
-    if ".." in filename.split("/") or filename.startswith("/"):
-        return Response("Forbidden", status=403)
     try:
         from orchestrator import project_registry as _pr
         project = _pr.get_project(nexus)
@@ -15672,18 +15679,20 @@ def v3_themes_project_asset(nexus, filename):
     # first match. Sufficient for projects with one theme (the common
     # case) AND projects with multiple themes when asset filenames are
     # unique across themes (theme.css / manifest.json typically are).
-    for theme in themes.values():
-        asset_dir = (project.root / theme.directory).resolve()
-        target = (asset_dir / filename).resolve()
-        # Path-safety: target must be under asset_dir after resolve()
+    unsafe = False
+    for theme_id in themes:
         try:
-            target.relative_to(asset_dir)
-        except ValueError:
+            target = project.resolve_theme_asset(theme_id, filename)
+        except _pr.ManifestError:
+            unsafe = True
             continue
-        if target.is_file():
-            return send_from_directory(
-                str(asset_dir), filename,
-            )
+        except OSError:
+            continue
+        # Serve the resolved target rather than re-opening the unresolved
+        # manifest path (which could traverse a symlink a second time).
+        return send_from_directory(str(target.parent), target.name)
+    if unsafe:
+        return Response("Forbidden", status=403)
     return Response(
         f"Asset not found in any theme declared by {nexus!r}: "
         f"{filename}",
