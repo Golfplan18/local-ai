@@ -33,6 +33,7 @@ import os
 import re
 import subprocess
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Optional
 
@@ -563,57 +564,77 @@ def refresh(
         _load_static_local_endpoints(routing_config),
     )
 
-    previous = []
-    full_doc = {}
-    if models_json.is_file():
-        try:
-            with open(models_json) as f:
-                full_doc = json.load(f)
+    # Every supported writer uses this target's sidecar lock.  The scan can be
+    # expensive and does not touch models.json, so do it first; the inventory
+    # itself is deliberately read only after the write lock is held.  That
+    # preserves a disjoint update made while discovery was running.
+    inventory_lock = _rp.locked_file(models_json) if write else nullcontext()
+    with inventory_lock:
+        previous = []
+        full_doc = {}
+        if os.path.lexists(models_json):
+            try:
+                with open(models_json, encoding="utf-8") as f:
+                    full_doc = json.load(f)
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                raise LocalModelDiscoveryError(
+                    f"present model inventory is unreadable: {models_json}: {exc}"
+                ) from exc
+            if not isinstance(full_doc, dict):
+                raise LocalModelDiscoveryError(
+                    f"present model inventory is malformed: {models_json}: "
+                    "root must be a JSON object"
+                )
             previous = full_doc.get("local_models", [])
-        except (OSError, json.JSONDecodeError):
-            full_doc = {}
-            previous = []
+            if not isinstance(previous, list) or any(
+                not isinstance(entry, dict) for entry in previous
+            ):
+                raise LocalModelDiscoveryError(
+                    f"present model inventory is malformed: {models_json}: "
+                    "local_models must be a list of JSON objects"
+                )
 
-    prev_ids = {e.get("id") for e in previous}
-    new_ids = {e.get("id") for e in discovered}
+        prev_ids = {e.get("id") for e in previous}
+        new_ids = {e.get("id") for e in discovered}
 
-    result = {
-        "discovered": discovered,
-        "previous": previous,
-        "added": sorted(new_ids - prev_ids),
-        "removed": sorted(prev_ids - new_ids),
-        "wrote": False,
-        "refused": None,
-    }
+        result = {
+            "discovered": discovered,
+            "previous": previous,
+            "added": sorted(new_ids - prev_ids),
+            "removed": sorted(prev_ids - new_ids),
+            "wrote": False,
+            "refused": None,
+        }
 
-    if not write:
-        return result
+        if not write:
+            return result
 
-    if len(discovered) < len(previous) and not allow_shrink:
-        result["refused"] = (
-            f"discovery found {len(discovered)} local model(s) where "
-            f"{os.fspath(models_json)} already records {len(previous)}; "
-            f"keeping the recorded inventory. Scanned {os.fspath(models_dir)}. "
-            f"Missing: {', '.join(result['removed']) or '(unnamed)'}. "
-            "If the removal is intentional, re-run with allow_shrink=True "
-            "(CLI: --write --allow-shrink)."
+        if len(discovered) < len(previous) and not allow_shrink:
+            result["refused"] = (
+                f"discovery found {len(discovered)} local model(s) where "
+                f"{os.fspath(models_json)} already records {len(previous)}; "
+                f"keeping the recorded inventory. Scanned {os.fspath(models_dir)}. "
+                f"Missing: {', '.join(result['removed']) or '(unnamed)'}. "
+                "If the removal is intentional, re-run with allow_shrink=True "
+                "(CLI: --write --allow-shrink)."
+            )
+            print(f"[local_model_discovery] REFUSED WRITE: {result['refused']}",
+                  file=sys.stderr, flush=True)
+            return result
+
+        full_doc["local_models"] = discovered
+        # Track when discovery last ran so the V3 pane can show staleness.
+        full_doc["_local_models_discovered_at"] = (
+            Path(models_dir).stat().st_mtime
         )
-        print(f"[local_model_discovery] REFUSED WRITE: {result['refused']}",
-              file=sys.stderr, flush=True)
+
+        _rp.atomic_write_text(
+            models_json,
+            json.dumps(full_doc, indent=2) + "\n",
+        )
+
+        result["wrote"] = True
         return result
-
-    full_doc["local_models"] = discovered
-    # Track when discovery last ran so the V3 pane can show staleness.
-    full_doc["_local_models_discovered_at"] = (
-        Path(models_dir).stat().st_mtime
-    )
-
-    with open(models_json, "w") as f:
-        json.dump(full_doc, f, indent=2)
-        f.write("\n")
-
-    result["wrote"] = True
-    return result
 
 
 # ----------------------------------------------------------------------
