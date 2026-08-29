@@ -8,9 +8,11 @@ they belong in a separate integration runner.
 from __future__ import annotations
 
 import importlib.util
+import contextlib
 import json
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -418,6 +420,78 @@ class TestDetectChanges(unittest.TestCase):
         # First refresh — no diff to compute
         self.assertEqual(changes["new"], [])
         self.assertEqual(changes["retired"], [])
+
+
+class TestRoutingCatalogWriterTransaction(unittest.TestCase):
+    """Catalog endpoint sync rereads routing state under the shared lock."""
+
+    def test_endpoint_sync_preserves_disjoint_save_completed_at_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            routing_path = root / "routing-config.json"
+            catalog_path = root / "model-catalog.json"
+            registry_path = root / "model-registry.json"
+            configurations = root / "configurations"
+            configurations.mkdir()
+            routing_path.write_text(json.dumps({
+                "slots": {"image_generates": {"preferred": "original"}},
+                "endpoints": [],
+                "unrelated": {"preserve": True},
+            }))
+            catalog_path.write_text(json.dumps({"models": [{
+                "id": "obscure/model",
+                "provider": "obscure",
+                "display_name": "Obscure Model",
+                "output_modalities": ["text"],
+                "context_window": 8192,
+                "vision_capable": False,
+            }]}))
+            registry_path.write_text('{"models": {}}')
+
+            env = {
+                "ORA_ROUTING_CONFIG_PATH": str(routing_path),
+                "ORA_MODEL_CATALOG_PATH": str(catalog_path),
+                "ORA_MODEL_REGISTRY_PATH": str(registry_path),
+                "ORA_CONFIGURATIONS_DIR": str(configurations),
+                "ORA_VENDOR_CATALOG_AUTHORITATIVE": "0",
+            }
+            with mock.patch.dict(os.environ, env, clear=False):
+                spec = importlib.util.spec_from_file_location(
+                    "sync_endpoints_r10_test",
+                    REPO_ROOT / "scripts" / "sync_endpoints_from_catalog.py",
+                )
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+            lock_targets = []
+
+            @contextlib.contextmanager
+            def concurrent_save_before_entry(path, *_args, **_kwargs):
+                lock_targets.append(Path(path))
+                current = json.loads(routing_path.read_text())
+                current["slots"]["video_generates"] = {
+                    "preferred": "concurrent-provider",
+                }
+                routing_path.write_text(json.dumps(current))
+                yield
+
+            with mock.patch.object(
+                    module._rp, "locked_file", concurrent_save_before_entry), \
+                 mock.patch.object(sys, "argv", ["sync_endpoints_from_catalog.py"]):
+                self.assertEqual(module.main(), 0)
+
+            saved = json.loads(routing_path.read_text())
+            self.assertEqual(lock_targets, [routing_path])
+            self.assertEqual(
+                saved["slots"]["video_generates"]["preferred"],
+                "concurrent-provider",
+            )
+            self.assertTrue(saved["unrelated"]["preserve"])
+            self.assertIn(
+                "obscure/model",
+                {entry["id"] for entry in saved["endpoints"]},
+            )
+            self.assertEqual(list(root.glob(".routing-config.json.*.tmp")), [])
 
 
 if __name__ == "__main__":

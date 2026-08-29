@@ -73,7 +73,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
-from orchestrator import network_policy
+from orchestrator import network_policy, runtime_paths
 
 # Resolve relative to the runner's own checkout by default.  ``~/ora`` was a
 # historical deployment assumption; it made an accepted-runtime checkout read
@@ -887,37 +887,47 @@ def ensure_claude_code_endpoints() -> None:
     """Register the subscription (Claude Code CLI) endpoints in
     routing-config.json when absent. Their ids live outside the catalog
     namespace, so the automatic endpoint sync preserves them."""
-    rc_path = CONFIG_DIR / "routing-config.json"
-    rc = json.loads(rc_path.read_text())
-    by_id = {(e.get("id") or e.get("name")): e for e in rc.get("endpoints") or []}
+    rc_path = Path(
+        os.environ.get("ORA_ROUTING_CONFIG_PATH")
+        or (CONFIG_DIR / "routing-config.json")
+    )
     added = 0
-    for spec in CLAUDE_CODE_ENDPOINTS:
-        if spec["id"] in by_id:
-            continue
-        rc["endpoints"].append({
-            "id": spec["id"],
-            "type": "api",
-            "status": "active",
-            "enabled": True,
-            "provider": "anthropic",
-            "display_name": spec["display_name"],
-            "service": "claude-code",
-            "model_id": spec["model_id"],
-            "dispatch": "subscription",
-            "vision_capable": True,
-            "context_window": 200000,
-            "capabilities": {"tool_access": False, "file_system_access": False,
-                             "web_access": False,
-                             "retrieval_approach": "pre-assembled"},
-            "_note": ("Subscription execution via the local Claude Code CLI "
-                      "(claude -p). Zero marginal API cost; campaign cost "
-                      "tables price its tokens at the API-equivalent rate."),
-        })
-        added += 1
+    with runtime_paths.locked_file(rc_path):
+        # Campaign baking owns only its missing subscription endpoints.  Reread
+        # after the shared lock so unrelated slots/endpoints added by another
+        # supported writer remain in the candidate.
+        rc = json.loads(rc_path.read_text())
+        by_id = {(e.get("id") or e.get("name")): e
+                 for e in rc.get("endpoints") or []}
+        for spec in CLAUDE_CODE_ENDPOINTS:
+            if spec["id"] in by_id:
+                continue
+            rc["endpoints"].append({
+                "id": spec["id"],
+                "type": "api",
+                "status": "active",
+                "enabled": True,
+                "provider": "anthropic",
+                "display_name": spec["display_name"],
+                "service": "claude-code",
+                "model_id": spec["model_id"],
+                "dispatch": "subscription",
+                "vision_capable": True,
+                "context_window": 200000,
+                "capabilities": {"tool_access": False,
+                                 "file_system_access": False,
+                                 "web_access": False,
+                                 "retrieval_approach": "pre-assembled"},
+                "_note": ("Subscription execution via the local Claude Code CLI "
+                          "(claude -p). Zero marginal API cost; campaign cost "
+                          "tables price its tokens at the API-equivalent rate."),
+            })
+            added += 1
+        if added:
+            runtime_paths.atomic_write_text(
+                rc_path, json.dumps(rc, indent=2) + "\n", mode=0o644,
+            )
     if added:
-        tmp = rc_path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(rc, indent=2) + "\n")
-        os.replace(tmp, rc_path)
         print(f"[bake] registered {added} claude-code subscription endpoint(s)")
         if _poke_router_reload():
             print("[bake] running server reloaded its router")

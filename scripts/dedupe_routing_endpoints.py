@@ -52,6 +52,10 @@ ARTIFACT = Path(
 )
 CONFIGS_DIR = Path(os.environ.get("ORA_CONFIGURATIONS_DIR") or (CONFIG / "configurations"))
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "orchestrator"))
+import runtime_paths as _rp
+
 NATIVE_VENDORS = {"gemini", "openai", "anthropic", "mistral", "qwen",
                   "minimax", "moonshot", "xai", "deepseek", "xiaomi"}
 
@@ -190,11 +194,7 @@ def _all_reference_tokens(routing: dict) -> set[str]:
     return toks
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dry-run", action="store_true")
-    args = ap.parse_args()
-
+def _run(args) -> int:
     routing = json.loads(ROUTING.read_text())
     try:
         aliases = json.loads(ARTIFACT.read_text()).get("aliases", {}) or {}
@@ -289,18 +289,35 @@ def main() -> int:
         print("\n(dry-run — nothing written)")
         return 0
 
-    # atomic writes
+    # The named-configuration rewrites below are a separate R12 transaction
+    # surface and intentionally remain unchanged in this R10 slice.
     def _atomic(path: Path, text: str):
         tmp = path.with_suffix(path.suffix + ".tmp")
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp.write_text(text)
         os.replace(tmp, path)
 
-    _atomic(ROUTING, json.dumps(routing, indent=2))
+    _rp.atomic_write_text(
+        ROUTING, json.dumps(routing, indent=2), mode=0o644,
+    )
     for p, new in cfg_edits.items():
         _atomic(p, new)
     print(f"\nwrote {ROUTING} + {len(cfg_edits)} config file(s)")
     return 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+
+    if args.dry_run:
+        return _run(args)
+    # Endpoint canonicalization rereads routing state only after the same
+    # sidecar lock every other routing writer uses.  The adjacent named-config
+    # updates remain the serialized R12 follow-on, per the scope boundary.
+    with _rp.locked_file(ROUTING):
+        return _run(args)
 
 
 if __name__ == "__main__":

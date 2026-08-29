@@ -22,6 +22,7 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -177,6 +178,62 @@ class RoutingSlotsEndpoint(unittest.TestCase):
         slot = self._on_disk()["slots"]["image_edits"]
         self.assertEqual(slot["preferred"], "local-diffusers")
         self.assertEqual(slot["fallback"], ["replicate"])
+
+    def test_concurrent_disjoint_slot_saves_both_survive(self):
+        barrier = threading.Barrier(2)
+        responses = []
+        errors = []
+
+        def save(slot_name, preferred):
+            try:
+                with self.S.app.test_client() as client:
+                    barrier.wait(timeout=5)
+                    responses.append(client.post(
+                        "/config/routing/slots",
+                        data=json.dumps({"slots": {slot_name: {
+                            "preferred": preferred,
+                        }}}),
+                        content_type="application/json",
+                    ))
+            except Exception as exc:  # pragma: no cover - surfaced below
+                errors.append(exc)
+
+        first = threading.Thread(
+            target=save, args=("image_generates", "provider-a"),
+        )
+        second = threading.Thread(
+            target=save, args=("video_generates", "provider-b"),
+        )
+        first.start()
+        second.start()
+        first.join(timeout=10)
+        second.join(timeout=10)
+
+        self.assertFalse(first.is_alive() or second.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual([r.status_code for r in responses], [200, 200])
+        slots = self._on_disk()["slots"]
+        self.assertEqual(slots["image_generates"]["preferred"], "provider-a")
+        self.assertEqual(slots["video_generates"]["preferred"], "provider-b")
+
+    def test_interrupted_atomic_save_preserves_old_complete_json(self):
+        before = Path(self._cfg_path).read_bytes()
+        saved_atomic = self.S.rp.atomic_write_text
+
+        def interrupted(*_args, **_kwargs):
+            raise OSError("simulated interruption before atomic replacement")
+
+        self.S.rp.atomic_write_text = interrupted
+        try:
+            response = self._post({"slots": {"image_generates": {
+                "preferred": "provider-that-must-not-land",
+            }}})
+        finally:
+            self.S.rp.atomic_write_text = saved_atomic
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(Path(self._cfg_path).read_bytes(), before)
+        self.assertEqual(json.loads(before), self._on_disk())
 
     # ── POST validation ──────────────────────────────────────────────────
 

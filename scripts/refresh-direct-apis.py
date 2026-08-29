@@ -38,6 +38,9 @@ from datetime import date
 WORKSPACE = os.environ.get("ORA_HOME") or os.path.expanduser("~/ora")
 SEED_ROUTING_CONFIG = os.path.join(WORKSPACE, "config/routing-config.json")
 ROUTING_CONFIG = os.environ.get("ORA_ROUTING_CONFIG_PATH") or SEED_ROUTING_CONFIG
+SCRIPT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(SCRIPT_ROOT, "orchestrator"))
+import runtime_paths as _rp
 
 
 # ── Keychain access ─────────────────────────────────────────────────────────
@@ -380,9 +383,9 @@ def _load_routing() -> dict:
 
 def _save_routing(cfg: dict):
     os.makedirs(os.path.dirname(ROUTING_CONFIG), exist_ok=True)
-    with open(ROUTING_CONFIG, "w") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
+    _rp.atomic_write_text(
+        ROUTING_CONFIG, json.dumps(cfg, indent=2) + "\n", mode=0o644,
+    )
 
 
 def main():
@@ -394,21 +397,34 @@ def main():
                    help="Print summary; don't write routing-config.json.")
     args = p.parse_args()
 
-    routing = _load_routing()
     targets = (["anthropic", "openai", "google"] if args.provider == "all"
                else [args.provider])
 
-    summaries = {}
+    fetched_by_provider = {}
     for name in targets:
         try:
-            fetched = PROVIDERS[name]["fetch"]()
+            fetched_by_provider[name] = PROVIDERS[name]["fetch"]()
         except urllib.error.HTTPError as e:
             print(f"[refresh-direct-apis] {name}: HTTP {e.code} — {e.reason}", file=sys.stderr)
             continue
         except Exception as e:
             print(f"[refresh-direct-apis] {name}: {e}", file=sys.stderr)
             continue
-        summaries[name] = reconcile_provider(routing, name, fetched, {})
+
+    summaries = {}
+    if args.dry_run:
+        routing = _load_routing()
+        for name, fetched in fetched_by_provider.items():
+            summaries[name] = reconcile_provider(routing, name, fetched, {})
+    elif fetched_by_provider:
+        with _rp.locked_file(ROUTING_CONFIG):
+            # Provider fetches happen before the transaction.  The mutable
+            # routing state is reread only after the shared lock so direct-API
+            # maintenance merges onto any Settings/catalog save that won first.
+            routing = _load_routing()
+            for name, fetched in fetched_by_provider.items():
+                summaries[name] = reconcile_provider(routing, name, fetched, {})
+            _save_routing(routing)
 
     # Print summary
     for name, s in summaries.items():
@@ -424,7 +440,6 @@ def main():
         return
 
     if summaries:
-        _save_routing(routing)
         print(f"\n[refresh-direct-apis] wrote {ROUTING_CONFIG}")
 
 
