@@ -208,6 +208,7 @@ def save_output_to_vault(
     project_folder_name: str | None = None,
     vault: Path | None = None,
     outputs_subdir: str | None = None,
+    turn_privacy: str = "standard",
 ) -> Path | None:
     """Save one rendered output as a canonical vault markdown note.
 
@@ -215,10 +216,15 @@ def save_output_to_vault(
     ``folder_name`` is the only accepted physical identity. ``project_name`` is
     retained only to fail old project callers loudly; it is never a storage
     fallback. Non-project callers retain the explicit ``outputs_subdir``
-    compatibility path. Returns None when the vault itself is unavailable.
+    compatibility path. A Private source stays visibly and mechanically
+    Private. A Stealth source is the deliberate destination-owned exception:
+    it carries neither a privacy label nor a source-mode marker. Returns None
+    when the vault itself is unavailable.
     """
     if content is None:
         return None
+    if turn_privacy not in {"standard", "private", "stealth"}:
+        raise ValueError("turn_privacy must be standard, private, or stealth")
     root = Path(vault or vault_root())
     if not root.is_dir():
         return None
@@ -277,17 +283,22 @@ def save_output_to_vault(
         f"{today} {_slugify(display)}",
         project_output=is_project,
     )
+    tags = ["output"]
+    if turn_privacy == "private":
+        tags.append("private")
     frontmatter = (
         "---\n"
         + _format_nexus(project_nexus)
         + "type: output\n"
         + f"title: {display}\n"
-        + "tags:\n  - output\n"
+        + "tags:\n"
+        + "".join(f"  - {tag}\n" for tag in tags)
         + f"date created: {today}\n"
         + f"date modified: {today}\n"
         + "---\n\n"
     )
-    body = content if content.endswith("\n") else content + "\n"
+    body = output_content_for_privacy(content, turn_privacy)
+    body = body if body.endswith("\n") else body + "\n"
     try:
         tmp = path.with_suffix(path.suffix + ".tmp")
         tmp.write_text(frontmatter + body, encoding="utf-8")
@@ -295,6 +306,20 @@ def save_output_to_vault(
     except OSError:
         return None
     return path
+
+
+def output_content_for_privacy(content: str, turn_privacy: str) -> str:
+    """Apply the explicit-export privacy presentation to canonical content.
+
+    Standard output needs no extra label. Private output retains a visible
+    disclosure even when rendered outside the vault as DOCX/PDF. Stealth
+    export is intentionally marker-free under the Dialogue plan.
+    """
+    if turn_privacy not in {"standard", "private", "stealth"}:
+        raise ValueError("turn_privacy must be standard, private, or stealth")
+    if turn_privacy == "private":
+        return "**Privacy:** Private\n\n" + content
+    return content
 
 
 def _safe_folder(name: str | None) -> str:
@@ -458,6 +483,7 @@ __all__ = [
     "converters_dir",
     "ensure_export_dirs",
     "save_output_to_vault",
+    "output_content_for_privacy",
     "export_capabilities",
     "export_to_file",
     "pandoc_path",

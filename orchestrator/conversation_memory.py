@@ -153,7 +153,16 @@ TURN_SPATIAL_FIELDS: tuple[str, ...] = (
 # existing envelope.
 CONVERSATION_TAGS: tuple[str, ...] = ("", "stealth", "private")
 MUTABLE_PRIVACY_TAGS: tuple[str, ...] = ("", "private")
+TURN_PRIVACY_VALUES: tuple[str, ...] = ("standard", "private", "stealth")
 CONTRIBUTOR_KINDS: tuple[str, ...] = ("conversation", "atomic_note")
+KNOWLEDGE_RUNTIME_DERIVATIVE_KIND = "conversation_runtime_derivative"
+KNOWLEDGE_OWNER_CLAIM_FIELDS: tuple[str, ...] = (
+    "artifact_kind",
+    "managed_by",
+    "turn_privacy",
+    "source_chunk_id",
+    "source_turn_index",
+)
 
 
 def conversation_privacy_allows(source_tag: str, target_tag: str) -> bool:
@@ -171,6 +180,304 @@ def conversation_privacy_allows(source_tag: str, target_tag: str) -> bool:
     if source_tag == "private":
         return target_tag in {"private", "stealth"}
     return True
+
+
+def turn_privacy_from_tag(tag: Any) -> str | None:
+    """Map one valid creation/composer tag to an exact turn authority.
+
+    This deliberately does not normalize malformed input.  A missing or bad
+    authority is not Standard; callers must pause, refuse, or omit it.
+    """
+    if tag == "":
+        return "standard"
+    if tag in {"private", "stealth"}:
+        return str(tag)
+    return None
+
+
+def turn_privacy_to_tag(value: Any) -> str | None:
+    """Return the privacy-lattice tag for an exact turn authority."""
+    if value == "standard":
+        return ""
+    if value in {"private", "stealth"}:
+        return str(value)
+    return None
+
+
+def complete_exchange_privacy(
+    user_message: Any,
+    assistant_message: Any,
+) -> str | None:
+    """Return one complete exchange's exact authority, or ``None``.
+
+    Both halves carry the durable value.  Requiring agreement makes partial,
+    missing, invalid, or conflicting records visibly unknown instead of
+    silently weakening them to Standard.
+    """
+    if not isinstance(user_message, dict) or not isinstance(assistant_message, dict):
+        return None
+    if user_message.get("role") != "user" or assistant_message.get("role") != "assistant":
+        return None
+    user_value = user_message.get("turn_privacy")
+    assistant_value = assistant_message.get("turn_privacy")
+    if user_value != assistant_value or user_value not in TURN_PRIVACY_VALUES:
+        return None
+    return str(user_value)
+
+
+def iter_complete_exchanges(
+    messages: Any,
+) -> list[tuple[int, dict[str, Any], int, dict[str, Any], str | None]]:
+    """Group exact user/assistant exchanges without inventing missing halves."""
+    if not isinstance(messages, list):
+        return []
+    result: list[tuple[int, dict[str, Any], int, dict[str, Any], str | None]] = []
+    pending: tuple[int, dict[str, Any]] | None = None
+    for index, raw in enumerate(messages):
+        if not isinstance(raw, dict):
+            continue
+        role = raw.get("role")
+        if role == "user":
+            pending = (index, raw)
+        elif role == "assistant":
+            if pending is not None:
+                user_index, user = pending
+                result.append((
+                    user_index,
+                    user,
+                    index,
+                    raw,
+                    complete_exchange_privacy(user, raw),
+                ))
+            pending = None
+    return result
+
+
+def turn_privacy_allows(source_privacy: Any, target_tag: Any) -> bool:
+    """Return whether an exact turn may enter the target model lane."""
+    source_tag = turn_privacy_to_tag(source_privacy)
+    if source_tag is None or target_tag not in CONVERSATION_TAGS:
+        return False
+    return conversation_privacy_allows(source_tag, str(target_tag))
+
+
+def _knowledge_metadata_tags(metadata: Any) -> set[str]:
+    """Return exact privacy tags across current and legacy metadata shapes."""
+    if not isinstance(metadata, dict):
+        return set()
+    raw = metadata.get("tags")
+    if isinstance(raw, (list, tuple, set, frozenset)):
+        values = raw
+    elif isinstance(raw, str):
+        values = re.findall(r"[a-z0-9][a-z0-9_/-]*", raw.casefold())
+    else:
+        values = ()
+    tags = {
+        str(value).strip().strip("[](){}\"'").casefold()
+        for value in values
+        if str(value).strip().strip("[](){}\"'")
+    }
+    stored_tag = metadata.get("tag")
+    if isinstance(stored_tag, str):
+        tags.update(
+            re.findall(r"[a-z0-9][a-z0-9_/-]*", stored_tag.casefold())
+        )
+
+    def truthy(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        return str(value or "").strip().casefold() in {
+            "1", "true", "yes", "on",
+        }
+
+    for privacy in ("private", "stealth"):
+        if truthy(metadata.get(f"tag_{privacy}")):
+            tags.add(privacy)
+    return tags
+
+
+def knowledge_metadata_has_owner_claim(metadata: Any) -> bool:
+    """Return whether a knowledge row claims conversation-turn ownership.
+
+    ``source_file`` alone remains ordinary note provenance under the existing
+    vault schema. Every field that is specific to an Ora turn derivative is a
+    claim by presence, including malformed or empty values; such a row cannot
+    fall through to the ordinary-note privacy lane.
+    """
+    return isinstance(metadata, dict) and any(
+        field in metadata for field in KNOWLEDGE_OWNER_CLAIM_FIELDS
+    )
+
+
+def knowledge_metadata_owner_tuple(
+    metadata: Any,
+) -> tuple[str, str, str, int] | None:
+    """Authenticate one complete knowledge-derivative owner tuple."""
+    if not knowledge_metadata_has_owner_claim(metadata):
+        return None
+    artifact_kind = metadata.get("artifact_kind")
+    managed_by = metadata.get("managed_by")
+    source_file = metadata.get("source_file")
+    source_chunk_id = metadata.get("source_chunk_id")
+    source_turn_index = metadata.get("source_turn_index")
+    privacy = metadata.get("turn_privacy")
+    if (
+        artifact_kind != KNOWLEDGE_RUNTIME_DERIVATIVE_KIND
+        or managed_by != "ora"
+        or not isinstance(source_file, str)
+        or not source_file.strip()
+        or source_file != source_file.strip()
+        or not isinstance(source_chunk_id, str)
+        or not source_chunk_id.strip()
+        or source_chunk_id != source_chunk_id.strip()
+        or isinstance(source_turn_index, bool)
+        or not isinstance(source_turn_index, int)
+        or source_turn_index < 1
+        or privacy not in TURN_PRIVACY_VALUES
+    ):
+        return None
+
+    tags = _knowledge_metadata_tags(metadata)
+    if (
+        (privacy == "standard" and tags.intersection({"private", "stealth"}))
+        or (privacy == "private" and "stealth" in tags)
+        or (privacy == "stealth" and "private" in tags)
+    ):
+        return None
+    return (
+        str(privacy),
+        source_file,
+        source_chunk_id,
+        source_turn_index,
+    )
+
+
+def knowledge_metadata_privacy(metadata: Any) -> str | None:
+    """Resolve a knowledge row's exact privacy at its owning seam.
+
+    Ordinary notes continue to use their existing controlled note/tag
+    authority. Once any turn-owner field is present, the full typed Ora owner
+    tuple is mandatory and malformed or conflicting claims remain unknown.
+    """
+    if not isinstance(metadata, dict):
+        return None
+    if knowledge_metadata_has_owner_claim(metadata):
+        owner = knowledge_metadata_owner_tuple(metadata)
+        return owner[0] if owner is not None else None
+    tags = _knowledge_metadata_tags(metadata)
+    if "stealth" in tags:
+        return "stealth"
+    if "private" in tags:
+        return "private"
+    return "standard"
+
+
+def knowledge_metadata_allows(metadata: Any, target_tag: Any) -> bool:
+    """Return whether one knowledge row may enter the target privacy lane."""
+    return turn_privacy_allows(
+        knowledge_metadata_privacy(metadata), target_tag,
+    )
+
+
+def knowledge_admitted_paths(
+    metadata_rows: Any,
+    target_tag: Any,
+) -> list[str]:
+    """Return paths safe to name in a pre-vector knowledge query.
+
+    All metadata is grouped at the note path, the knowledge owner seam. If any
+    row on a path claims derivative ownership, every row on that path must
+    authenticate the same complete owner tuple and that tuple must be eligible.
+    This prevents a malformed chunk from entering the ordinary-note lane or a
+    safer-looking sibling chunk from laundering a conflicting owner.
+    """
+    if target_tag not in CONVERSATION_TAGS or not isinstance(metadata_rows, list):
+        return []
+    by_path: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for metadata in metadata_rows:
+        if not isinstance(metadata, dict):
+            continue
+        path = metadata.get("path")
+        if isinstance(path, str) and path.strip():
+            by_path[path.strip()].append(metadata)
+
+    admitted: list[str] = []
+    for path, rows in by_path.items():
+        derivative_claimed = any(
+            knowledge_metadata_has_owner_claim(metadata)
+            for metadata in rows
+        )
+        if derivative_claimed:
+            owners = [
+                knowledge_metadata_owner_tuple(metadata)
+                for metadata in rows
+            ]
+            if (
+                any(owner is None for owner in owners)
+                or len(set(owners)) != 1
+                or not turn_privacy_allows(owners[0][0], target_tag)
+            ):
+                continue
+        elif not all(
+            knowledge_metadata_allows(metadata, target_tag)
+            for metadata in rows
+        ):
+            continue
+        admitted.append(path)
+    return sorted(admitted)
+
+
+def filter_conversation_history_for_tag(
+    messages: Any,
+    target_tag: str,
+) -> list[dict[str, Any]]:
+    """Return only complete exchanges whose exact authority may flow in.
+
+    Filtering happens as complete semantic units.  Unknown/conflicting pairs,
+    orphan messages, and stricter exchanges are removed before continuity,
+    retrieval ranking, or a model can inspect their content.
+    """
+    if target_tag not in CONVERSATION_TAGS:
+        raise ValueError("target privacy tag is invalid")
+    filtered: list[dict[str, Any]] = []
+    for _ui, user, _ai, assistant, privacy in iter_complete_exchanges(messages):
+        if not turn_privacy_allows(privacy, target_tag):
+            continue
+        filtered.extend((copy.deepcopy(user), copy.deepcopy(assistant)))
+    return filtered
+
+
+def displayed_exchange_owner(
+    messages: Any,
+    displayed_turn_index: int,
+) -> dict[str, Any] | None:
+    """Resolve a displayed complete exchange to its canonical owner seam."""
+    if (isinstance(displayed_turn_index, bool)
+            or not isinstance(displayed_turn_index, int)
+            or displayed_turn_index < 0):
+        return None
+    exchanges = iter_complete_exchanges(messages)
+    if displayed_turn_index >= len(exchanges):
+        return None
+    _ui, user, _ai, assistant, privacy = exchanges[displayed_turn_index]
+    owner = user.get("_ora_history_owner")
+    owner_turn = user.get("_ora_history_turn_index")
+    if (not isinstance(owner, str) or not owner.strip()
+            or not isinstance(owner_turn, int) or owner_turn < 1
+            or assistant.get("_ora_history_owner") != owner
+            or assistant.get("_ora_history_turn_index") != owner_turn):
+        return None
+    user_chunk = user.get("chunk_id")
+    assistant_chunk = assistant.get("chunk_id")
+    chunk_id = user_chunk if user_chunk == assistant_chunk and isinstance(user_chunk, str) else None
+    return {
+        "conversation_id": owner,
+        "turn_index": owner_turn,
+        "turn_privacy": privacy,
+        "chunk_id": chunk_id,
+    }
 
 
 def normalize_contributors(value: Any, *, strict: bool = False) -> list[dict[str, str]]:
@@ -611,7 +918,8 @@ def resolve_effective_conversation_history(
         )
         parent_raw = envelope.get("parent_conversation_id")
         if parent_raw is None:
-            if envelope.get("fork_point_message_count") is not None:
+            if (envelope.get("fork_point_message_count") is not None
+                    or envelope.get("fork_point_effective_message_count") is not None):
                 note(f"{current_id}: cutoff present without parent")
                 return local, len(local), False
             return local, len(local), local_valid
@@ -629,44 +937,39 @@ def resolve_effective_conversation_history(
         # bypassing the immutable fork boundary.
         record_lineage(parent_id)
 
-        raw_cutoff = envelope.get("fork_point_message_count")
-        cutoff = _normalize_fork_point_message_count(raw_cutoff)
-        if cutoff is None:
-            note(f"{current_id}: malformed fork_point_message_count")
-            return local, len(local), False
-
         parent_history, parent_local_count, parent_valid = visit(
             parent_id,
             ancestry_depth + 1,
             stack + (identity,),
         )
-        current_tag = (
-            envelope.get("tag")
-            if envelope.get("tag") in CONVERSATION_TAGS else ""
-        )
-        parent_envelope = _read_history_envelope(parent_id, root)
-        parent_tag = (
-            parent_envelope.get("tag")
-            if isinstance(parent_envelope, dict)
-            and parent_envelope.get("tag") in CONVERSATION_TAGS
-            else ""
-        )
-        if (isinstance(parent_envelope, dict)
-                and not conversation_privacy_allows(parent_tag, current_tag)):
-            # A later Standard/Private retag can make an originally valid fork
-            # edge incompatible.  The parent branch is no longer readable,
-            # but the current Dialogue's own local turns remain authoritative.
-            # ``visit`` already inventoried the discarded lineage so global
-            # Conversation RAG cannot silently re-admit it.
-            note(
-                f"{current_id}: parent {parent_id} privacy {parent_tag!r} "
-                f"is incompatible with child privacy {current_tag!r}"
-            )
-            return local, len(local), local_valid
         if not parent_valid:
             # An incomplete or cyclic branch is not a truthful ordered prefix.
             # Keep only this node's local record and propagate invalidity so a
             # descendant cannot accidentally re-admit part of the bad branch.
+            return local, len(local), False
+        raw_effective_cutoff = envelope.get(
+            "fork_point_effective_message_count"
+        )
+        if raw_effective_cutoff is not None:
+            effective_cutoff = _normalize_fork_point_message_count(
+                raw_effective_cutoff
+            )
+            if effective_cutoff is None or effective_cutoff > len(parent_history):
+                note(
+                    f"{current_id}: malformed "
+                    "fork_point_effective_message_count"
+                )
+                return local, len(local), False
+            return (
+                parent_history[:effective_cutoff] + local,
+                len(local),
+                local_valid,
+            )
+
+        raw_cutoff = envelope.get("fork_point_message_count")
+        cutoff = _normalize_fork_point_message_count(raw_cutoff)
+        if cutoff is None:
+            note(f"{current_id}: malformed fork_point_message_count")
             return local, len(local), False
         if cutoff > parent_local_count:
             note(
@@ -846,6 +1149,9 @@ def save_turn_spatial_state(
     vision_extraction_result: dict | None = None,
     timestamp: str | None = None,
     tag: str = "",
+    turn_privacy: str | None = None,
+    chunk_id: str | None = None,
+    turn_index: int | None = None,
     project_ids: list[str] | None = None,
     trace_ref: str | None = None,
     visual_checkpoint_id: str | None = None,
@@ -909,7 +1215,8 @@ def save_turn_spatial_state(
                                  tag, timestamp, spatial_representation,
                                  annotations, vision_extraction_result,
                                  project_ids, trace_ref, visual_checkpoint_id,
-                                 visual_outcome)
+                                 visual_outcome, turn_privacy, chunk_id,
+                                 turn_index)
         except (OSError, TimeoutError):
             return None
 
@@ -928,6 +1235,9 @@ def _do_write(
     trace_ref: str | None = None,
     visual_checkpoint_id: str | None = None,
     visual_outcome: dict[str, Any] | None = None,
+    turn_privacy: str | None = None,
+    chunk_id: str | None = None,
+    turn_index: int | None = None,
 ) -> Path | None:
     """Inner read-modify-write helper. Runs inside the per-conversation
     lock; do not call directly."""
@@ -976,7 +1286,9 @@ def _do_write(
     # immutability rule.
     if existing is None:
         from datetime import datetime as _dt
-        envelope_tag = tag if tag in CONVERSATION_TAGS else ""
+        if tag not in CONVERSATION_TAGS:
+            return None
+        envelope_tag = tag
         # V3 Backlog 2C — auto-generate display_name from the first user
         # prompt (trimmed to 60 chars). The user can override via
         # POST /api/conversation/<id>/rename.
@@ -1019,6 +1331,24 @@ def _do_write(
             existing.get("contributors")
         )
 
+    envelope_tag = existing.get("tag")
+    if envelope_tag not in CONVERSATION_TAGS:
+        return None
+    exact_privacy = (
+        turn_privacy_from_tag(envelope_tag)
+        if turn_privacy is None
+        else turn_privacy if turn_privacy in TURN_PRIVACY_VALUES else None
+    )
+    # Stealth is a creation-only identity. Ordinary exchanges may mix
+    # Standard/Private, but neither kind may be written into a Stealth
+    # envelope (or vice versa).
+    if exact_privacy is None:
+        return None
+    if (envelope_tag == "stealth") != (exact_privacy == "stealth"):
+        return None
+    if chunk_id is not None and (not isinstance(chunk_id, str) or not chunk_id.strip()):
+        return None
+
     # Normalize annotations payload: accept either wrapper dict or bare list.
     annotations_normalized: Any
     if annotations is None:
@@ -1039,6 +1369,8 @@ def _do_write(
         "annotations": annotations_normalized,
         "vision_extraction_result": vision_extraction_result,
         "visual_checkpoint_id": visual_checkpoint_id,
+        "turn_privacy": exact_privacy,
+        "chunk_id": chunk_id,
     }
     clean_visual_outcome = _normalize_visual_outcome(visual_outcome)
     assistant_turn = {
@@ -1050,13 +1382,12 @@ def _do_write(
         "vision_extraction_result": None,
         "trace_ref": trace_ref,
         "visual_outcome": clean_visual_outcome,
+        "turn_privacy": exact_privacy,
+        "chunk_id": chunk_id,
     }
 
     messages = existing["messages"]
-    # The pipeline writes a durable assistant placeholder at turn start so a
-    # stalled run is visible and recoverable. Complete that same record rather
-    # than appending a second assistant message when the response arrives.
-    if (
+    replaces_placeholder = (
         len(messages) >= 2
         and isinstance(messages[-2], dict)
         and isinstance(messages[-1], dict)
@@ -1065,7 +1396,24 @@ def _do_write(
         and messages[-1].get("role") == "assistant"
         and messages[-1].get("content") == ""
         and (messages[-1].get("visual_outcome") or {}).get("state") == "building"
+    )
+    current_user_count = sum(
+        1 for message in messages
+        if isinstance(message, dict) and message.get("role") == "user"
+    )
+    next_turn_index = current_user_count if replaces_placeholder else current_user_count + 1
+    if turn_index is not None and (
+        isinstance(turn_index, bool)
+        or not isinstance(turn_index, int)
+        or turn_index != next_turn_index
     ):
+        return None
+    user_turn["turn_index"] = next_turn_index
+    assistant_turn["turn_index"] = next_turn_index
+    # The pipeline writes a durable assistant placeholder at turn start so a
+    # stalled run is visible and recoverable. Complete that same record rather
+    # than appending a second assistant message when the response arrives.
+    if replaces_placeholder:
         messages[-2] = user_turn
         messages[-1] = assistant_turn
     else:
@@ -1135,6 +1483,7 @@ def begin_visual_outcome(
     user_input: str,
     *,
     tag: str = "",
+    turn_privacy: str | None = None,
     project_ids: list[str] | None = None,
     timestamp: str | None = None,
     sessions_root: Path | None = None,
@@ -1146,6 +1495,7 @@ def begin_visual_outcome(
         "",
         timestamp=timestamp,
         tag=tag,
+        turn_privacy=turn_privacy,
         project_ids=project_ids,
         visual_outcome={"state": "building"},
         sessions_root=sessions_root,
@@ -1582,6 +1932,82 @@ def set_conversation_tag(
         ) from None
 
 
+def set_conversation_turn_privacy(
+    conversation_id: str,
+    turn_index: int,
+    turn_privacy: str,
+    *,
+    sessions_root: Path | None = None,
+) -> dict[str, Any] | None:
+    """Retag one exact local complete exchange without changing the composer.
+
+    ``turn_index`` is the one-based local turn coordinate emitted by
+    :func:`resolve_effective_conversation_history`.  Both halves are updated
+    in the same atomic envelope replace.  Legacy/unknown pairs may acquire an
+    explicit value here, but Stealth can never enter or leave its lane.
+    """
+    if (isinstance(turn_index, bool) or not isinstance(turn_index, int)
+            or turn_index < 1):
+        raise ValueError("turn_index must be a positive integer")
+    if turn_privacy not in {"standard", "private"}:
+        raise ValueError("turn privacy must be standard or private")
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    stored: dict[str, Any] | None = None
+
+    class _TurnNotFound(Exception):
+        pass
+
+    def mutate(data: dict[str, Any]) -> None:
+        nonlocal stored
+        if data.get("tag") == "stealth":
+            raise PermissionError("Off Record is creation-only and cannot be retagged")
+        messages = data.get("messages")
+        if not isinstance(messages, list):
+            raise _TurnNotFound
+        current_turn = 0
+        pending: tuple[int, dict[str, Any], int] | None = None
+        for message_index, raw in enumerate(messages):
+            if not isinstance(raw, dict):
+                continue
+            role = raw.get("role")
+            if role == "user":
+                current_turn += 1
+                pending = (message_index, raw, current_turn)
+            elif role == "assistant":
+                if pending is not None:
+                    user_index, user, paired_turn = pending
+                    if paired_turn == turn_index:
+                        previous = complete_exchange_privacy(user, raw)
+                        user["turn_privacy"] = turn_privacy
+                        raw["turn_privacy"] = turn_privacy
+                        user["turn_index"] = paired_turn
+                        raw["turn_index"] = paired_turn
+                        user_chunk = user.get("chunk_id")
+                        assistant_chunk = raw.get("chunk_id")
+                        chunk_id = (
+                            user_chunk if isinstance(user_chunk, str)
+                            and user_chunk == assistant_chunk else None
+                        )
+                        stored = {
+                            "conversation_id": conversation_id,
+                            "turn_index": paired_turn,
+                            "previous_turn_privacy": previous,
+                            "turn_privacy": turn_privacy,
+                            "chunk_id": chunk_id,
+                        }
+                        return
+                pending = None
+        raise _TurnNotFound
+
+    try:
+        path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    except _TurnNotFound:
+        return None
+    if path is None:
+        return None
+    return copy.deepcopy(stored)
+
+
 # ---------------------------------------------------------------------------
 # Conversation enumeration + read tracking (V3 Phase 2)
 # ---------------------------------------------------------------------------
@@ -1684,10 +2110,38 @@ def iter_conversations(
         is_closed = data.get("closed") is True
         if is_closed and not include_closed:
             continue
-        messages = data.get("messages") or []
+        local_messages = data.get("messages")
+        if not isinstance(local_messages, list):
+            local_messages = []
+        # Fork envelopes intentionally store only their local suffix.  Sidebar
+        # and Library summaries describe the Dialogue the user can actually
+        # open, so derive them from the same ancestry-and-cutoff reconstruction
+        # as the fetch path instead of treating an inherited-only child as
+        # empty.  The resolver drops malformed ancestry rather than guessing at
+        # it, and the exchange scan below continues to fail closed on missing or
+        # conflicting turn authority.
+        messages = resolve_effective_conversation_history(
+            entry.name,
+            sessions_root=root,
+        )
+        if not isinstance(messages, list):
+            messages = []
         tag = data.get("tag", "")
         if not isinstance(tag, str) or tag not in CONVERSATION_TAGS:
-            tag = ""
+            tag = None
+        exchanges = iter_complete_exchanges(messages)
+        privacy_counts = {"standard": 0, "private": 0, "stealth": 0, "unknown": 0}
+        for _ui, _user, _ai, _assistant, privacy in exchanges:
+            privacy_counts[privacy if privacy in TURN_PRIVACY_VALUES else "unknown"] += 1
+        known_privacies = {
+            value for value in TURN_PRIVACY_VALUES if privacy_counts[value]
+        }
+        privacy_summary = (
+            "unknown" if privacy_counts["unknown"]
+            else "empty" if not known_privacies
+            else next(iter(known_privacies)) if len(known_privacies) == 1
+            else "mixed"
+        )
         last_read = data.get("last_read_at")
         if not isinstance(last_read, str):
             last_read = None
@@ -1706,17 +2160,20 @@ def iter_conversations(
         # group at the top of the sidebar (independent of the WELCOME
         # auto-pin via is_welcome).
         user_pinned = bool(data.get("pinned"))
-        local_message_count = len(messages) if isinstance(messages, list) else 0
-        inherited_message_count = (
-            _normalize_fork_point_message_count(
-                data.get("fork_point_message_count")
-            ) or 0
+        local_message_count = len(local_messages)
+        inherited_message_count = max(
+            0, len(messages) - local_message_count,
         )
         summaries.append({
             "conversation_id": entry.name,
             "tag": tag,
+            "composer_privacy_known": tag in CONVERSATION_TAGS,
+            "privacy_summary": privacy_summary,
+            "privacy_counts": privacy_counts,
+            "contains_private": bool(privacy_counts["private"]),
+            "has_unknown_turn_privacy": bool(privacy_counts["unknown"]),
             "title": title,
-            "message_count": local_message_count,
+            "message_count": len(messages),
             "local_message_count": local_message_count,
             "inherited_message_count": inherited_message_count,
             "last_activity_at": _last_activity_at(messages),
@@ -1942,6 +2399,88 @@ def _fork_point_message_count_for_turn(
     return turn_boundaries[turn_index]
 
 
+def _validate_fork_inherited_prefix(
+    messages: list[Any],
+    child_tag: str,
+) -> list[tuple[dict[str, Any], dict[str, Any], str, str]]:
+    """Authenticate every message in a proposed inherited fork prefix.
+
+    Forking is an authority boundary, so the permissive conversation readers
+    are not sufficient here: an ignored orphan, system message, building
+    placeholder, or unowned pair would otherwise survive beside the exchanges
+    they recognize.  A valid prefix is zero or more adjacent user/assistant
+    pairs whose two halves have the same exact privacy, chunk owner, history
+    owner, and inherited turn identity.
+    """
+    if not isinstance(messages, list):
+        raise ValueError("fork parent history is incomplete")
+    if len(messages) % 2:
+        raise ValueError(
+            "fork parent history is incomplete: inherited prefix contains "
+            "an orphan message"
+        )
+
+    exchanges: list[tuple[dict[str, Any], dict[str, Any], str, str]] = []
+    for offset in range(0, len(messages), 2):
+        user = messages[offset]
+        assistant = messages[offset + 1]
+        if (
+            not isinstance(user, dict)
+            or not isinstance(assistant, dict)
+            or user.get("role") != "user"
+            or assistant.get("role") != "assistant"
+            or not isinstance(user.get("content"), str)
+            or not user.get("content", "").strip()
+            or not isinstance(assistant.get("content"), str)
+            or not assistant.get("content", "").strip()
+            or (
+                isinstance(assistant.get("visual_outcome"), dict)
+                and assistant["visual_outcome"].get("state") == "building"
+            )
+        ):
+            raise ValueError(
+                "fork parent history is incomplete: inherited prefix must "
+                "contain only complete user/assistant exchanges"
+            )
+
+        privacy = complete_exchange_privacy(user, assistant)
+        if privacy is None or not turn_privacy_allows(privacy, child_tag):
+            raise ValueError(
+                "fork privacy cannot admit an unknown, conflicting, or "
+                "stricter inherited exchange"
+            )
+
+        user_chunk = user.get("chunk_id")
+        assistant_chunk = assistant.get("chunk_id")
+        if (
+            not isinstance(user_chunk, str)
+            or not user_chunk.strip()
+            or assistant_chunk != user_chunk
+        ):
+            raise ValueError(
+                "fork parent history is incomplete: inherited exchange is "
+                "not owned by one matching chunk"
+            )
+
+        owner = user.get("_ora_history_owner")
+        turn_identity = user.get("_ora_history_turn_index")
+        if (
+            not isinstance(owner, str)
+            or not owner.strip()
+            or assistant.get("_ora_history_owner") != owner
+            or isinstance(turn_identity, bool)
+            or not isinstance(turn_identity, int)
+            or turn_identity < 1
+            or assistant.get("_ora_history_turn_index") != turn_identity
+        ):
+            raise ValueError(
+                "fork parent history is incomplete: inherited exchange lacks "
+                "one matching turn owner"
+            )
+        exchanges.append((user, assistant, privacy, user_chunk.strip()))
+    return exchanges
+
+
 def fork_conversation(
     parent_id: str,
     new_id: str,
@@ -1962,10 +2501,11 @@ def fork_conversation(
       * inherits the parent's ``tag`` unless ``creation_tag`` explicitly
         selects a valid mode. This is a new envelope, so a Stealth override is
         allowed without making Stealth mutable on the parent.
-      * gets ``fork_point_message_count``, the exact parent-message prefix
-        visible at the fork. A requested ``fork_point_turn_index`` is resolved
-        against the browser's displayed turns; when omitted, the boundary is
-        the parent's latest message.
+      * gets ``fork_point_effective_message_count``, the exact effective
+        parent-history prefix visible at the fork. The legacy local cutoff is
+        retained for older readers. A requested ``fork_point_turn_index`` is
+        resolved against the browser's displayed turns; when omitted, the
+        boundary is the parent's latest message.
       * retains the legacy ``parent_conversation_id`` and
         ``fork_point_chunk_id`` fields for older readers.
       * gets ``created`` (the fork creation time) and a legacy
@@ -1987,32 +2527,60 @@ def fork_conversation(
     if parent is None:
         return None
 
-    # Validate parent shape; default to standard mode if tag malformed.
+    # The envelope tag is the next-turn composer, not a summary of the
+    # transcript.  Validate it without using it to classify inherited turns.
     parent_tag = parent.get("tag", "")
     if not isinstance(parent_tag, str) or parent_tag not in CONVERSATION_TAGS:
-        parent_tag = ""
+        raise ValueError("fork parent privacy authority is invalid")
     child_tag = creation_tag if creation_tag in CONVERSATION_TAGS else parent_tag
-    if not conversation_privacy_allows(parent_tag, child_tag):
-        raise ValueError(
-            "fork privacy cannot make parent content visible at a weaker boundary"
-        )
-    # The fetch route and browser display the direct parent's local transcript.
-    # Keep the API's zero-based displayed-turn index and the durable cutoff in
-    # that same local coordinate system.  Recursive resolution carries the
-    # parent's already-clipped ancestry ahead of this local prefix.
     parent_messages = parent.get("messages") or []
     if not isinstance(parent_messages, list):
         parent_messages = []
-    boundary_message_count = _fork_point_message_count_for_turn(
-        parent_messages, fork_point_turn_index,
+    ancestry_diagnostics: list[str] = []
+    effective_parent = resolve_effective_conversation_history(
+        parent_id,
+        sessions_root=root,
+        diagnostics=ancestry_diagnostics,
     )
-    # Inherit display name with a "(fork)" suffix so the user sees a
-    # distinct row but can rename it.
-    parent_display = parent.get("display_name") or ""
-    if isinstance(parent_display, str) and parent_display.strip():
-        derived_display = (parent_display.strip() + " (fork)")[:200]
-    else:
-        derived_display = ""
+    if effective_parent is None or ancestry_diagnostics:
+        detail = (
+            "; ".join(ancestry_diagnostics)
+            if ancestry_diagnostics else "history unavailable"
+        )
+        raise ValueError(f"fork parent history is incomplete: {detail}")
+    effective_boundary_message_count = _fork_point_message_count_for_turn(
+        effective_parent, fork_point_turn_index,
+    )
+    ancestry_count = max(0, len(effective_parent) - len(parent_messages))
+    boundary_message_count = max(
+        0,
+        min(
+            len(parent_messages),
+            effective_boundary_message_count - ancestry_count,
+        ),
+    )
+    inherited = effective_parent[:effective_boundary_message_count]
+    inherited_exchanges = _validate_fork_inherited_prefix(
+        inherited, child_tag,
+    )
+    inherited_chunk_id = (
+        inherited_exchanges[-1][3] if inherited_exchanges else None
+    )
+    if (
+        fork_point_chunk_id is not None
+        and fork_point_chunk_id != inherited_chunk_id
+    ):
+        raise ValueError(
+            "fork point chunk identity does not match the inherited prefix"
+        )
+
+    # Dialogue-wide display metadata may have been generated from a later,
+    # withheld turn.  Rebuild the child title only from its authenticated
+    # inherited prefix and leave description empty until the child owns one.
+    inherited_title = _derive_title(inherited)
+    derived_display = (
+        (inherited_title + " (fork)")[:200] if inherited_title else ""
+    )
 
     forked_at = timestamp or _dt.now().isoformat(timespec="seconds")
 
@@ -2027,13 +2595,11 @@ def fork_conversation(
         "created":                 forked_at,
         "parent_conversation_id":  parent_id,
         "fork_point_message_count": boundary_message_count,
-        "fork_point_chunk_id":     fork_point_chunk_id,
+        "fork_point_effective_message_count": effective_boundary_message_count,
+        "fork_point_chunk_id":     inherited_chunk_id,
         "forked_at":               forked_at,
         "project_ids":             list(parent_projects),
-        "description":             (
-            parent.get("description")
-            if isinstance(parent.get("description"), str) else ""
-        ),
+        "description":             "",
         "contributors":            copy.deepcopy(parent_contributors),
         "messages":                [],
     }
@@ -2178,6 +2744,7 @@ def detach_direct_fork_children(
 
                         current["parent_conversation_id"] = None
                         current["fork_point_message_count"] = None
+                        current["fork_point_effective_message_count"] = None
                         current["fork_point_chunk_id"] = None
                         if not _atomic_write_envelope(path, current):
                             result["errors"].append(
@@ -2462,7 +3029,15 @@ __all__ = [
     "TURN_SPATIAL_FIELDS",
     "CONVERSATION_TAGS",
     "MUTABLE_PRIVACY_TAGS",
+    "TURN_PRIVACY_VALUES",
     "conversation_privacy_allows",
+    "turn_privacy_from_tag",
+    "turn_privacy_to_tag",
+    "complete_exchange_privacy",
+    "iter_complete_exchanges",
+    "turn_privacy_allows",
+    "filter_conversation_history_for_tag",
+    "displayed_exchange_owner",
     "validate_conversation_id",
     "normalize_contributors",
     "create_conversation_envelope",
@@ -2481,6 +3056,7 @@ __all__ = [
     "get_prior_annotations",
     "get_conversation_tag",
     "set_conversation_tag",
+    "set_conversation_turn_privacy",
     "effective_conversation_title",
     "iter_conversations",
     "mark_conversation_read",

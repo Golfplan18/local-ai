@@ -45,6 +45,11 @@ ChromaDB metadata schema (Phase 5.2):
                                  HCP chunked-indexing path: 1-based)
         total_chunks           — int (ditto)
         source_document        — JSON-serialized list of source wikilinks
+        turn_privacy           — exact source-exchange authority for an
+                                 Ora-managed conversation derivative
+        source_chunk_id        — immutable source chunk owner for that
+                                 derivative
+        source_turn_index      — one-based source exchange identity
 
     Conditional fields (present per §8):
         writing
@@ -176,6 +181,9 @@ _STANDARD_SCALAR_FIELDS = (
     "source_format",
     "source_path",
     "processed_date",
+    "turn_privacy",
+    "source_chunk_id",
+    "source_turn_index",
     "chunk_index",
     "total_chunks",
 )

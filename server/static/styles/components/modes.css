@@ -50,6 +50,22 @@ body.stealth-mode .bridge-mode-label {
   color: var(--ora-mode-stealth-label);
 }
 
+/* Review privacy belongs to the displayed complete exchange.  These rules
+   affect only Findings; the body mode continues to describe the next-turn
+   composer and therefore still wins across the full workspace. */
+body:not(.private-mode):not(.stealth-mode) .output-pane.review-private {
+  border-color: var(--ora-mode-private-pane-border);
+  box-shadow: inset 0 0 0 1px color-mix(
+    in srgb, var(--ora-mode-private-pane-border) 28%, transparent
+  );
+}
+body:not(.stealth-mode) .output-pane.review-stealth {
+  border-color: var(--ora-mode-stealth-pane-border);
+}
+.output-pane.review-privacy-unknown {
+  border-style: dashed;
+}
+
 /* The R-glyph brackets are the single runtime mode label. Bridge labels stay
    hidden to avoid rendering the same Private/Stealth word on top of them;
    the retained bridge nodes are used only by Appearance preview mode. */

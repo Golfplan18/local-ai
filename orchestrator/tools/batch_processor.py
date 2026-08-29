@@ -568,7 +568,16 @@ class BatchProcessor:
             json.dump(self._manifest, f, indent=2)
 
 
-def write_review_note(note, gate_result, review_dir: str) -> str:
+def write_review_note(
+    note,
+    gate_result,
+    review_dir: str,
+    *,
+    conversation_id: str | None = None,
+    turn_privacy: str | None = None,
+    source_chunk_id: str | None = None,
+    source_turn_index: int | None = None,
+) -> str:
     """Persist one human-review note and return the path written.
 
     Shared by the batch processor and the runtime pipeline. The runtime
@@ -581,28 +590,98 @@ def write_review_note(note, gate_result, review_dir: str) -> str:
     safe_title = _sanitize_filename(title)
     path = os.path.join(review_dir, f"{safe_title}.json")
 
+    runtime_values = (
+        conversation_id,
+        turn_privacy,
+        source_chunk_id,
+        source_turn_index,
+    )
+    runtime_owned = any(value is not None for value in runtime_values)
+    if runtime_owned:
+        if not isinstance(conversation_id, str) or not conversation_id.strip():
+            raise ValueError("runtime review note requires a conversation owner")
+        if turn_privacy not in {"standard", "private", "stealth"}:
+            raise ValueError("runtime review note has invalid turn privacy")
+        if not isinstance(source_chunk_id, str) or not source_chunk_id.strip():
+            raise ValueError("runtime review note requires a source chunk")
+        if (isinstance(source_turn_index, bool)
+                or not isinstance(source_turn_index, int)
+                or source_turn_index < 1):
+            raise ValueError("runtime review note requires a positive source turn")
+
+    raw_frontmatter = getattr(note, "yaml_frontmatter", {})
+    if runtime_owned and not isinstance(raw_frontmatter, dict):
+        raise ValueError("runtime review note frontmatter must be an object")
+    frontmatter = (
+        dict(raw_frontmatter) if runtime_owned else raw_frontmatter
+    )
+    if runtime_owned:
+        raw_tags = frontmatter.get("tags", [])
+        tags = list(raw_tags) if isinstance(raw_tags, list) else (
+            [raw_tags] if raw_tags else []
+        )
+        if (turn_privacy == "private" and "private" not in {
+            str(value).strip().casefold() for value in tags
+        }):
+            tags.append("private")
+        frontmatter["tags"] = tags
+
     review_data = {
         "title": title,
         "note_type": getattr(note, "note_type", ""),
         "subtype": getattr(note, "subtype", None),
         "body": getattr(note, "body", ""),
-        "yaml_frontmatter": getattr(note, "yaml_frontmatter", {}),
+        "yaml_frontmatter": frontmatter,
         "relationships": getattr(note, "relationships", []),
-        "source_file": getattr(note, "source_file", ""),
+        "source_file": (
+            conversation_id if runtime_owned
+            else getattr(note, "source_file", "")
+        ),
         "review_reasons": getattr(gate_result, "reasons", []),
         "checks": getattr(gate_result, "checks", {}),
         "status": "pending",  # pending, approved, rejected, edited
         "reviewed_at": None,
     }
+    if runtime_owned:
+        review_data.update({
+            "artifact_kind": "conversation_runtime_derivative",
+            "managed_by": "ora",
+            "turn_privacy": turn_privacy,
+            "source_chunk_id": source_chunk_id,
+            "source_turn_index": source_turn_index,
+        })
 
-    counter = 1
-    while os.path.exists(path):
-        path = os.path.join(review_dir, f"{safe_title}-{counter}.json")
-        counter += 1
+    counter = 0
+    while True:
+        path = os.path.join(
+            review_dir,
+            f"{safe_title}.json" if counter == 0
+            else f"{safe_title}-{counter}.json",
+        )
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            fd = os.open(path, flags, 0o600)
+        except FileExistsError:
+            counter += 1
+            continue
 
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(review_data, f, indent=2)
-    return path
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                fd = -1
+                json.dump(review_data, stream, indent=2)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except Exception:
+            if fd >= 0:
+                os.close(fd)
+            try:
+                os.unlink(path)
+            except FileNotFoundError:
+                pass
+            raise
+        return path
 
 
 def _sanitize_filename(title: str) -> str:

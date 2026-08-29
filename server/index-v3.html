@@ -1667,6 +1667,10 @@
     const activeTag = conversation && typeof conversation.getActiveTag === 'function'
       ? conversation.getActiveTag()
       : (currentMode() || '');
+    const displayedPrivacy = conversation
+      && typeof conversation.getCurrentTurnPrivacy === 'function'
+      ? conversation.getCurrentTurnPrivacy()
+      : null;
     const readOnly = conversation && typeof conversation.isReadOnly === 'function'
       ? conversation.isReadOnly()
       : false;
@@ -1695,9 +1699,14 @@
         ];
 
     if (mode === 'private' && activeId && !readOnly && activeTag !== 'stealth') {
+      if (displayedPrivacy === 'standard' || displayedPrivacy === 'private') {
+        items.push(displayedPrivacy === 'private'
+          ? { action: 'make-turn-standard', label: 'Make displayed turn Standard' }
+          : { action: 'make-turn-private', label: 'Make displayed turn Private' });
+      }
       items.push(activeTag === 'private'
-        ? { action: 'make-standard', label: 'Make current Standard' }
-        : { action: 'make-private', label: 'Make current Private' });
+        ? { action: 'compose-standard', label: 'Compose next as Standard' }
+        : { action: 'compose-private', label: 'Compose next as Private' });
     }
     if (mode === 'stealth' && activeId && !readOnly && activeTag === 'stealth') {
       items.push({ action: 'exit-stealth', label: 'Exit Off Record' });
@@ -1778,23 +1787,28 @@
       }));
       return;
     }
-    if (action === 'make-private' || action === 'make-standard') {
+    if (action === 'make-turn-private' || action === 'make-turn-standard') {
       const conversation = window.OraConversation;
-      if (!conversation || typeof conversation.setPrivacyTag !== 'function') {
-        window.alert('Dialogue privacy controls are unavailable.');
+      if (!conversation || typeof conversation.setTurnPrivacy !== 'function') {
+        window.alert('Displayed-turn privacy controls are unavailable.');
         return;
       }
       if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
-      if (action === 'make-standard') {
-        const turnCount = typeof conversation.getTurnCount === 'function'
-          ? conversation.getTurnCount() : 0;
-        const noun = turnCount === 1 ? 'turn' : 'turns';
-        if (!window.confirm(
-          `Make all ${turnCount} ${noun} Standard? The complete Dialogue will become eligible for Standard conversational retrieval.`
-        )) return;
+      conversation.setTurnPrivacy(
+        action === 'make-turn-private' ? 'private' : '',
+        conversationId
+      );
+      return;
+    }
+    if (action === 'compose-private' || action === 'compose-standard') {
+      const conversation = window.OraConversation;
+      if (!conversation || typeof conversation.setPrivacyTag !== 'function') {
+        window.alert('Composer privacy controls are unavailable.');
+        return;
       }
+      if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
       conversation.setPrivacyTag(
-        action === 'make-private' ? 'private' : '',
+        action === 'compose-private' ? 'private' : '',
         conversationId
       );
       return;

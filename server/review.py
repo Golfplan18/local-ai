@@ -18,13 +18,20 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for
 
-REVIEW_DIR = os.path.expanduser("~/ora/data/review-queue/")
-STAGING_DIR = os.path.expanduser("~/ora/data/extraction-staging/")
-REJECTED_DIR = os.path.expanduser("~/ora/data/review-rejected/")
+_REPO_ROOT = str(Path(__file__).resolve().parents[1])
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from orchestrator import runtime_paths as _rp
+
+REVIEW_DIR = str(Path(_rp.DATA_DIR_STR) / "review-queue")
+STAGING_DIR = str(Path(_rp.DATA_DIR_STR) / "extraction-staging")
+REJECTED_DIR = str(Path(_rp.DATA_DIR_STR) / "review-rejected")
 
 app = Flask(__name__)
 
@@ -322,28 +329,28 @@ def action(filename):
     if not note:
         return redirect(url_for("index"))
 
-    from datetime import datetime
-    note["reviewed_at"] = datetime.now().isoformat()
-
-    if action_type == "approve":
-        note["status"] = "approved"
-        _save_note(filename, note)
-        # Move to staging directory as vault-ready file
-        _approve_note(note)
-
-    elif action_type == "reject":
-        note["status"] = "rejected"
-        _save_note(filename, note)
-        # Move to rejected directory
-        _reject_note(filename, note)
-
-    elif action_type == "save_edit":
-        # Update note with edited content
-        note["title"] = request.form.get("title", note.get("title", ""))
-        note["body"] = request.form.get("body", note.get("body", ""))
-        note["status"] = "approved"
-        _save_note(filename, note)
-        _approve_note(note)
+    try:
+        owner = _runtime_review_ownership(note)
+        if owner is None:
+            _apply_review_action(filename, note, action_type)
+        else:
+            # Retagging and disposition both replace the whole review record.
+            # Re-read after acquiring their shared per-Dialogue lock so an
+            # action can neither restore stale privacy nor approve stale body.
+            with _rp.conversation_lifecycle_lock(owner["conversation_id"]):
+                current = _load_note(filename)
+                if current is None:
+                    return redirect(url_for("index"))
+                current_owner = _runtime_review_ownership(current)
+                if (current_owner is None
+                        or _runtime_owner_key(current_owner)
+                        != _runtime_owner_key(owner)):
+                    return jsonify({
+                        "error": "review record ownership changed before disposition",
+                    }), 409
+                _apply_review_action(filename, current, action_type)
+    except (TimeoutError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 409
 
     # Navigate to next pending note
     next_pending = _get_next_pending(filename)
@@ -367,6 +374,71 @@ def api_stats():
 # ---------------------------------------------------------------------------
 # Data layer
 # ---------------------------------------------------------------------------
+
+def _runtime_review_ownership(note: dict) -> dict | None:
+    """Return exact Ora turn ownership, refusing partial runtime claims."""
+    runtime_keys = {
+        "artifact_kind", "managed_by", "turn_privacy",
+        "source_chunk_id", "source_turn_index",
+    }
+    if not isinstance(note, dict) or not runtime_keys.intersection(note):
+        return None
+    conversation_id = note.get("source_file")
+    chunk_id = note.get("source_chunk_id")
+    turn_index = note.get("source_turn_index")
+    turn_privacy = note.get("turn_privacy")
+    frontmatter = note.get("yaml_frontmatter")
+    if (note.get("artifact_kind") != "conversation_runtime_derivative"
+            or note.get("managed_by") != "ora"
+            or not isinstance(conversation_id, str)
+            or not conversation_id.strip()
+            or not isinstance(chunk_id, str)
+            or not chunk_id.strip()
+            or isinstance(turn_index, bool)
+            or not isinstance(turn_index, int)
+            or turn_index < 1
+            or turn_privacy not in {"standard", "private", "stealth"}
+            or not isinstance(frontmatter, dict)
+            or not isinstance(frontmatter.get("tags", []), list)):
+        raise ValueError(
+            "runtime review record lacks exact Ora turn ownership/privacy"
+        )
+    return {
+        "conversation_id": conversation_id.strip(),
+        "source_chunk_id": chunk_id.strip(),
+        "source_turn_index": turn_index,
+        "turn_privacy": turn_privacy,
+    }
+
+
+def _runtime_owner_key(owner: dict) -> tuple[str, str, int]:
+    """Return the immutable coordinates protected by the lifecycle lock."""
+    return (
+        owner["conversation_id"].casefold(),
+        owner["source_chunk_id"],
+        owner["source_turn_index"],
+    )
+
+
+def _apply_review_action(filename: str, note: dict, action_type: str | None) -> None:
+    """Apply one disposition to an already-current review record."""
+    from datetime import datetime
+
+    note["reviewed_at"] = datetime.now().isoformat()
+    if action_type == "approve":
+        note["status"] = "approved"
+        _save_note(filename, note)
+        _approve_note(note)
+    elif action_type == "reject":
+        note["status"] = "rejected"
+        _save_note(filename, note)
+        _reject_note(filename, note)
+    elif action_type == "save_edit":
+        note["title"] = request.form.get("title", note.get("title", ""))
+        note["body"] = request.form.get("body", note.get("body", ""))
+        note["status"] = "approved"
+        _save_note(filename, note)
+        _approve_note(note)
 
 def _load_review_queue() -> list[dict]:
     """Load all notes from the review queue directory."""
@@ -403,8 +475,9 @@ def _load_note(filename: str) -> dict | None:
 def _save_note(filename: str, note: dict):
     """Save a note back to the review queue."""
     path = os.path.join(REVIEW_DIR, filename)
-    with open(path, "w") as f:
-        json.dump(note, f, indent=2)
+    _rp.atomic_write_text(
+        path, json.dumps(note, indent=2, ensure_ascii=False),
+    )
 
 
 def _get_review_files() -> list[str]:
@@ -445,6 +518,17 @@ def _approve_note(note: dict):
     # Build markdown content
     lines = ["---"]
     fm = note.get("yaml_frontmatter", {})
+    owner = _runtime_review_ownership(note)
+
+    if owner is not None:
+        lines.extend([
+            "artifact_kind: conversation_runtime_derivative",
+            "managed_by: ora",
+            "source_file: " + json.dumps(owner["conversation_id"]),
+            "turn_privacy: " + json.dumps(owner["turn_privacy"]),
+            "source_chunk_id: " + json.dumps(owner["source_chunk_id"]),
+            f"source_turn_index: {owner['source_turn_index']}",
+        ])
 
     nexus = fm.get("nexus", "")
     if isinstance(nexus, list) and nexus:
@@ -456,7 +540,18 @@ def _approve_note(note: dict):
 
     lines.append(f"type: {fm.get('type', 'working')}")
 
-    tags = fm.get("tags", [])
+    tags = list(fm.get("tags", [])) if isinstance(fm.get("tags", []), list) else []
+    if owner is not None:
+        tags = [
+            value for value in tags
+            if (owner["turn_privacy"] == "private"
+                or str(value).strip().casefold() != "private")
+        ]
+        if (owner["turn_privacy"] == "private"
+                and "private" not in {
+                    str(value).strip().casefold() for value in tags
+                }):
+            tags.append("private")
     if isinstance(tags, list) and tags:
         lines.append("tags:")
         for t in tags:
@@ -493,16 +588,16 @@ def _approve_note(note: dict):
         path = os.path.join(STAGING_DIR, f"{safe_title}-{counter}.md")
         counter += 1
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+    _rp.atomic_write_text(path, "\n".join(lines))
 
 
 def _reject_note(filename: str, note: dict):
     """Move a rejected note to the rejected directory."""
     os.makedirs(REJECTED_DIR, exist_ok=True)
     dest = os.path.join(REJECTED_DIR, filename)
-    with open(dest, "w") as f:
-        json.dump(note, f, indent=2)
+    _rp.atomic_write_text(
+        dest, json.dumps(note, indent=2, ensure_ascii=False),
+    )
 
 
 def _sanitize(title: str) -> str:

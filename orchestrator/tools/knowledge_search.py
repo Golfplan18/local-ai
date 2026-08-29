@@ -31,6 +31,17 @@ import sqlite3
 from difflib import SequenceMatcher
 from typing import Any, Optional
 
+try:
+    from orchestrator.conversation_memory import (
+        knowledge_admitted_paths,
+        knowledge_metadata_allows,
+    )
+except ImportError:  # pragma: no cover - direct orchestrator import context
+    from conversation_memory import (
+        knowledge_admitted_paths,
+        knowledge_metadata_allows,
+    )
+
 def _chromadb_default() -> str:
     """Resolve the vector store through runtime_paths, never a hardcoded path.
 
@@ -187,10 +198,10 @@ def _build_where_clause(
     if type_filter:
         clauses.append({"type": {"$in": list(type_filter)}})
 
-    privacy = (
-        privacy_tag
-        if privacy_tag in ("", "private", "stealth")
-        else ("private" if include_private else "")
+    if privacy_tag is not None and privacy_tag not in ("", "private", "stealth"):
+        raise ValueError("privacy_tag is invalid")
+    privacy = privacy_tag if privacy_tag is not None else (
+        "private" if include_private else ""
     )
 
     if collection == "knowledge":
@@ -210,17 +221,21 @@ def _build_where_clause(
         for _tag in (exclude_tags or []):
             clauses.append({f"tag_{_tag}": {"$ne": True}})
     elif collection == "conversations":
-        # Conversation privacy is denormalized as one tag string. Standard
-        # sees Standard only; Private additionally sees Private; Stealth may
-        # see all three. Separate ``$ne`` clauses keep this compatible with
-        # Chroma versions that do not implement ``$nin``.
+        # Each complete exchange carries an exact authority. Equality/inclusion
+        # filters intentionally exclude legacy missing/invalid rows before
+        # Chroma computes semantic candidates.
         if privacy == "":
-            clauses.extend((
-                {"tag": {"$ne": "private"}},
-                {"tag": {"$ne": "stealth"}},
-            ))
+            clauses.append({"turn_privacy": {"$eq": "standard"}})
         elif privacy == "private":
-            clauses.append({"tag": {"$ne": "stealth"}})
+            clauses.append({
+                "turn_privacy": {"$in": ["standard", "private"]},
+            })
+        else:
+            clauses.append({
+                "turn_privacy": {
+                    "$in": ["standard", "private", "stealth"],
+                },
+            })
 
     if not clauses:
         return None
@@ -306,6 +321,106 @@ def _metadata_text(meta: dict[str, Any]) -> str:
     return " ".join(str(v or "") for v in fields)
 
 
+def _conversation_safe_payload(
+    document: str,
+    metadata: dict[str, Any],
+) -> tuple[str, dict[str, Any]] | None:
+    """Strip Dialogue-wide text before Standard row scoring or return."""
+    text = str(document or "")
+    user_match = re.search(
+        r"\*\*User:\*\*\s*(.*?)(?=\n\*\*Assistant:\*\*|\Z)",
+        text,
+        flags=re.DOTALL,
+    )
+    assistant_match = re.search(
+        r"\*\*Assistant:\*\*\s*(.*)", text, flags=re.DOTALL,
+    )
+    if user_match is None:
+        return None
+    user = user_match.group(1).strip()
+    if not user:
+        return None
+    assistant = assistant_match.group(1).strip() if assistant_match else ""
+    safe_document = (
+        f"**User:**\n\n{user}\n\n**Assistant:**\n\n{assistant}"
+    )
+    title = " ".join(user.split())
+    title = title if len(title) <= 80 else title[:79].rstrip() + "…"
+    safe_metadata = dict(metadata or {})
+    for key in (
+        "title", "description", "raw_path", "source_file",
+        "source_document", "source_path",
+    ):
+        safe_metadata.pop(key, None)
+    safe_metadata["conversation_title"] = title
+    return safe_document, safe_metadata
+
+
+def _conversation_allowed_turn_privacies(
+    *,
+    include_private: bool,
+    privacy_tag: Optional[str],
+) -> tuple[str, ...]:
+    if privacy_tag is not None and privacy_tag not in ("", "private", "stealth"):
+        return ()
+    privacy = privacy_tag if privacy_tag is not None else (
+        "private" if include_private else ""
+    )
+    if privacy == "":
+        return ("standard",)
+    if privacy == "private":
+        return ("standard", "private")
+    return ("standard", "private", "stealth")
+
+
+def _knowledge_target_tag(
+    *,
+    include_private: bool,
+    privacy_tag: Optional[str],
+) -> str | None:
+    if privacy_tag is not None:
+        return privacy_tag if privacy_tag in ("", "private", "stealth") else None
+    return "private" if include_private else ""
+
+
+def _knowledge_admitted_path_inventory(
+    collection_obj: Any,
+    *,
+    include_private: bool,
+    privacy_tag: Optional[str],
+) -> list[str]:
+    """Inventory every knowledge row and authenticate owner paths.
+
+    The inventory deliberately has no metadata ``where`` filter: malformed
+    owner claims cannot be described safely by a filter over expected values.
+    Only the returned paths may be named by a later vector or lexical query.
+    """
+    target_tag = _knowledge_target_tag(
+        include_private=include_private,
+        privacy_tag=privacy_tag,
+    )
+    if target_tag is None:
+        return []
+    result = collection_obj.get(include=["metadatas"])
+    metadatas = result.get("metadatas") if isinstance(result, dict) else None
+    if not isinstance(metadatas, list):
+        raise RuntimeError("knowledge authority inventory is unavailable")
+    return knowledge_admitted_paths(metadatas, target_tag)
+
+
+def _where_with_admitted_paths(
+    where: Optional[dict[str, Any]],
+    admitted_paths: list[str],
+) -> dict[str, Any]:
+    path_scope: dict[str, Any] = {"path": {"$in": admitted_paths}}
+    if where is None:
+        return path_scope
+    clauses = where.get("$and") if set(where) == {"$and"} else None
+    if isinstance(clauses, list):
+        return {"$and": [*clauses, path_scope]}
+    return {"$and": [where, path_scope]}
+
+
 def _lexical_score(query: str, text: str, *, metadata_match: bool = False) -> float:
     """Score exact and near-miss lexical matches on a 0-1 similarity scale.
 
@@ -370,14 +485,20 @@ def _metadata_passes_filters(
     stored_tag = str(meta.get("tag") or "").strip().casefold()
     if stored_tag:
         tags.add(stored_tag)
-    privacy = (
-        privacy_tag
-        if privacy_tag in ("", "private", "stealth")
-        else ("private" if include_private else "")
+    if privacy_tag is not None and privacy_tag not in ("", "private", "stealth"):
+        return False
+    privacy = privacy_tag if privacy_tag is not None else (
+        "private" if include_private else ""
     )
     if type_filter and meta.get("type") not in set(type_filter):
         return False
     if collection == "knowledge":
+        target_tag = _knowledge_target_tag(
+            include_private=include_private,
+            privacy_tag=privacy_tag,
+        )
+        if target_tag is None or not knowledge_metadata_allows(meta, target_tag):
+            return False
         if not include_archived and (
             bool(meta.get("tag_archived", False)) or "archived" in tags
         ):
@@ -395,13 +516,15 @@ def _metadata_passes_filters(
                 return False
     elif collection == "conversations":
         archived = bool(meta.get("tag_archived", False)) or "archived" in tags
-        private = bool(meta.get("tag_private", False)) or "private" in tags
-        stealth = bool(meta.get("tag_stealth", False)) or "stealth" in tags
         if not include_archived and archived:
             return False
-        if privacy == "" and (private or stealth):
-            return False
-        if privacy == "private" and stealth:
+        exact = meta.get("turn_privacy")
+        allowed = (
+            {"standard"} if privacy == ""
+            else {"standard", "private"} if privacy == "private"
+            else {"standard", "private", "stealth"}
+        )
+        if exact not in allowed:
             return False
     return True
 
@@ -410,6 +533,9 @@ def _fetch_chunks_by_id(
     collection_obj: Any,
     ids: list[str],
     scores: dict[str, float],
+    *,
+    sanitize_conversations: bool = False,
+    metadata_filter=None,
 ) -> list[dict[str, Any]]:
     if not ids:
         return []
@@ -432,6 +558,13 @@ def _fetch_chunks_by_id(
         if cid not in by_id:
             continue
         doc, meta = by_id[cid]
+        if metadata_filter is not None and not metadata_filter(meta):
+            continue
+        if sanitize_conversations:
+            safe_payload = _conversation_safe_payload(doc, meta)
+            if safe_payload is None:
+                continue
+            doc, meta = safe_payload
         score = float(scores.get(cid, 0.0))
         chunks.append({
             "id": cid,
@@ -507,6 +640,8 @@ def _sqlite_candidate_ids(
     terms: list[str],
     *,
     limit: Optional[int],
+    allowed_turn_privacies: tuple[str, ...] | None = None,
+    allowed_knowledge_paths: tuple[str, ...] | None = None,
 ) -> list[str]:
     """Use Chroma's SQLite metadata and FTS tables for lexical recall.
 
@@ -519,6 +654,35 @@ def _sqlite_candidate_ids(
     db_path = _sqlite_path()
     if not os.path.exists(db_path) or (limit is not None and limit <= 0):
         return []
+    if allowed_turn_privacies == ():
+        return []
+    if allowed_knowledge_paths == ():
+        return []
+
+    privacy_join = ""
+    privacy_clause = ""
+    privacy_params: list[str] = []
+    if allowed_turn_privacies is not None:
+        placeholders = ",".join("?" for _ in allowed_turn_privacies)
+        privacy_join = (
+            "JOIN embedding_metadata turn_authority "
+            "ON turn_authority.id = e.id "
+            "AND turn_authority.key = 'turn_privacy'"
+        )
+        privacy_clause = (
+            f"AND turn_authority.string_value IN ({placeholders})"
+        )
+        privacy_params = list(allowed_turn_privacies)
+
+    knowledge_join = ""
+    if allowed_knowledge_paths is not None:
+        knowledge_join = (
+            "JOIN embedding_metadata knowledge_path "
+            "ON knowledge_path.id = e.id "
+            "AND knowledge_path.key = 'path' "
+            "JOIN ora_admitted_knowledge_paths admitted_path "
+            "ON admitted_path.path = knowledge_path.string_value"
+        )
 
     ids: list[str] = []
     try:
@@ -530,10 +694,31 @@ def _sqlite_candidate_ids(
         segment_id = _collection_metadata_segment(cur, collection_name)
         if not segment_id:
             return []
+        if allowed_knowledge_paths is not None:
+            cur.execute(
+                "CREATE TEMP TABLE ora_admitted_knowledge_paths "
+                "(path TEXT PRIMARY KEY)",
+            )
+            cur.executemany(
+                "INSERT OR IGNORE INTO ora_admitted_knowledge_paths(path) "
+                "VALUES (?)",
+                ((path,) for path in allowed_knowledge_paths),
+            )
 
         patterns = _metadata_like_patterns(query, terms)
         if patterns:
-            key_placeholders = ",".join("?" for _ in _LEXICAL_METADATA_KEYS)
+            metadata_keys = (
+                tuple(
+                    key for key in _LEXICAL_METADATA_KEYS
+                    if key not in {
+                        "title", "conversation_title", "raw_path",
+                        "source_file", "source_document", "source_path",
+                    }
+                )
+                if allowed_turn_privacies is not None
+                else _LEXICAL_METADATA_KEYS
+            )
+            key_placeholders = ",".join("?" for _ in metadata_keys)
             per_term_limit = (
                 None if limit is None else max(
                     12,
@@ -547,13 +732,17 @@ def _sqlite_candidate_ids(
                     SELECT DISTINCT e.embedding_id
                     FROM embeddings e
                     JOIN embedding_metadata m ON m.id = e.id
+                    {privacy_join}
+                    {knowledge_join}
                     WHERE e.segment_id = ?
                       AND m.key IN ({key_placeholders})
                       AND m.string_value IS NOT NULL
                       AND lower(m.string_value) LIKE ?
+                      {privacy_clause}
                 """
                 params: list[Any] = [
-                    segment_id, *_LEXICAL_METADATA_KEYS, pattern,
+                    segment_id, *metadata_keys, pattern,
+                    *privacy_params,
                 ]
                 if per_term_limit is not None:
                     sql += " LIMIT ?"
@@ -574,20 +763,27 @@ def _sqlite_candidate_ids(
             for term in fts_terms:
                 if limit is not None and len(ids) >= limit * 3:
                     break
-                sql = """
+                sql = f"""
                     SELECT e.embedding_id
                     FROM embedding_fulltext_search
                     JOIN embeddings e ON e.id = embedding_fulltext_search.rowid
+                    {privacy_join}
+                    {knowledge_join}
                     WHERE e.segment_id = ?
                       AND embedding_fulltext_search MATCH ?
+                      {privacy_clause}
                 """
-                params = [segment_id, f'"{term}"']
+                params = [
+                    segment_id, f'"{term}"', *privacy_params,
+                ]
                 if per_term_limit is not None:
                     sql += " LIMIT ?"
                     params.append(per_term_limit)
                 rows = cur.execute(sql, params).fetchall()
                 ids.extend(str(row[0]) for row in rows)
     except sqlite3.Error:
+        if allowed_knowledge_paths is not None:
+            return []
         return _dedupe_ids(ids, limit)
     finally:
         conn.close()
@@ -643,6 +839,24 @@ def lexical_search_raw(
 
         scores: dict[str, float] = {}
         terms = _query_terms(query)
+        admitted_paths: list[str] | None = None
+        admitted_path_set: set[str] | None = None
+        if collection == "knowledge":
+            admitted_paths = _knowledge_admitted_path_inventory(
+                col,
+                include_private=include_private,
+                privacy_tag=privacy_tag,
+            )
+            if not admitted_paths:
+                return []
+            admitted_path_set = set(admitted_paths)
+        allowed_turn_privacies = (
+            _conversation_allowed_turn_privacies(
+                include_private=include_private,
+                privacy_tag=privacy_tag,
+            )
+            if collection == "conversations" else None
+        )
         candidate_ids = _sqlite_candidate_ids(
             getattr(col, "name", None) or collection,
             query,
@@ -650,11 +864,21 @@ def lexical_search_raw(
             limit=(None if n_results is None else max(
                 effective_n * 12, min(_LEXICAL_SQL_CANDIDATES, 120)
             )),
+            allowed_turn_privacies=allowed_turn_privacies,
+            allowed_knowledge_paths=(
+                tuple(admitted_paths) if admitted_paths is not None else None
+            ),
         )
         payloads = _payloads_by_id(col, candidate_ids)
 
         for cid in candidate_ids:
             doc, meta = payloads.get(cid, ("", {}))
+            if (
+                admitted_path_set is not None
+                and str(meta.get("path") or "").strip()
+                not in admitted_path_set
+            ):
+                continue
             if not _metadata_passes_filters(
                 meta,
                 collection=collection,
@@ -665,7 +889,14 @@ def lexical_search_raw(
                 privacy_tag=privacy_tag,
             ):
                 continue
-            metadata_score = _lexical_score(query, _metadata_text(meta), metadata_match=True)
+            if collection == "conversations":
+                safe_payload = _conversation_safe_payload(doc, meta)
+                if safe_payload is None:
+                    continue
+                doc, meta = safe_payload
+            metadata_score = _lexical_score(
+                query, _metadata_text(meta), metadata_match=True,
+            )
             body_score = _lexical_score(query, doc or "", metadata_match=False)
             score = max(metadata_score, body_score)
             if score:
@@ -676,7 +907,31 @@ def lexical_search_raw(
         ordered = sorted(scores, key=lambda cid: scores[cid], reverse=True)
         if n_results is not None:
             ordered = ordered[:effective_n]
-        return _fetch_chunks_by_id(col, ordered, scores)
+
+        def metadata_filter(meta: dict[str, Any]) -> bool:
+            if (
+                admitted_path_set is not None
+                and str(meta.get("path") or "").strip()
+                not in admitted_path_set
+            ):
+                return False
+            return _metadata_passes_filters(
+                meta,
+                collection=collection,
+                type_filter=type_filter,
+                include_private=include_private,
+                include_archived=include_archived,
+                exclude_tags=exclude_tags,
+                privacy_tag=privacy_tag,
+            )
+
+        return _fetch_chunks_by_id(
+            col,
+            ordered,
+            scores,
+            sanitize_conversations=collection == "conversations",
+            metadata_filter=metadata_filter,
+        )
     except Exception as exc:
         import sys
         print(
@@ -910,6 +1165,18 @@ def knowledge_search(
         if count == 0:
             return f"Collection '{collection}' is empty. Add documents to enable semantic search."
 
+        admitted_paths: list[str] | None = None
+        admitted_path_set: set[str] | None = None
+        if collection == "knowledge":
+            admitted_paths = _knowledge_admitted_path_inventory(
+                col,
+                include_private=include_private,
+                privacy_tag=privacy_tag,
+            )
+            if not admitted_paths:
+                return "No results found."
+            admitted_path_set = set(admitted_paths)
+
         where = _build_where_clause(
             collection=collection,
             type_filter=type_filter,
@@ -918,6 +1185,8 @@ def knowledge_search(
             exclude_tags=exclude_tags,
             privacy_tag=privacy_tag,
         )
+        if admitted_paths is not None:
+            where = _where_with_admitted_paths(where, admitted_paths)
 
         query_kwargs: dict[str, Any] = {
             "query_texts": [query],
@@ -930,19 +1199,35 @@ def knowledge_search(
         output: list[str] = []
         docs = (results.get("documents") or [[]])[0]
         metas = (results.get("metadatas") or [[]])[0]
-        filtered = _filter_excluded_chunks([
-            {"document": doc, "metadata": meta or {}}
-            for doc, meta in zip(docs, metas)
-            if _metadata_passes_filters(
-                meta or {}, collection=collection,
+        safe_chunks: list[dict[str, Any]] = []
+        for doc, meta in zip(docs, metas):
+            meta = meta or {}
+            if (
+                admitted_path_set is not None
+                and str(meta.get("path") or "").strip()
+                not in admitted_path_set
+            ):
+                continue
+            if not _metadata_passes_filters(
+                meta, collection=collection,
                 type_filter=type_filter,
                 include_private=include_private,
                 include_archived=include_archived,
                 exclude_tags=exclude_tags,
                 privacy_tag=privacy_tag,
-            )
-        ], excluded_conversation_ids=excluded_conversation_ids,
-           excluded_paths=excluded_paths)
+            ):
+                continue
+            if collection == "conversations":
+                safe_payload = _conversation_safe_payload(doc, meta)
+                if safe_payload is None:
+                    continue
+                doc, meta = safe_payload
+            safe_chunks.append({"document": doc, "metadata": meta})
+        filtered = _filter_excluded_chunks(
+            safe_chunks,
+            excluded_conversation_ids=excluded_conversation_ids,
+            excluded_paths=excluded_paths,
+        )
         for i, chunk in enumerate(filtered, 1):
             output.extend(_format_result_line(
                 i, chunk["document"], chunk["metadata"],
@@ -992,6 +1277,18 @@ def knowledge_search_raw(
         if count == 0:
             return []
 
+        admitted_paths: list[str] | None = None
+        admitted_path_set: set[str] | None = None
+        if collection == "knowledge":
+            admitted_paths = _knowledge_admitted_path_inventory(
+                col,
+                include_private=include_private,
+                privacy_tag=privacy_tag,
+            )
+            if not admitted_paths:
+                return []
+            admitted_path_set = set(admitted_paths)
+
         where = _build_where_clause(
             collection=collection,
             type_filter=type_filter,
@@ -1000,6 +1297,8 @@ def knowledge_search_raw(
             exclude_tags=exclude_tags,
             privacy_tag=privacy_tag,
         )
+        if admitted_paths is not None:
+            where = _where_with_admitted_paths(where, admitted_paths)
 
         query_kwargs: dict[str, Any] = {
             "query_texts": [query],
@@ -1016,6 +1315,12 @@ def knowledge_search_raw(
 
         chunks = []
         for i, (cid, doc, meta, dist) in enumerate(zip(ids, docs, metas, dists)):
+            if (
+                admitted_path_set is not None
+                and str((meta or {}).get("path") or "").strip()
+                not in admitted_path_set
+            ):
+                continue
             if not _metadata_passes_filters(
                 meta or {}, collection=collection,
                 type_filter=type_filter,
@@ -1025,6 +1330,11 @@ def knowledge_search_raw(
                 privacy_tag=privacy_tag,
             ):
                 continue
+            if collection == "conversations":
+                safe_payload = _conversation_safe_payload(doc, meta or {})
+                if safe_payload is None:
+                    continue
+                doc, meta = safe_payload
             chunks.append({
                 "id":         cid,
                 "document":   doc,

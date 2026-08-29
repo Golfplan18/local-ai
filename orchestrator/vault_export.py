@@ -58,11 +58,13 @@ Markdown shape (Phase 5.7, Schema §12 chunk template)
   …fenced ``ora-visual`` JSON kept verbatim…
   ![[<session-name>.fig-1.svg]]
 
-The conversation_id and session_title are kept in the body's meta
-block (preserves the back-link to the source session) but are not
-in the YAML frontmatter — Schema §12 keeps the conversation chunk
-template minimal. Filename includes HH-MM to prevent same-day
-collisions when multiple sessions are exported on the same date.
+For Standard and Private Dialogues, the conversation_id and session_title are
+kept in the body's meta block (preserves the back-link to the source session)
+but are not in the YAML frontmatter — Schema §12 keeps the conversation chunk
+template minimal. A Stealth export is an ordinary destination-owned copy, so
+it omits privacy labels and source-identity/link-back metadata. Filename
+includes HH-MM to prevent same-day collisions when multiple sessions are
+exported on the same date.
 
 This module is deliberately free of Flask; the HTTP wrapper lives in
 ``server.py`` as ``POST /api/session/export``.
@@ -136,6 +138,7 @@ _SIDECAR_GITIGNORE_PATTERN = "*.fig-*.svg"
 
 # Used by filename sanitization. Keeps ASCII alphanumerics and hyphen.
 _SLUG_KEEP = re.compile(r"[^a-z0-9]+")
+_SOURCE_FREE_EXPORT_FALLBACK_TITLE = "Dialogue export"
 
 
 # ---------------------------------------------------------------------------
@@ -264,12 +267,20 @@ def _parse_raw_session_log(text: str) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = []
     # Split on pair boundaries — the ``<!-- pair NNN | ts -->`` comment
     # is the most reliable cut.
-    pair_re = re.compile(r"<!--\s*pair\s+(\d+)\s*\|\s*([^>]+?)\s*-->", re.IGNORECASE)
-    cuts = [(m.start(), m.group(1), m.group(2).strip()) for m in pair_re.finditer(text)]
+    pair_re = re.compile(
+        r"<!--\s*pair\s+(\d+)\s*\|\s*([^|>]+?)"
+        r"(?:\s*\|\s*privacy:\s*(standard|private|stealth))?\s*-->",
+        re.IGNORECASE,
+    )
+    cuts = [
+        (m.start(), m.group(1), m.group(2).strip(),
+         (m.group(3) or "").lower())
+        for m in pair_re.finditer(text)
+    ]
     if not cuts:
         return messages
 
-    for i, (start, pair_num, ts) in enumerate(cuts):
+    for i, (start, pair_num, ts, turn_privacy) in enumerate(cuts):
         end = cuts[i + 1][0] if i + 1 < len(cuts) else len(text)
         block = text[start:end]
         # Strip the comment header itself
@@ -288,6 +299,7 @@ def _parse_raw_session_log(text: str) -> list[dict[str, Any]]:
                 "content": user_match.group(1).strip(),
                 "timestamp": ts,
                 "pair": int(pair_num),
+                "turn_privacy": turn_privacy or None,
             })
         if asst_match:
             messages.append({
@@ -295,6 +307,7 @@ def _parse_raw_session_log(text: str) -> list[dict[str, Any]]:
                 "content": asst_match.group(1).strip(),
                 "timestamp": ts,
                 "pair": int(pair_num),
+                "turn_privacy": turn_privacy or None,
             })
     return messages
 
@@ -366,9 +379,38 @@ def _load_conversation(
 
     Raises FileNotFoundError when neither path carries the id.
     """
+    structured_path = sessions_root / conversation_id / "conversation.json"
     structured = _load_structured_conversation(sessions_root, conversation_id)
-    if structured is not None:
-        return structured
+    if structured_path.exists():
+        if structured is None:
+            raise ValueError(
+                "Full Dialogue export refused: canonical envelope is unreadable"
+            )
+        try:
+            from orchestrator.conversation_memory import (
+                resolve_effective_conversation_history,
+            )
+            diagnostics: list[str] = []
+            effective = resolve_effective_conversation_history(
+                conversation_id,
+                sessions_root=sessions_root,
+                diagnostics=diagnostics,
+            )
+        except Exception as exc:
+            raise ValueError(
+                f"Full Dialogue export refused: canonical history could not be resolved: {exc}"
+            ) from exc
+        if effective is None or diagnostics:
+            detail = "; ".join(diagnostics) if diagnostics else "history unavailable"
+            raise ValueError(
+                "Full Dialogue export refused: canonical effective history is "
+                f"incomplete: {detail}"
+            )
+        return {
+            **structured,
+            "messages": effective,
+            "_source_path": str(structured_path),
+        }
 
     raw = _load_raw_conversation(raw_conversations_dir, conversation_id)
     if raw is not None:
@@ -379,6 +421,153 @@ def _load_conversation(
         f"Looked under {sessions_root}/{conversation_id}/conversation.json "
         f"and {raw_conversations_dir}/*.md (by panel_id)."
     )
+
+
+def _authenticate_full_dialogue_exchanges(
+    conversation_id: str,
+    messages: list[dict[str, Any]],
+    exchanges: list[tuple[int, dict[str, Any], int, dict[str, Any], str | None]],
+    *,
+    sessions_root: Path,
+    snapshot_tag: Any,
+) -> tuple[set[str], bool]:
+    """Bind every effective exchange to its canonical local owner tuple."""
+    try:
+        from orchestrator.conversation_memory import (
+            complete_exchange_privacy,
+            displayed_exchange_owner,
+            iter_complete_exchanges,
+            read_conversation_history_envelope,
+        )
+    except Exception as exc:
+        raise ValueError(
+            f"Full Dialogue export authority is unavailable: {exc}"
+        ) from exc
+
+    target = read_conversation_history_envelope(
+        conversation_id, sessions_root=sessions_root,
+    )
+    target_id = target.get("conversation_id") if isinstance(target, dict) else None
+    if (not isinstance(target_id, str)
+            or target_id.strip().casefold() != conversation_id.casefold()):
+        raise ValueError(
+            "Full Dialogue export refused: canonical target identity is unavailable"
+        )
+    target_tag = target.get("tag")
+    if target_tag not in {"", "private", "stealth"}:
+        raise ValueError(
+            "Full Dialogue export refused: canonical target privacy is unknown"
+        )
+    if snapshot_tag != target_tag:
+        raise ValueError(
+            "Full Dialogue export refused: canonical target privacy changed"
+        )
+
+    owner_cache: dict[str, dict[str, Any]] = {
+        target_id.strip().casefold(): target,
+    }
+    authenticated_privacies: set[str] = set()
+    owner_stealth_identities: list[bool] = []
+    for displayed_index, exchange in enumerate(exchanges):
+        user_index, displayed_user, assistant_index, displayed_assistant, privacy = exchange
+        owner = displayed_exchange_owner(messages, displayed_index)
+        if not isinstance(owner, dict):
+            raise ValueError(
+                "Full Dialogue export refused: an exchange owner is missing or ambiguous"
+            )
+        owner_id = owner.get("conversation_id")
+        owner_turn = owner.get("turn_index")
+        owner_chunk = owner.get("chunk_id")
+        if (not isinstance(owner_id, str) or not owner_id.strip()
+                or owner_id != owner_id.strip()
+                or isinstance(owner_turn, bool)
+                or not isinstance(owner_turn, int) or owner_turn < 1
+                or not isinstance(owner_chunk, str) or not owner_chunk.strip()
+                or owner_chunk != owner_chunk.strip()
+                or owner.get("turn_privacy") != privacy):
+            raise ValueError(
+                "Full Dialogue export refused: an exchange owner tuple is incomplete"
+            )
+
+        identity = owner_id.casefold()
+        envelope = owner_cache.get(identity)
+        if envelope is None:
+            envelope = read_conversation_history_envelope(
+                owner_id, sessions_root=sessions_root,
+            )
+            if isinstance(envelope, dict):
+                owner_cache[identity] = envelope
+        canonical_id = (
+            envelope.get("conversation_id")
+            if isinstance(envelope, dict) else None
+        )
+        if (not isinstance(canonical_id, str)
+                or canonical_id.strip().casefold() != identity):
+            raise ValueError(
+                "Full Dialogue export refused: a canonical exchange owner is unavailable"
+            )
+        owner_tag = envelope.get("tag")
+        if owner_tag not in {"", "private", "stealth"}:
+            raise ValueError(
+                "Full Dialogue export refused: canonical owner privacy is unknown"
+            )
+        local_exchanges = iter_complete_exchanges(envelope.get("messages"))
+        if owner_turn > len(local_exchanges):
+            raise ValueError(
+                "Full Dialogue export refused: a canonical exchange is unavailable"
+            )
+        (
+            canonical_user_index,
+            canonical_user,
+            canonical_assistant_index,
+            canonical_assistant,
+            canonical_privacy,
+        ) = local_exchanges[owner_turn - 1]
+        if canonical_privacy is None or canonical_privacy != privacy:
+            raise ValueError(
+                "Full Dialogue export refused: canonical exchange privacy is mismatched"
+            )
+        if ((owner_tag == "stealth") != (canonical_privacy == "stealth")):
+            raise ValueError(
+                "Full Dialogue export refused: canonical exchange privacy "
+                "conflicts with its owner identity"
+            )
+        if (
+            displayed_user.get("_ora_history_owner") != owner_id
+            or displayed_assistant.get("_ora_history_owner") != owner_id
+            or displayed_user.get("_ora_history_turn_index") != owner_turn
+            or displayed_assistant.get("_ora_history_turn_index") != owner_turn
+            or displayed_user.get("_ora_history_message_index")
+            != canonical_user_index
+            or displayed_assistant.get("_ora_history_message_index")
+            != canonical_assistant_index
+            or displayed_user.get("chunk_id") != owner_chunk
+            or displayed_assistant.get("chunk_id") != owner_chunk
+            or canonical_user.get("turn_index") != owner_turn
+            or canonical_assistant.get("turn_index") != owner_turn
+            or canonical_user.get("chunk_id") != owner_chunk
+            or canonical_assistant.get("chunk_id") != owner_chunk
+            or complete_exchange_privacy(
+                canonical_user, canonical_assistant,
+            ) != canonical_privacy
+            or canonical_user.get("content") != displayed_user.get("content")
+            or canonical_assistant.get("content")
+            != displayed_assistant.get("content")
+            or user_index >= assistant_index
+        ):
+            raise ValueError(
+                "Full Dialogue export refused: canonical exchange owner tuple is mismatched"
+            )
+        authenticated_privacies.add(canonical_privacy)
+        owner_stealth_identities.append(owner_tag == "stealth")
+
+    target_is_stealth = target_tag == "stealth"
+    if not target_is_stealth and any(owner_stealth_identities):
+        raise ValueError(
+            "Full Dialogue export refused: a non-Stealth target includes "
+            "a Stealth-owned canonical exchange"
+        )
+    return authenticated_privacies, target_is_stealth
 
 
 # ---------------------------------------------------------------------------
@@ -697,6 +886,8 @@ def _splice_visuals_with_sidecars(
 def _render_messages_markdown(
     messages: list[dict[str, Any]],
     sidecars_per_message: list[dict[int, str]],
+    *,
+    include_privacy_labels: bool = True,
 ) -> str:
     """Turn a sequence of messages into the ``## Exchanges`` body."""
     parts: list[str] = ["## Exchanges\n"]
@@ -712,6 +903,10 @@ def _render_messages_markdown(
             if ts:
                 header += f" — {ts}"
             parts.append(header)
+            privacy = msg.get("turn_privacy")
+            if (include_privacy_labels
+                    and privacy in {"standard", "private", "stealth"}):
+                parts.append(f"\n**Privacy:** {privacy.title()}\n")
             parts.append("\n**User:**\n")
             parts.append(content + "\n")
         elif role == "assistant":
@@ -808,11 +1003,56 @@ def export_session_to_vault(
     # ── Load conversation ───────────────────────────────────────────────────
     convo = _load_conversation(conversation_id, sessions_root, raw_conversations_dir)
     messages = convo.get("messages") or []
+    try:
+        from orchestrator.conversation_memory import iter_complete_exchanges
+        exchanges = iter_complete_exchanges(messages)
+    except Exception as exc:
+        raise ValueError(f"Dialogue turn privacy could not be resolved: {exc}") from exc
+    covered_indexes = {
+        index
+        for user_index, _user, assistant_index, _assistant, _privacy in exchanges
+        for index in (user_index, assistant_index)
+    }
+    ordinary_indexes = {
+        index for index, message in enumerate(messages)
+        if isinstance(message, dict)
+        and message.get("role") in {"user", "assistant"}
+    }
+    if any(privacy is None for *_pair, privacy in exchanges):
+        raise ValueError(
+            "Full Dialogue export refused: a complete exchange has unknown or conflicting privacy"
+        )
+    if ordinary_indexes != covered_indexes:
+        raise ValueError(
+            "Full Dialogue export refused: an exchange is incomplete"
+        )
+    export_privacies, stealth_export = _authenticate_full_dialogue_exchanges(
+        conversation_id,
+        messages,
+        exchanges,
+        sessions_root=sessions_root,
+        snapshot_tag=convo.get("tag"),
+    )
 
     # Derive the session title + filename stem.
-    first_user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
-    resolved_title = session_title or convo.get("session_title") or (first_user[:80].strip() if first_user else "") or f"Ora session {conversation_id[:8]}"
-    stem = _derive_session_name(session_title or convo.get("session_title"), conversation_id, first_user)
+    first_user = next(
+        (m.get("content", "") for m in messages if m.get("role") == "user"),
+        "",
+    )
+    source_title = session_title or convo.get("session_title")
+    display_title = source_title or (
+        first_user[:80].strip() if first_user else ""
+    )
+    if stealth_export and not _slugify(display_title):
+        resolved_title = _SOURCE_FREE_EXPORT_FALLBACK_TITLE
+        stem = _derive_session_name(
+            _SOURCE_FREE_EXPORT_FALLBACK_TITLE, "", None,
+        )
+    else:
+        resolved_title = display_title or f"Ora session {conversation_id[:8]}"
+        stem = _derive_session_name(
+            source_title, conversation_id, first_user,
+        )
 
     # ── Prepare output directory ────────────────────────────────────────────
     sessions_dir = vault_root / sessions_subdir
@@ -922,19 +1162,29 @@ def export_session_to_vault(
     frontmatter = _build_canonical_frontmatter(
         nexus=nexus,
         type_="chat",
-        tags=[],  # controlled-vocabulary tags can be set by the caller / pipeline
+        tags=(
+            ["private"]
+            if not stealth_export and export_privacies & {"private", "stealth"}
+            else []
+        ),
         created_at=convo.get("created_at"),
     )
     now_iso = datetime.now().isoformat(timespec="seconds")
     heading = f"# {resolved_title}\n"
     meta_block = (
+        f"\n**Exported:** {now_iso}\n"
+        if stealth_export else
         f"\n**Dialogue ID:** `{conversation_id}`\n"
         f"**Exported:** {now_iso}\n"
         f"**Source:** {convo.get('_source_path') or 'structured conversation.json'}\n"
     )
-    exchanges = _render_messages_markdown(messages, sidecars_per_message)
+    rendered_exchanges = _render_messages_markdown(
+        messages,
+        sidecars_per_message,
+        include_privacy_labels=not stealth_export,
+    )
 
-    body = frontmatter + heading + meta_block + "\n" + exchanges + "\n"
+    body = frontmatter + heading + meta_block + "\n" + rendered_exchanges + "\n"
 
     # ── Write markdown ──────────────────────────────────────────────────────
     markdown_path = sessions_dir / f"{stem}.md"

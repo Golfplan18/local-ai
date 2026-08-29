@@ -236,6 +236,21 @@
     return turns;
   };
 
+  const turnPrivacy = (turn) => {
+    if (!turn || !turn.user || !turn.assistant) return null;
+    const userValue = turn.user.turn_privacy;
+    const assistantValue = turn.assistant.turn_privacy;
+    if (userValue !== assistantValue) return null;
+    return ['standard', 'private', 'stealth'].includes(userValue)
+      ? userValue : null;
+  };
+
+  const composerTurnPrivacy = () => (
+    state.activeTag === '' ? 'standard'
+      : ['private', 'stealth'].includes(state.activeTag) ? state.activeTag
+        : null
+  );
+
   const assistantAtIndex = (turns, assistantIndex) => {
     if (!Number.isInteger(assistantIndex) || assistantIndex < 0) return null;
     const assistants = (Array.isArray(turns) ? turns : [])
@@ -295,8 +310,15 @@
       displayName.removeAttribute('title');
     }
     if (modeIcon) {
-      modeIcon.textContent = modeIconSymbolFor(state.activeTag);
-      modeIcon.dataset.tag = state.activeTag || '';
+      const currentPrivacy = turnPrivacy(state.turns[state.currentTurnIndex]);
+      const displayedTag = currentPrivacy === 'standard' ? '' : currentPrivacy;
+      modeIcon.textContent = currentPrivacy === null
+        ? (state.turns.length ? '?' : modeIconSymbolFor(state.activeTag))
+        : modeIconSymbolFor(displayedTag);
+      modeIcon.dataset.tag = displayedTag || '';
+      modeIcon.title = currentPrivacy === null
+        ? 'Displayed turn privacy is unknown'
+        : `Displayed turn: ${currentPrivacy}`;
     }
     if (actionsButton) {
       // Close/Delete are meaningful even for a fresh zero-turn Dialogue;
@@ -367,9 +389,8 @@
     if (!['', 'private', 'stealth'].includes(sourceTag)
         || !['', 'private', 'stealth'].includes(targetTag)) return false;
     if (sourceTag === 'stealth') return targetTag === 'stealth';
-    if (sourceTag === 'private') {
-      return targetTag === 'private' || targetTag === 'stealth';
-    }
+    // A non-Stealth Dialogue's composer is not the authority for its parent
+    // prefix.  The server validates every inherited complete exchange.
     return true;
   };
 
@@ -398,6 +419,16 @@
     }
     if (!outputContent) return;
     const t = state.turns[state.currentTurnIndex];
+    const currentPrivacy = turnPrivacy(t);
+    if (outputPane) {
+      outputPane.classList.toggle('review-private', currentPrivacy === 'private');
+      outputPane.classList.toggle('review-stealth', currentPrivacy === 'stealth');
+      outputPane.classList.toggle(
+        'review-privacy-unknown', !!t && currentPrivacy === null
+      );
+      outputPane.dataset.displayedTurnPrivacy = currentPrivacy || 'unknown';
+      outputPane.dataset.composerPrivacy = composerTurnPrivacy() || 'unknown';
+    }
     outputContent.replaceChildren();
 
     if (!t) {
@@ -821,7 +852,8 @@
       typeof envelope.parent_conversation_id === 'string'
       && envelope.parent_conversation_id.trim()
     ) ? envelope.parent_conversation_id.trim() : null;
-    state.activeTag            = envelope.tag || '';
+    state.activeTag            = ['', 'private', 'stealth'].includes(envelope.tag)
+      ? envelope.tag : null;
     state.readOnlySource       = !!envelope.archived_source;
     state.hasEnvelope          = true;
     state.messages             = envelope.messages || [];
@@ -1050,8 +1082,13 @@
   // output pane updates without a full reload.
   const appendUser = (text) => {
     if (!text) return;
+    const privacy = composerTurnPrivacy();
+    if (!privacy) return;
     const turn = {
-      user: { role: 'user', content: text, timestamp: new Date().toISOString() },
+      user: {
+        role: 'user', content: text, timestamp: new Date().toISOString(),
+        turn_privacy: privacy,
+      },
       assistant: null,
     };
     state.turns.push(turn);
@@ -1069,7 +1106,10 @@
     if (!turn || turn.assistant) {
       turn = {
         user: null,
-        assistant: { role: 'assistant', content: text, timestamp: new Date().toISOString() },
+        assistant: {
+          role: 'assistant', content: text, timestamp: new Date().toISOString(),
+          turn_privacy: composerTurnPrivacy(),
+        },
       };
       state.turns.push(turn);
     } else {
@@ -1077,6 +1117,7 @@
         role: 'assistant',
         content: text,
         timestamp: new Date().toISOString(),
+        turn_privacy: turn.user && turn.user.turn_privacy,
       };
     }
     state.hasEnvelope = true;
@@ -1570,10 +1611,9 @@
 
     setLifecycleRequestActive(id, true);
     try {
-      // Always route privacy changes through the server, including zero-turn
-      // Dialogues. Artifact-producing endpoints can already have created
-      // correlated state, and the server owns minimal-envelope creation plus
-      // document/chunk metadata synchronization.
+      // This is the next-turn composer authority only. Existing exchanges
+      // keep their own exact privacy until the displayed-turn action changes
+      // one of them explicitly.
       const data = await requestJson(
         `/api/conversation/${encodeURIComponent(id)}/privacy-tag`,
         {
@@ -1596,6 +1636,71 @@
     } catch (e) {
       console.error(`[v3-conversation] privacy-tag change failed for ${id}:`, e);
       window.alert('Privacy change failed: ' + (e.message || e));
+      return null;
+    } finally {
+      setLifecycleRequestActive(id, false);
+    }
+  };
+
+  const setTurnPrivacy = async (
+    tag, conversationId, turnIndex = state.currentTurnIndex
+  ) => {
+    const targetTag = tag === 'private' ? 'private' : (tag === '' ? '' : null);
+    const id = conversationId || state.activeConversationId;
+    if (targetTag === null || !id || !Number.isInteger(turnIndex) || turnIndex < 0) {
+      window.alert('Choose a complete displayed turn and apply Standard or Private.');
+      return null;
+    }
+    if (id !== state.activeConversationId || state.readOnlySource) return null;
+    const turn = state.turns[turnIndex];
+    const currentPrivacy = turnPrivacy(turn);
+    if (currentPrivacy === null) {
+      window.alert('This displayed turn has no complete, trustworthy privacy authority.');
+      return null;
+    }
+    if (currentPrivacy === 'stealth') {
+      window.alert('An Off Record turn cannot be retagged.');
+      return null;
+    }
+    const targetPrivacy = targetTag === 'private' ? 'private' : 'standard';
+    if (currentPrivacy === targetPrivacy) {
+      return { ok: true, turn_privacy: targetPrivacy };
+    }
+    if (lifecycleRequestActive(id)) return null;
+
+    setLifecycleRequestActive(id, true);
+    try {
+      const data = await requestJson(
+        `/api/conversation/${encodeURIComponent(id)}/privacy-tag`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tag: targetTag, turn_index: turnIndex }),
+        },
+        'Change displayed turn privacy'
+      );
+      const authoritativePrivacy = data.turn_privacy;
+      if (authoritativePrivacy !== 'standard' && authoritativePrivacy !== 'private') {
+        throw new Error(`Server returned unsupported turn privacy: ${authoritativePrivacy}`);
+      }
+      // groupTurns retains the message objects from state.messages, so this
+      // updates both the displayed copy and the in-memory envelope snapshot.
+      if (turn.user) turn.user.turn_privacy = authoritativePrivacy;
+      if (turn.assistant) turn.assistant.turn_privacy = authoritativePrivacy;
+      renderAll();
+      refreshSidebar();
+      return Object.assign({}, data, { ok: true });
+    } catch (e) {
+      console.error(`[v3-conversation] turn privacy change failed for ${id}:`, e);
+      if (e.responseData && e.responseData.reconciliation_required === true) {
+        window.alert(
+          'The canonical turn is now Standard, but Ora could not reconcile ' +
+          'all of its owned copies. The previous privacy remains shown here ' +
+          'until reconciliation completes.'
+        );
+      } else {
+        window.alert('Turn privacy change failed: ' + (e.message || e));
+      }
       return null;
     } finally {
       setLifecycleRequestActive(id, false);
@@ -1675,7 +1780,7 @@
         <p>${isFork
           ? 'This Inquiry appears to contain highly sensitive information.'
           : 'This Inquiry may be personal. Choose its Dialogue privacy before anything is sent.'}</p>
-        <p><strong>Private</strong> excludes this Dialogue from Standard conversational retrieval. Configured AI providers may still process the turn.</p>
+        <p><strong>Private</strong> excludes this turn from Standard conversational retrieval. Configured AI providers may still process the turn.</p>
         <div class="project-modal__actions">
           <button type="button" class="project-modal__btn project-modal__btn--primary" data-choice="private">Use Private</button>
           ${isFork
@@ -1710,62 +1815,9 @@
 
     const parentId = state.activeConversationId;
     if (!parentId) return false;
-    if (state.turns.length === 0) {
-      // The existing endpoint creates/retags the minimal envelope in place;
-      // there is no empty Standard parent to leave behind.
-      const changed = await setPrivacyTag('private', parentId);
-      return !!changed && state.activeConversationId === parentId
-        && state.activeTag === 'private';
-    }
-
-    // Capture the parent scene before forkActive selects/loads the empty
-    // child. The submit callback carries this immutable snapshot across that
-    // navigation boundary and persists/posts it under the selected child.
-    const submissionContext = options.submissionContext;
-    if (options.captureVisualSnapshot && submissionContext && window.OraCanvas
-        && (typeof window.OraCanvas.hasContent !== 'function'
-            || window.OraCanvas.hasContent())
-        && typeof window.OraCanvas.snapshotForSubmit === 'function') {
-      try {
-        submissionContext.visualSnapshot = window.OraCanvas.snapshotForSubmit();
-      } catch (e) {
-        console.warn('[v3-conversation] privacy-fork Exhibits capture failed:', e);
-        window.alert('Exhibits capture failed; Inquiry was not sent.');
-        return false;
-      }
-    }
-
-    refreshDOMRefs();
-    const draft = typeof options.draftText === 'string'
-      ? options.draftText
-      : (typeof text === 'string' ? text : (leftInput && leftInput.value) || '');
-    cancelDraftTimerFor(parentId);
-    const forked = await forkActive({
-      tag: 'private',
-      source: 'privacy-intervention',
-      await_selection: true,
-      draftMessage: draft,
-    });
-    if (forked && forked.new_conversation_id) {
-      // forkActive saved the draft under the returned child key first. Only
-      // now is it safe to remove the Standard parent's copy.
-      clearDraft(parentId);
-      if (state.activeConversationId === parentId && leftInput) {
-        leftInput.value = '';
-      }
-    }
-    if (forked && forked.selected
-        && state.activeConversationId === forked.new_conversation_id
-        && state.activeTag === 'private') {
-      return true;
-    }
-    // The parent never received a POST. Restore its browser draft if the fork
-    // failed or a newer selection won the navigation race.
-    if (!forked && state.activeConversationId === parentId) {
-      if (leftInput) leftInput.value = draft;
-      saveDraft(parentId, draft);
-    }
-    return false;
+    const changed = await setPrivacyTag('private', parentId);
+    return !!changed && state.activeConversationId === parentId
+      && state.activeTag === 'private';
   };
 
   const submitAfterPrivacy = async (text, submit, options = {}) => {
@@ -2208,6 +2260,7 @@
     exitStealth,
     beginRename: beginRenameDisplayName,
     setPrivacyTag,
+    setTurnPrivacy,
     closeConversation,
     closeActive: () => closeConversation(state.activeConversationId, { tag: state.activeTag }),
     deleteForever,
@@ -2229,5 +2282,8 @@
     canForkAs,
     getTurnCount:            () => state.turns.length,
     getCurrentTurn:          () => state.turns[state.currentTurnIndex] || null,
+    getCurrentTurnPrivacy:   () => turnPrivacy(
+      state.turns[state.currentTurnIndex]
+    ),
   };
 })();
