@@ -559,23 +559,46 @@ class OversightDaemon:
         import shutil
         from pathlib import Path
         from orchestrator import pipeline_trace
+        import retention_sweeper
 
         trace_ref = payload.get("trace_ref")
         expected_finalized_at = payload.get("finalized_at")
         parts = pipeline_trace._trace_ref_parts(trace_ref)
         if parts is None:
             raise ValueError("invalid trace-retention reference")
-        conversation_id, _turn = parts
+        conversation_id, turn = parts
         with _rp.conversation_lifecycle_lock(conversation_id):
-            trace_dir = pipeline_trace.resolve_trace_ref(trace_ref)
-            if trace_dir is None:
+            try:
+                exact = pipeline_trace._safe_trace_dir(
+                    conversation_id, turn, create=False,
+                )
+            except Exception as exc:
+                return {
+                    "status": "preserved_uncertain", "trace_ref": trace_ref,
+                    "reason": f"trace directory is inconsistent: {exc}",
+                }
+            if not exact.exists() and not exact.is_symlink():
                 return {"status": "already_absent", "trace_ref": trace_ref}
-            manifest = pipeline_trace.read_manifest(trace_dir)
-            if not manifest or manifest.get("finalized_at") != expected_finalized_at:
-                raise ValueError("trace identity drifted after deadline registration")
+            if exact.is_symlink() or not exact.is_dir():
+                return {
+                    "status": "preserved_uncertain", "trace_ref": trace_ref,
+                    "reason": "trace directory is not an owned ordinary directory",
+                }
+            manifest, uncertainty = retention_sweeper._read_retention_manifest(
+                Path(exact), conversation_id, turn,
+            )
+            if uncertainty is not None:
+                return {
+                    "status": "preserved_uncertain", "trace_ref": trace_ref,
+                    "reason": uncertainty,
+                }
+            if manifest.get("finalized_at") != expected_finalized_at:
+                return {
+                    "status": "preserved_uncertain", "trace_ref": trace_ref,
+                    "reason": "manifest finalization identity is inconsistent",
+                }
             if manifest.get("retention_state") == "pinned":
                 return {"status": "preserved_pinned", "trace_ref": trace_ref}
-            exact = Path(trace_dir)
             shutil.rmtree(exact)
             try:
                 exact.parent.rmdir()

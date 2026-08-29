@@ -63,6 +63,7 @@ import gzip
 import json
 import os
 import shutil
+import stat
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -175,6 +176,76 @@ def _gzip_file(src: str, dest_gz: str):
         shutil.copyfileobj(f_in, f_out)
 
 
+def _read_retention_manifest(
+    turn_dir: Path,
+    conversation_id: str,
+    turn_timestamp: str,
+) -> tuple[dict | None, str | None]:
+    """Read and validate the manifest that authorizes trace expiry.
+
+    Retention is destructive, so uncertainty retains the trace.  In addition
+    to refusing malformed/non-object JSON, this read refuses a substituted
+    manifest symlink and verifies that the manifest identifies the exact turn
+    directory being considered.
+    """
+    manifest_path = turn_dir / "trace-manifest.json"
+    try:
+        entry = os.lstat(manifest_path)
+    except FileNotFoundError:
+        return None, "manifest is missing"
+    except OSError as exc:
+        return None, f"manifest is unreadable: {exc}"
+    if stat.S_ISLNK(entry.st_mode):
+        return None, "manifest is a symlink"
+    if not stat.S_ISREG(entry.st_mode):
+        return None, "manifest is not a regular file"
+
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(manifest_path, flags)
+    except FileNotFoundError:
+        return None, "manifest is missing"
+    except OSError as exc:
+        return None, f"manifest is unreadable: {exc}"
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            return None, "manifest is not a regular file"
+        if (opened.st_dev, opened.st_ino) != (entry.st_dev, entry.st_ino):
+            return None, "manifest changed while being opened"
+        try:
+            with os.fdopen(fd, "r", encoding="utf-8") as stream:
+                fd = -1
+                manifest = json.load(stream)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            return None, f"manifest is malformed: {exc}"
+        except OSError as exc:
+            return None, f"manifest is unreadable: {exc}"
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+    if not isinstance(manifest, dict):
+        return None, "manifest is not a JSON object"
+    expected_conversation_id = None if conversation_id == "_orphan" else conversation_id
+    if manifest.get("conversation_id") != expected_conversation_id:
+        return None, "manifest conversation identity is inconsistent"
+    if manifest.get("turn_timestamp_utc") != turn_timestamp:
+        return None, "manifest turn identity is inconsistent"
+    if manifest.get("retention_state") not in {"default", "pinned"}:
+        return None, "manifest retention state is inconsistent"
+    return manifest, None
+
+
+def _report_uncertain_trace(summary: dict, turn_dir: Path, reason: str) -> None:
+    summary["traces_uncertain_skipped"] += 1
+    summary["errors"].append(
+        f"trace retention preserved uncertain {turn_dir}: {reason}"
+    )
+
+
 def _sweep_traces(cutoff_days: int, now: float, dry_run: bool, summary: dict):
     if cutoff_days <= 0:
         return
@@ -205,16 +276,17 @@ def _sweep_traces(cutoff_days: int, now: float, dry_run: bool, summary: dict):
                         continue
                     try:
                         if os.stat(turn_dir, follow_symlinks=False).st_mtime < cutoff:
-                            manifest_path = turn_dir / "trace-manifest.json"
-                            try:
-                                with open(manifest_path) as f:
-                                    manifest = json.load(f)
-                                if (isinstance(manifest, dict)
-                                        and manifest.get("retention_state") == "pinned"):
-                                    summary["traces_pinned_skipped"] += 1
-                                    continue
-                            except Exception:
-                                pass
+                            manifest, uncertainty = _read_retention_manifest(
+                                turn_dir, conv, turn,
+                            )
+                            if uncertainty is not None:
+                                _report_uncertain_trace(
+                                    summary, turn_dir, uncertainty,
+                                )
+                                continue
+                            if manifest["retention_state"] == "pinned":
+                                summary["traces_pinned_skipped"] += 1
+                                continue
                             if not dry_run:
                                 shutil.rmtree(turn_dir)
                             summary["traces_removed"] += 1
@@ -466,6 +538,7 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
     summary: dict = {
         "traces_removed": 0,
         "traces_pinned_skipped": 0,
+        "traces_uncertain_skipped": 0,
         "logs_archived": 0,
         "archives_deleted": 0,
         "server_log_rotated": False,

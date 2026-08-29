@@ -85,6 +85,19 @@ class RetentionSweeperBase(unittest.TestCase):
 
 
 class TraceSweepTests(RetentionSweeperBase):
+    @staticmethod
+    def _write_manifest(turn, *, conversation_id, state="default",
+                        finalized_at="2026-01-01T00:00:00+00:00", **changes):
+        manifest = {
+            "conversation_id": conversation_id,
+            "turn_timestamp_utc": turn.name,
+            "retention_state": state,
+            "finalized_at": finalized_at,
+        }
+        manifest.update(changes)
+        (turn / "trace-manifest.json").write_text(json.dumps(manifest))
+        return manifest
+
     def test_old_turn_dirs_removed_recent_kept(self):
         conv = self.traces / "conv-1"
         old_turn = conv / "2026-04-01T00-00-00"
@@ -92,6 +105,7 @@ class TraceSweepTests(RetentionSweeperBase):
         old_turn.mkdir(parents=True)
         new_turn.mkdir(parents=True)
         (old_turn / "trace.json").write_text("{}")
+        self._write_manifest(old_turn, conversation_id="conv-1")
         self._age(old_turn, 45)
 
         summary = retention_sweeper.sweep()
@@ -103,6 +117,7 @@ class TraceSweepTests(RetentionSweeperBase):
         conv = self.traces / "conv-empty"
         turn = conv / "t1"
         turn.mkdir(parents=True)
+        self._write_manifest(turn, conversation_id="conv-empty")
         self._age(turn, 45)
 
         retention_sweeper.sweep()
@@ -136,6 +151,7 @@ class TraceSweepTests(RetentionSweeperBase):
         conv = self.traces / "conv-lock"
         turn = conv / "old-turn"
         turn.mkdir(parents=True)
+        self._write_manifest(turn, conversation_id="conv-lock")
         self._age(turn, 45)
         seen = []
         real_lock = retention_sweeper._rp.conversation_lifecycle_lock
@@ -160,12 +176,8 @@ class TraceSweepTests(RetentionSweeperBase):
         default = conv / "old-default"
         pinned.mkdir(parents=True)
         default.mkdir(parents=True)
-        (pinned / "trace-manifest.json").write_text(json.dumps({
-            "retention_state": "pinned",
-        }))
-        (default / "trace-manifest.json").write_text(json.dumps({
-            "retention_state": "default",
-        }))
+        self._write_manifest(pinned, conversation_id="conv-1", state="pinned")
+        self._write_manifest(default, conversation_id="conv-1")
         self._age(pinned, 45)
         self._age(default, 45)
 
@@ -175,15 +187,103 @@ class TraceSweepTests(RetentionSweeperBase):
         self.assertTrue(pinned.exists())
         self.assertFalse(default.exists())
 
-    def test_missing_manifest_is_not_treated_as_pinned(self):
+    def test_uncertain_manifests_are_retained_and_reported(self):
         conv = self.traces / "conv-1"
-        turn = conv / "old-missing-manifest"
-        turn.mkdir(parents=True)
-        self._age(turn, 45)
+        conv.mkdir()
+        outside = Path(self.tmp.name) / "outside-manifest.json"
+        outside.write_text(json.dumps({
+            "conversation_id": "conv-1",
+            "turn_timestamp_utc": "symlinked",
+            "retention_state": "default",
+        }))
+        cases = {
+            "missing": lambda turn: None,
+            "malformed": lambda turn: (
+                turn / "trace-manifest.json"
+            ).write_text("{broken"),
+            "non-object": lambda turn: (
+                turn / "trace-manifest.json"
+            ).write_text("[]"),
+            "symlinked": lambda turn: (
+                turn / "trace-manifest.json"
+            ).symlink_to(outside),
+            "wrong-conversation": lambda turn: self._write_manifest(
+                turn, conversation_id="someone-else",
+            ),
+            "wrong-turn": lambda turn: self._write_manifest(
+                turn, conversation_id="conv-1", turn_timestamp_utc="other-turn",
+            ),
+            "missing-state": lambda turn: self._write_manifest(
+                turn, conversation_id="conv-1", retention_state=None,
+            ),
+        }
+        turns = []
+        for name, arrange in cases.items():
+            turn = conv / name
+            turn.mkdir()
+            arrange(turn)
+            self._age(turn, 45)
+            turns.append(turn)
 
         summary = retention_sweeper.sweep()
-        self.assertEqual(summary["traces_removed"], 1)
+        self.assertEqual(summary["traces_removed"], 0)
         self.assertEqual(summary["traces_pinned_skipped"], 0)
+        self.assertEqual(summary["traces_uncertain_skipped"], len(cases))
+        self.assertEqual(len(summary["errors"]), len(cases))
+        self.assertTrue(all(turn.exists() for turn in turns))
+
+    def test_trace_deadline_retains_and_reports_uncertain_manifest(self):
+        import oversight_daemon
+        from orchestrator import pipeline_trace
+
+        daemon = oversight_daemon.OversightDaemon()
+        conv = self.traces / "deadline-conv"
+        conv.mkdir()
+        outside = Path(self.tmp.name) / "deadline-outside.json"
+        outside.write_text("{}")
+        cases = {
+            "missing": lambda turn: None,
+            "malformed": lambda turn: (
+                turn / "trace-manifest.json"
+            ).write_text("{broken"),
+            "symlinked": lambda turn: (
+                turn / "trace-manifest.json"
+            ).symlink_to(outside),
+            "inconsistent": lambda turn: self._write_manifest(
+                turn, conversation_id="wrong-conversation",
+            ),
+        }
+        with mock.patch.object(pipeline_trace, "TRACE_ROOT", str(self.traces)):
+            for name, arrange in cases.items():
+                with self.subTest(name=name):
+                    turn = conv / name
+                    turn.mkdir()
+                    arrange(turn)
+                    result = daemon._handle_trace_retention_deadline({
+                        "trace_ref": f"deadline-conv/{name}",
+                        "finalized_at": "2026-01-01T00:00:00+00:00",
+                    })
+                    self.assertEqual(result["status"], "preserved_uncertain")
+                    self.assertTrue(result.get("reason"))
+                    self.assertTrue(turn.exists())
+
+    def test_trace_deadline_deletes_matching_default_manifest(self):
+        import oversight_daemon
+        from orchestrator import pipeline_trace
+
+        daemon = oversight_daemon.OversightDaemon()
+        conv = self.traces / "deadline-conv"
+        turn = conv / "expired"
+        turn.mkdir(parents=True)
+        self._write_manifest(turn, conversation_id="deadline-conv")
+
+        with mock.patch.object(pipeline_trace, "TRACE_ROOT", str(self.traces)):
+            result = daemon._handle_trace_retention_deadline({
+                "trace_ref": "deadline-conv/expired",
+                "finalized_at": "2026-01-01T00:00:00+00:00",
+            })
+
+        self.assertEqual(result["status"], "deleted")
         self.assertFalse(turn.exists())
 
 
@@ -459,6 +559,7 @@ class SweepInfrastructureTests(RetentionSweeperBase):
         conv = self.traces / "conv-1"
         turn = conv / "t1"
         turn.mkdir(parents=True)
+        TraceSweepTests._write_manifest(turn, conversation_id="conv-1")
         self._age(turn, 90)
         self.server_log.write_bytes(b"x" * (2 * 1024 * 1024))
 
