@@ -994,6 +994,19 @@ class TestThemeParsing(unittest.TestCase):
         p = pr.load_project_at(self.root)
         self.assertEqual(set(p.themes.keys()), {"alpha", "beta"})
 
+    def test_deeply_nested_theme_directory_allowed(self):
+        self._write_theme_assets("themes/publisher/seasonal/alpha")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [{
+                "id": "alpha",
+                "name": "Alpha",
+                "directory": "themes/publisher/seasonal/alpha",
+            }],
+        })
+        p = pr.load_project_at(self.root)
+        self.assertEqual(set(p.themes), {"alpha"})
+
     # --- Top-level validation -------------------------------------------
 
     def test_themes_top_level_not_array_raises(self):
@@ -1071,6 +1084,58 @@ class TestThemeParsing(unittest.TestCase):
             "themes": [
                 {"id": "alpha", "name": "Alpha", "directory": "/absolute/path"}
             ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_parent_traversal_directory_rejected(self):
+        outside = Path(tempfile.mkdtemp(prefix="proj_reg_theme_outside_"))
+        self.addCleanup(shutil.rmtree, outside, True)
+        (outside / "theme.css").write_text("outside", encoding="utf-8")
+        (outside / "manifest.json").write_text("{}", encoding="utf-8")
+        relative = os.path.relpath(outside, self.root)
+        self.assertIn("..", Path(relative).parts)
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [{
+                "id": "alpha", "name": "Alpha", "directory": relative,
+            }],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_outward_theme_directory_symlink_rejected(self):
+        outside = Path(tempfile.mkdtemp(prefix="proj_reg_theme_outside_"))
+        self.addCleanup(shutil.rmtree, outside, True)
+        (outside / "theme.css").write_text("outside", encoding="utf-8")
+        (outside / "manifest.json").write_text("{}", encoding="utf-8")
+        link = self.root / "themes" / "escaped"
+        link.parent.mkdir(parents=True)
+        link.symlink_to(outside, target_is_directory=True)
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [{
+                "id": "alpha", "name": "Alpha",
+                "directory": "themes/escaped",
+            }],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_outward_required_asset_symlink_rejected(self):
+        asset_dir = self._write_theme_assets("themes/alpha")
+        outside = Path(tempfile.mkdtemp(prefix="proj_reg_theme_outside_"))
+        self.addCleanup(shutil.rmtree, outside, True)
+        external_css = outside / "theme.css"
+        external_css.write_text("outside", encoding="utf-8")
+        (asset_dir / "theme.css").unlink()
+        (asset_dir / "theme.css").symlink_to(external_css)
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [{
+                "id": "alpha", "name": "Alpha",
+                "directory": "themes/alpha",
+            }],
         })
         p = self._load_quietly()
         self.assertEqual(p.themes, {})
