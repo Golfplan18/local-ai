@@ -43,6 +43,7 @@ from boot import (  # type: ignore
     get_slot_endpoint,
     parse_framework_input_spec,
 )
+from framework_preflight import prepare_framework_execution
 
 
 _CANVAS_HINT = (
@@ -62,6 +63,8 @@ def analyze_framework_inputs(
     canvas_summary: str | None = None,
     prior_responses: dict[str, str] | None = None,
     config: dict | None = None,
+    project_nexus: str | None = None,
+    input_context: dict | None = None,
 ) -> dict[str, Any]:
     """Return a structured gap report for the given framework + user inputs.
 
@@ -82,18 +85,51 @@ def analyze_framework_inputs(
     Returns: ``{requirements: [...], confidence, source}`` (see module
     docstring for shape).
     """
-    spec = parse_framework_input_spec(framework_id)
+    # Picker analysis is actionable Framework work: authenticate and resolve
+    # the exact contract before parsing its inputs or loading/calling a model.
+    prepared = prepare_framework_execution(
+        framework_id,
+        prompt,
+        project_nexus=project_nexus,
+        input_context=input_context,
+    )
+    if prepared.mechanical_redirect is not None:
+        return {
+            "framework_id": prepared.canonical_filename,
+            "requirements": [],
+            "confidence": "high",
+            "source": "mechanical",
+            "mode": prepared.exact_mode,
+            "mechanical_redirect": prepared.mechanical_redirect,
+        }
+
+    canonical_id = (
+        prepared.canonical_filename[:-3]
+        if prepared.canonical_filename.endswith(".md")
+        else prepared.canonical_filename
+    )
+    spec = parse_framework_input_spec(
+        canonical_id,
+        spec_text=prepared.contract_text,
+    )
     if spec is None:
-        return _error_response("framework not found", framework_id)
+        return _error_response("framework not found", prepared.canonical_filename)
 
     if config is None:
         # Lazy-load to avoid circular imports during boot.
         from boot import load_routing_config  # type: ignore
         config = load_routing_config()
 
-    endpoint = get_slot_endpoint(config, "classification")
+    effective_profile = (
+        prepared.selector_profile_resolution["selected"]["runtime_name"]
+    )
+    endpoint = get_slot_endpoint(
+        config, "classification", config_name=effective_profile,
+    )
     if endpoint is None:
-        endpoint = get_slot_endpoint(config, "step1_cleanup")
+        endpoint = get_slot_endpoint(
+            config, "step1_cleanup", config_name=effective_profile,
+        )
     if endpoint is None:
         return _error_response("no classifier endpoint available", framework_id)
 
@@ -111,7 +147,7 @@ def analyze_framework_inputs(
 
     if spec["setup_questions"]:
         return _analyze_structured(
-            framework_id=framework_id,
+            framework_id=canonical_id,
             questions=spec["setup_questions"],
             user_summary=user_summary,
             endpoint=endpoint,
@@ -119,7 +155,7 @@ def analyze_framework_inputs(
 
     if spec["input_contract"]:
         return _analyze_llm_only(
-            framework_id=framework_id,
+            framework_id=canonical_id,
             input_contract=spec["input_contract"],
             user_summary=user_summary,
             endpoint=endpoint,
@@ -127,7 +163,7 @@ def analyze_framework_inputs(
 
     # Framework declares no input shape at all — nothing to check.
     return {
-        "framework_id": framework_id,
+        "framework_id": canonical_id,
         "requirements": [],
         "confidence": "low",
         "source": "none",

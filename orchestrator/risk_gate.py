@@ -548,6 +548,7 @@ def build_task_gate_prompt(risk_tier: str, fingerprint: str,
         out += "\n" + elicitation_marker(
             resume.get("fw", ""), resume.get("mode", ""),
             resume.get("project_nexus"), resume.get("one_run_profile"),
+            conversation_id=resume.get("conversation_id"),
             execution_context=resume.get("execution_context"),
         )
     return out
@@ -1031,6 +1032,7 @@ def handle_task_gate_reply(marker_ctx: dict, user_text: str,
             marker = elicitation_marker(
                 resume.get("fw", ""), resume.get("mode", ""),
                 resume.get("project_nexus"), resume.get("one_run_profile"),
+                conversation_id=resume.get("conversation_id"),
                 execution_context=resume.get("execution_context"),
             )
             return (reply + "Say **continue** to produce the deliverable.\n\n"

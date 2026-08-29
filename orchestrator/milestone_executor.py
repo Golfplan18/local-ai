@@ -40,11 +40,22 @@ if _ORCH_DIR not in sys.path:
 from framework_parser import (
     Framework,
     Milestone,
-    parse_framework_file,
-    parse_framework_text,
     FrameworkParseError,
 )
 from framework_invocability import resolve_user_invocable_framework
+from framework_preflight import (
+    FrameworkPreflightError,
+    MECHANICAL_REDIRECTS as EXACT_MECHANICAL_REDIRECTS,
+    PreparedFramework,
+    ResolvedMilestoneContract,
+    _consume_first_token,
+    is_framework_command_syntax,
+    parse_framework_command_bytes,
+    prepare_framework_execution,
+    prepared_input_context,
+    reuse_prepared_framework,
+    _thaw_value,
+)
 from scratch import ScratchSession
 import runtime_paths as _rp
 
@@ -52,17 +63,6 @@ import runtime_paths as _rp
 MAX_RETRIES = 3
 DRIFT_CHECK_SLOT = "sidebar"  # small model, cheap
 MODE_SELECT_SLOT = "sidebar"  # routing classifier; small model is sufficient
-
-# Mechanical modes are runtime-handled, not model-driven. Routing one through
-# /framework would otherwise produce model hallucination of an artifact rather
-# than actually creating a file. Instead we short-circuit and return a
-# redirect notice pointing at the matching slash command.
-MECHANICAL_MODE_REDIRECTS = {
-    "C-Instance": "/instance <template> <period> [<instance-dir>]",
-    "C-Validate": "/validate <instance> [<template>]",
-    "O-Render": "/render <off-spec> <instance> [<output-dir>]",
-}
-
 
 # ---------- Result types ----------
 
@@ -200,96 +200,6 @@ def _authenticated_project_visual_locks(project_nexus: Optional[str]) -> dict | 
     return model_profiles.validate_project_binding(record, expected_nexus=nexus)
 
 
-def _load_framework_bound_to_project(
-    framework_path: str,
-    project_nexus: Optional[str],
-) -> Framework:
-    """Parse a framework spec with the active project's configuration bound in.
-
-    Plugin Convention §14: a project may declare a
-    ``framework_configurations`` profile supplying ``${config.<key>}``
-    values and extension-point overlays that splice into the spec at its
-    ``<!-- ora-project-extension: <id> -->`` markers. The composition
-    engine lives in :mod:`framework_config`; this is the production call
-    site that binds it to a real framework run.
-
-    Profile selection is by uniqueness: when the active project declares
-    exactly one profile for this framework, that profile is used. There
-    is no per-invocation profile selector today, so a project declaring
-    two profiles for the same framework gets neither — it runs
-    project-neutral with a loud warning rather than a silent guess.
-
-    Fails open by design. Any composition error — unresolved reference,
-    unreadable overlay, unregistered project — logs and falls back to the
-    raw spec file, because a framework that runs without its project
-    overlay is recoverable and one that refuses to run is not.
-    """
-    def _neutral() -> Framework:
-        return parse_framework_file(framework_path)
-
-    if not isinstance(project_nexus, str) or not project_nexus.strip():
-        return _neutral()
-
-    # Mirror parse_framework_file's own resolution so a relative path
-    # binds its project instead of quietly falling through to neutral.
-    resolved_path = framework_path
-    if not os.path.isabs(resolved_path):
-        from framework_parser import FRAMEWORKS_DIR as _FW_DIR
-        resolved_path = os.path.join(_FW_DIR, resolved_path)
-
-    framework_id = os.path.basename(resolved_path)
-    if framework_id.endswith(".md"):
-        framework_id = framework_id[:-3]
-
-    try:
-        try:
-            from . import framework_config as _fc
-            from .project_registry import get_project
-        except ImportError:
-            import framework_config as _fc  # type: ignore
-            from project_registry import get_project  # type: ignore
-
-        project = get_project(project_nexus.strip())
-        if project is None:
-            return _neutral()
-
-        profiles = [
-            fc.profile_name
-            for fc in project.framework_configurations
-            if fc.framework == framework_id
-        ]
-        if not profiles:
-            return _neutral()
-        if len(profiles) > 1:
-            print(
-                f"[milestone_executor] project {project_nexus!r} declares "
-                f"{len(profiles)} framework_configurations profiles for "
-                f"{framework_id!r} ({', '.join(sorted(profiles))}); no "
-                f"invocation-time selector exists, so the framework runs "
-                f"project-neutral. Declare one profile per framework.",
-                file=sys.stderr,
-            )
-            return _neutral()
-
-        with open(resolved_path, encoding="utf-8") as fh:
-            raw = fh.read()
-        composed = _fc.compose_framework_spec(
-            framework_id,
-            project_nexus=project_nexus.strip(),
-            profile_name=profiles[0],
-            spec_text=raw,
-        )
-        return parse_framework_text(composed, path=resolved_path)
-    except Exception as exc:
-        print(
-            f"[milestone_executor] project binding failed for "
-            f"{framework_id!r} under project {project_nexus!r} ({exc}); "
-            f"running the raw spec instead.",
-            file=sys.stderr,
-        )
-        return _neutral()
-
-
 def _maybe_persist_self_mindspec(framework_name, mode, final_output):
     """Archive MSI-Self and compile one inactive Persona.
 
@@ -342,6 +252,7 @@ def execute_framework(
     style_context: Optional[dict] = None,
     input_context: Optional[dict] = None,
     images: Optional[list] = None,
+    prepared: Optional[PreparedFramework] = None,
 ) -> FrameworkExecutionResult:
     """Execute a framework on the given user input.
 
@@ -351,8 +262,8 @@ def execute_framework(
     Multi-mode frameworks (PEF, MOM, Process Formalization, etc.): the
     executor calls ``select_mode`` to choose which mode to run, then
     executes only that mode's declared milestones. Selection priority:
-    explicit prefix in user input → mode name mentioned in user input →
-    LLM-based routing classifier → first declared mode. The chosen mode
+    exact first-token prefix in user input → LLM-based routing classifier →
+    first declared mode. The chosen mode
     and the reasoning are recorded on the result and emitted with the
     oversight events.
 
@@ -370,7 +281,64 @@ def execute_framework(
     invocations and by multi-step orchestration chains (when those land)
     that specify per-step configuration.
     """
-    # Lazy import of boot.py to avoid circular issues during testing
+    # This is the direct-executor boundary.  It deliberately runs before
+    # configuration/persona loading, mode selection, trace writes, scratch,
+    # oversight events, or any model-capable import path below.
+    if prepared is None:
+        prepared = prepare_framework_execution(
+            framework_path,
+            user_input,
+            project_nexus=project_nexus,
+            one_run_profile=config_name,
+            input_context=input_context,
+        )
+    elif user_input != prepared.original_input:
+        reuse_kwargs = dict(
+            requested_mode=prepared.exact_mode,
+            project_nexus=project_nexus,
+            input_context=input_context,
+        )
+        if config_name is not None:
+            reuse_kwargs["one_run_profile"] = config_name
+        prepared = reuse_prepared_framework(
+            prepared,
+            framework_path,
+            user_input,
+            **reuse_kwargs,
+        )
+    else:
+        reuse_kwargs = dict(
+            project_nexus=project_nexus,
+            input_context=input_context,
+        )
+        if config_name is not None:
+            reuse_kwargs["one_run_profile"] = config_name
+        prepared = reuse_prepared_framework(
+            prepared,
+            framework_path,
+            user_input,
+            **reuse_kwargs,
+        )
+    project_nexus = prepared.project_nexus
+    config_name = prepared.one_run_profile
+    input_context = prepared_input_context(prepared, input_context)
+    fw = prepared.framework
+    if trace_context is not None:
+        trace_context["framework_id"] = fw.name
+        if prepared.exact_mode:
+            trace_context["mode"] = prepared.exact_mode
+
+    if prepared.mechanical_redirect is not None:
+        return _build_mechanical_redirect(
+            fw,
+            prepared.exact_mode or "",
+            prepared.mode_reasoning or "exact mechanical contract",
+            prepared.effective_input,
+            execution_id=execution_id,
+            slash_form=prepared.mechanical_redirect,
+        )
+
+    # Lazy import of boot.py to avoid circular issues during testing.
     from boot import load_routing_config
 
     persona_resolution = None
@@ -396,20 +364,24 @@ def execute_framework(
     if config is None:
         config = load_routing_config()
 
-    fw = _load_framework_bound_to_project(framework_path, project_nexus)
-    if trace_context is not None:
-        trace_context["framework_id"] = fw.name
-
-    # Keep the inheritance levels distinct.  They are resolved for every
-    # milestone below because a step may declare a closer Model Profile.
-    one_run_profile = config_name
-    process_profile = _lookup_framework_default_configuration(fw.name)
     project_visual_locks = _authenticated_project_visual_locks(project_nexus)
 
     if fw.is_multi_mode:
-        selected_mode, mode_reasoning, effective_input = select_mode(
-            fw, user_input, config
-        )
+        if prepared.exact_mode:
+            selected_mode = prepared.exact_mode
+            mode_reasoning = prepared.mode_reasoning or "exact mode"
+            effective_input = prepared.effective_input
+        else:
+            model_modes = tuple(
+                mode for mode in fw.modes
+                if any(contract_mode == mode for contract_mode, _ in prepared.contracts)
+            )
+            selected_mode, mode_reasoning, effective_input = select_mode(
+                fw, user_input, config, allowed_modes=model_modes,
+                config_name=(
+                    prepared.selector_profile_resolution["selected"]["runtime_name"]
+                ),
+            )
         if trace_context is not None:
             trace_context["mode"] = selected_mode
         milestones = fw.milestones_by_mode.get(selected_mode, [])
@@ -425,11 +397,12 @@ def execute_framework(
                 f"Framework {fw.name!r} has no milestones declared for mode "
                 f"{selected_mode!r}."
             )
-        # Mechanical-mode redirect — short-circuit before scratch / model calls.
-        if selected_mode in MECHANICAL_MODE_REDIRECTS:
-            return _build_mechanical_redirect(
-                fw, selected_mode, mode_reasoning, effective_input,
-                execution_id=execution_id,
+        if (prepared.canonical_filename, selected_mode) in EXACT_MECHANICAL_REDIRECTS:
+            # Mechanical modes must be chosen explicitly so the exact pair can
+            # be authenticated before mode-selection model spend.
+            raise FrameworkPreflightError(
+                f"Framework preflight refused {prepared.canonical_filename}: "
+                f"mechanical mode {selected_mode!r} must be the exact first token"
             )
     else:
         selected_mode = "all"
@@ -477,20 +450,18 @@ def execute_framework(
 
     try:
         for milestone in milestones:
-            profile_resolution = _resolve_milestone_model_profile(
-                project_nexus=project_nexus,
-                process_profile=process_profile,
-                milestone=milestone,
-                one_run_profile=one_run_profile,
-            )
+            profile_resolution = milestone.model_profile_resolution
             effective_profile = profile_resolution["selected"]["runtime_name"]
             if trace_context is not None:
-                trace_context["model_profile_resolution"] = profile_resolution
+                trace_context["model_profile_resolution"] = _thaw_value(
+                    profile_resolution
+                )
                 trace_context.setdefault("model_profile_resolutions", []).append(
-                    copy.deepcopy(profile_resolution)
+                    _thaw_value(profile_resolution)
                 )
             result = _run_milestone(
-                fw, milestone, scratch, effective_input, config,
+                fw, milestone, milestone,
+                scratch, effective_input, config,
                 config_name=effective_profile, parent_trace_dir=trace_dir,
                 parent_trace_ref=parent_trace_ref,
                 selected_mode=selected_mode,
@@ -619,6 +590,7 @@ def execute_framework(
 def _run_milestone(
     framework: Framework,
     milestone: Milestone,
+    contract: ResolvedMilestoneContract,
     scratch: ScratchSession,
     user_input: str,
     config: dict,
@@ -638,7 +610,9 @@ def _run_milestone(
 
     Raises MilestoneExecutionError on 3rd failure.
     """
-    handoff = _build_handoff_packet(framework, milestone, scratch, user_input)
+    handoff = _build_handoff_packet(
+        framework, milestone, contract, scratch, user_input,
+    )
 
     last_exception: Optional[Exception] = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -678,7 +652,8 @@ def _run_milestone(
                 surface="framework")
             try:
                 drift_status, drift_reasoning = _run_drift_check(
-                    milestone, deliverable, user_input, config
+                    milestone, deliverable, user_input, config,
+                    config_name=config_name,
                 )
             finally:
                 _reset_trace_context(_drift_trace_token, _drift_tool_token)
@@ -717,6 +692,7 @@ def _run_milestone(
 def _build_handoff_packet(
     framework: Framework,
     milestone: Milestone,
+    contract: ResolvedMilestoneContract,
     scratch: ScratchSession,
     user_input: str,
 ) -> str:
@@ -728,11 +704,21 @@ def _build_handoff_packet(
     sections.append(f"ORIGINAL USER INPUT:\n{user_input}")
     sections.append("")
 
-    prior_deliverables = scratch.read_all_prior(milestone.required_prior)
-    if prior_deliverables:
+    prior_deliverables = scratch.read_all_prior(list(contract.required_prior))
+    missing_priors = [
+        prior for prior in contract.required_prior
+        if prior not in prior_deliverables or prior_deliverables[prior] is None
+    ]
+    if missing_priors:
+        raise FrameworkPreflightError(
+            f"Framework preflight refused {framework.name}: "
+            f"{contract.mode}.{contract.milestone_id} is missing resolved "
+            f"same-run prior deliverable(s): {', '.join(missing_priors)}"
+        )
+    if contract.required_prior:
         sections.append("PRIOR MILESTONE DELIVERABLES:")
-        for mid in milestone.required_prior:
-            content = prior_deliverables.get(mid, "<missing>")
+        for mid in contract.required_prior:
+            content = prior_deliverables[mid]
             sections.append(f"  {mid}:")
             sections.append(_indent(content, "    "))
             sections.append("")
@@ -745,29 +731,36 @@ def _build_handoff_packet(
     )
     sections.append("")
 
-    layer_bodies = _collect_layer_bodies(framework, milestone)
-    if layer_bodies:
-        sections.append("LAYER INSTRUCTIONS:")
-        sections.append("")
-        for label, body in layer_bodies:
-            sections.append(f"## LAYER {label}: (covered by {milestone.id})")
-            sections.append(body)
-            sections.append("")
-    else:
+    sections.append("RESOLVED METHOD INSTRUCTIONS:")
+    sections.append("")
+    for method in contract.methods:
+        heading = "LAYER" if method.legacy else "METHOD"
         sections.append(
-            "LAYER INSTRUCTIONS: (none parsed — milestone references layers "
-            f"{milestone.layers_covered} but no matching ## LAYER blocks "
-            "were found in the framework)"
+            f"## {heading} {method.id}: {method.name} "
+            f"(resolved for {milestone.id})"
         )
+        sections.append(method.body)
         sections.append("")
 
+    if contract.external_prerequisites:
+        sections.append("RESOLVED EXTERNAL PREREQUISITES:")
+        for prerequisite_id, value in contract.external_prerequisites:
+            sections.append(f"  {prerequisite_id}:")
+            sections.append(_indent(str(_thaw_value(value)), "    "))
+            sections.append("")
+
     sections.append("OUTPUT SPECIFICATION:")
-    sections.append(milestone.output_format or "(use the format implied by the layer instructions)")
+    sections.append(contract.output_format)
     sections.append("")
 
     sections.append("VERIFICATION CRITERION (success target for this milestone):")
-    sections.append(milestone.verification_criterion)
+    sections.append(contract.verification_criterion)
     sections.append("")
+
+    if contract.gear4_purpose:
+        sections.append("GEAR 4 SECOND-LANE PURPOSE:")
+        sections.append(contract.gear4_purpose)
+        sections.append("")
 
     if milestone.conditional_layers:
         sections.append("CONDITIONAL LAYERS (apply only when stated condition holds):")
@@ -847,6 +840,7 @@ def _run_through_gear_pipeline(
     from boot import (
         _resolve_effective_style_id,
         build_system_prompt_for_gear,
+        run_single_pass_with_tools,
         run_gear3,
         run_gear4,
     )
@@ -879,8 +873,9 @@ def _run_through_gear_pipeline(
     elif milestone.gear == 3:
         return run_gear3(context_pkg, config, images=images, config_name=config_name)
     else:
-        # Gear 1-2: single-pass via existing helper
-        from boot import _run_model_with_tools, resolve_single_pass_endpoint
+        # Model-executed contracts admit Gear 2 only on the single-pass path;
+        # Gear 1 is reserved for an exact authenticated mechanical redirect.
+        from boot import resolve_single_pass_endpoint
         endpoint, endpoint_cell = resolve_single_pass_endpoint(
             config, milestone.gear, config_name=config_name
         )
@@ -907,10 +902,14 @@ def _run_through_gear_pipeline(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": handoff_packet},
         ]
-        response = _run_model_with_tools(
-            messages, endpoint, trace_dir=trace_dir,
+        response = run_single_pass_with_tools(
+            messages, endpoint,
+            slot=endpoint_cell,
+            gear=milestone.gear,
+            config_name=config_name,
             images=images,
             step_name="step3-direct-response",
+            context_pkg=context_pkg,
         )
         if trace_dir:
             try:
@@ -974,6 +973,21 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone,
         for key, value in input_context.items():
             if value is not None:
                 pkg[key] = copy.deepcopy(value)
+        contributor_bundle = input_context.get("contributor_bundle")
+        if isinstance(contributor_bundle, dict):
+            units = contributor_bundle.get("units")
+            if isinstance(units, list):
+                # Gear context assembly consumes this exact lane.  Preserve
+                # every explicitly selected contributor unit and its source
+                # inventory; never summarize them into substitute bullets.
+                pkg["optional_context_units"] = copy.deepcopy(units)
+            sources = contributor_bundle.get("sources")
+            if isinstance(sources, list):
+                pkg["context_source_inventory"] = {
+                    "sources": copy.deepcopy(sources),
+                    "global_retrieved_units": 0,
+                    "global_excluded_units": 0,
+                }
     return pkg
 
 
@@ -1148,6 +1162,7 @@ def _run_drift_check(
     deliverable: str,
     user_input: str,
     config: dict,
+    config_name: Optional[str] = None,
 ) -> tuple[str, str]:
     """Ask the milestone's drift_check_question against the deliverable.
 
@@ -1160,7 +1175,9 @@ def _run_drift_check(
         return ("DRIFT_CHECK_SKIPPED", "No drift check question declared.")
 
     from boot import call_model, get_slot_endpoint, get_active_endpoint
-    endpoint = get_slot_endpoint(config, DRIFT_CHECK_SLOT) or get_active_endpoint(config)
+    endpoint = get_slot_endpoint(
+        config, DRIFT_CHECK_SLOT, config_name=config_name,
+    ) or (get_active_endpoint(config) if config_name is None else None)
     if endpoint is None:
         return ("DRIFT_CHECK_SKIPPED", "No endpoint available for drift check.")
 
@@ -1215,6 +1232,7 @@ def _build_mechanical_redirect(
     mode_reasoning: str,
     effective_input: str,
     execution_id: Optional[str] = None,
+    slash_form: Optional[str] = None,
 ) -> FrameworkExecutionResult:
     """Return a FrameworkExecutionResult that redirects the user to the
     matching slash command instead of running the gear pipeline.
@@ -1225,7 +1243,15 @@ def _build_mechanical_redirect(
     file. This redirect surfaces the canonical invocation so the user can
     re-issue the request via the slash command.
     """
-    slash_form = MECHANICAL_MODE_REDIRECTS[selected_mode]
+    canonical_filename = os.path.basename(fw.file_path)
+    slash_form = slash_form or EXACT_MECHANICAL_REDIRECTS.get(
+        (canonical_filename, selected_mode)
+    )
+    if slash_form is None:
+        raise FrameworkPreflightError(
+            f"Framework preflight refused {canonical_filename}: "
+            f"{selected_mode!r} is not a recognized mechanical contract"
+        )
     body = (
         f"**{fw.name} — mode {selected_mode} is mechanical.**\n\n"
         f"This mode is handled by the runtime, not by the framework executor. "
@@ -1251,7 +1277,12 @@ def _build_mechanical_redirect(
 
 
 def select_mode(
-    fw: Framework, user_input: str, config: dict
+    fw: Framework,
+    user_input: str,
+    config: dict,
+    *,
+    allowed_modes: Optional[tuple[str, ...] | list[str]] = None,
+    config_name: Optional[str] = None,
 ) -> tuple[str, str, str]:
     """Pick the operating mode for a multi-mode framework.
 
@@ -1259,13 +1290,10 @@ def select_mode(
       1. Explicit prefix — first whitespace-separated token of user_input
          matches one of the framework's declared modes (case-insensitive).
          The token is consumed; remaining text becomes the effective input.
-      2. In-input mention — any declared mode name appears anywhere in
-         user_input (case-insensitive). First match wins. effective_input
-         is the original user_input.
-      3. LLM-based routing classifier — small-model call with the M0 routing
+      2. LLM-based routing classifier — small-model call with the M0 routing
          function text and a one-line catalog of modes. Skipped when no
          endpoint is available.
-      4. Default to the first declared mode.
+      3. Default to the first declared mode.
 
     Returns (mode, reasoning, effective_input). For single-mode frameworks
     or frameworks with no declared modes, returns ("all", reason, user_input).
@@ -1273,37 +1301,49 @@ def select_mode(
     if not fw.is_multi_mode or not fw.modes:
         return ("all", "single-mode framework", user_input)
 
+    candidates = tuple(allowed_modes) if allowed_modes is not None else tuple(fw.modes)
+    if not candidates:
+        raise FrameworkPreflightError(
+            f"Framework preflight refused {fw.name}: no model-executed mode is eligible"
+        )
+    unknown = [mode for mode in candidates if mode not in fw.modes]
+    if unknown:
+        raise FrameworkPreflightError(
+            f"Framework preflight refused {fw.name}: unknown prepared mode(s): "
+            + ", ".join(unknown)
+        )
+
     # 1. Explicit prefix
-    parts = user_input.strip().split(maxsplit=1)
-    if parts:
-        first = parts[0]
-        for mode_name in fw.modes:
+    first, remaining = _consume_first_token(user_input)
+    if first is not None:
+        for mode_name in candidates:
             if first.lower() == mode_name.lower():
-                remaining = parts[1] if len(parts) > 1 else ""
                 return (
                     mode_name,
                     f"explicit prefix: first token matched mode {mode_name!r}",
                     remaining,
                 )
 
-    # 2. In-input mention
-    lower_input = user_input.lower()
-    for mode_name in fw.modes:
-        if mode_name.lower() in lower_input:
-            return (
-                mode_name,
-                f"mode {mode_name!r} mentioned in user input",
-                user_input,
-            )
+    if len(candidates) == 1:
+        only = candidates[0]
+        return (
+            only,
+            f"only prepared model-executed mode {only!r} is eligible",
+            user_input,
+        )
 
-    # 3. LLM-based routing classifier
-    selected = _llm_select_mode(fw, user_input, config)
+    # 2. LLM-based routing classifier.  Mode names elsewhere in prose are
+    # content, not identity; only the exact first token is authoritative.
+    selected = _llm_select_mode(
+        fw, user_input, config, allowed_modes=candidates,
+        config_name=config_name,
+    )
     if selected:
         mode, reasoning = selected
         return (mode, reasoning, user_input)
 
-    # 4. Default to first declared mode
-    first_mode = fw.modes[0]
+    # 3. Default to first declared mode
+    first_mode = candidates[0]
     return (
         first_mode,
         f"no mode signal detected; defaulting to first declared mode "
@@ -1313,7 +1353,12 @@ def select_mode(
 
 
 def _llm_select_mode(
-    fw: Framework, user_input: str, config: dict
+    fw: Framework,
+    user_input: str,
+    config: dict,
+    *,
+    allowed_modes: Optional[tuple[str, ...] | list[str]] = None,
+    config_name: Optional[str] = None,
 ) -> Optional[tuple[str, str]]:
     """Ask a small model to pick a mode given the user input.
 
@@ -1327,13 +1372,14 @@ def _llm_select_mode(
         return None
 
     endpoint = (
-        get_slot_endpoint(config, MODE_SELECT_SLOT)
-        or get_active_endpoint(config)
+        get_slot_endpoint(config, MODE_SELECT_SLOT, config_name=config_name)
+        or (get_active_endpoint(config) if config_name is None else None)
     )
     if endpoint is None:
         return None
 
-    catalog = _build_mode_catalog(fw)
+    valid_modes = list(allowed_modes) if allowed_modes is not None else list(fw.modes)
+    catalog = _build_mode_catalog(fw, allowed_modes=valid_modes)
 
     prompt = (
         "You are a routing classifier for a multi-mode framework. Read the "
@@ -1356,16 +1402,21 @@ def _llm_select_mode(
     except Exception:
         return None
 
-    return _parse_mode_response(response, fw.modes)
+    return _parse_mode_response(response, valid_modes)
 
 
-def _build_mode_catalog(fw: Framework) -> str:
+def _build_mode_catalog(
+    fw: Framework,
+    *,
+    allowed_modes: Optional[tuple[str, ...] | list[str]] = None,
+) -> str:
     """Construct a short catalog string for the routing classifier prompt."""
     lines: list[str] = []
     if fw.m0_routing and fw.m0_routing.function:
         lines.append(f"Routing function: {fw.m0_routing.function}")
         lines.append("")
-    for mode_name in fw.modes:
+    modes = allowed_modes if allowed_modes is not None else fw.modes
+    for mode_name in modes:
         ms_list = fw.milestones_by_mode.get(mode_name, [])
         if ms_list:
             lines.append(f"- {mode_name}: {ms_list[0].name}")
@@ -1403,7 +1454,7 @@ FRAMEWORK_COMMAND_PREFIX = "/framework "
 
 def is_framework_command(user_input: str) -> bool:
     """Check if user_input starts with the /framework slash command."""
-    return user_input.strip().startswith(FRAMEWORK_COMMAND_PREFIX)
+    return is_framework_command_syntax(user_input)
 
 
 def parse_framework_command(user_input: str) -> tuple[str, str, Optional[str]]:
@@ -1427,36 +1478,18 @@ def parse_framework_command(user_input: str) -> tuple[str, str, Optional[str]]:
     through to the framework's declared default in framework-routing.json,
     then to the Router's context-derived default.
 
-    Multi-mode dispatch: the executor inspects the query for a mode token
-    (either as the first word or anywhere in the body). To force a specific
+    Multi-mode dispatch: the executor inspects only the query's first token
+    for an exact declared mode identity. To force a specific
     mode, prefix the query with the mode name — e.g.
     ``/framework problem-evolution PE-Init walk through the new project``
     runs PE-Init regardless of context. Without an explicit token, the
-    executor's ``select_mode`` falls through to in-input mention, then to
-    LLM-based routing, then to the first declared mode.
+    executor's ``select_mode`` falls through to LLM-based routing, then to
+    the first declared mode.
     """
-    body = user_input.strip()[len(FRAMEWORK_COMMAND_PREFIX):].strip()
-    parts = body.split(maxsplit=1)
-    if not parts:
-        raise ValueError("missing framework name; usage: /framework <name> [<query>]")
-    framework_name = resolve_user_invocable_framework(parts[0])
-    framework_query = parts[1] if len(parts) > 1 else ""
-
-    # Strip optional --config <ConfigName> from the query body.
-    config_name: Optional[str] = None
-    tokens = framework_query.split()
-    cleaned_tokens: list = []
-    i = 0
-    while i < len(tokens):
-        if tokens[i] == "--config" and i + 1 < len(tokens):
-            config_name = tokens[i + 1]
-            i += 2
-        else:
-            cleaned_tokens.append(tokens[i])
-            i += 1
-    framework_query = " ".join(cleaned_tokens)
-
-    return framework_name, framework_query, config_name
+    try:
+        return parse_framework_command_bytes(user_input)
+    except FrameworkPreflightError as exc:
+        raise ValueError(str(exc)) from exc
 
 
 def framework_command_has_query(user_input: str) -> bool:
@@ -1517,9 +1550,10 @@ def run_framework_command(user_input: str, config: dict,
                           trace_context: Optional[dict] = None,
                           project_nexus: Optional[str] = None,
                           one_run_profile: Optional[str] = None,
-                          style_context: Optional[dict] = None,
-                          input_context: Optional[dict] = None,
-                          images: Optional[list] = None) -> str:
+                           style_context: Optional[dict] = None,
+                           input_context: Optional[dict] = None,
+                           images: Optional[list] = None,
+                           prepared: Optional[PreparedFramework] = None) -> str:
     """Top-level: parse a slash command + execute + format. Used by boot.py
     and server.py as the entry point for /framework slash-command invocations.
 
@@ -1557,6 +1591,31 @@ def run_framework_command(user_input: str, config: dict,
         )
 
     try:
+        if prepared is None:
+            prepared = prepare_framework_execution(
+                framework_name,
+                framework_query,
+                project_nexus=project_nexus,
+                one_run_profile=effective_one_run_profile,
+                input_context=input_context,
+            )
+        else:
+            prepared = reuse_prepared_framework(
+                prepared,
+                framework_name,
+                framework_query,
+                project_nexus=project_nexus,
+                one_run_profile=effective_one_run_profile,
+                input_context=input_context,
+            )
+        project_nexus = prepared.project_nexus
+        input_context = prepared_input_context(prepared, input_context)
+    except FrameworkPreflightError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
+        return f"[Framework preflight refusal: {exc}]"
+
+    try:
         _parent_trace_token, _parent_tool_token = _bind_trace_context(
             trace_dir, stealth=(conversation_tag == "stealth"),
             surface="framework")
@@ -1569,13 +1628,18 @@ def run_framework_command(user_input: str, config: dict,
                 trace_context=trace_context,
                 style_context=style_context,
                 input_context=input_context,
-                images=images)
+                images=images,
+                prepared=prepared)
         finally:
             _reset_trace_context(_parent_trace_token, _parent_tool_token)
     except FileNotFoundError as exc:
         if trace_context is not None:
             trace_context["status"] = "error"
         return f"[Framework file not found: {exc}]"
+    except FrameworkPreflightError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
+        return f"[Framework preflight refusal: {exc}]"
     except FrameworkParseError as exc:
         if trace_context is not None:
             trace_context["status"] = "error"
@@ -1601,7 +1665,9 @@ if __name__ == "__main__":
     packets without actually calling models."""
     target = sys.argv[1] if len(sys.argv) > 1 else "deep-research-protocol.md"
 
-    fw = parse_framework_file(target)
+    user_input = "What does AI mean for the future of human cognition?"
+    prepared = prepare_framework_execution(target, user_input)
+    fw = prepared.framework
     print(f"Framework: {fw.name}")
     print(f"  multi-mode: {fw.is_multi_mode}")
     if fw.is_multi_mode:
@@ -1613,14 +1679,14 @@ if __name__ == "__main__":
 
     # Simulate a scratch session and build a handoff packet for each milestone
     sess = ScratchSession.create(fw.name)
-    user_input = "What does AI mean for the future of human cognition?"
-
     for ms in milestones:
         # Fake prior milestone outputs for handoff packet preview
         for prior in ms.required_prior:
             if not sess.has_milestone(prior):
                 sess.write_milestone(prior, f"<simulated content for {prior}>")
-        packet = _build_handoff_packet(fw, ms, sess, user_input)
+        packet = _build_handoff_packet(
+            fw, ms, prepared.contract_for("all", ms.id), sess, user_input,
+        )
         print(f"\n--- Handoff packet for {ms.id} ({ms.name}) ---")
         print(packet[:1500] + ("..." if len(packet) > 1500 else ""))
 

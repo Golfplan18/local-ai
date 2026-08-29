@@ -29,6 +29,8 @@ elicitation item from the 2026-05-04 implementation handoff.
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -44,8 +46,14 @@ if _ORCH_DIR not in sys.path:
 from framework_parser import (
     Framework,
     Milestone,
-    parse_framework_file,
-    FrameworkParseError,
+)
+from framework_preflight import (
+    FrameworkPreflightError,
+    MECHANICAL_REDIRECTS,
+    PreparedFramework,
+    prepare_framework_execution,
+    prepared_input_context,
+    reuse_prepared_framework,
 )
 
 
@@ -55,8 +63,14 @@ ELICITATION_SLOT = "sidebar"  # small model — same slot as drift check + mode 
 
 MARKER_PATTERN = re.compile(
     r"<!--\s*ora-framework:\s*([A-Za-z0-9_\-\.]+)/([A-Za-z0-9_\-]+)/"
-    r"([A-Za-z0-9_\-]+)(?:/([A-Za-z0-9_\-]+))?\s*-->",
+    r"([A-Za-z0-9_\-]+)/([A-Za-z0-9_\-]+)/([0-9a-f]{64})\s*-->",
 )
+MARKER_CANDIDATE_PATTERN = re.compile(
+    r"<!--\s*ora-framework:\s*.*?-->", re.DOTALL,
+)
+# Retained as a legacy display/test fixture only.  Values produced from this
+# unsigned template are candidates that ``is_continuation`` explicitly
+# rejects; runtime code must call ``elicitation_marker``.
 MARKER_TEMPLATE = "<!-- ora-framework: {framework_id}/{mode}/{state} -->"
 ELICITING_STATE = "eliciting"
 MARKER_CONTEXT_MAX_BYTES = 8 * 1024
@@ -70,6 +84,8 @@ _MARKER_DROP_KEYS = frozenset({
     "attachments",
     "base64",
     "canvas_preview_path",
+    "context_source_inventory",
+    "contributor_bundle",
     "data",
     "data_url",
     "exhibits_submission",
@@ -81,6 +97,7 @@ _MARKER_DROP_KEYS = frozenset({
     "images",
     "prior_annotations",
     "prior_spatial_representation",
+    "optional_context_units",
     "spatial_representation",
     "visual_checkpoint_id",
     "visual_native_path",
@@ -103,15 +120,29 @@ class ContinuationContext:
     one_run_profile: str | None = None
     execution_context: dict | None = None
     context_error: str | None = None
+    conversation_id: str | None = None
+    authenticated: bool = False
 
 
-def _decode_execution_context(token: str | None) -> dict:
-    if not token:
-        return {
-            "project_nexus": None,
-            "one_run_profile": None,
-            "execution_context": None,
-        }
+def _marker_key(*, create: bool) -> bytes:
+    """Reuse Ora's existing durable server-owned authentication material."""
+    try:
+        import tool_events as _tool_events
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator import tool_events as _tool_events
+    if create:
+        return _tool_events._approval_auth_key()
+    return _tool_events._read_approval_auth_key()
+
+
+def _marker_signature(
+    framework_id: str, mode: str, state: str, token: str, *, create: bool,
+) -> str:
+    body = f"{framework_id}/{mode}/{state}/{token}".encode("utf-8")
+    return hmac.new(_marker_key(create=create), body, hashlib.sha256).hexdigest()
+
+
+def _decode_execution_context(token: str) -> dict:
     try:
         padding = "=" * (-len(token) % 4)
         value = json.loads(base64.urlsafe_b64decode(token + padding).decode("utf-8"))
@@ -119,9 +150,11 @@ def _decode_execution_context(token: str | None) -> dict:
         raise ValueError("framework execution context marker is malformed") from exc
     if not isinstance(value, dict):
         raise ValueError("framework execution context marker schema is invalid")
-    if set(value) not in (
-        {"project_nexus", "one_run_profile"},
-        {"project_nexus", "one_run_profile", "execution_context"},
+    required_keys = {
+        "conversation_id", "project_nexus", "one_run_profile",
+    }
+    if not required_keys.issubset(value) or not set(value).issubset(
+        required_keys | {"execution_context"}
     ):
         raise ValueError("framework execution context marker schema is invalid")
     execution_context = value.get("execution_context")
@@ -134,6 +167,7 @@ def _decode_execution_context(token: str | None) -> dict:
         execution_context = _sanitize_marker_value(execution_context)
     project_nexus = value.get("project_nexus")
     one_run_profile = value.get("one_run_profile")
+    conversation_id = value.get("conversation_id")
     try:
         if project_nexus is not None:
             from project_meta import validate_nexus
@@ -141,11 +175,16 @@ def _decode_execution_context(token: str | None) -> dict:
         if one_run_profile is not None:
             from model_profiles import validate_profile_name
             one_run_profile = validate_profile_name(one_run_profile)
+        if conversation_id is not None:
+            conversation_id = _safe_reference(conversation_id)
+            if conversation_id is None:
+                raise ValueError("invalid conversation id")
     except (TypeError, ValueError) as exc:
         raise ValueError("framework execution context marker values are invalid") from exc
     return {
         "project_nexus": project_nexus,
         "one_run_profile": one_run_profile,
+        "conversation_id": conversation_id,
         "execution_context": execution_context,
     }
 
@@ -165,9 +204,33 @@ def is_continuation(history: list) -> Optional[ContinuationContext]:
     for msg in reversed(history):
         if msg.get("role") != "assistant":
             continue
-        m = MARKER_PATTERN.search(msg.get("content", "") or "")
-        if not m:
+        content = msg.get("content", "") or ""
+        candidate = MARKER_CANDIDATE_PATTERN.search(content)
+        if not candidate:
             return None
+        m = MARKER_PATTERN.search(content)
+        if not m or m.span() != candidate.span():
+            return ContinuationContext(
+                framework_id="unknown", mode="unknown", state="unknown",
+                context_error="framework continuation marker is not authenticated",
+            )
+        try:
+            expected = _marker_signature(
+                m.group(1), m.group(2), m.group(3), m.group(4), create=False,
+            )
+        except Exception as exc:
+            return ContinuationContext(
+                framework_id=m.group(1), mode=m.group(2), state=m.group(3),
+                context_error=(
+                    "framework continuation authentication is unavailable: "
+                    f"{exc}"
+                ),
+            )
+        if not hmac.compare_digest(expected, m.group(5)):
+            return ContinuationContext(
+                framework_id=m.group(1), mode=m.group(2), state=m.group(3),
+                context_error="framework continuation marker authentication failed",
+            )
         try:
             execution_context = _decode_execution_context(m.group(4))
             context_error = None
@@ -180,9 +243,111 @@ def is_continuation(history: list) -> Optional[ContinuationContext]:
             context_error = str(exc)
         return ContinuationContext(
             framework_id=m.group(1), mode=m.group(2), state=m.group(3),
-            context_error=context_error, **execution_context,
+            context_error=context_error,
+            authenticated=context_error is None,
+            **execution_context,
         )
     return None
+
+
+def _prepare_continuation(
+    ctx: ContinuationContext,
+    latest_user_text: str,
+    conversation_id: str | None,
+    current_project_nexus: str | None,
+    input_context: dict | None,
+    prepared: PreparedFramework | None = None,
+) -> tuple[PreparedFramework, dict]:
+    if ctx.context_error:
+        raise FrameworkPreflightError(ctx.context_error)
+    if not ctx.authenticated or ctx.state != ELICITING_STATE:
+        raise FrameworkPreflightError(
+            "framework continuation is not authenticated server state"
+        )
+    current_conversation = (
+        _safe_reference(conversation_id) if conversation_id is not None else None
+    )
+    if ctx.conversation_id != current_conversation:
+        raise FrameworkPreflightError(
+            "framework continuation belongs to a different conversation"
+        )
+    if ctx.project_nexus != current_project_nexus:
+        raise FrameworkPreflightError(
+            "the active project changed after elicitation began"
+        )
+    stored_input = (ctx.execution_context or {}).get("input_context")
+    merged_input = dict(stored_input) if isinstance(stored_input, dict) else {}
+    # The current server-resolved context is authoritative and carries the
+    # complete, freshly selected contributor bundle.  Signed marker context
+    # fills continuity gaps but never replaces current explicit choices.
+    if isinstance(input_context, dict):
+        merged_input.update(input_context)
+    if prepared is None:
+        prepared = prepare_framework_execution(
+            ctx.framework_id,
+            latest_user_text,
+            requested_mode=ctx.mode,
+            project_nexus=ctx.project_nexus,
+            one_run_profile=ctx.one_run_profile,
+            input_context=merged_input,
+        )
+    else:
+        prepared = reuse_prepared_framework(
+            prepared,
+            ctx.framework_id,
+            latest_user_text,
+            requested_mode=ctx.mode,
+            project_nexus=ctx.project_nexus,
+            one_run_profile=ctx.one_run_profile,
+            input_context=merged_input,
+        )
+    merged_input = prepared_input_context(prepared, merged_input)
+    if prepared.mechanical_redirect is not None:
+        raise FrameworkPreflightError(
+            "a mechanical Framework redirect cannot be continued as elicitation"
+        )
+    return prepared, merged_input
+
+
+def _framework_start_boundary(ctx: ContinuationContext, history: list) -> int:
+    """Return the signed start index, or refuse an unusable boundary."""
+    stored_context = ctx.execution_context or {}
+    framework_start = stored_context.get("framework_start")
+    if (
+        not isinstance(framework_start, int)
+        or isinstance(framework_start, bool)
+        or framework_start < 0
+        or framework_start > len(history or [])
+    ):
+        raise FrameworkPreflightError(
+            "authenticated Framework start boundary is invalid"
+        )
+    return framework_start
+
+
+def preflight_continuation(
+    history: list,
+    latest_user_text: str,
+    *,
+    conversation_id: str | None,
+    current_project_nexus: str | None,
+    input_context: dict | None = None,
+    prepared: PreparedFramework | None = None,
+) -> PreparedFramework | None:
+    """Authenticate and preflight a possible continuation without effects."""
+    ctx = is_continuation(history)
+    if ctx is None:
+        return None
+    prepared, _ = _prepare_continuation(
+        ctx,
+        latest_user_text,
+        conversation_id,
+        current_project_nexus,
+        input_context,
+        prepared,
+    )
+    _framework_start_boundary(ctx, history)
+    return prepared
 
 
 def start_elicitation(
@@ -190,6 +355,7 @@ def start_elicitation(
     history: list,
     config: dict,
     initial_user_message: str = "",
+    conversation_id: str | None = None,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
     style_context: dict | None = None,
@@ -198,6 +364,7 @@ def start_elicitation(
     trace_dir: str | None = None,
     conversation_tag: str = "",
     trace_context: dict | None = None,
+    prepared: PreparedFramework | None = None,
 ) -> str:
     """Begin a fresh interactive framework execution.
 
@@ -209,29 +376,88 @@ def start_elicitation(
 
     Returns the assistant message text including the trailing marker.
     """
-    fw_filename = framework_name if framework_name.endswith(".md") else framework_name + ".md"
     try:
-        fw = parse_framework_file(fw_filename)
-    except FileNotFoundError:
-        return f"[Framework file not found: {fw_filename}]"
-    except FrameworkParseError as exc:
-        return f"[Framework parse error: {exc}]"
+        if prepared is None:
+            prepared = prepare_framework_execution(
+                framework_name,
+                initial_user_message,
+                project_nexus=project_nexus,
+                one_run_profile=one_run_profile,
+                input_context=input_context,
+            )
+        else:
+            effective_profile = (
+                one_run_profile
+                if one_run_profile is not None
+                else prepared.one_run_profile
+            )
+            prepared = reuse_prepared_framework(
+                prepared,
+                framework_name,
+                initial_user_message,
+                project_nexus=project_nexus,
+                one_run_profile=effective_profile,
+                input_context=input_context,
+            )
+    except FrameworkPreflightError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
+        return f"[Framework preflight refusal: {exc}]"
 
-    mode, milestone = _resolve_mode_for_elicitation(fw, initial_user_message, config)
+    fw = prepared.framework
+    if prepared.mechanical_redirect is not None:
+        return _mechanical_mode_redirect(
+            prepared.canonical_filename, prepared.exact_mode or "",
+        ) or f"[Framework preflight refusal: unrecognized mechanical contract]"
+
+    if prepared.exact_mode:
+        mode = prepared.exact_mode
+        milestone = _first_milestone_for_mode(fw, mode)
+    else:
+        mode, milestone = _resolve_mode_for_elicitation(
+            fw, initial_user_message, config, prepared=prepared,
+        )
     if milestone is None:
         return (
             f"[Framework {fw.name!r} has no milestones declared for the requested "
             f"mode. Cannot start elicitation.]"
         )
 
-    # Mechanical modes don't need elicitation — redirect to the slash command.
-    redirect = _mechanical_mode_redirect(fw.name, mode)
-    if redirect:
-        return redirect
+    if (prepared.canonical_filename, mode) in MECHANICAL_REDIRECTS:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
+        return (
+            f"[Framework preflight refusal: mechanical mode {mode!r} must be "
+            "selected by an exact first-token identity.]"
+        )
+
+    try:
+        prepared = reuse_prepared_framework(
+            prepared,
+            prepared.canonical_filename,
+            initial_user_message,
+            requested_mode=mode,
+            project_nexus=prepared.project_nexus,
+            one_run_profile=prepared.one_run_profile,
+            input_context=input_context,
+        )
+    except FrameworkPreflightError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
+        return f"[Framework preflight refusal: {exc}]"
+    project_nexus = prepared.project_nexus
+    one_run_profile = prepared.one_run_profile
+    input_context = prepared_input_context(prepared, input_context)
+
+    conversation_id = conversation_id or _conversation_id_from_context(
+        input_context, style_context,
+    )
 
     return _run_elicitation_turn(
         fw, mode, milestone, history, config,
         latest_user_text=initial_user_message,
+        prepared=prepared,
+        conversation_id=conversation_id,
         project_nexus=project_nexus,
         one_run_profile=one_run_profile,
         style_context=style_context,
@@ -240,6 +466,7 @@ def start_elicitation(
         trace_dir=trace_dir,
         conversation_tag=conversation_tag,
         trace_context=trace_context,
+        framework_start=len(history or []),
     )
 
 
@@ -256,6 +483,7 @@ def continue_elicitation(
     trace_dir: str | None = None,
     conversation_tag: str = "",
     trace_context: dict | None = None,
+    prepared: PreparedFramework | None = None,
 ) -> str:
     """Advance an in-progress framework execution by one turn.
 
@@ -266,29 +494,57 @@ def continue_elicitation(
     deliverable approval token to THIS conversation, so an approval in one
     conversation can't admit the same framework/mode deliverable in another.
     """
-    if ctx.context_error:
-        return f"[Framework continuation rejected: {ctx.context_error}.]"
-    if ctx.project_nexus != current_project_nexus:
+    authenticated_ctx = is_continuation(history or [])
+    if authenticated_ctx is None or authenticated_ctx != ctx:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
         return (
-            "[Framework continuation rejected: the active project changed after "
-            "elicitation began. Restart the framework in the intended project.]"
+            "[Framework continuation rejected: supplied continuation state "
+            "does not match the authenticated Dialogue marker.]"
         )
+    ctx = authenticated_ctx
+    try:
+        prepared, merged_input = _prepare_continuation(
+            ctx,
+            latest_user_text,
+            conversation_id,
+            current_project_nexus,
+            input_context,
+            prepared,
+        )
+    except FrameworkPreflightError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
+        return f"[Framework continuation rejected: {exc}.]"
 
     # The marker is the conversation's existing state carrier. Prefer the
     # first-turn context stored there over the current request so a guided
     # continuation cannot silently drop style, attachments, canvas, privacy,
     # or trace inputs when the browser sends only the new answer.
     stored_context = ctx.execution_context or {}
+    try:
+        framework_start = _framework_start_boundary(ctx, history)
+    except FrameworkPreflightError:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
+        return (
+            "[Framework continuation rejected: authenticated Framework start "
+            "boundary is invalid.]"
+        )
     if "style_context" in stored_context:
         style_context = stored_context["style_context"]
-    if "input_context" in stored_context:
-        input_context = stored_context["input_context"]
+    input_context = merged_input
     if "trace_dir" in stored_context:
         trace_dir = stored_context["trace_dir"]
     if "conversation_tag" in stored_context:
         conversation_tag = stored_context["conversation_tag"]
     if "trace_context" in stored_context:
-        trace_context = stored_context["trace_context"]
+        stored_trace_context = stored_context["trace_context"]
+        if isinstance(trace_context, dict) and isinstance(stored_trace_context, dict):
+            for key, value in stored_trace_context.items():
+                trace_context.setdefault(key, value)
+        elif isinstance(stored_trace_context, dict):
+            trace_context = dict(stored_trace_context)
 
     # Attachment bytes never come from the marker.  Rehydrate only from the
     # existing submission record, and only after validating any file paths in
@@ -312,15 +568,7 @@ def continue_elicitation(
             merged_input.update(hydrated_input)
             input_context = merged_input
 
-    fw_filename = (
-        ctx.framework_id if ctx.framework_id.endswith(".md") else ctx.framework_id + ".md"
-    )
-    try:
-        fw = parse_framework_file(fw_filename)
-    except FileNotFoundError:
-        return f"[Framework file not found: {fw_filename}]"
-    except FrameworkParseError as exc:
-        return f"[Framework parse error: {exc}]"
+    fw = prepared.framework
 
     milestone = _first_milestone_for_mode(fw, ctx.mode)
     if milestone is None:
@@ -332,6 +580,7 @@ def continue_elicitation(
     return _run_elicitation_turn(
         fw, ctx.mode, milestone, history, config,
         latest_user_text=latest_user_text,
+        prepared=prepared,
         conversation_id=conversation_id,
         project_nexus=ctx.project_nexus,
         one_run_profile=ctx.one_run_profile,
@@ -341,6 +590,7 @@ def continue_elicitation(
         trace_dir=trace_dir,
         conversation_tag=conversation_tag,
         trace_context=trace_context,
+        framework_start=framework_start,
     )
 
 
@@ -353,6 +603,7 @@ def _run_elicitation_turn(
     history: list,
     config: dict,
     latest_user_text: str,
+    prepared: PreparedFramework,
     conversation_id: str | None = None,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
@@ -362,9 +613,18 @@ def _run_elicitation_turn(
     trace_dir: str | None = None,
     conversation_tag: str = "",
     trace_context: dict | None = None,
+    framework_start: int = 0,
 ) -> str:
     """One elicitation turn: summarize state, decide next step, emit response."""
-    summary = _ask_summarizer(fw, mode, milestone, history, latest_user_text, config)
+    segment_history = list(history or [])[framework_start:]
+    profile_resolution = prepared.contract_for(
+        mode, milestone.id,
+    ).model_profile_resolution
+    effective_profile = profile_resolution["selected"]["runtime_name"]
+    summary = _ask_summarizer(
+        fw, mode, milestone, segment_history, latest_user_text, config,
+        config_name=effective_profile,
+    )
 
     if summary is None:
         # Summarizer unavailable or unparseable — emit a graceful question
@@ -377,15 +637,18 @@ def _run_elicitation_turn(
         )
         return _wrap_with_marker(
             question, fw.name, mode, project_nexus, one_run_profile,
+            conversation_id=conversation_id,
             execution_context=_build_execution_context(
                 style_context, input_context, images, trace_dir,
                 conversation_tag, trace_context,
+                framework_start=framework_start,
             ),
         )
 
     if summary.action == "PRODUCE_DELIVERABLE":
-        return _produce_deliverable(fw, mode, milestone, summary, history,
+        return _produce_deliverable(fw, mode, milestone, summary, segment_history,
                                     latest_user_text, config,
+                                    prepared=prepared,
                                     conversation_id=conversation_id,
                                     project_nexus=project_nexus,
                                     one_run_profile=one_run_profile,
@@ -394,7 +657,8 @@ def _run_elicitation_turn(
                                     images=images,
                                     trace_dir=trace_dir,
                                     conversation_tag=conversation_tag,
-                                    trace_context=trace_context)
+                                    trace_context=trace_context,
+                                    framework_start=framework_start)
 
     # ASK_NEXT path
     question = summary.next_question or (
@@ -410,9 +674,11 @@ def _run_elicitation_turn(
         )
     return _wrap_with_marker(
         body, fw.name, mode, project_nexus, one_run_profile,
+        conversation_id=conversation_id,
         execution_context=_build_execution_context(
             style_context, input_context, images, trace_dir,
             conversation_tag, trace_context,
+            framework_start=framework_start,
         ),
     )
 
@@ -425,6 +691,7 @@ def _produce_deliverable(
     history: list,
     latest_user_text: str,
     config: dict,
+    prepared: PreparedFramework,
     conversation_id: str | None = None,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
@@ -434,23 +701,50 @@ def _produce_deliverable(
     trace_dir: str | None = None,
     conversation_tag: str = "",
     trace_context: dict | None = None,
+    framework_start: int = 0,
 ) -> str:
     """Hand control to the existing milestone executor with the elicited facts
     as the user input. The result is rendered with format_execution_result.
 
     The final turn carries NO marker — that signals back to normal chat.
     """
-    from milestone_executor import execute_framework, format_execution_result
-
-    elicited = "\n".join(f"- {b}" for b in summary.elicited_bullets) or (
-        "(no facts extracted from the prior conversation)"
+    authoritative_messages = []
+    for message in history or []:
+        if not isinstance(message, dict) or message.get("role") != "user":
+            continue
+        content = message.get("content")
+        if isinstance(content, str) and content:
+            authoritative_messages.append(content)
+    if latest_user_text:
+        authoritative_messages.append(latest_user_text)
+    authoritative_input = "\n\n--- next user message ---\n\n".join(
+        authoritative_messages
     )
     deliverable_input = (
-        f"{mode} Produce the milestone deliverable using the following "
-        f"elicited information:\n\n{elicited}"
+        f"{mode} Produce the milestone deliverable from the user's "
+        "authoritative messages below. Preserve their wording and intent; "
+        "do not substitute the elicitation model's summary.\n\n"
+        f"AUTHORITATIVE USER MESSAGES:\n{authoritative_input}"
     )
 
     fw_filename = fw.name if fw.name.endswith(".md") else fw.name + ".md"
+    try:
+        prepared = reuse_prepared_framework(
+            prepared,
+            fw_filename,
+            deliverable_input,
+            requested_mode=mode,
+            project_nexus=project_nexus,
+            one_run_profile=prepared.one_run_profile,
+            input_context=input_context,
+        )
+        input_context = prepared_input_context(prepared, input_context)
+    except FrameworkPreflightError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "refused"
+        return f"[Framework preflight refusal: {exc}]"
+
+    from milestone_executor import execute_framework, format_execution_result
 
     # Execution Review Phase 2 (judge condition 4): the interactive
     # final-deliverable path calls execute_framework() DIRECTLY, bypassing
@@ -497,11 +791,13 @@ def _produce_deliverable(
             # the deliverable (now with a valid token).
             resume={
                 "fw": fw.name, "mode": mode or "",
+                "conversation_id": conversation_id,
                 "project_nexus": project_nexus,
                 "one_run_profile": one_run_profile,
                 "execution_context": _build_execution_context(
                     style_context, input_context, images, trace_dir,
                     conversation_tag, trace_context,
+                    framework_start=framework_start,
                 ),
             })
         if _hold is not None:
@@ -535,6 +831,7 @@ def _produce_deliverable(
             style_context=style_context, input_context=input_context,
             images=images, trace_dir=trace_dir,
             conversation_tag=conversation_tag, trace_context=trace_context,
+            prepared=prepared,
         )
     except Exception as exc:
         return f"[Final deliverable production failed: {exc}]"
@@ -542,9 +839,19 @@ def _produce_deliverable(
         try:
             # Phase 3: pass the produced deliverable so the source-read "makes
             # claims" test runs; None when execution failed (no grounded output).
-            _dl_out = format_execution_result(result) if result is not None else None
-            _rgate.record_route_observed((conversation_id, _dl_turn_ts or ""),
-                                         risk_tier=_dl_tier, output_text=_dl_out)
+            if not (
+                isinstance(trace_context, dict)
+                and trace_context.get("status") == "refused"
+            ):
+                _dl_out = (
+                    format_execution_result(result)
+                    if result is not None else None
+                )
+                _rgate.record_route_observed(
+                    (conversation_id, _dl_turn_ts or ""),
+                    risk_tier=_dl_tier,
+                    output_text=_dl_out,
+                )
         except Exception:
             pass
 
@@ -568,6 +875,7 @@ def _ask_summarizer(
     history: list,
     latest_user_text: str,
     config: dict,
+    config_name: str | None = None,
 ) -> Optional[_SummaryState]:
     """Send a structured prompt to the small-model slot. Returns parsed state
     or None if the call fails / response is unparseable."""
@@ -582,8 +890,8 @@ def _ask_summarizer(
         return None
 
     endpoint = (
-        get_slot_endpoint(config, ELICITATION_SLOT)
-        or get_active_endpoint(config)
+        get_slot_endpoint(config, ELICITATION_SLOT, config_name=config_name)
+        or (get_active_endpoint(config) if config_name is None else None)
     )
     if endpoint is None:
         return None
@@ -728,7 +1036,11 @@ def _parse_bullet_block(response: str, label: str) -> list:
 # ---------- Helpers ----------
 
 def _resolve_mode_for_elicitation(
-    fw: Framework, initial_user_text: str, config: dict
+    fw: Framework,
+    initial_user_text: str,
+    config: dict,
+    *,
+    prepared: PreparedFramework,
 ) -> tuple:
     """Pick the mode for an elicitation start.
 
@@ -742,7 +1054,19 @@ def _resolve_mode_for_elicitation(
         return ("all", ms_list[0] if ms_list else None)
 
     from milestone_executor import select_mode
-    mode, _, _ = select_mode(fw, initial_user_text, config)
+    model_modes = tuple(
+        mode for mode in fw.modes
+        if any(contract_mode == mode for contract_mode, _ in prepared.contracts)
+    )
+    mode, _, _ = select_mode(
+        fw,
+        initial_user_text,
+        config,
+        allowed_modes=model_modes,
+        config_name=(
+            prepared.selector_profile_resolution["selected"]["runtime_name"]
+        ),
+    )
     milestone = _first_milestone_for_mode(fw, mode)
     return (mode, milestone)
 
@@ -756,13 +1080,16 @@ def _mechanical_mode_redirect(framework_name: str, mode: str) -> Optional[str]:
     """Surface the matching slash command for mechanical modes; return None
     if the mode is model-driven.
 
-    Mirrors milestone_executor.MECHANICAL_MODE_REDIRECTS but emits a fuller
-    user-facing message (we're at the start of an interactive session, so
+    Uses the same exact registered identity/mode table as preflight, but emits
+    a fuller user-facing message (we're at the start of an interactive session, so
     the user explicitly asked for elicitation — be clear that this mode
     isn't elicitation-driven).
     """
-    from milestone_executor import MECHANICAL_MODE_REDIRECTS
-    slash = MECHANICAL_MODE_REDIRECTS.get(mode)
+    canonical_filename = (
+        framework_name if framework_name.endswith(".md")
+        else framework_name + ".md"
+    )
+    slash = MECHANICAL_REDIRECTS.get((canonical_filename, mode))
     if not slash:
         return None
     return (
@@ -838,11 +1165,13 @@ def _wrap_with_marker(
     mode: str,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
+    conversation_id: str | None = None,
     execution_context: dict | None = None,
 ) -> str:
     """Append the eliciting marker on its own line at the end of the message."""
     marker = elicitation_marker(
         framework_id, mode, project_nexus, one_run_profile,
+        conversation_id=conversation_id,
         execution_context=execution_context,
     )
     return f"{body.rstrip()}\n\n{marker}"
@@ -855,6 +1184,8 @@ def _build_execution_context(
     trace_dir: str | None,
     conversation_tag: str,
     trace_context: dict | None,
+    *,
+    framework_start: int | None = None,
 ) -> dict | None:
     """Return bounded, non-payload state carried by the existing marker."""
     context = {}
@@ -881,6 +1212,8 @@ def _build_execution_context(
     safe_trace_context = _sanitize_marker_value(trace_context)
     if safe_trace_context:
         context["trace_context"] = safe_trace_context
+    if framework_start is not None:
+        context["framework_start"] = framework_start
     return context or None
 
 
@@ -1144,22 +1477,21 @@ def elicitation_marker(
     mode: str,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
+    conversation_id: str | None = None,
     execution_context: dict | None = None,
 ) -> str:
     """The eliciting-state marker for a framework/mode. Public so the Phase 2
     task gate can re-attach it to an approval reply and keep the elicitation
     flow alive across an irreversible-deliverable hold."""
     fw_id = framework_id[:-3] if framework_id.endswith(".md") else framework_id
-    marker = MARKER_TEMPLATE.format(
-        framework_id=fw_id, mode=mode or "", state=ELICITING_STATE)
-    if (
-        project_nexus is None
-        and one_run_profile is None
-        and not execution_context
-    ):
-        return marker
+    safe_conversation_id = (
+        _safe_reference(conversation_id) if conversation_id is not None else None
+    )
+    if conversation_id is not None and safe_conversation_id is None:
+        raise ValueError("invalid framework elicitation conversation id")
     safe_execution_context = _sanitize_marker_value(execution_context)
     context_payload = {
+        "conversation_id": safe_conversation_id,
         "project_nexus": project_nexus,
         "one_run_profile": one_run_profile,
     }
@@ -1174,6 +1506,9 @@ def elicitation_marker(
         # marker is a transport envelope, not a second attachment store.
         bounded = {}
         if isinstance(safe_execution_context, dict):
+            framework_start = safe_execution_context.get("framework_start")
+            if isinstance(framework_start, int) and not isinstance(framework_start, bool):
+                bounded["framework_start"] = framework_start
             attachment_state = safe_execution_context.get("attachment_state")
             if attachment_state:
                 bounded["attachment_state"] = attachment_state
@@ -1196,10 +1531,24 @@ def elicitation_marker(
             sort_keys=True, separators=(",", ":"), ensure_ascii=False,
         ).encode("utf-8")
         if len(context) > MARKER_CONTEXT_MAX_BYTES:
-            context_payload.pop("execution_context", None)
+            minimal_context = {}
+            if isinstance(safe_execution_context, dict):
+                framework_start = safe_execution_context.get("framework_start")
+                if isinstance(framework_start, int) and not isinstance(framework_start, bool):
+                    minimal_context["framework_start"] = framework_start
+            if minimal_context:
+                context_payload["execution_context"] = minimal_context
+            else:
+                context_payload.pop("execution_context", None)
             context = json.dumps(
                 context_payload,
                 sort_keys=True, separators=(",", ":"), ensure_ascii=False,
             ).encode("utf-8")
     token = base64.urlsafe_b64encode(context).decode("ascii").rstrip("=")
-    return marker[:-4] + f"/{token} -->"
+    signature = _marker_signature(
+        fw_id, mode or "", ELICITING_STATE, token, create=True,
+    )
+    return (
+        f"<!-- ora-framework: {fw_id}/{mode or ''}/{ELICITING_STATE}/"
+        f"{token}/{signature} -->"
+    )
