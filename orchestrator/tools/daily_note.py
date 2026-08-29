@@ -87,6 +87,9 @@ _SUMMARY_MARKER_VERSION = 1
 _CHUNK_OWNER_RE = re.compile(
     r'<!-- ora-conversation-id: (?P<value>"(?:[^"\\]|\\.)*") -->'
 )
+_TURN_PRIVACY_RE = re.compile(
+    r'<!-- ora-turn-privacy: (?P<value>"(?:[^"\\]|\\.)*") -->'
+)
 
 
 def _vault_path() -> str:
@@ -154,37 +157,25 @@ def _display_name(conversation_id: str) -> str:
 
 
 def _conversation_is_restricted(conversation_id: str, chunk_text: str) -> bool:
-    """Return the most protective broad-surface privacy answer available.
+    """Return True unless this exact chunk is explicitly Standard.
 
-    The envelope is authoritative for retained Dialogues. Historical imports
-    may not have one, so their chunk frontmatter is the compatibility source.
-    Any uncertainty remains visible (Standard); malformed input is not turned
-    into a silent privacy classification.
+    Kept as a compatibility helper for lifecycle callers.  Missing, invalid,
+    and conflicting authority is protective rather than visible as Standard.
     """
-    env_path = os.path.join(SESSIONS_DIR, conversation_id, "conversation.json")
-    try:
-        with open(env_path, encoding="utf-8") as stream:
-            envelope = json.load(stream)
-        if isinstance(envelope, dict):
-            if str(envelope.get("tag") or "").casefold() in {
-                "private", "stealth",
-            }:
-                return True
-    except (OSError, json.JSONDecodeError):
-        pass
+    del conversation_id
+    return _chunk_turn_privacy(chunk_text) != "standard"
 
-    frontmatter = re.match(r"\A---\s*\n(?P<body>.*?)\n---(?:\s*\n|\Z)",
-                           chunk_text, re.DOTALL)
-    if frontmatter is None:
-        return False
-    body = frontmatter.group("body")
-    return bool(
-        re.search(r"(?mi)^\s*-\s*(?:private|stealth)\s*$", body)
-        or re.search(
-            r"(?mi)^\s*tags\s*:\s*\[[^\]]*\b(?:private|stealth)\b",
-            body,
-        )
-    )
+
+def _chunk_turn_privacy(chunk_text: str) -> str | None:
+    """Read the exact exchange authority owned by one chunk."""
+    match = _TURN_PRIVACY_RE.search(str(chunk_text or ""))
+    if match is None:
+        return None
+    try:
+        value = json.loads(match.group("value"))
+    except json.JSONDecodeError:
+        return None
+    return value if value in {"standard", "private", "stealth"} else None
 
 
 def collect_conversations(date_str: str, *, include_private: bool = False) -> list[dict]:
@@ -201,6 +192,13 @@ def collect_conversations(date_str: str, *, include_private: bool = False) -> li
             with open(path, encoding="utf-8") as f:
                 text = f.read(4000)
         except OSError:
+            continue
+        turn_privacy = _chunk_turn_privacy(text)
+        if turn_privacy is None:
+            # A Daily Note is a broad surface. Unknown authority cannot be
+            # inferred from a Dialogue-wide envelope or legacy YAML tag.
+            continue
+        if turn_privacy in {"private", "stealth"} and not include_private:
             continue
         owner_match = _CHUNK_OWNER_RE.search(text)
         if owner_match is not None:
@@ -225,21 +223,14 @@ def collect_conversations(date_str: str, *, include_private: bool = False) -> li
             panel = ym.group(1).strip() if ym else "unknown"
         entry = convs.setdefault(panel, {
             "id": panel, "exchanges": 0, "first": hhmm, "last": hhmm,
-            "gist": gist, "private": False,
+            "gist": gist,
         })
         entry["exchanges"] += 1
         entry["last"] = hhmm
-        entry["private"] = bool(
-            entry["private"] or _conversation_is_restricted(panel, text)
-        )
         if not entry["gist"] and gist:
             entry["gist"] = gist
     out = []
     for entry in convs.values():
-        # Daily Notes are a broad temporal surface. Private and Stealth
-        # Dialogue titles, prompts, and timing do not belong there.
-        if entry.pop("private", False) and not include_private:
-            continue
         entry["name"] = _display_name(entry["id"])
         out.append(entry)
     out.sort(key=lambda e: e["first"])

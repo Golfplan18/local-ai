@@ -3663,7 +3663,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 extra_context=pending.get("extra_context"),
                 trace_dir=trace_dir,
                 config_name=config_name,
-                conversation_tag=pending.get("conversation_tag") or conversation_tag,
+                conversation_tag=pending.get("conversation_tag"),
                 turn_state=turn_state,
             )
         finally:
@@ -4146,6 +4146,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "images": images,
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
+            "turn_privacy": _turn_privacy_for_tag(conversation_tag),
             "pre_routing_stage": pre_routing.get("pending_clarification_stage"),
             # This paused turn's own trace ref — the eventual resume turn
             # records it as parent_trace_ref (design-gate condition 4).
@@ -4216,6 +4217,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "images": images,
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
+            "turn_privacy": _turn_privacy_for_tag(conversation_tag),
             "pre_routing_stage": pending_stage,
             "trace_ref": trace_ref_val,
         }
@@ -4256,6 +4258,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "images": images,
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
+            "turn_privacy": _turn_privacy_for_tag(conversation_tag),
             "trace_ref": trace_ref_val,
         }
 
@@ -6829,6 +6832,30 @@ def _normalize_tag(raw) -> str:
     return val if val in _VALID_CONVERSATION_TAGS else ""
 
 
+def _strict_request_tag(raw) -> str:
+    """Validate a request-carried creation/composer tag without guessing."""
+    if raw is None:
+        return ""
+    if not isinstance(raw, str):
+        raise ValueError("Dialogue privacy tag must be a string")
+    value = raw.strip().lower()
+    if value not in _VALID_CONVERSATION_TAGS:
+        raise ValueError("Dialogue privacy tag is invalid")
+    return value
+
+
+def _turn_privacy_for_tag(tag: str) -> str:
+    """Resolve one exact turn authority without a Standard fallback."""
+    try:
+        from orchestrator.conversation_memory import turn_privacy_from_tag
+        value = turn_privacy_from_tag(tag)
+    except Exception:
+        value = None
+    if value is None:
+        raise ValueError("Dialogue turn privacy authority is invalid")
+    return value
+
+
 # V3 Phase 2 — track conversations that are currently mid-pipeline. The
 # /api/conversations list endpoint reads this to surface the Pending group
 # (conversations awaiting their next pipeline output). Set membership is
@@ -7043,7 +7070,7 @@ def _effective_conversation_tag(conversation_id: str, requested_tag="") -> str:
     tag. Only a genuinely missing envelope may accept a request's creation
     tag. The first request for a missing envelope wins until persistence lands.
     """
-    requested = _normalize_tag(requested_tag)
+    requested = _strict_request_tag(requested_tag)
     identity = _conversation_storage_identity(conversation_id)
     try:
         from orchestrator.conversation_memory import (
@@ -7068,7 +7095,9 @@ def _effective_conversation_tag(conversation_id: str, requested_tag="") -> str:
 
     if isinstance(envelope, dict):
         stored = envelope.get("tag", "")
-        authoritative = stored if stored in _VALID_CONVERSATION_TAGS else ""
+        if stored not in _VALID_CONVERSATION_TAGS:
+            raise ValueError("existing Dialogue privacy authority is invalid")
+        authoritative = stored
         with _conversation_lifecycle_guard:
             _conversation_creation_tags.pop(identity, None)
             _unreadable_conversations.discard(identity)
@@ -7083,18 +7112,19 @@ def _effective_conversation_tag(conversation_id: str, requested_tag="") -> str:
         envelope_path = _conversation_path(
             conversation_id, _DEFAULT_SESSIONS_ROOT,
         )
-        if envelope_path.exists() or envelope_path.is_symlink():
-            with _conversation_lifecycle_guard:
-                _unreadable_conversations.add(identity)
-            print(f"[conversation-lifecycle] unreadable existing envelope "
-                  f"{envelope_path}; treating as Stealth until repaired",
-                  file=sys.stderr, flush=True)
-            return "stealth"
+    except (OSError, ValueError) as exc:
+        raise ValueError(
+            "Dialogue privacy authority could not be authenticated"
+        ) from exc
+    if envelope_path.exists() or envelope_path.is_symlink():
         with _conversation_lifecycle_guard:
-            _unreadable_conversations.discard(identity)
-    except Exception as exc:
-        print(f"[conversation-lifecycle] envelope existence check failed for "
-              f"{conversation_id}: {exc}", file=sys.stderr, flush=True)
+            _unreadable_conversations.add(identity)
+        print(f"[conversation-lifecycle] unreadable existing envelope "
+              f"{envelope_path}; refusing turn until repaired",
+              file=sys.stderr, flush=True)
+        raise ValueError("existing Dialogue privacy authority is unreadable")
+    with _conversation_lifecycle_guard:
+        _unreadable_conversations.discard(identity)
 
     with _conversation_lifecycle_guard:
         return _conversation_creation_tags.setdefault(identity, requested)
@@ -7505,7 +7535,8 @@ def _resolve_chunk_destination(output_destination: str) -> str:
 
 def _save_conversation_unlocked(user_input, ai_response, panel_id,
                                 is_new_session, tag="",
-                                output_destination="", trace_ref=None):
+                                output_destination="", trace_ref=None,
+                                turn_privacy=None):
     """
     Three steps, all inline, immediately after every response:
 
@@ -7547,7 +7578,26 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
         print(f"[conversation-lifecycle] skipped save for deleted "
               f"conversation {panel_id}", flush=True)
         return None
-    tag = _effective_conversation_tag(panel_id, tag)
+    composer_tag = _effective_conversation_tag(panel_id, tag)
+    try:
+        from orchestrator.conversation_memory import (
+            turn_privacy_from_tag,
+            turn_privacy_to_tag,
+        )
+        if turn_privacy is None:
+            turn_privacy = turn_privacy_from_tag(composer_tag)
+        artifact_tag = turn_privacy_to_tag(turn_privacy)
+    except Exception:
+        artifact_tag = None
+    if turn_privacy is None:
+        raise ValueError("Dialogue turn privacy authority is invalid")
+    if artifact_tag is None:
+        raise ValueError("Dialogue turn privacy authority is invalid")
+    if (composer_tag == "stealth") != (turn_privacy == "stealth"):
+        raise ValueError("Dialogue turn privacy conflicts with its Stealth identity")
+    # Chunk, raw, and index metadata describe this exact exchange.  The
+    # envelope's independent composer tag is deliberately not copied here.
+    tag = artifact_tag
     chunk_dir = _resolve_chunk_destination(output_destination)
     os.makedirs(CONVERSATIONS_RAW, exist_ok=True)
     os.makedirs(chunk_dir, exist_ok=True)
@@ -7613,7 +7663,7 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
                 f"---\n"
             )
         f.write(
-            f"\n<!-- pair {pair_num:03d} | {ts_str} -->\n\n"
+            f"\n<!-- pair {pair_num:03d} | {ts_str} | privacy: {turn_privacy} -->\n\n"
             f"**User:** {user_input}\n\n"
             f"**Assistant:** {ai_response}\n\n"
             f"---\n"
@@ -7699,6 +7749,8 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
                     "managed_by": "ora",
                     "raw_path": sess["raw_path"],
                     "tag": tag,
+                    "turn_privacy": turn_privacy,
+                    "turn_index": pair_num,
                     "trace_ref": trace_ref,
                 }) + "\n",
             )
@@ -7716,6 +7768,7 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
         f"{frontmatter}\n"
         f"<!-- ora-conversation-id: {json.dumps(panel_id, ensure_ascii=False)} -->\n"
         f"<!-- ora-chunk-id: {json.dumps(chunk_id, ensure_ascii=False)} -->\n\n"
+        f"<!-- ora-turn-privacy: {json.dumps(turn_privacy, ensure_ascii=False)} -->\n\n"
         f"## Context\n\n"
         f"{context_header}\n\n"
         f"## Exchange\n\n"
@@ -7828,6 +7881,7 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
             # Type + Phase 5.3 filter booleans + V3 close-out compatibility
             "type":               "chat",
             "tag":                tag,                  # legacy V3 mode flag
+            "turn_privacy":       turn_privacy,
             "agent_id":            "user",
             "chunk_path":          chunk_path,           # V3 stealth purge needs this
             "raw_path":            sess["raw_path"],     # V3 stealth purge needs this
@@ -7902,6 +7956,8 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
                             "error": str(_indexing_exc)[:2000],
                             "error_type": type(_indexing_exc).__name__,
                             "tag": tag,
+                            "turn_privacy": turn_privacy,
+                            "turn_index": pair_num,
                         }) + "\n",
                     )
             except Exception as _log_exc:
@@ -7920,7 +7976,8 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
 
 
 def _save_conversation(user_input, ai_response, panel_id, is_new_session,
-                       tag="", output_destination="", trace_ref=None):
+                       tag="", output_destination="", trace_ref=None,
+                       turn_privacy=None):
     """Lifecycle-serialized wrapper around the conversation artifact save."""
     with _conversation_lifecycle_lock(panel_id):
         if _is_conversation_deleted(panel_id):
@@ -7944,7 +8001,7 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session,
         return _save_conversation_unlocked(
             user_input, ai_response, panel_id, is_new_session,
             effective_tag, output_destination=output_destination,
-            trace_ref=trace_ref,
+            trace_ref=trace_ref, turn_privacy=turn_privacy,
         )
 
 
@@ -8104,6 +8161,8 @@ def _normalize_explicit_history(history) -> list[dict]:
         if not isinstance(content, str):
             continue
         turn = {"role": role, "content": content}
+        if message.get("turn_privacy") in {"standard", "private", "stealth"}:
+            turn["turn_privacy"] = message["turn_privacy"]
         if role == "user":
             spatial = message.get("spatial_representation")
             if isinstance(spatial, dict):
@@ -8116,7 +8175,8 @@ def _normalize_explicit_history(history) -> list[dict]:
 
 
 def _authoritative_dialogue_history(
-        conversation_id: str, supplied_history=None) -> tuple[list[dict], dict]:
+        conversation_id: str, supplied_history=None, *,
+        target_tag: str) -> tuple[list[dict], dict]:
     """Resolve one request's ordered history and local turn metadata.
 
     An existing Dialogue envelope always wins, including an honestly empty
@@ -8134,6 +8194,7 @@ def _authoritative_dialogue_history(
             _conversation_path,
             _read_history_envelope,
             resolve_effective_conversation_history,
+            filter_conversation_history_for_tag,
         )
 
         root = _DEFAULT_SESSIONS_ROOT
@@ -8167,7 +8228,10 @@ def _authoritative_dialogue_history(
                 ),
                 "",
             )
-            return history, {
+            filtered_history = filter_conversation_history_for_tag(
+                history, target_tag,
+            )
+            return filtered_history, {
                 "source": (
                     "conversation_json" if envelope is not None
                     else "unreadable_conversation_json"
@@ -8182,6 +8246,9 @@ def _authoritative_dialogue_history(
                     if message.get("role") == "user"
                 ),
                 "first_user_input": first_user_input,
+                "privacy_filtered_message_count": (
+                    len(history) - len(filtered_history)
+                ),
             }
     except Exception as exc:
         # Invalid ids are rejected at the HTTP boundary.  A read-path failure
@@ -8200,7 +8267,14 @@ def _authoritative_dialogue_history(
             "first_user_input": "",
         }
 
-    return explicit, {
+    try:
+        from orchestrator.conversation_memory import filter_conversation_history_for_tag
+        filtered_explicit = filter_conversation_history_for_tag(
+            explicit, target_tag,
+        )
+    except (ImportError, ValueError):
+        filtered_explicit = []
+    return filtered_explicit, {
         "source": "legacy_explicit" if explicit else "new_conversation",
         "envelope_exists": False,
         "local_message_count": len(explicit),
@@ -8214,6 +8288,7 @@ def _authoritative_dialogue_history(
             ),
             "",
         ),
+        "privacy_filtered_message_count": len(explicit) - len(filtered_explicit),
     }
 
 
@@ -8326,7 +8401,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     else:
         sidebar_win = None
         history, history_state = _authoritative_dialogue_history(
-            panel_id, history,
+            panel_id, history, target_tag=tag,
         )
 
     try:
@@ -8522,13 +8597,15 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
             # are one acknowledged save boundary. Both complete synchronously
             # under the lifecycle lock before the pending submission can move
             # to processed or the HTTP response can report success.
+            saved_turn_privacy = _turn_privacy_for_tag(tag)
             if final_response is not None:
                 try:
                     chunk_id = _save_conversation(
                         clean_input, final_response, panel_id,
                         is_new_session, tag,
                         output_destination=output_destination,
-                        trace_ref=trace_ref)
+                        trace_ref=trace_ref,
+                        turn_privacy=saved_turn_privacy)
                 except Exception as e:
                     failure_summary = f"_save_conversation failed: {e}"
                     print(f"[ERROR] _save_conversation: {e}")
@@ -8544,6 +8621,8 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                         _persist_turn_spatial_state_unlocked(
                             panel_id, clean_input, final_response,
                             extra_context, tag, trace_ref=trace_ref,
+                            chunk_id=chunk_id,
+                            turn_privacy=saved_turn_privacy,
                         )
                     )
                 except Exception as e:
@@ -8558,6 +8637,8 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                         history_state["local_message_count"],
                         clean_input,
                         final_response,
+                        saved_turn_privacy,
+                        chunk_id,
                     )
                 if not envelope_persisted:
                     failure_summary = "conversation envelope persistence failed"
@@ -8633,6 +8714,10 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                 threading.Thread(
                     target=_run_end_of_session_pipeline,
                     args=(clean_input, final_response, panel_id, cfg, history),
+                    kwargs={
+                        "source_chunk_id": chunk_id,
+                        "source_turn_index": history_state["local_turn_count"] + 1,
+                    },
                     daemon=True,
                 ).start()
     finally:
@@ -8786,7 +8871,10 @@ def chat():
     history = []
     panel_id = str(data.get("panel_id") or data.get("conversation_id") or "main").strip()
     is_main = data.get("is_main_feed", True)
-    tag = _normalize_tag(data.get("tag", ""))
+    try:
+        tag = _strict_request_tag(data.get("tag", ""))
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
     manual_mode_selection = str(data.get("manual_mode_selection") or "").strip()
     manual_lens_selection = str(data.get("manual_lens_selection") or "").strip()
     framework_selected = str(data.get("framework_selected") or "").strip()
@@ -8824,7 +8912,7 @@ def chat():
             return _json_response({"error": str(exc)}, 409)
         tag = _effective_conversation_tag(panel_id, tag)
         history, history_state = _authoritative_dialogue_history(
-            panel_id, supplied_history,
+            panel_id, supplied_history, target_tag=tag,
         )
         try:
             preflight_context = _framework_admission_context(
@@ -9005,7 +9093,10 @@ def chat_multipart():
     conversation_id = (form.get("conversation_id") or form.get("panel_id") or "main").strip()
     panel_id = (form.get("panel_id") or conversation_id).strip() or "main"
     is_main = (form.get("is_main_feed", "true").lower() not in {"false", "0", "no"})
-    tag = _normalize_tag(form.get("tag", ""))
+    try:
+        tag = _strict_request_tag(form.get("tag", ""))
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
     # V3 Phase 1 — same alignment-prefilter inputs as /chat. See chat() above.
     manual_mode_selection = (form.get("manual_mode_selection") or "").strip()
     manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
@@ -9159,7 +9250,7 @@ def chat_multipart():
             return json.dumps({"error": str(exc)}), 409
         tag = _effective_conversation_tag(panel_id, tag)
         history, history_state = _authoritative_dialogue_history(
-            panel_id, supplied_history,
+            panel_id, supplied_history, target_tag=tag,
         )
         try:
             admission_base = {}
@@ -10550,6 +10641,36 @@ def _browser_physical_collection(logical: str) -> str:
             return defaults.get(logical, logical)
 
 
+def _browser_allowed_turn_privacies(target_tag: str) -> tuple[str, ...]:
+    """Return exact exchange authorities eligible for one browser target."""
+    if target_tag == "":
+        return ("standard",)
+    if target_tag == "private":
+        return ("standard", "private")
+    if target_tag == "stealth":
+        return ("standard", "private", "stealth")
+    return ()
+
+
+def _browser_turn_metadata_allowed(metadata: dict, target_tag: str) -> bool:
+    """Fail closed unless a conversation row has sufficient exact authority."""
+    return (
+        isinstance(metadata, dict)
+        and metadata.get("turn_privacy")
+        in _browser_allowed_turn_privacies(target_tag)
+    )
+
+
+def _browser_conversation_where(target_tag: str) -> dict | None:
+    """Build the pre-vector-search exact-authority filter for Chroma."""
+    allowed = _browser_allowed_turn_privacies(target_tag)
+    if not allowed:
+        return None
+    if len(allowed) == 1:
+        return {"turn_privacy": {"$eq": allowed[0]}}
+    return {"turn_privacy": {"$in": list(allowed)}}
+
+
 def _browser_row_from_chroma_hit(
     *,
     logical_collection: str,
@@ -10558,9 +10679,14 @@ def _browser_row_from_chroma_hit(
     metadata: dict,
     query: str,
     score: float,
+    target_tag: str = "",
 ) -> dict | None:
-    doc = document or metadata.get("chroma:document") or ""
     if logical_collection == "conversations":
+        # This check deliberately precedes every title, snippet, and lexical
+        # relevance operation. Missing/invalid authority is never Standard.
+        if not _browser_turn_metadata_allowed(metadata, target_tag):
+            return None
+        doc = document or metadata.get("chroma:document") or ""
         row_tags = _browser_normalize_tags(
             [metadata.get("tags"), metadata.get("tag")]
         )
@@ -10586,6 +10712,7 @@ def _browser_row_from_chroma_hit(
             "result_type": "archive_conversation",
             "source_kind": "archive",
             "tag": metadata.get("tag") or "",
+            "turn_privacy": metadata.get("turn_privacy"),
             "tags": row_tags,
             "title": title,
             "snippet": snippet,
@@ -10608,6 +10735,7 @@ def _browser_row_from_chroma_hit(
         }
 
     if logical_collection == "knowledge":
+        doc = document or metadata.get("chroma:document") or ""
         if not _browser_is_knowledge_note(metadata):
             return None
         row_tags = _browser_metadata_tags(metadata)
@@ -10662,6 +10790,7 @@ def _browser_chroma_exact_rows(
     limit: int,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
+    target_tag: str = "",
 ) -> list[dict]:
     terms = _browser_terms(query)
     if not terms:
@@ -10676,6 +10805,23 @@ def _browser_chroma_exact_rows(
     if len(terms) > 1:
         fts_queries.append((" OR ".join(terms), 95.0))
 
+    privacy_join = ""
+    privacy_clause = ""
+    privacy_params: tuple[str, ...] = ()
+    if logical_collection == "conversations":
+        privacy_params = _browser_allowed_turn_privacies(target_tag)
+        if not privacy_params:
+            return []
+        placeholders = ",".join("?" for _value in privacy_params)
+        privacy_join = (
+            "JOIN embedding_metadata turn_authority "
+            "ON turn_authority.id = embeddings.id "
+            "AND turn_authority.key = 'turn_privacy'"
+        )
+        privacy_clause = (
+            f"AND turn_authority.string_value IN ({placeholders})"
+        )
+
     out: dict[str, dict] = {}
     try:
         import sqlite3
@@ -10685,7 +10831,7 @@ def _browser_chroma_exact_rows(
         for fts_query, boost in fts_queries:
             try:
                 matches = cur.execute(
-                    """
+                    f"""
                     SELECT embedding_fulltext_search.rowid,
                            embeddings.embedding_id,
                            embedding_fulltext_search.string_value,
@@ -10694,12 +10840,19 @@ def _browser_chroma_exact_rows(
                     JOIN embeddings ON embeddings.id = embedding_fulltext_search.rowid
                     JOIN segments ON segments.id = embeddings.segment_id
                     JOIN collections ON collections.id = segments.collection
+                    {privacy_join}
                     WHERE collections.name = ?
+                      {privacy_clause}
                       AND embedding_fulltext_search.string_value MATCH ?
                     ORDER BY rank
                     LIMIT ?
                     """,
-                    (physical, fts_query, max(limit, 20)),
+                    (
+                        physical,
+                        *privacy_params,
+                        fts_query,
+                        max(limit, 20),
+                    ),
                 ).fetchall()
             except Exception:
                 continue
@@ -10709,6 +10862,9 @@ def _browser_chroma_exact_rows(
                 seen_row_ids.add(row_id)
                 meta = _browser_metadata_for_row(cur, row_id)
                 if logical_collection == "knowledge" and not _browser_is_knowledge_note(meta):
+                    continue
+                if (logical_collection == "conversations"
+                        and not _browser_turn_metadata_allowed(meta, target_tag)):
                     continue
                 doc = meta.get("chroma:document") or fts_text or ""
                 term_hits = sum(1 for term in terms if term in doc.lower())
@@ -10720,6 +10876,7 @@ def _browser_chroma_exact_rows(
                     metadata=meta,
                     query=query,
                     score=score,
+                    target_tag=target_tag,
                 )
                 if candidate and _browser_row_matches_tag_filters(
                     candidate,
@@ -10765,18 +10922,35 @@ def _browser_chroma_fuzzy_rows(
     limit: int,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
+    target_tag: str = "",
 ) -> list[dict]:
     fts_query = _browser_fuzzy_fts_query(query)
     if not fts_query:
         return []
     physical = _browser_physical_collection(logical_collection)
+    privacy_join = ""
+    privacy_clause = ""
+    privacy_params: tuple[str, ...] = ()
+    if logical_collection == "conversations":
+        privacy_params = _browser_allowed_turn_privacies(target_tag)
+        if not privacy_params:
+            return []
+        placeholders = ",".join("?" for _value in privacy_params)
+        privacy_join = (
+            "JOIN embedding_metadata turn_authority "
+            "ON turn_authority.id = embeddings.id "
+            "AND turn_authority.key = 'turn_privacy'"
+        )
+        privacy_clause = (
+            f"AND turn_authority.string_value IN ({placeholders})"
+        )
     out: dict[str, dict] = {}
     try:
         import sqlite3
         con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
         cur = con.cursor()
         matches = cur.execute(
-            """
+            f"""
             SELECT embedding_fulltext_search.rowid,
                    embeddings.embedding_id,
                    embedding_fulltext_search.string_value,
@@ -10785,16 +10959,26 @@ def _browser_chroma_fuzzy_rows(
             JOIN embeddings ON embeddings.id = embedding_fulltext_search.rowid
             JOIN segments ON segments.id = embeddings.segment_id
             JOIN collections ON collections.id = segments.collection
+            {privacy_join}
             WHERE collections.name = ?
+              {privacy_clause}
               AND embedding_fulltext_search.string_value MATCH ?
             ORDER BY rank
             LIMIT ?
             """,
-            (physical, fts_query, max(limit * 4, 80)),
+            (
+                physical,
+                *privacy_params,
+                fts_query,
+                max(limit * 4, 80),
+            ),
         ).fetchall()
         for row_id, embedding_id, fts_text, rank in matches:
             meta = _browser_metadata_for_row(cur, row_id)
             if logical_collection == "knowledge" and not _browser_is_knowledge_note(meta):
+                continue
+            if (logical_collection == "conversations"
+                    and not _browser_turn_metadata_allowed(meta, target_tag)):
                 continue
             doc = meta.get("chroma:document") or fts_text or ""
             title = _browser_source_title(meta, doc)
@@ -10809,6 +10993,7 @@ def _browser_chroma_fuzzy_rows(
                 metadata=meta,
                 query=query,
                 score=score,
+                target_tag=target_tag,
             )
             if candidate and _browser_row_matches_tag_filters(
                 candidate,
@@ -10940,6 +11125,7 @@ def _browser_chroma_semantic_rows(
     limit: int,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
+    target_tag: str = "",
 ) -> list[dict]:
     if not (query or "").strip():
         return []
@@ -10952,21 +11138,34 @@ def _browser_chroma_semantic_rows(
         count = col.count()
         if count <= 0:
             return []
+        conversation_where = None
+        if logical_collection == "conversations":
+            conversation_where = _browser_conversation_where(target_tag)
+            if conversation_where is None:
+                return []
         n_results = min(max(limit, 5), count)
         if logical_collection == "knowledge":
             # Chroma metadata filters are much slower on large local knowledge
             # collections. Overfetch, then apply Ora's type filter below.
             n_results = min(max(limit * 4, 80), count)
-        results = col.query(
-            query_texts=[query],
-            n_results=n_results,
-        )
+        query_kwargs = {
+            "query_texts": [query],
+            "n_results": n_results,
+        }
+        if conversation_where is not None:
+            # Chroma must apply authority before vector distance is computed;
+            # post-filtering a mixed result set has already consumed the text.
+            query_kwargs["where"] = conversation_where
+        results = col.query(**query_kwargs)
         ids = (results.get("ids") or [[]])[0]
         docs = (results.get("documents") or [[]])[0]
         metas = (results.get("metadatas") or [[]])[0]
         dists = (results.get("distances") or [[]])[0]
         for embedding_id, doc, meta, dist in zip(ids, docs, metas, dists):
             if logical_collection == "knowledge" and not _browser_is_knowledge_note(meta or {}):
+                continue
+            if (logical_collection == "conversations"
+                    and not _browser_turn_metadata_allowed(meta or {}, target_tag)):
                 continue
             similarity = 1.0 - float(dist if dist is not None else 1.0)
             score = 70.0 + (similarity * 40.0)
@@ -10977,6 +11176,7 @@ def _browser_chroma_semantic_rows(
                 metadata=meta or {},
                 query=query,
                 score=score,
+                target_tag=target_tag,
             )
             if candidate and _browser_row_matches_tag_filters(
                 candidate,
@@ -10989,15 +11189,23 @@ def _browser_chroma_semantic_rows(
     return sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)[:limit]
 
 
-def _browser_latest_archive_rows(limit: int) -> list[dict]:
+def _browser_latest_archive_rows(
+    limit: int,
+    *,
+    target_tag: str = "",
+) -> list[dict]:
     physical = _browser_physical_collection("conversations")
+    allowed = _browser_allowed_turn_privacies(target_tag)
+    if not allowed:
+        return []
+    placeholders = ",".join("?" for _value in allowed)
     rows: list[dict] = []
     try:
         import sqlite3
         con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
         cur = con.cursor()
         matches = cur.execute(
-            """
+            f"""
             SELECT cid.string_value AS source_id,
                    MAX(COALESCE(ts.string_value, stamp.string_value, d.string_value, '')) AS last_seen,
                    MAX(embeddings.id) AS sample_row_id,
@@ -11007,6 +11215,9 @@ def _browser_latest_archive_rows(limit: int) -> list[dict]:
             JOIN collections ON collections.id = segments.collection
             JOIN embedding_metadata cid
               ON cid.id = embeddings.id AND cid.key = 'conversation_id'
+            JOIN embedding_metadata turn_authority
+              ON turn_authority.id = embeddings.id
+             AND turn_authority.key = 'turn_privacy'
             LEFT JOIN embedding_metadata ts
               ON ts.id = embeddings.id AND ts.key = 'timestamp_utc'
             LEFT JOIN embedding_metadata stamp
@@ -11016,16 +11227,19 @@ def _browser_latest_archive_rows(limit: int) -> list[dict]:
             LEFT JOIN embedding_metadata pair
               ON pair.id = embeddings.id AND pair.key = 'pair_num'
             WHERE collections.name = ?
+              AND turn_authority.string_value IN ({placeholders})
               AND cid.string_value IS NOT NULL
               AND cid.string_value != ''
             GROUP BY cid.string_value
             ORDER BY last_seen DESC
             LIMIT ?
             """,
-            (physical, max(limit, 1)),
+            (physical, *allowed, max(limit, 1)),
         ).fetchall()
         for source_id, last_seen, sample_row_id, _pair_seen in matches:
             meta = _browser_metadata_for_row(cur, sample_row_id)
+            if not _browser_turn_metadata_allowed(meta, target_tag):
+                continue
             doc = meta.get("chroma:document") or ""
             row = _browser_row_from_chroma_hit(
                 logical_collection="conversations",
@@ -11034,6 +11248,7 @@ def _browser_latest_archive_rows(limit: int) -> list[dict]:
                 metadata={**meta, "conversation_id": source_id, "timestamp_utc": last_seen},
                 query="",
                 score=0.5,
+                target_tag=target_tag,
             )
             if row:
                 rows.append(row)
@@ -11088,6 +11303,10 @@ def _browser_creation_row_allowed(row: dict, target_tag: str) -> bool:
         except (OSError, ValueError):
             return False
     if kind == "live":
+        matched_privacy = row.get("matched_turn_privacy")
+        if (matched_privacy is not None
+                and matched_privacy not in _browser_allowed_turn_privacies(target_tag)):
+            return False
         ref = str(row.get("conversation_id") or "").strip()
         try:
             from conversation_memory import (
@@ -11101,29 +11320,31 @@ def _browser_creation_row_allowed(row: dict, target_tag: str) -> bool:
             )
             if history is None or (diagnostics and not history):
                 return False
-            for owner in _resolved_history_owners(history, ref):
-                envelope = read_conversation_history_envelope(owner)
-                if not isinstance(envelope, dict):
-                    return False
-                source_tag = (
-                    envelope.get("tag")
-                    if envelope.get("tag") in _VALID_CONVERSATION_TAGS else ""
-                )
-                if not _contributor_privacy_allows(source_tag, target_tag):
-                    return False
-            return True
+            from orchestrator.conversation_memory import (
+                filter_conversation_history_for_tag,
+            )
+            return bool(filter_conversation_history_for_tag(history, target_tag))
         except Exception:
             return False
     if kind == "archive":
+        # Search-hit rows carry the exact authority of the matched chunk.
+        # Reject it before loading any archive text; Dialogue-level eligibility
+        # must never launder a Private match from a mixed Dialogue.
+        if (row.get("matched_chunk_id") is not None
+                and not _browser_turn_metadata_allowed(row, target_tag)):
+            return False
         ref = str(row.get("conversation_id") or "").strip()
         archive = _browser_archive_envelope(ref)
         if archive is None:
             return False
         try:
-            _resolve_archive_contributor(
+            messages, _lineage = _resolve_archive_contributor(
                 ref, archive, target_tag=target_tag,
             )
-            return True
+            from orchestrator.conversation_memory import (
+                filter_conversation_history_for_tag,
+            )
+            return bool(filter_conversation_history_for_tag(messages, target_tag))
         except (OSError, ValueError):
             return False
     source_tag = row.get("tag") if row.get("tag") in _VALID_CONVERSATION_TAGS else ""
@@ -11149,27 +11370,52 @@ def _review_contributor_from_row(row: dict) -> dict | None:
     return None
 
 
-def _browser_row_for_creation_ref(ref: str) -> dict | None:
+def _browser_row_for_creation_ref(
+    ref: str,
+    *,
+    target_tag: str,
+) -> dict | None:
     """Resolve one explicit Library Add action without trusting client row data."""
 
     ref = str(ref or "").strip()
     if not ref:
         return None
     if ref.startswith("archive:"):
-        envelope = _browser_archive_envelope(ref)
+        envelope = _browser_archive_envelope(ref, target_tag=target_tag)
         kind = "archive"
     elif ref.startswith("engram:"):
+        path = _browser_decode_source_id("engram", ref)
+        if not path:
+            return None
+        try:
+            _validated_atomic_contributor_path(path, target_tag=target_tag)
+        except (OSError, ValueError):
+            return None
         envelope = _browser_engram_envelope(ref)
         kind = "engram"
     else:
         try:
-            from conversation_memory import load_conversation_json
+            from conversation_memory import (
+                load_conversation_json,
+                resolve_effective_conversation_history,
+            )
             envelope = load_conversation_json(ref)
+            diagnostics: list[str] = []
+            effective = resolve_effective_conversation_history(
+                ref, diagnostics=diagnostics,
+            )
+            if (not isinstance(envelope, dict) or effective is None
+                    or diagnostics):
+                return None
+            envelope = {**envelope, "messages": effective}
         except Exception:
             envelope = None
         kind = "live"
     if not isinstance(envelope, dict):
         return None
+    searchable, _message_map = _browser_searchable_conversation(
+        envelope, target_tag,
+    ) if kind != "engram" else (envelope, [])
     title = envelope.get("display_name") or ref
     row = {
         "conversation_id": ref,
@@ -11178,7 +11424,7 @@ def _browser_row_for_creation_ref(ref: str) -> dict | None:
         "tag": envelope.get("tag") or "",
         "tags": _browser_normalize_tags(envelope.get("tag")),
         "title": title,
-        "snippet": _conversation_search_snippet(envelope, "").get("snippet") or "",
+        "snippet": _conversation_search_snippet(searchable, "").get("snippet") or "",
         "score": 1000.0,
         "search_relevance": 100.0,
         "relevance": 100.0,
@@ -11190,7 +11436,9 @@ def _browser_row_for_creation_ref(ref: str) -> dict | None:
         if not path:
             return None
         try:
-            exact_path = _validated_atomic_contributor_path(path)
+            exact_path = _validated_atomic_contributor_path(
+                path, target_tag=target_tag,
+            )
         except ValueError:
             return None
         content = exact_path.read_text(encoding="utf-8")
@@ -11327,9 +11575,56 @@ def _browser_sort_rows(rows: list[dict], sort_mode: str) -> list[dict]:
     )
 
 
-def _browser_live_rows(query: str) -> list[dict]:
+def _browser_searchable_conversation(
+    data: dict,
+    target_tag: str,
+) -> tuple[dict, list[tuple[int, int, str]]]:
+    """Return an envelope view containing only exact eligible exchanges.
+
+    The mapping entries are ``(stored message index, displayed turn index,
+    exact privacy)`` for each message in the filtered view.  Building this
+    view before calling the lexical scorer keeps stricter and unknown turns
+    out of both ranking and snippets.
+    """
     try:
-        from conversation_memory import iter_conversations, load_conversation_json
+        from orchestrator.conversation_memory import (
+            iter_complete_exchanges,
+            turn_privacy_allows,
+        )
+    except ImportError:
+        from conversation_memory import (  # type: ignore
+            iter_complete_exchanges,
+            turn_privacy_allows,
+        )
+
+    searchable = dict(data) if isinstance(data, dict) else {}
+    searchable_messages: list[dict] = []
+    message_map: list[tuple[int, int, str]] = []
+    messages = data.get("messages") if isinstance(data, dict) else []
+    for displayed_turn, exchange in enumerate(iter_complete_exchanges(messages)):
+        user_index, user, assistant_index, assistant, privacy = exchange
+        if privacy is None or not turn_privacy_allows(privacy, target_tag):
+            continue
+        searchable_messages.extend((user, assistant))
+        message_map.extend((
+            (user_index, displayed_turn, privacy),
+            (assistant_index, displayed_turn, privacy),
+        ))
+    searchable["messages"] = searchable_messages
+    return searchable, message_map
+
+
+def _browser_live_rows(
+    query: str,
+    *,
+    target_tag: str = "",
+) -> list[dict]:
+    try:
+        from conversation_memory import (
+            iter_conversations,
+            load_conversation_json,
+            resolve_effective_conversation_history,
+        )
     except Exception as e:
         raise RuntimeError(f"conversation browser import failed: {e}") from e
 
@@ -11344,19 +11639,46 @@ def _browser_live_rows(query: str) -> list[dict]:
         if not cid:
             continue
         data = load_conversation_json(cid) or {}
-        match = _conversation_search_snippet(data, query)
+        effective_messages = resolve_effective_conversation_history(cid)
+        data = dict(data)
+        data["messages"] = (
+            effective_messages
+            if isinstance(effective_messages, list)
+            else []
+        )
+        searchable, message_map = _browser_searchable_conversation(
+            data, target_tag,
+        )
+        match = _conversation_search_snippet(searchable, query)
         if query and match.get("score", 0) <= 0:
             continue
         out = dict(row)
         title = out.get("display_name") or out.get("title") or out.get("conversation_id") or ""
         snippet = match.get("snippet") or ""
+        row_tags = _browser_normalize_tags(out.get("tag"))
+        if out.get("contains_private"):
+            row_tags.append("contains-private")
+        if out.get("has_unknown_turn_privacy"):
+            row_tags.append("privacy-unknown")
+        filtered_message_index = match.get("matched_message_index")
+        original_message_index = None
+        matched_turn_index = None
+        matched_turn_privacy = None
+        if (isinstance(filtered_message_index, int)
+                and 0 <= filtered_message_index < len(message_map)):
+            (
+                original_message_index,
+                matched_turn_index,
+                matched_turn_privacy,
+            ) = message_map[filtered_message_index]
         out.update({
             "result_type": "live_conversation",
             "source_kind": "live",
-            "tags": _browser_normalize_tags(out.get("tag")),
+            "tags": list(dict.fromkeys(row_tags)),
             "snippet": snippet,
-            "matched_message_index": match.get("matched_message_index"),
-            "matched_turn_index": match.get("matched_turn_index"),
+            "matched_message_index": original_message_index,
+            "matched_turn_index": matched_turn_index,
+            "matched_turn_privacy": matched_turn_privacy,
             "score": (float(match.get("score", 0)) + (25.0 if query else 1.0)),
             "search_relevance": _browser_match_score(query, title, snippet) if query else None,
         })
@@ -11411,14 +11733,34 @@ def _browser_parse_pair_markdown(text: str) -> tuple[str, str]:
     return "", body
 
 
-def _browser_archive_chunk_metadata(source_id: str) -> list[dict]:
+def _browser_archive_chunk_metadata(
+    source_id: str,
+    *,
+    target_tag: str | None = None,
+) -> list[dict]:
     physical = _browser_physical_collection("conversations")
+    privacy_join = ""
+    privacy_clause = ""
+    privacy_params: tuple[str, ...] = ()
+    if target_tag is not None:
+        privacy_params = _browser_allowed_turn_privacies(target_tag)
+        if not privacy_params:
+            return []
+        placeholders = ",".join("?" for _value in privacy_params)
+        privacy_join = (
+            "JOIN embedding_metadata turn_authority "
+            "ON turn_authority.id = embeddings.id "
+            "AND turn_authority.key = 'turn_privacy'"
+        )
+        privacy_clause = (
+            f"AND turn_authority.string_value IN ({placeholders})"
+        )
     try:
         import sqlite3
         con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
         cur = con.cursor()
         rows = cur.execute(
-            """
+            f"""
             SELECT embeddings.id
             FROM embeddings
             JOIN segments ON segments.id = embeddings.segment_id
@@ -11427,15 +11769,20 @@ def _browser_archive_chunk_metadata(source_id: str) -> list[dict]:
               ON cid.id = embeddings.id AND cid.key = 'conversation_id'
             LEFT JOIN embedding_metadata pair
               ON pair.id = embeddings.id AND pair.key = 'pair_num'
+            {privacy_join}
             WHERE collections.name = ?
               AND cid.string_value = ?
+              {privacy_clause}
             ORDER BY COALESCE(pair.int_value, 0), embeddings.embedding_id
             """,
-            (physical, source_id),
+            (physical, source_id, *privacy_params),
         ).fetchall()
         items: list[dict] = []
         for (row_id,) in rows:
             meta = _browser_metadata_for_row(cur, row_id)
+            if (target_tag is not None
+                    and not _browser_turn_metadata_allowed(meta, target_tag)):
+                continue
             meta["_row_id"] = row_id
             items.append(meta)
         con.close()
@@ -11457,11 +11804,17 @@ def _browser_read_chunk_text(meta: dict) -> str:
     return str(meta.get("chroma:document") or "")
 
 
-def _browser_archive_envelope(conversation_id: str) -> dict | None:
+def _browser_archive_envelope(
+    conversation_id: str,
+    *,
+    target_tag: str | None = None,
+) -> dict | None:
     source_id = _browser_decode_source_id("archive", conversation_id)
     if not source_id:
         return None
-    chunks = _browser_archive_chunk_metadata(source_id)
+    chunks = _browser_archive_chunk_metadata(
+        source_id, target_tag=target_tag,
+    )
     if not chunks:
         return None
 
@@ -11493,6 +11846,11 @@ def _browser_archive_envelope(conversation_id: str) -> dict | None:
             last_activity = ts
         pair_num = meta.get("pair_num")
         chunk_id = meta.get("chunk_id") or meta.get("_row_id")
+        turn_privacy = (
+            meta.get("turn_privacy")
+            if meta.get("turn_privacy") in {"standard", "private", "stealth"}
+            else None
+        )
         if user_text:
             messages.append({
                 "role": "user",
@@ -11500,6 +11858,8 @@ def _browser_archive_envelope(conversation_id: str) -> dict | None:
                 "timestamp": ts,
                 "archive_pair_num": pair_num,
                 "archive_chunk_id": chunk_id,
+                "chunk_id": chunk_id,
+                "turn_privacy": turn_privacy,
             })
         if assistant_text:
             messages.append({
@@ -11508,6 +11868,8 @@ def _browser_archive_envelope(conversation_id: str) -> dict | None:
                 "timestamp": ts,
                 "archive_pair_num": pair_num,
                 "archive_chunk_id": chunk_id,
+                "chunk_id": chunk_id,
+                "turn_privacy": turn_privacy,
             })
         if not user_text and not assistant_text and text.strip():
             messages.append({
@@ -11516,6 +11878,8 @@ def _browser_archive_envelope(conversation_id: str) -> dict | None:
                 "timestamp": ts,
                 "archive_pair_num": pair_num or idx + 1,
                 "archive_chunk_id": chunk_id,
+                "chunk_id": chunk_id,
+                "turn_privacy": turn_privacy,
             })
 
     return {
@@ -11523,6 +11887,19 @@ def _browser_archive_envelope(conversation_id: str) -> dict | None:
         "source_conversation_id": source_id,
         "display_name": title,
         "tag": _browser_strictest_privacy_tag(*privacy_sources),
+        "privacy_summary": (
+            "unknown" if any(
+                message.get("turn_privacy") is None
+                for message in messages
+                if message.get("role") in {"user", "assistant"}
+            ) else "mixed" if len({
+                message.get("turn_privacy") for message in messages
+                if message.get("turn_privacy")
+            }) > 1 else next(iter({
+                message.get("turn_privacy") for message in messages
+                if message.get("turn_privacy")
+            }), "empty")
+        ),
         "created": created,
         "last_activity_at": last_activity,
         "archived_source": True,
@@ -11660,29 +12037,8 @@ def _resolve_archive_contributor(
             raise _ContributorWithheld(
                 "archived fork ancestry cannot be proven"
             )
-        for owner in lineage:
-            ancestor = read_conversation_history_envelope(owner)
-            owner_tag = (
-                ancestor.get("tag")
-                if isinstance(ancestor, dict)
-                and ancestor.get("tag") in _VALID_CONVERSATION_TAGS
-                else ""
-            )
-            if (ancestor is None
-                    or not _contributor_privacy_allows(owner_tag, target_tag)):
-                raise _ContributorWithheld(
-                    "archived fork ancestry crosses a stricter privacy boundary"
-                )
         return history, lineage
 
-    source_tag = (
-        archive.get("tag")
-        if archive.get("tag") in _VALID_CONVERSATION_TAGS else ""
-    )
-    if not _contributor_privacy_allows(source_tag, target_tag):
-        raise _ContributorWithheld(
-            "archived Dialogue is outside the target privacy boundary"
-        )
     messages = archive.get("messages")
     if not isinstance(messages, list):
         raise _ContributorWithheld("archived Dialogue transcript is unavailable")
@@ -11694,9 +12050,15 @@ def _dialogue_turn_units(
     *,
     source_id: str,
     explicit_index: int,
+    target_tag: str,
     description: str = "",
 ) -> list[dict]:
     """Render complete user/assistant semantic units with stable provenance."""
+    try:
+        from orchestrator.conversation_memory import filter_conversation_history_for_tag
+        messages = filter_conversation_history_for_tag(messages, target_tag)
+    except Exception:
+        messages = []
     units: list[dict] = []
     pending: list[dict] = []
 
@@ -11889,30 +12251,19 @@ def build_contributor_bundle(
                 if diagnostics and not history:
                     row["status"] = "withheld"
                 else:
-                    permitted = True
-                    for owner in _resolved_history_owners(history, ref):
-                        ancestor = read_conversation_history_envelope(owner)
-                        owner_tag = (
-                            ancestor.get("tag")
-                            if isinstance(ancestor, dict)
-                            and ancestor.get("tag") in _VALID_CONVERSATION_TAGS
-                            else ""
-                        )
-                        if ancestor is None or not _contributor_privacy_allows(owner_tag, target_tag):
-                            permitted = False
-                            break
-                    if permitted:
-                        units = _dialogue_turn_units(
-                            history,
-                            source_id=ref,
-                            explicit_index=index,
-                            description=_clean_conversation_browser_text(
-                                source.get("description") or "",
-                            ),
-                        )
-                        row["status"] = "available" if units else "missing"
-                    else:
-                        row["status"] = "withheld"
+                    units = _dialogue_turn_units(
+                        history,
+                        source_id=ref,
+                        explicit_index=index,
+                        target_tag=target_tag,
+                        description=_clean_conversation_browser_text(
+                            source.get("description") or "",
+                        ),
+                    )
+                    row["status"] = (
+                        "available" if units
+                        else "withheld" if history else "missing"
+                    )
             else:
                 archive = _browser_archive_envelope(ref)
                 if archive is not None:
@@ -11929,6 +12280,7 @@ def build_contributor_bundle(
                             archive_messages,
                             source_id=source_identity,
                             explicit_index=index,
+                            target_tag=target_tag,
                         )
                         row["status"] = "available" if units else "missing"
                     except _ContributorWithheld:
@@ -11988,12 +12340,18 @@ def _browser_archive_related_rows(
     *,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
+    target_tag: str = "",
 ) -> list[dict]:
     source_id = _browser_decode_source_id("archive", conversation_id)
     if not source_id:
         return []
-    chunks = _browser_archive_chunk_metadata(source_id)
+    chunks = _browser_archive_chunk_metadata(
+        source_id, target_tag=target_tag,
+    )
     if not chunks:
+        return []
+    allowed = _browser_allowed_turn_privacies(target_tag)
+    if not allowed:
         return []
 
     chain_ids = sorted({
@@ -12015,7 +12373,8 @@ def _browser_archive_related_rows(
     rows_by_id: dict[str, dict] = {}
     physical = _browser_physical_collection("conversations")
     clauses: list[str] = []
-    params: list = [physical, source_id]
+    privacy_placeholders = ",".join("?" for _value in allowed)
+    params: list = [physical, source_id, *allowed]
     if chain_ids:
         clauses.append("chain.string_value IN (%s)" % ",".join(["?"] * len(chain_ids)))
         params.extend(chain_ids)
@@ -12039,6 +12398,9 @@ def _browser_archive_related_rows(
                 JOIN collections ON collections.id = segments.collection
                 JOIN embedding_metadata cid
                   ON cid.id = embeddings.id AND cid.key = 'conversation_id'
+                JOIN embedding_metadata turn_authority
+                  ON turn_authority.id = embeddings.id
+                 AND turn_authority.key = 'turn_privacy'
                 LEFT JOIN embedding_metadata chain
                   ON chain.id = embeddings.id AND chain.key = 'chain_id'
                 LEFT JOIN embedding_metadata label
@@ -12049,6 +12411,7 @@ def _browser_archive_related_rows(
                   ON stamp.id = embeddings.id AND stamp.key = 'timestamp_utc'
                 WHERE collections.name = ?
                   AND cid.string_value != ?
+                  AND turn_authority.string_value IN ({privacy_placeholders})
                   AND ({' OR '.join(clauses)})
                 ORDER BY COALESCE(stamp.string_value, '') DESC
                 LIMIT ?
@@ -12057,6 +12420,8 @@ def _browser_archive_related_rows(
             ).fetchall()
             for row_id, embedding_id in matches:
                 meta = _browser_metadata_for_row(cur, row_id)
+                if not _browser_turn_metadata_allowed(meta, target_tag):
+                    continue
                 doc = meta.get("chroma:document") or ""
                 related_score = 60.0
                 if meta.get("chain_id") in chain_ids:
@@ -12072,6 +12437,7 @@ def _browser_archive_related_rows(
                     metadata=meta,
                     query="",
                     score=related_score,
+                    target_tag=target_tag,
                 )
                 if row and _browser_row_matches_tag_filters(
                     row,
@@ -12092,6 +12458,7 @@ def _browser_archive_related_rows(
             limit=max(20, limit - len(rows_by_id)),
             required_tags=required_tags,
             show_archived=show_archived,
+            target_tag=target_tag,
         ):
             if row.get("source_conversation_id") == source_id:
                 continue
@@ -12109,6 +12476,7 @@ def _browser_engram_related_rows(
     include_engrams: bool = True,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
+    target_tag: str = "",
 ) -> list[dict]:
     source_id = _browser_decode_source_id("engram", conversation_id)
     if not source_id:
@@ -12129,6 +12497,7 @@ def _browser_engram_related_rows(
             limit=max(20, limit // 2),
             required_tags=required_tags,
             show_archived=show_archived,
+            target_tag=target_tag,
         ):
             if row.get("conversation_id") == conversation_id:
                 continue
@@ -12152,6 +12521,7 @@ def _browser_engram_related_rows(
             limit=max(20, limit // 2),
             required_tags=required_tags,
             show_archived=show_archived,
+            target_tag=target_tag,
         ):
             row["relation"] = row.get("relation") or "conversation"
             _browser_merge_best(rows_by_id, row)
@@ -12165,6 +12535,9 @@ def conversations_browser():
     purpose = (request.args.get("purpose") or "browse").strip().lower()
     if purpose not in {"browse", "creation"}:
         return _json_response({"error": "invalid browser purpose"}, status=400)
+    target_tag = (request.args.get("target_tag") or "").strip().lower()
+    if target_tag not in _VALID_CONVERSATION_TAGS:
+        return _json_response({"error": "invalid browser target tag"}, status=400)
     if purpose == "creation" and (
         len(query) < 20
         or len(re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]+", query)) < 3
@@ -12195,7 +12568,7 @@ def conversations_browser():
     live_rows: list[dict] = []
     if include_conversations:
         try:
-            live_rows = _browser_live_rows(query)
+            live_rows = _browser_live_rows(query, target_tag=target_tag)
         except Exception as e:
             return _json_response({"error": str(e)}, status=500)
 
@@ -12214,6 +12587,7 @@ def conversations_browser():
                 limit=120,
                 required_tags=required_tags,
                 show_archived=show_archived,
+                target_tag=target_tag,
             ))
             archive_rows.extend(_browser_chroma_fuzzy_rows(
                 query,
@@ -12221,6 +12595,7 @@ def conversations_browser():
                 limit=80,
                 required_tags=required_tags,
                 show_archived=show_archived,
+                target_tag=target_tag,
             ))
         if include_engrams:
             engram_rows.extend(_browser_chroma_exact_rows(
@@ -12259,6 +12634,7 @@ def conversations_browser():
                     limit=80,
                     required_tags=required_tags,
                     show_archived=show_archived,
+                    target_tag=target_tag,
                 ))
             if include_engrams:
                 engram_rows.extend(_browser_chroma_semantic_rows(
@@ -12270,7 +12646,9 @@ def conversations_browser():
                 ))
     else:
         if include_conversations:
-            archive_rows.extend(_browser_latest_archive_rows(limit=limit))
+            archive_rows.extend(_browser_latest_archive_rows(
+                limit=limit, target_tag=target_tag,
+            ))
 
     for row in archive_rows + engram_rows:
         if row.get("source_conversation_id") in live_ids:
@@ -12288,9 +12666,6 @@ def conversations_browser():
     )
     rows = _browser_sort_rows(rows, sort_mode)
     if purpose == "creation":
-        target_tag = (request.args.get("target_tag") or "").strip().lower()
-        if target_tag not in _VALID_CONVERSATION_TAGS:
-            return _json_response({"error": "invalid creation target tag"}, status=400)
         rows = [
             row for row in rows
             if _browser_creation_row_allowed(row, target_tag)
@@ -12299,7 +12674,9 @@ def conversations_browser():
         if include_ref and not any(
             row.get("conversation_id") == include_ref for row in rows
         ):
-            included = _browser_row_for_creation_ref(include_ref)
+            included = _browser_row_for_creation_ref(
+                include_ref, target_tag=target_tag,
+            )
             if included is None or not _browser_creation_row_allowed(included, target_tag):
                 return _json_response({
                     "error": "requested contributor no longer resolves",
@@ -12309,6 +12686,7 @@ def conversations_browser():
     payload = {
         "query": query,
         "purpose": purpose,
+        "target_tag": target_tag,
         "sort": sort_mode,
         "include_conversations": include_conversations,
         "include_engrams": include_engrams,
@@ -12755,6 +13133,9 @@ def conversations_related(conversation_id):
     conversation_id = (conversation_id or "").strip()
     if not _valid_existing_conversation_id(conversation_id):
         return _json_response({"error": "invalid conversation_id"}, status=400)
+    target_tag = (request.args.get("target_tag") or "").strip().lower()
+    if target_tag not in _VALID_CONVERSATION_TAGS:
+        return _json_response({"error": "invalid browser target tag"}, status=400)
     include_conversations = _browser_parse_bool(
         request.args.get("conversations", request.args.get("include_conversations")),
         True,
@@ -12774,6 +13155,7 @@ def conversations_related(conversation_id):
             conversation_id,
             required_tags=required_tags,
             show_archived=show_archived,
+            target_tag=target_tag,
         ) if include_conversations else []
         rows = _browser_filter_rows(
             rows,
@@ -12798,6 +13180,7 @@ def conversations_related(conversation_id):
             include_engrams=include_engrams,
             required_tags=required_tags,
             show_archived=show_archived,
+            target_tag=target_tag,
         )
         rows = _browser_filter_rows(
             rows,
@@ -12840,7 +13223,12 @@ def conversations_related(conversation_id):
         item = dict(row)
         item["relation"] = relation
         data = load_conversation_json(item["conversation_id"]) or {}
-        item["snippet"] = _conversation_search_snippet(data, "").get("snippet") or ""
+        searchable, _message_map = _browser_searchable_conversation(
+            data, target_tag,
+        )
+        item["snippet"] = (
+            _conversation_search_snippet(searchable, "").get("snippet") or ""
+        )
         related.append(item)
 
     add(current, "self")
@@ -12886,11 +13274,19 @@ def conversations_fetch(conversation_id):
         return json.dumps({"error": "invalid conversation_id"}), 400
 
     try:
-        from conversation_memory import load_conversation_json
+        from conversation_memory import (
+            load_conversation_json,
+            resolve_effective_conversation_history,
+        )
     except Exception as e:
         return json.dumps({"error": f"load_conversation_json import failed: {e}"}), 500
 
     data = load_conversation_json(conversation_id)
+    if isinstance(data, dict):
+        effective = resolve_effective_conversation_history(conversation_id)
+        if isinstance(effective, list):
+            data["local_messages"] = data.get("messages") or []
+            data["messages"] = effective
     if data is None:
         data = _browser_memory_envelope(conversation_id)
     if data is None:
@@ -13336,10 +13732,16 @@ def conversations_fork(conversation_id):
         "tag":                      new_envelope.get("tag", ""),
         "parent_conversation_id":   new_envelope.get("parent_conversation_id"),
         "fork_point_message_count": new_envelope.get("fork_point_message_count"),
+        "fork_point_effective_message_count": new_envelope.get(
+            "fork_point_effective_message_count"
+        ),
         "fork_point_chunk_id":      new_envelope.get("fork_point_chunk_id"),
         "created":                  new_envelope.get("created"),
         "forked_at":                new_envelope.get("forked_at"),
-        "inherited_message_count":  new_envelope.get("fork_point_message_count", 0),
+        "inherited_message_count":  new_envelope.get(
+            "fork_point_effective_message_count",
+            new_envelope.get("fork_point_message_count", 0),
+        ),
         "local_message_count":      len(new_envelope.get("messages") or []),
         "message_count":            len(new_envelope.get("messages") or []),
     })
@@ -13384,7 +13786,10 @@ def api_bootstrap():
     if not topic:
         return json.dumps({"error": "topic is required"}), 400
 
-    caller_tag = _normalize_tag(data.get("tag", ""))
+    try:
+        caller_tag = _strict_request_tag(data.get("tag", ""))
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)}), 400
 
     # ── Step 1: Query ChromaDB collections ──────────────────────────────────
     matches: list[dict] = []
@@ -13420,7 +13825,11 @@ def api_bootstrap():
         # Conversations collection with privacy filter.
         try:
             conv = get_collection(client, "conversations")
-            where_clause = None if caller_tag == "private" else {"tag": {"$ne": "private"}}
+            where_clause = (
+                {"turn_privacy": "standard"}
+                if caller_tag == ""
+                else {"turn_privacy": {"$in": ["standard", "private"]}}
+            )
             conv_results = conv.query(
                 query_texts=[topic],
                 n_results=5,
@@ -13430,6 +13839,13 @@ def api_bootstrap():
             metas = (conv_results or {}).get("metadatas") or [[]]
             for i, doc in enumerate(docs[0] if docs else []):
                 meta = metas[0][i] if metas and metas[0] and i < len(metas[0]) else {}
+                permitted = (
+                    {"standard"}
+                    if caller_tag == ""
+                    else {"standard", "private"}
+                )
+                if not isinstance(meta, dict) or meta.get("turn_privacy") not in permitted:
+                    continue
                 matches.append({
                     "collection": "conversations",
                     "document":   doc,
@@ -14125,6 +14541,89 @@ def conversation_privacy_tag(conversation_id):
             "error": "tag must be standard ('') or private; Off Record is creation-only",
         }), 400
 
+    if isinstance(body, dict) and "turn_index" in body:
+        displayed_index = body.get("turn_index")
+        if (isinstance(displayed_index, bool)
+                or not isinstance(displayed_index, int)
+                or displayed_index < 0):
+            return json.dumps({
+                "error": "turn_index must be a non-negative integer",
+            }), 400
+        try:
+            from orchestrator.conversation_memory import (
+                displayed_exchange_owner,
+                resolve_effective_conversation_history,
+            )
+
+            def resolve_owner():
+                effective = resolve_effective_conversation_history(conversation_id)
+                if effective is None:
+                    return None
+                return displayed_exchange_owner(effective, displayed_index)
+
+            with _conversation_lifecycle_lock(conversation_id):
+                owner = resolve_owner()
+            if owner is None:
+                return json.dumps({
+                    "error": "displayed turn is incomplete or has no canonical owner",
+                }), 409
+            owner_id = owner["conversation_id"]
+            first_id, second_id = sorted((conversation_id, owner_id))
+            with _conversation_lifecycle_lock(first_id):
+                with _conversation_lifecycle_lock(second_id):
+                    current_owner = resolve_owner()
+                    if current_owner != owner:
+                        return json.dumps({
+                            "error": "displayed turn changed before privacy update",
+                        }), 409
+                    from orchestrator.conversation_closeout import (
+                        update_conversation_turn_privacy,
+                    )
+                    result = update_conversation_turn_privacy(
+                        owner_id,
+                        owner["turn_index"],
+                        "private" if target == "private" else "standard",
+                        chromadb_path=_configured_conversation_chromadb_path(),
+                    )
+            if not result.get("envelope_updated"):
+                return json.dumps({
+                    "error": "turn privacy change was not committed",
+                    **result,
+                }), 409
+            if (not result.get("propagation_complete")
+                    or result.get("errors")):
+                reconciliation_required = bool(
+                    result.get("reconciliation_required")
+                )
+                error = (
+                    "canonical turn privacy changed, but one or more owned "
+                    "copies remain over-protected; reconciliation is required"
+                    if reconciliation_required else
+                    "turn privacy propagation did not complete"
+                )
+                return json.dumps({
+                    **result,
+                    "ok": False,
+                    "error": error,
+                }), 409
+            return json.dumps({
+                "ok": True,
+                "displayed_turn_index": displayed_index,
+                "owner_conversation_id": owner_id,
+                "composer_tag": _effective_conversation_tag(
+                    conversation_id, "",
+                ),
+                **result,
+            }), 200
+        except PermissionError as exc:
+            return json.dumps({"error": str(exc)}), 409
+        except ValueError as exc:
+            return json.dumps({"error": str(exc)}), 400
+        except Exception as exc:
+            print(f"[conversation-lifecycle] turn privacy update failed: {exc}",
+                  file=sys.stderr, flush=True)
+            return json.dumps({"error": str(exc)}), 500
+
     with _conversation_lifecycle_lock(conversation_id):
         if _is_conversation_deleted(conversation_id):
             return json.dumps({
@@ -14158,33 +14657,15 @@ def conversation_privacy_tag(conversation_id):
                         conversation_id, creation_tag,
                     )
                 )
-            from orchestrator.conversation_closeout import (
-                update_conversation_privacy_tag,
-            )
-            from orchestrator import document_input as _document_input
-            document_result = {"jobs": 0, "outputs": 0, "errors": []}
-            # Tightening privacy updates live document writers first; a
-            # failure leaves the authoritative envelope Standard. Relaxing
-            # privacy changes the envelope/caches first so any stale document
-            # output remains over-protected until its follow-up rewrite.
-            if target == "private":
-                document_result = _document_input.update_conversation_tag(
-                    conversation_id, target,
-                )
-            result = update_conversation_privacy_tag(
-                conversation_id,
-                target,
-                chromadb_path=_configured_conversation_chromadb_path(),
-            )
-            if target == "" and result.get("envelope_updated"):
-                document_result = _document_input.update_conversation_tag(
-                    conversation_id, target,
-                )
-            result["document_jobs"] = document_result
-            result["envelope_created"] = envelope_created
-            result.setdefault("errors", []).extend(
-                document_result.get("errors") or []
-            )
+            from orchestrator.conversation_memory import set_conversation_tag
+            updated_path = set_conversation_tag(conversation_id, target)
+            result = {
+                "conversation_id": conversation_id,
+                "tag": target,
+                "envelope_updated": updated_path is not None,
+                "envelope_created": envelope_created,
+                "errors": [],
+            }
         except PermissionError as exc:
             return json.dumps({"error": str(exc)}), 409
         except ValueError as exc:
@@ -14536,7 +15017,8 @@ _pipeline_state = {"stage": None, "stages": [], "active": False}
 
 def _persist_turn_spatial_state_unlocked(
         panel_id, user_input, ai_response, extra_context, tag="",
-        trace_ref=None, visual_outcome=None):
+        trace_ref=None, visual_outcome=None, chunk_id=None,
+        turn_privacy=None):
     """WP-5.3 — append this turn to conversation.json so subsequent turns
     can retrieve the prior spatial state.
 
@@ -14553,6 +15035,11 @@ def _persist_turn_spatial_state_unlocked(
     """
     try:
         from orchestrator.conversation_memory import save_turn_spatial_state
+        if turn_privacy is None:
+            from orchestrator.conversation_memory import turn_privacy_from_tag
+            turn_privacy = turn_privacy_from_tag(tag)
+        if turn_privacy is None:
+            raise ValueError("Dialogue turn privacy authority is invalid")
         spatial_rep = None
         annotations = None
         vision_extr = None
@@ -14587,6 +15074,8 @@ def _persist_turn_spatial_state_unlocked(
             vision_extraction_result=vision_extr,
             timestamp=datetime.now().isoformat(timespec="seconds"),
             tag=tag,
+            turn_privacy=turn_privacy,
+            chunk_id=chunk_id,
             project_ids=_project_ids,
             trace_ref=trace_ref,
             visual_checkpoint_id=visual_checkpoint_id,
@@ -14598,7 +15087,8 @@ def _persist_turn_spatial_state_unlocked(
 
 
 def _turn_envelope_acknowledged(
-        panel_id, expected_message_count, user_input, ai_response):
+        panel_id, expected_message_count, user_input, ai_response,
+        turn_privacy, chunk_id):
     """Confirm a turn reached the envelope if a writer lost its return value."""
     try:
         from orchestrator.conversation_memory import load_conversation_json
@@ -14618,12 +15108,17 @@ def _turn_envelope_acknowledged(
         and isinstance(assistant_message, dict)
         and assistant_message.get("role") == "assistant"
         and assistant_message.get("content") == ai_response
+        and user_message.get("turn_privacy") == turn_privacy
+        and assistant_message.get("turn_privacy") == turn_privacy
+        and user_message.get("chunk_id") == chunk_id
+        and assistant_message.get("chunk_id") == chunk_id
     )
 
 
 def _persist_turn_spatial_state(panel_id, user_input, ai_response,
                                 extra_context, tag="", trace_ref=None,
-                                visual_outcome=None):
+                                visual_outcome=None, chunk_id=None,
+                                turn_privacy=None):
     """Persist envelope state only while the conversation remains live."""
     with _conversation_lifecycle_lock(panel_id):
         if _is_conversation_deleted(panel_id):
@@ -14633,6 +15128,8 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response,
             panel_id, user_input, ai_response, extra_context, effective_tag,
             trace_ref=trace_ref,
             visual_outcome=visual_outcome,
+            chunk_id=chunk_id,
+            turn_privacy=turn_privacy,
         )
 
 
@@ -14640,6 +15137,10 @@ def _begin_visual_outcome(panel_id, user_input, tag=""):
     """Create the existing assistant-message placeholder for this turn."""
     try:
         from orchestrator.conversation_memory import begin_visual_outcome
+        from orchestrator.conversation_memory import turn_privacy_from_tag
+        turn_privacy = turn_privacy_from_tag(tag)
+        if turn_privacy is None:
+            return None
         try:
             from orchestrator.active_project import get_active_project, resolve_project_ids
             project_ids = resolve_project_ids(get_active_project())
@@ -14649,6 +15150,7 @@ def _begin_visual_outcome(panel_id, user_input, tag=""):
             panel_id,
             user_input,
             tag=tag,
+            turn_privacy=turn_privacy,
             project_ids=project_ids,
             timestamp=datetime.now().isoformat(timespec="seconds"),
         )
@@ -14669,7 +15171,65 @@ def _copy_visual_outcome_context(source, target):
 
 # ── runtime pipeline helper ──────────────────────────────────────────────────
 
-def _run_end_of_session_pipeline_unlocked(user_input, ai_response, panel_id, config, history=None):
+def _canonical_runtime_extraction_turn(
+        panel_id, user_input, ai_response, source_chunk_id,
+        source_turn_index):
+    """Return one freshly verified canonical exchange for extraction.
+
+    The background worker receives coordinates captured when the response was
+    saved, but privacy may be retagged before that worker acquires its lifecycle
+    lock.  The envelope pair is therefore the sole authority here; malformed,
+    incomplete, or differently owned state refuses extraction rather than
+    weakening to the captured composer tag.
+    """
+    if (not isinstance(panel_id, str) or not panel_id.strip()
+            or not isinstance(source_chunk_id, str)
+            or not source_chunk_id
+            or isinstance(source_turn_index, bool)
+            or not isinstance(source_turn_index, int)
+            or source_turn_index < 1):
+        raise ValueError("runtime extraction lacks exact turn ownership")
+
+    from orchestrator.conversation_memory import (
+        iter_complete_exchanges,
+        load_conversation_json,
+        turn_privacy_to_tag,
+    )
+
+    envelope = load_conversation_json(panel_id)
+    canonical_id = envelope.get("conversation_id") if isinstance(envelope, dict) else None
+    if (not isinstance(canonical_id, str)
+            or canonical_id.strip().casefold() != panel_id.strip().casefold()):
+        raise ValueError("runtime extraction canonical Dialogue is unavailable")
+    if envelope.get("tag") not in {"", "private"}:
+        raise ValueError("runtime extraction canonical Dialogue is ineligible")
+    exchanges = iter_complete_exchanges(envelope.get("messages"))
+    if source_turn_index > len(exchanges):
+        raise ValueError("runtime extraction canonical exchange is unavailable")
+    _ui, user, _ai, assistant, turn_privacy = exchanges[source_turn_index - 1]
+    turn_tag = turn_privacy_to_tag(turn_privacy)
+    if turn_tag not in {"", "private"}:
+        raise ValueError("runtime extraction turn privacy is unknown or ineligible")
+    if (user.get("turn_index") != source_turn_index
+            or assistant.get("turn_index") != source_turn_index
+            or user.get("chunk_id") != source_chunk_id
+            or assistant.get("chunk_id") != source_chunk_id
+            or user.get("content") != user_input
+            or assistant.get("content") != ai_response):
+        raise ValueError("runtime extraction canonical turn ownership mismatched")
+    return {
+        "turn_tag": turn_tag,
+        "turn_privacy": turn_privacy,
+        "source_chunk_id": source_chunk_id,
+        "source_turn_index": source_turn_index,
+        "user": dict(user),
+        "assistant": dict(assistant),
+    }
+
+
+def _run_end_of_session_pipeline_unlocked(
+        user_input, ai_response, panel_id, config, history=None, *,
+        source_chunk_id="", source_turn_index=None):
     """Run end-of-session processing inside its background lifecycle worker.
 
     The caller already runs on a daemon thread and holds the conversation
@@ -14682,6 +15242,13 @@ def _run_end_of_session_pipeline_unlocked(user_input, ai_response, panel_id, con
         return
     try:
         from orchestrator.tools.runtime_pipeline import SessionData
+        canonical = _canonical_runtime_extraction_turn(
+            panel_id,
+            user_input,
+            ai_response,
+            source_chunk_id,
+            source_turn_index,
+        )
         sess = _session_data.get(panel_id, {})
         bridge = _bridge_state.get(panel_id, {})
 
@@ -14691,8 +15258,7 @@ def _run_end_of_session_pipeline_unlocked(user_input, ai_response, panel_id, con
             for message in (history or [])
             if isinstance(message, dict)
         ]
-        conv_history.append({"role": "user", "content": user_input})
-        conv_history.append({"role": "assistant", "content": ai_response})
+        conv_history.extend((canonical["user"], canonical["assistant"]))
 
         session_data = SessionData(
             session_id=sess.get("session_id", "unknown"),
@@ -14700,10 +15266,13 @@ def _run_end_of_session_pipeline_unlocked(user_input, ai_response, panel_id, con
             mode=bridge.get("active_mode", ""),
             gear=bridge.get("active_gear", 0) or 0,
             conversation_id=panel_id,
-            conversation_tag=_effective_conversation_tag(panel_id, ""),
+            conversation_tag=canonical["turn_tag"],
+            turn_privacy=canonical["turn_privacy"],
+            source_chunk_id=canonical["source_chunk_id"],
+            source_turn_index=canonical["source_turn_index"],
             models_used=[sess.get("model", "")],
-            user_prompt=user_input,
-            final_output=ai_response,
+            user_prompt=canonical["user"]["content"],
+            final_output=canonical["assistant"]["content"],
             conversation_history=conv_history,
             source_type="chat",
         )
@@ -14717,15 +15286,17 @@ def _run_end_of_session_pipeline_unlocked(user_input, ai_response, panel_id, con
 
 
 def _run_end_of_session_pipeline(user_input, ai_response, panel_id, config,
-                                 history=None):
+                                 history=None, *, source_chunk_id="",
+                                 source_turn_index=None):
     """Start extraction only for a still-live, non-Stealth conversation."""
     with _conversation_lifecycle_lock(panel_id):
         if (_is_conversation_deleted(panel_id)
-                or _is_conversation_closed(panel_id)
-                or _effective_conversation_tag(panel_id, "") == "stealth"):
+                or _is_conversation_closed(panel_id)):
             return
         _run_end_of_session_pipeline_unlocked(
             user_input, ai_response, panel_id, config, history,
+            source_chunk_id=source_chunk_id,
+            source_turn_index=source_turn_index,
         )
 
 
@@ -16081,7 +16652,7 @@ def _refresh_clarification_dialogue_context(
     contributors are re-read because either may have changed during the pause.
     """
     history, _history_state = _authoritative_dialogue_history(
-        panel_id, pending.get("history"),
+        panel_id, pending.get("history"), target_tag=target_tag,
     )
     extra_context = dict(pending.get("extra_context") or {})
     extra_context.pop("contributor_bundle", None)
@@ -16200,21 +16771,34 @@ def clarification_respond():
             chunk_id = _save_conversation(
                 user_input, final_response[0], panel_id, is_new_session,
                 _resume_tag, trace_ref=_resume_trace_ref,
+                turn_privacy=pending.get("turn_privacy"),
             )
             if chunk_id:
                 threading.Thread(
                     target=_persist_turn_spatial_state,
                     args=(panel_id, user_input, final_response[0],
                           refreshed_extra_context, _resume_tag),
-                    kwargs={"trace_ref": _resume_trace_ref},
+                    kwargs={
+                        "trace_ref": _resume_trace_ref,
+                        "chunk_id": chunk_id,
+                        "turn_privacy": pending.get("turn_privacy"),
+                    },
                     daemon=True,
                 ).start()
 
             _bridge_state[panel_id] = {
                 "current_topic": user_input,
                 "recent_messages": (list(history[-4:]) + [
-                    {"role": "user", "content": user_input},
-                    {"role": "assistant", "content": final_response[0]},
+                    {
+                        "role": "user", "content": user_input,
+                        "turn_privacy": pending.get("turn_privacy"),
+                        "chunk_id": chunk_id,
+                    },
+                    {
+                        "role": "assistant", "content": final_response[0],
+                        "turn_privacy": pending.get("turn_privacy"),
+                        "chunk_id": chunk_id,
+                    },
                 ])[-5:],
                 "active_mode": active_mode[0],
                 "active_gear": active_gear[0],
@@ -16230,9 +16814,13 @@ def clarification_respond():
             if _is_conversation_deleted(panel_id):
                 yield _sse("error", text="Conversation was permanently deleted.")
                 return
-            resolved_tag = _effective_conversation_tag(
-                panel_id, pending.get("conversation_tag") or "",
-            )
+            resolved_tag = pending.get("conversation_tag")
+            if resolved_tag not in _VALID_CONVERSATION_TAGS:
+                yield _sse("error", text="Paused turn privacy authority is unavailable.")
+                return
+            if pending.get("turn_privacy") != _turn_privacy_for_tag(resolved_tag):
+                yield _sse("error", text="Paused turn privacy authority is conflicting.")
+                return
             with _conversation_turn_context(panel_id, resolved_tag):
                 yield from generate_unlocked(resolved_tag)
 
@@ -16335,13 +16923,18 @@ def clarification_skip():
             chunk_id = _save_conversation(
                 user_input, final_response[0], panel_id, len(history) == 0,
                 _skip_tag, trace_ref=_skip_trace_ref,
+                turn_privacy=pending.get("turn_privacy"),
             )
             if chunk_id:
                 threading.Thread(
                     target=_persist_turn_spatial_state,
                     args=(panel_id, user_input, final_response[0],
                           refreshed_extra_context, _skip_tag),
-                    kwargs={"trace_ref": _skip_trace_ref},
+                    kwargs={
+                        "trace_ref": _skip_trace_ref,
+                        "chunk_id": chunk_id,
+                        "turn_privacy": pending.get("turn_privacy"),
+                    },
                     daemon=True,
                 ).start()
 
@@ -16353,9 +16946,13 @@ def clarification_skip():
             if _is_conversation_deleted(panel_id):
                 yield _sse("error", text="Conversation was permanently deleted.")
                 return
-            resolved_tag = _effective_conversation_tag(
-                panel_id, pending.get("conversation_tag") or "",
-            )
+            resolved_tag = pending.get("conversation_tag")
+            if resolved_tag not in _VALID_CONVERSATION_TAGS:
+                yield _sse("error", text="Paused turn privacy authority is unavailable.")
+                return
+            if pending.get("turn_privacy") != _turn_privacy_for_tag(resolved_tag):
+                yield _sse("error", text="Paused turn privacy authority is conflicting.")
+                return
             with _conversation_turn_context(panel_id, resolved_tag):
                 yield from generate_unlocked(resolved_tag)
 

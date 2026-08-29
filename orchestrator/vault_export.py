@@ -58,11 +58,13 @@ Markdown shape (Phase 5.7, Schema §12 chunk template)
   …fenced ``ora-visual`` JSON kept verbatim…
   ![[<session-name>.fig-1.svg]]
 
-The conversation_id and session_title are kept in the body's meta
-block (preserves the back-link to the source session) but are not
-in the YAML frontmatter — Schema §12 keeps the conversation chunk
-template minimal. Filename includes HH-MM to prevent same-day
-collisions when multiple sessions are exported on the same date.
+For Standard and Private Dialogues, the conversation_id and session_title are
+kept in the body's meta block (preserves the back-link to the source session)
+but are not in the YAML frontmatter — Schema §12 keeps the conversation chunk
+template minimal. A Stealth export is an ordinary destination-owned copy, so
+it omits privacy labels and source-identity/link-back metadata. Filename
+includes HH-MM to prevent same-day collisions when multiple sessions are
+exported on the same date.
 
 This module is deliberately free of Flask; the HTTP wrapper lives in
 ``server.py`` as ``POST /api/session/export``.
@@ -264,12 +266,20 @@ def _parse_raw_session_log(text: str) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = []
     # Split on pair boundaries — the ``<!-- pair NNN | ts -->`` comment
     # is the most reliable cut.
-    pair_re = re.compile(r"<!--\s*pair\s+(\d+)\s*\|\s*([^>]+?)\s*-->", re.IGNORECASE)
-    cuts = [(m.start(), m.group(1), m.group(2).strip()) for m in pair_re.finditer(text)]
+    pair_re = re.compile(
+        r"<!--\s*pair\s+(\d+)\s*\|\s*([^|>]+?)"
+        r"(?:\s*\|\s*privacy:\s*(standard|private|stealth))?\s*-->",
+        re.IGNORECASE,
+    )
+    cuts = [
+        (m.start(), m.group(1), m.group(2).strip(),
+         (m.group(3) or "").lower())
+        for m in pair_re.finditer(text)
+    ]
     if not cuts:
         return messages
 
-    for i, (start, pair_num, ts) in enumerate(cuts):
+    for i, (start, pair_num, ts, turn_privacy) in enumerate(cuts):
         end = cuts[i + 1][0] if i + 1 < len(cuts) else len(text)
         block = text[start:end]
         # Strip the comment header itself
@@ -288,6 +298,7 @@ def _parse_raw_session_log(text: str) -> list[dict[str, Any]]:
                 "content": user_match.group(1).strip(),
                 "timestamp": ts,
                 "pair": int(pair_num),
+                "turn_privacy": turn_privacy or None,
             })
         if asst_match:
             messages.append({
@@ -295,6 +306,7 @@ def _parse_raw_session_log(text: str) -> list[dict[str, Any]]:
                 "content": asst_match.group(1).strip(),
                 "timestamp": ts,
                 "pair": int(pair_num),
+                "turn_privacy": turn_privacy or None,
             })
     return messages
 
@@ -366,9 +378,38 @@ def _load_conversation(
 
     Raises FileNotFoundError when neither path carries the id.
     """
+    structured_path = sessions_root / conversation_id / "conversation.json"
     structured = _load_structured_conversation(sessions_root, conversation_id)
-    if structured is not None:
-        return structured
+    if structured_path.exists():
+        if structured is None:
+            raise ValueError(
+                "Full Dialogue export refused: canonical envelope is unreadable"
+            )
+        try:
+            from orchestrator.conversation_memory import (
+                resolve_effective_conversation_history,
+            )
+            diagnostics: list[str] = []
+            effective = resolve_effective_conversation_history(
+                conversation_id,
+                sessions_root=sessions_root,
+                diagnostics=diagnostics,
+            )
+        except Exception as exc:
+            raise ValueError(
+                f"Full Dialogue export refused: canonical history could not be resolved: {exc}"
+            ) from exc
+        if effective is None or diagnostics:
+            detail = "; ".join(diagnostics) if diagnostics else "history unavailable"
+            raise ValueError(
+                "Full Dialogue export refused: canonical effective history is "
+                f"incomplete: {detail}"
+            )
+        return {
+            **structured,
+            "messages": effective,
+            "_source_path": str(structured_path),
+        }
 
     raw = _load_raw_conversation(raw_conversations_dir, conversation_id)
     if raw is not None:
@@ -697,6 +738,8 @@ def _splice_visuals_with_sidecars(
 def _render_messages_markdown(
     messages: list[dict[str, Any]],
     sidecars_per_message: list[dict[int, str]],
+    *,
+    include_privacy_labels: bool = True,
 ) -> str:
     """Turn a sequence of messages into the ``## Exchanges`` body."""
     parts: list[str] = ["## Exchanges\n"]
@@ -712,6 +755,10 @@ def _render_messages_markdown(
             if ts:
                 header += f" — {ts}"
             parts.append(header)
+            privacy = msg.get("turn_privacy")
+            if (include_privacy_labels
+                    and privacy in {"standard", "private", "stealth"}):
+                parts.append(f"\n**Privacy:** {privacy.title()}\n")
             parts.append("\n**User:**\n")
             parts.append(content + "\n")
         elif role == "assistant":
@@ -808,6 +855,36 @@ def export_session_to_vault(
     # ── Load conversation ───────────────────────────────────────────────────
     convo = _load_conversation(conversation_id, sessions_root, raw_conversations_dir)
     messages = convo.get("messages") or []
+    try:
+        from orchestrator.conversation_memory import iter_complete_exchanges
+        exchanges = iter_complete_exchanges(messages)
+    except Exception as exc:
+        raise ValueError(f"Dialogue turn privacy could not be resolved: {exc}") from exc
+    covered_indexes = {
+        index
+        for user_index, _user, assistant_index, _assistant, _privacy in exchanges
+        for index in (user_index, assistant_index)
+    }
+    ordinary_indexes = {
+        index for index, message in enumerate(messages)
+        if isinstance(message, dict)
+        and message.get("role") in {"user", "assistant"}
+    }
+    if any(privacy is None for *_pair, privacy in exchanges):
+        raise ValueError(
+            "Full Dialogue export refused: a complete exchange has unknown or conflicting privacy"
+        )
+    if ordinary_indexes != covered_indexes:
+        raise ValueError(
+            "Full Dialogue export refused: an exchange is incomplete"
+        )
+    export_privacies = {
+        privacy for *_pair, privacy in exchanges if privacy is not None
+    }
+    stealth_export = (
+        convo.get("tag") == "stealth"
+        or (bool(export_privacies) and export_privacies == {"stealth"})
+    )
 
     # Derive the session title + filename stem.
     first_user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
@@ -922,19 +999,29 @@ def export_session_to_vault(
     frontmatter = _build_canonical_frontmatter(
         nexus=nexus,
         type_="chat",
-        tags=[],  # controlled-vocabulary tags can be set by the caller / pipeline
+        tags=(
+            ["private"]
+            if not stealth_export and export_privacies & {"private", "stealth"}
+            else []
+        ),
         created_at=convo.get("created_at"),
     )
     now_iso = datetime.now().isoformat(timespec="seconds")
     heading = f"# {resolved_title}\n"
     meta_block = (
+        f"\n**Exported:** {now_iso}\n"
+        if stealth_export else
         f"\n**Dialogue ID:** `{conversation_id}`\n"
         f"**Exported:** {now_iso}\n"
         f"**Source:** {convo.get('_source_path') or 'structured conversation.json'}\n"
     )
-    exchanges = _render_messages_markdown(messages, sidecars_per_message)
+    rendered_exchanges = _render_messages_markdown(
+        messages,
+        sidecars_per_message,
+        include_privacy_labels=not stealth_export,
+    )
 
-    body = frontmatter + heading + meta_block + "\n" + exchanges + "\n"
+    body = frontmatter + heading + meta_block + "\n" + rendered_exchanges + "\n"
 
     # ── Write markdown ──────────────────────────────────────────────────────
     markdown_path = sessions_dir / f"{stem}.md"

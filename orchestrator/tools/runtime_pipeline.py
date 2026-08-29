@@ -66,6 +66,9 @@ class SessionData:
     # propagation can use to find every automatically-derived note.
     conversation_id: str = ""
     conversation_tag: str = ""
+    turn_privacy: str = ""
+    source_chunk_id: str = ""
+    source_turn_index: int | None = None
     models_used: list[str] = field(default_factory=list)
     rag_resources: list[str] = field(default_factory=list)
     token_consumption: dict = field(default_factory=dict)  # {stage: tokens}
@@ -180,6 +183,28 @@ class RuntimePipeline:
         start_time = time.time()
         result = RuntimeResult(session_id=session_data.session_id)
         staged_paths: list[str] = []
+
+        # Privacy is a publication/model-use gate, not an optional enrichment.
+        # Refuse before logging, summarising, extracting, or querying anything.
+        try:
+            from orchestrator.conversation_memory import (
+                filter_conversation_history_for_tag,
+                turn_privacy_from_tag,
+            )
+            expected_privacy = turn_privacy_from_tag(session_data.conversation_tag)
+            if (expected_privacy is None
+                    or session_data.turn_privacy != expected_privacy):
+                raise ValueError("turn privacy authority is missing or conflicting")
+            session_data.conversation_history = filter_conversation_history_for_tag(
+                session_data.conversation_history,
+                session_data.conversation_tag,
+            )
+        except Exception as exc:
+            result.steps_failed.append(f"privacy_authority: {exc}")
+            result.total_time_seconds = time.time() - start_time
+            print(f"[runtime_pipeline] refused before processing: {exc}",
+                  file=sys.stderr, flush=True)
+            return result
 
         # Step 1: Session logging
         try:
@@ -434,7 +459,10 @@ class RuntimePipeline:
                 staged_paths.append(self._write_note_to_staging(
                     note,
                     source_file=source_file,
-                    private=data.conversation_tag == "private",
+                    private=data.turn_privacy == "private",
+                    turn_privacy=data.turn_privacy,
+                    source_chunk_id=data.source_chunk_id,
+                    source_turn_index=data.source_turn_index,
                 ))
 
             # Persist the notes the gate routed to human judgement. This
@@ -446,7 +474,15 @@ class RuntimePipeline:
             for note, gate_result in review:
                 try:
                     review_paths.append(
-                        write_review_note(note, gate_result, REVIEW_DIR)
+                        write_review_note(
+                            note,
+                            gate_result,
+                            REVIEW_DIR,
+                            conversation_id=data.conversation_id,
+                            turn_privacy=data.turn_privacy,
+                            source_chunk_id=data.source_chunk_id,
+                            source_turn_index=data.source_turn_index,
+                        )
                     )
                 except OSError as exc:
                     print(
@@ -891,6 +927,9 @@ class RuntimePipeline:
         *,
         source_file: str = "",
         private: bool = False,
+        turn_privacy: str = "",
+        source_chunk_id: str = "",
+        source_turn_index: int | None = None,
     ):
         """Write an extracted note to the staging directory."""
         import re
@@ -938,6 +977,22 @@ class RuntimePipeline:
             lines.append(
                 "source_file: " + json.dumps(source_file, ensure_ascii=False)
             )
+        if turn_privacy not in {"standard", "private", "stealth"}:
+            raise ValueError("runtime derivative turn privacy is invalid")
+        lines.append(
+            "turn_privacy: " + json.dumps(turn_privacy, ensure_ascii=False)
+        )
+        if source_chunk_id:
+            lines.append(
+                "source_chunk_id: "
+                + json.dumps(source_chunk_id, ensure_ascii=False)
+            )
+        if source_turn_index is not None:
+            if (isinstance(source_turn_index, bool)
+                    or not isinstance(source_turn_index, int)
+                    or source_turn_index < 1):
+                raise ValueError("runtime derivative turn index is invalid")
+            lines.append(f"source_turn_index: {source_turn_index}")
         subtype = getattr(note, "subtype", None)
         if subtype:
             lines.append(f"subtype: {subtype}")

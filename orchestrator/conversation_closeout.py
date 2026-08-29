@@ -1667,6 +1667,466 @@ def update_conversation_privacy_tag(
         )
 
 
+def _set_exact_turn_privacy_file(path: Path, turn_privacy: str) -> bool:
+    """Retag one already-validated owned chunk/derivative in place."""
+    private = turn_privacy == "private"
+    _set_private_frontmatter_tag(path, private)
+    text = path.read_text(encoding="utf-8")
+    marker_re = re.compile(r'(?m)^<!-- ora-turn-privacy:\s*"[^"]*"\s*-->$')
+    marker = "<!-- ora-turn-privacy: " + json.dumps(turn_privacy) + " -->"
+    if marker_re.search(text):
+        replacement = marker_re.sub(marker, text, count=1)
+    elif re.search(r"(?m)^turn_privacy\s*:", text):
+        replacement = re.sub(
+            r"(?m)^turn_privacy\s*:.*$",
+            "turn_privacy: " + json.dumps(turn_privacy),
+            text,
+            count=1,
+        )
+    else:
+        frontmatter = re.match(r"\A---\s*\n.*?\n---\s*\n", text, re.DOTALL)
+        if frontmatter is None:
+            raise ValueError(f"owned privacy artifact has no insertion seam: {path}")
+        replacement = text[:frontmatter.end()] + marker + "\n\n" + text[frontmatter.end():]
+    if replacement == text:
+        return False
+    _atomic_write_text(path, replacement)
+    return True
+
+
+def _set_exact_review_record_privacy(
+    path: Path,
+    *,
+    conversation_id: str,
+    turn_index: int,
+    source_chunk_ids: set[str],
+    turn_privacy: str,
+    errors: list[str],
+) -> bool:
+    """Retag one exact Ora-owned runtime review record, if it matches."""
+    if path.is_symlink() or not path.is_file():
+        return False
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        # Without readable JSON there is no exact ownership claim to follow.
+        return False
+    if not isinstance(record, dict):
+        return False
+    source_chunk_id = record.get("source_chunk_id")
+    if source_chunk_id not in source_chunk_ids:
+        return False
+    if (record.get("artifact_kind") != "conversation_runtime_derivative"
+            or record.get("managed_by") != "ora"
+            or not _same_conversation(record.get("source_file"), conversation_id)
+            or record.get("source_turn_index") != turn_index):
+        _record_error(
+            errors,
+            f"ambiguous runtime review record {path}",
+            "matching source_chunk_id lacks exact Ora turn ownership; retained",
+        )
+        return False
+    frontmatter = record.get("yaml_frontmatter")
+    if not isinstance(frontmatter, dict):
+        _record_error(
+            errors,
+            f"runtime review record {path}",
+            "yaml_frontmatter is unavailable; retained",
+        )
+        return False
+    tags_value = frontmatter.get("tags", [])
+    if not isinstance(tags_value, list):
+        _record_error(
+            errors,
+            f"runtime review record {path}",
+            "yaml_frontmatter tags are not a list; retained",
+        )
+        return False
+    tags = [str(value) for value in tags_value]
+    if turn_privacy == "private":
+        if "private" not in {value.strip().casefold() for value in tags}:
+            tags.append("private")
+    else:
+        tags = [value for value in tags if value.strip().casefold() != "private"]
+    replacement = {
+        **record,
+        "turn_privacy": turn_privacy,
+        "yaml_frontmatter": {**frontmatter, "tags": tags},
+    }
+    if replacement != record:
+        _atomic_write_text(
+            path,
+            json.dumps(replacement, indent=2, ensure_ascii=False),
+        )
+    return True
+
+
+def _update_exact_review_records_privacy(
+    *,
+    conversation_id: str,
+    turn_index: int,
+    source_chunk_ids: set[str],
+    turn_privacy: str,
+    errors: list[str],
+) -> list[str]:
+    """Reconcile exact owned records in the human-review stores."""
+    matched: list[str] = []
+    for dirname in ("review-queue", "review-rejected"):
+        root = Path(_rp.DATA_DIR_STR) / dirname
+        try:
+            if not root.exists():
+                continue
+            if root.is_symlink() or not root.is_dir():
+                _record_error(
+                    errors,
+                    f"runtime review scan {root}",
+                    "refusing symlinked/non-directory root",
+                )
+                continue
+            candidates = sorted(root.iterdir(), key=lambda path: path.name)
+        except OSError as exc:
+            _record_error(errors, f"runtime review scan {root}", exc)
+            continue
+        for path in candidates:
+            if path.suffix.lower() != ".json":
+                continue
+            try:
+                if _set_exact_review_record_privacy(
+                    path,
+                    conversation_id=conversation_id,
+                    turn_index=turn_index,
+                    source_chunk_ids=source_chunk_ids,
+                    turn_privacy=turn_privacy,
+                    errors=errors,
+                ):
+                    matched.append(str(path))
+            except Exception as exc:
+                _record_error(errors, f"runtime review privacy {path}", exc)
+    return matched
+
+
+def _update_conversation_turn_privacy_unlocked(
+    conversation_id: str,
+    turn_index: int,
+    turn_privacy: str,
+    *,
+    sessions_root: Path | None = None,
+    conversations_dir: Path | None = None,
+    chromadb_path: Path | None = None,
+    collection: Any | None = None,
+    knowledge_collection: Any | None = None,
+    vault_root: Path | None = None,
+) -> dict[str, Any]:
+    """Retag one canonical complete exchange and only its owned copies."""
+    cid = _validate_conversation_id(conversation_id)
+    if (isinstance(turn_index, bool) or not isinstance(turn_index, int)
+            or turn_index < 1):
+        raise ValueError("turn_index must be a positive integer")
+    if turn_privacy not in {"standard", "private"}:
+        raise ValueError("turn privacy must be standard or private")
+    sroot = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    cdir = Path(conversations_dir) if conversations_dir else _DEFAULT_CONVERSATIONS_DIR
+    chroma = Path(chromadb_path) if chromadb_path else _DEFAULT_CHROMADB_PATH
+    errors: list[str] = []
+    target_tag = "private" if turn_privacy == "private" else ""
+    selected_chunk_ids: set[str] = set()
+    chunk_paths: set[Path] = set()
+    raw_paths: set[Path] = set()
+    chroma_updated = 0
+    envelope_result: dict[str, Any] | None = None
+
+    # Resolve exact ownership from the canonical pair before touching caches.
+    # This preserves a chunk that is still named by the envelope even when its
+    # manifest/index write failed, without mutating the pair prematurely.
+    try:
+        from .conversation_memory import load_conversation_json
+        envelope = load_conversation_json(cid, sessions_root=sroot)
+    except Exception as exc:
+        envelope = None
+        _record_error(errors, "turn privacy preflight", exc)
+    if not isinstance(envelope, dict):
+        _record_error(errors, "turn privacy preflight", "Dialogue envelope unavailable")
+    elif envelope.get("tag") == "stealth":
+        raise PermissionError("Off Record is creation-only and cannot be retagged")
+    else:
+        messages = envelope.get("messages")
+        current_turn = 0
+        pending: dict[str, Any] | None = None
+        found = False
+        for raw in messages if isinstance(messages, list) else []:
+            if not isinstance(raw, dict):
+                continue
+            if raw.get("role") == "user":
+                current_turn += 1
+                pending = raw
+            elif raw.get("role") == "assistant":
+                if pending is not None and current_turn == turn_index:
+                    found = True
+                    user_chunk = pending.get("chunk_id")
+                    assistant_chunk = raw.get("chunk_id")
+                    if (isinstance(user_chunk, str)
+                            and user_chunk == assistant_chunk):
+                        selected_chunk_ids.add(user_chunk)
+                    break
+                pending = None
+        if not found:
+            _record_error(
+                errors, "turn privacy preflight", "complete exchange not found",
+            )
+    if errors:
+        return {
+            "conversation_id": cid,
+            "turn_index": turn_index,
+            "turn_privacy": turn_privacy,
+            "envelope_updated": False,
+            "propagation_complete": False,
+            "reconciliation_required": False,
+            "errors": errors,
+        }
+
+    def update_envelope() -> None:
+        nonlocal envelope_result
+        try:
+            from .conversation_memory import set_conversation_turn_privacy
+            envelope_result = set_conversation_turn_privacy(
+                cid, turn_index, turn_privacy, sessions_root=sroot,
+            )
+            if envelope_result is None:
+                _record_error(errors, "turn privacy envelope", "complete exchange not found")
+            elif isinstance(envelope_result.get("chunk_id"), str):
+                selected_chunk_ids.add(envelope_result["chunk_id"])
+        except Exception as exc:
+            _record_error(errors, "turn privacy envelope", exc)
+
+    # Relaxing first makes stale copies over-protective. Tightening updates
+    # every discoverable copy first and commits the canonical pair last.
+    if turn_privacy == "standard":
+        update_envelope()
+        if envelope_result is None:
+            return {
+                "conversation_id": cid, "turn_index": turn_index,
+                "turn_privacy": turn_privacy, "envelope_updated": False,
+                "propagation_complete": False,
+                "reconciliation_required": False,
+                "errors": errors,
+            }
+
+    collections = _open_conversations_collections(
+        chromadb_path=chroma, collection=collection, errors=errors,
+    )
+    for physical_name, current in collections:
+        rows = _conversation_collection_rows(
+            current, cid, errors=errors,
+            label=f"turn privacy query {physical_name}",
+        )
+        for row_id, meta in rows.items():
+            stored_turn = meta.get("turn_index", meta.get("pair_num"))
+            if stored_turn != turn_index:
+                continue
+            selected_chunk_ids.add(row_id)
+            path_value = meta.get("chunk_path") or meta.get("obsidian_path")
+            if isinstance(path_value, str) and path_value:
+                try:
+                    chunk_paths.add(_owned_chunk_path(
+                        path_value, default_root=cdir, conversation_id=cid,
+                    ))
+                except Exception as exc:
+                    _record_error(errors, f"turn privacy chunk path {row_id}", exc)
+            raw_value = meta.get("raw_path")
+            if isinstance(raw_value, str) and raw_value:
+                try:
+                    raw_paths.add(_artifact_path(raw_value))
+                except Exception as exc:
+                    _record_error(errors, f"turn privacy raw path {row_id}", exc)
+            replacement = dict(meta)
+            replacement["turn_privacy"] = turn_privacy
+            replacement["tag"] = target_tag
+            replacement["tag_private"] = turn_privacy == "private"
+            try:
+                current.update(ids=[row_id], metadatas=[replacement])
+                chroma_updated += 1
+            except Exception as exc:
+                _record_error(errors, f"turn privacy metadata {physical_name} {row_id}", exc)
+
+    manifest_path = Path(_rp.DATA_DIR_STR) / "conversation-manifest.jsonl"
+
+    def update_manifest(record: dict[str, Any]) -> dict[str, Any]:
+        if (not _same_conversation(record.get("conversation_id"), cid)
+                or record.get("turn_index") != turn_index):
+            return record
+        chunk = record.get("chunk_id")
+        if isinstance(chunk, str) and chunk:
+            selected_chunk_ids.add(chunk)
+        cp = record.get("chunk_path")
+        if isinstance(cp, str) and cp:
+            try:
+                chunk_paths.add(_owned_chunk_path(
+                    cp, default_root=cdir, conversation_id=cid,
+                    manifest_record=record,
+                ))
+            except Exception as exc:
+                _record_error(errors, "turn privacy manifest path", exc)
+        raw = record.get("raw_path")
+        if isinstance(raw, str) and raw:
+            try:
+                raw_paths.add(_artifact_path(raw))
+            except Exception as exc:
+                _record_error(errors, "turn privacy manifest raw", exc)
+        return {
+            **record,
+            "turn_privacy": turn_privacy,
+            "tag": target_tag,
+        }
+
+    manifest_updated = _rewrite_jsonl(
+        manifest_path, errors=errors, label="turn privacy manifest",
+        mutate=update_manifest,
+    )
+    failures_updated = _rewrite_jsonl(
+        Path(_rp.DATA_DIR_STR) / "conversation-indexing-failures.jsonl",
+        errors=errors, label="turn privacy indexing failure",
+        mutate=lambda record: (
+            {**record, "turn_privacy": turn_privacy, "tag": target_tag}
+            if (_same_conversation(record.get("conversation_id"), cid)
+                and (record.get("turn_index") == turn_index
+                     or record.get("chunk_id") in selected_chunk_ids))
+            else record
+        ),
+    )
+
+    updated_chunk_paths: list[str] = []
+    for path in sorted(chunk_paths, key=str):
+        try:
+            _set_exact_turn_privacy_file(path, turn_privacy)
+            updated_chunk_paths.append(str(path))
+        except Exception as exc:
+            _record_error(errors, f"turn privacy chunk {path}", exc)
+
+    raw_updated = 0
+    raw_pattern = re.compile(
+        rf"(?m)^(<!--\s*pair\s+{turn_index:03d}\s*\|\s*[^|>]+?)"
+        r"(?:\s*\|\s*privacy:\s*(?:standard|private|stealth))?\s*-->$"
+    )
+    for path in sorted(raw_paths, key=str):
+        try:
+            if path.is_symlink() or not path.is_file():
+                raise ValueError(f"refusing non-regular raw log {path}")
+            text = path.read_text(encoding="utf-8")
+            replacement, count = raw_pattern.subn(
+                rf"\1 | privacy: {turn_privacy} -->", text, count=1,
+            )
+            if count:
+                _atomic_write_text(path, replacement)
+                raw_updated += 1
+        except Exception as exc:
+            _record_error(errors, f"turn privacy raw {path}", exc)
+
+    derivative_paths: list[Path] = []
+    for root in _runtime_derivative_roots(vault_root):
+        for path in _iter_regular_markdown(root, errors=errors) or ():
+            try:
+                head = path.read_text(encoding="utf-8")[:8192]
+            except OSError:
+                continue
+            if (_frontmatter_value(head, "artifact_kind")
+                    == "conversation_runtime_derivative"
+                    and _frontmatter_value(head, "managed_by") == "ora"
+                    and _frontmatter_value(head, "source_chunk_id")
+                    in selected_chunk_ids):
+                derivative_paths.append(path)
+    derivative_files: list[str] = []
+    for path in derivative_paths:
+        try:
+            _set_exact_turn_privacy_file(path, turn_privacy)
+            derivative_files.append(str(path))
+        except Exception as exc:
+            _record_error(errors, f"turn privacy derivative {path}", exc)
+
+    review_records = _update_exact_review_records_privacy(
+        conversation_id=cid,
+        turn_index=turn_index,
+        source_chunk_ids=selected_chunk_ids,
+        turn_privacy=turn_privacy,
+        errors=errors,
+    )
+
+    derivative_rows = 0
+    for physical_name, current in _open_knowledge_collections(
+        chroma, errors, collection=knowledge_collection,
+    ):
+        for chunk_id in selected_chunk_ids:
+            try:
+                result = current.get(where={"source_chunk_id": chunk_id})
+                for row_id, meta in zip(
+                    result.get("ids") or [], result.get("metadatas") or [],
+                ):
+                    if not isinstance(meta, dict):
+                        continue
+                    replacement = _metadata_with_private_tag(
+                        meta, turn_privacy == "private",
+                    )
+                    replacement["turn_privacy"] = turn_privacy
+                    current.update(ids=[row_id], metadatas=[replacement])
+                    derivative_rows += 1
+            except Exception as exc:
+                _record_error(errors, f"turn privacy derivative index {physical_name}", exc)
+
+    if turn_privacy == "private" and not errors:
+        update_envelope()
+
+    return {
+        "conversation_id": cid,
+        "turn_index": turn_index,
+        "turn_privacy": turn_privacy,
+        "tag": target_tag,
+        "envelope_updated": envelope_result is not None,
+        "propagation_complete": envelope_result is not None and not errors,
+        "reconciliation_required": (
+            turn_privacy == "standard"
+            and envelope_result is not None
+            and bool(errors)
+        ),
+        "chunk_id": envelope_result.get("chunk_id") if envelope_result else None,
+        "chromadb_records": chroma_updated,
+        "chunk_files": updated_chunk_paths,
+        "raw_logs": raw_updated,
+        "manifest_entries": manifest_updated,
+        "indexing_failure_entries": failures_updated,
+        "runtime_derivative_files": derivative_files,
+        "runtime_review_records": review_records,
+        "runtime_knowledge_records": derivative_rows,
+        "errors": errors,
+    }
+
+
+def update_conversation_turn_privacy(
+    conversation_id: str,
+    turn_index: int,
+    turn_privacy: str,
+    *,
+    sessions_root: Path | None = None,
+    conversations_dir: Path | None = None,
+    chromadb_path: Path | None = None,
+    collection: Any | None = None,
+    knowledge_collection: Any | None = None,
+    vault_root: Path | None = None,
+) -> dict[str, Any]:
+    """Retag one exact exchange while disposition writers are excluded."""
+    cid = _validate_conversation_id(conversation_id)
+    with _rp.conversation_lifecycle_lock(cid):
+        return _update_conversation_turn_privacy_unlocked(
+            cid,
+            turn_index,
+            turn_privacy,
+            sessions_root=sessions_root,
+            conversations_dir=conversations_dir,
+            chromadb_path=chromadb_path,
+            collection=collection,
+            knowledge_collection=knowledge_collection,
+            vault_root=vault_root,
+        )
+
+
 def _update_conversation_privacy_tag_unlocked(
     conversation_id: str,
     tag: str,

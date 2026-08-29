@@ -187,10 +187,10 @@ def _build_where_clause(
     if type_filter:
         clauses.append({"type": {"$in": list(type_filter)}})
 
-    privacy = (
-        privacy_tag
-        if privacy_tag in ("", "private", "stealth")
-        else ("private" if include_private else "")
+    if privacy_tag is not None and privacy_tag not in ("", "private", "stealth"):
+        raise ValueError("privacy_tag is invalid")
+    privacy = privacy_tag if privacy_tag is not None else (
+        "private" if include_private else ""
     )
 
     if collection == "knowledge":
@@ -210,17 +210,21 @@ def _build_where_clause(
         for _tag in (exclude_tags or []):
             clauses.append({f"tag_{_tag}": {"$ne": True}})
     elif collection == "conversations":
-        # Conversation privacy is denormalized as one tag string. Standard
-        # sees Standard only; Private additionally sees Private; Stealth may
-        # see all three. Separate ``$ne`` clauses keep this compatible with
-        # Chroma versions that do not implement ``$nin``.
+        # Each complete exchange carries an exact authority. Equality/inclusion
+        # filters intentionally exclude legacy missing/invalid rows before
+        # Chroma computes semantic candidates.
         if privacy == "":
-            clauses.extend((
-                {"tag": {"$ne": "private"}},
-                {"tag": {"$ne": "stealth"}},
-            ))
+            clauses.append({"turn_privacy": {"$eq": "standard"}})
         elif privacy == "private":
-            clauses.append({"tag": {"$ne": "stealth"}})
+            clauses.append({
+                "turn_privacy": {"$in": ["standard", "private"]},
+            })
+        else:
+            clauses.append({
+                "turn_privacy": {
+                    "$in": ["standard", "private", "stealth"],
+                },
+            })
 
     if not clauses:
         return None
@@ -370,10 +374,10 @@ def _metadata_passes_filters(
     stored_tag = str(meta.get("tag") or "").strip().casefold()
     if stored_tag:
         tags.add(stored_tag)
-    privacy = (
-        privacy_tag
-        if privacy_tag in ("", "private", "stealth")
-        else ("private" if include_private else "")
+    if privacy_tag is not None and privacy_tag not in ("", "private", "stealth"):
+        return False
+    privacy = privacy_tag if privacy_tag is not None else (
+        "private" if include_private else ""
     )
     if type_filter and meta.get("type") not in set(type_filter):
         return False
@@ -395,13 +399,15 @@ def _metadata_passes_filters(
                 return False
     elif collection == "conversations":
         archived = bool(meta.get("tag_archived", False)) or "archived" in tags
-        private = bool(meta.get("tag_private", False)) or "private" in tags
-        stealth = bool(meta.get("tag_stealth", False)) or "stealth" in tags
         if not include_archived and archived:
             return False
-        if privacy == "" and (private or stealth):
-            return False
-        if privacy == "private" and stealth:
+        exact = meta.get("turn_privacy")
+        allowed = (
+            {"standard"} if privacy == ""
+            else {"standard", "private"} if privacy == "private"
+            else {"standard", "private", "stealth"}
+        )
+        if exact not in allowed:
             return False
     return True
 

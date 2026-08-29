@@ -155,10 +155,14 @@ def reset_conversation_tag_context(token) -> None:
 
 def set_dialogue_history_context(history: list | None):
     """Bind authoritative history for downstream physical model calls."""
-    snapshots = tuple(
-        dict(message) for message in (history or [])
-        if isinstance(message, dict)
-    )
+    try:
+        from orchestrator.conversation_memory import filter_conversation_history_for_tag
+        safe_history = filter_conversation_history_for_tag(
+            list(history or []), _CONVERSATION_TAG_CV.get(),
+        )
+    except Exception:
+        safe_history = []
+    snapshots = tuple(dict(message) for message in safe_history)
     return _DIALOGUE_HISTORY_CV.set(snapshots)
 
 
@@ -1280,6 +1284,13 @@ def prepare_messages_with_continuity(
 ) -> tuple[list[dict], dict]:
     """Insert all bounded optional lanes exactly once into a physical call."""
     source = _DIALOGUE_HISTORY_CV.get() if history is None else history
+    try:
+        from orchestrator.conversation_memory import filter_conversation_history_for_tag
+        source = filter_conversation_history_for_tag(
+            list(source or []), _CONVERSATION_TAG_CV.get(),
+        )
+    except Exception:
+        source = []
     base = [dict(message) for message in (messages or [])]
     optional_state = _OPTIONAL_CONTEXT_CV.get()
     optional_units = (
@@ -9330,7 +9341,7 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
     _RAG_ISOLATION_WEB_ONLY = _rag_isolation_value == "web_only"
     retrieval_privacy_tag = str(conversation_tag or "").strip().casefold()
     if retrieval_privacy_tag not in {"", "private", "stealth"}:
-        retrieval_privacy_tag = ""
+        raise ValueError("Dialogue privacy authority is invalid")
     include_private_rag = retrieval_privacy_tag in {"private", "stealth"}
     legacy_rag_query = (
         f"include:private {rag_query}" if include_private_rag else rag_query
@@ -10097,22 +10108,23 @@ def _context_source_exclusions(
 
 
 def _privacy_allows_retrieved_chunk(metadata: dict, target_tag: str) -> bool:
+    if target_tag not in {"", "private", "stealth"}:
+        return False
     tags = metadata.get("tags") or []
     if isinstance(tags, str):
         tags = [part.strip().lower() for part in tags.split(",") if part.strip()]
     else:
         tags = [str(part).strip().lower() for part in tags if str(part).strip()]
-    stored_tag = str(metadata.get("tag") or "").strip().lower()
     archived = bool(metadata.get("tag_archived")) or "archived" in tags
-    private = bool(metadata.get("tag_private")) or stored_tag == "private" or "private" in tags
-    stealth = bool(metadata.get("tag_stealth")) or stored_tag == "stealth" or "stealth" in tags
     if archived:
         return False
-    if target_tag == "stealth":
-        return True
-    if target_tag == "private":
-        return not stealth
-    return not private and not stealth
+    exact = metadata.get("turn_privacy")
+    allowed = (
+        {"standard"} if target_tag == ""
+        else {"standard", "private"} if target_tag == "private"
+        else {"standard", "private", "stealth"}
+    )
+    return exact in allowed
 
 
 def _conversation_chunks_to_global_units(

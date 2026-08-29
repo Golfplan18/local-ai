@@ -157,6 +157,7 @@ def build_chunk_markdown(
     *,
     when: datetime,
     tag: str = "",
+    turn_privacy: str | None = None,
 ) -> str:
     """Compose the full chunk markdown file — Schema §12 YAML frontmatter
     followed by the Context + Exchange body."""
@@ -183,8 +184,19 @@ def build_chunk_markdown(
             f"date modified: {date_str}\n"
             f"---\n"
         )
+    if turn_privacy is not None and turn_privacy not in {
+        "standard", "private", "stealth",
+    }:
+        raise ValueError("turn_privacy must be standard, private, or stealth")
+    authority_marker = (
+        "<!-- ora-turn-privacy: "
+        + json.dumps(turn_privacy, ensure_ascii=False)
+        + " -->\n\n"
+        if turn_privacy is not None else ""
+    )
     return (
         f"{frontmatter}\n"
+        f"{authority_marker}"
         f"## Context\n\n"
         f"{context_header}\n\n"
         f"## Exchange\n\n"
@@ -241,6 +253,8 @@ def append_chunk_manifest(
     chunk_id: str,
     chunk_path: str | Path,
     tag: str = "",
+    turn_privacy: str | None = None,
+    turn_index: int | None = None,
     raw_path: str = "",
     source_path: str = "",
     manifest_path: str | Path | None = None,
@@ -272,6 +286,14 @@ def append_chunk_manifest(
         "source_path": source_path,
         "tag": tag,
     }
+    if turn_privacy is not None:
+        if turn_privacy not in {"standard", "private", "stealth"}:
+            raise ValueError("invalid turn_privacy")
+        record["turn_privacy"] = turn_privacy
+    if turn_index is not None:
+        if isinstance(turn_index, bool) or not isinstance(turn_index, int) or turn_index < 1:
+            raise ValueError("turn_index must be a positive integer")
+        record["turn_index"] = turn_index
     with rp.locked_file(destination):
         rp.append_text_no_follow(
             destination,
@@ -302,6 +324,7 @@ def build_chroma_metadata(
     turn_summary: str,
     thread_id: str,
     tag: str = "",
+    turn_privacy: str | None = None,
     source_platform: str = "local",
     chain_id: str = "",
     chain_label: str = "",
@@ -317,6 +340,10 @@ def build_chroma_metadata(
     empty (live conversations don't yet carry chain assignments).
     """
     schema_tags, tag_booleans = _v3_tag_to_schema_tags(tag)
+    if turn_privacy is not None and turn_privacy not in {
+        "standard", "private", "stealth",
+    }:
+        raise ValueError("invalid turn_privacy")
 
     try:
         ts_local = when.strftime("%Y-%m-%dT%H:%M:%S")
@@ -379,6 +406,8 @@ def build_chroma_metadata(
         "pair_num":           pair_num,
         "source":             os.path.basename(chunk_path),
     }
+    if turn_privacy is not None:
+        meta["turn_privacy"] = turn_privacy
     meta.update(tag_booleans)
 
     # ChromaDB rejects empty list metadata; only emit non-empty lists.
