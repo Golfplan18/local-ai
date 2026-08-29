@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -638,50 +639,149 @@ def _preview_invalidate(conversation_id):
     return _json({"invalidated": True})
 
 
+def _video_parameter_error(spec: dict, value: Any) -> str | None:
+    """Return a refusal reason when one value violates its slot contract."""
+    name = spec["name"]
+    declared_type = spec.get("type")
+    if declared_type == "text":
+        if not isinstance(value, str):
+            return f"video_generates input '{name}' must be text."
+        if spec.get("required") and not value.strip():
+            return f"video_generates requires a non-empty '{name}'."
+        return None
+
+    if declared_type == "float":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return f"video_generates input '{name}' must be a finite number."
+        try:
+            is_finite = math.isfinite(value)
+        except (OverflowError, TypeError):
+            is_finite = False
+        if not is_finite:
+            return f"video_generates input '{name}' must be a finite number."
+        minimum = spec.get("min")
+        maximum = spec.get("max")
+        if minimum is not None and value < minimum:
+            return f"video_generates input '{name}' must be at least {minimum}."
+        if maximum is not None and value > maximum:
+            return f"video_generates input '{name}' must be at most {maximum}."
+        return None
+
+    if declared_type == "enum":
+        allowed = spec.get("enum_values")
+        if not isinstance(allowed, list) or value not in allowed:
+            choices = ", ".join(repr(item) for item in (allowed or []))
+            return (
+                f"video_generates input '{name}' must be one of the declared "
+                f"values: {choices or 'none'}."
+            )
+        return None
+
+    return (
+        f"video_generates input '{name}' has unsupported declared type "
+        f"{declared_type!r}."
+    )
+
+
+def _validated_video_inputs(
+    contract: dict,
+    inputs: dict[str, Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Validate every submitted input and preserve accepted values exactly."""
+    specs: dict[str, dict] = {}
+    required_names: set[str] = set()
+    for field_group, required in (("required_inputs", True),
+                                  ("optional_inputs", False)):
+        for raw_spec in contract.get(field_group, []):
+            if not isinstance(raw_spec, dict):
+                continue
+            name = raw_spec.get("name")
+            if not isinstance(name, str):
+                continue
+            spec = dict(raw_spec)
+            spec["required"] = required
+            specs[name] = spec
+            if required:
+                required_names.add(name)
+
+    for name in inputs:
+        if name not in specs:
+            return None, f"video_generates does not declare input '{name}'."
+
+    for name in required_names:
+        if name not in inputs or inputs[name] is None:
+            return None, f"video_generates requires input '{name}'."
+
+    validated: dict[str, Any] = {}
+    for name, value in inputs.items():
+        error = _video_parameter_error(specs[name], value)
+        if error is not None:
+            return None, error
+        validated[name] = value
+    return validated, None
+
+
 def _capability_video_generates():
     try:
         data = request.get_json(force=True) or {}
     except Exception:
         return _json({"error": {"code": "prompt_rejected", "message": "Request body must be JSON."}}, 400)
-    inputs = data.get("inputs") if isinstance(data.get("inputs"), dict) else {}
-    prompt_value = inputs.get("prompt")
-    prompt = prompt_value.strip() if isinstance(prompt_value, str) else ""
-    if not prompt:
-        return _json({"error": {"code": "prompt_rejected", "message": "video_generates requires a non-empty 'prompt'."}}, 400)
-    handler_inputs: dict[str, Any] = {"prompt": prompt}
-    try:
-        if inputs.get("duration") is not None:
-            handler_inputs["duration"] = int(inputs["duration"])
-    except (TypeError, ValueError):
-        pass
-    style = inputs.get("style")
-    if isinstance(style, str) and style.strip():
-        handler_inputs["style"] = style.strip()
-    resolution_value = inputs.get("resolution")
-    resolution = (
-        resolution_value.strip().lower()
-        if isinstance(resolution_value, str) else ""
-    )
-    if resolution in {"720p", "1080p", "4k", "square"}:
-        handler_inputs["resolution"] = resolution
-    conversation_id = data.get("conversation_id") or inputs.get("conversation_id") or "default"
-    try:
-        registry = _context.load_async_capability_registry(conversation_id)
-    except Exception as exc:
+    if not isinstance(data, dict):
         return _json({"error": {
-            "code": "model_unavailable",
-            "message": f"Replicate provider unavailable: {exc}",
-        }}, 503)
-    try:
-        result = registry.invoke(
-            "video_generates",
-            handler_inputs,
-            provider_id=data.get("provider_override") or inputs.get("provider_override") or None,
-        )
-    except Exception as exc:
-        code = getattr(exc, "code", "model_unavailable")
-        status = 502 if code == "model_unavailable" else 400
-        return _json({"error": {"code": code, "message": str(exc)}}, status)
+            "code": "prompt_rejected",
+            "message": "Request body must be a JSON object.",
+        }}, 400)
+    inputs = data.get("inputs")
+    if not isinstance(inputs, dict):
+        return _json({"error": {
+            "code": "prompt_rejected",
+            "message": "video_generates 'inputs' must be a JSON object.",
+        }}, 400)
+    conversation_id = data.get("conversation_id")
+    if not _context.valid_live_conversation_id(conversation_id):
+        return _json({"error": {
+            "code": "prompt_rejected",
+            "message": "video_generates requires a valid conversation_id.",
+        }}, 400)
+
+    with _context.conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            registry = _context.load_async_capability_registry(conversation_id)
+        except Exception as exc:
+            return _json({"error": {
+                "code": "model_unavailable",
+                "message": f"Async video providers unavailable: {exc}",
+            }}, 503)
+
+        contract = registry.get_contract("video_generates")
+        handler_inputs, error = _validated_video_inputs(contract, inputs)
+        if error is not None:
+            return _json({"error": {
+                "code": "prompt_rejected",
+                "message": error,
+            }}, 400)
+        assert handler_inputs is not None
+
+        provider_override = data.get("provider_override") or None
+        try:
+            # Bind OpenRouter across the complete cascade, including a
+            # Replicate refusal followed by an OpenRouter fallback. The async
+            # loader has already bound Replicate to this same Dialogue.
+            import openrouter_images
+            with openrouter_images.video_conversation(conversation_id):
+                result = registry.invoke(
+                    "video_generates",
+                    handler_inputs,
+                    provider_id=provider_override,
+                )
+        except Exception as exc:
+            code = getattr(exc, "code", "model_unavailable")
+            status = 502 if code == "model_unavailable" else 400
+            return _json({"error": {"code": code, "message": str(exc)}}, status)
     job = getattr(result, "output", result)
     if not isinstance(job, dict) or not job.get("id"):
         return _json({"error": {"code": "model_unavailable", "message": "Async dispatcher returned no job descriptor."}}, 502)

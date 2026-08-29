@@ -26,9 +26,11 @@ routes are never asked to fulfill a request through a mock switch.
 from __future__ import annotations
 
 import base64
+from contextlib import contextmanager
 import io
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -558,9 +560,9 @@ class CapabilityImageToPromptRouteTests(unittest.TestCase):
 class CapabilityVideoGeneratesRouteTests(unittest.TestCase):
     """Smoke tests for /api/capability/video_generates (Contracts §3.9, async).
 
-    Async slot: no mock path. We patch the Replicate dispatcher so the test
-    doesn't require a real token, but the route's job-dict shape is what we
-    verify here. A bad-input test confirms the prompt_rejected error code.
+    Provider transport is patched below the real registry and OpenRouter
+    handler, so no credential or network is needed. Bad inputs must refuse
+    before the capability is invoked.
     """
 
     def setUp(self) -> None:
@@ -568,103 +570,628 @@ class CapabilityVideoGeneratesRouteTests(unittest.TestCase):
         self.server = server
         self.client = server.app.test_client()
 
-    def test_happy_path_returns_job_dict(self) -> None:
-        """Successful invoke returns { job: {id, status, ...}, conversation_id }."""
-        fake_job = {
-            "id": "job_abc123",
-            "status": "queued",
-            "capability": "video_generates",
-            "parameters": {"prompt": "A cat surfing"},
-            "dispatched_at": 1714521600,
-        }
-
-        # Stub the registry's invoke so no real Replicate call happens.
-        # The route's import path lazily loads replicate +
-        # capability_registry; we patch at the registry layer to keep the
-        # patch surface minimal.
-        from capability_registry import InvocationResult
-        fake_result = InvocationResult(
-            slot="video_generates",
-            provider_id="replicate",
-            output=fake_job,
-            execution_pattern="async",
+    @contextmanager
+    def _conversation_scope(self, sessions_root, conversation_id):
+        if (Path(sessions_root) / conversation_id).is_dir():
+            yield conversation_id, None
+            return
+        yield conversation_id, self.server._json_response(
+            {"error": "conversation not found"}, status=404,
         )
 
-        with mock.patch("capability_registry.CapabilityRegistry.invoke",
-                        return_value=fake_result):
-            body = {
-                "slot": "video_generates",
-                "inputs": {
-                    "prompt": "A cat surfing on a wave at sunset",
-                    "duration": 6,
-                    "resolution": "1080p",
-                    "style": "cinematic",
-                },
-                "placeholder_anchor": {"x": 100, "y": 100, "width": 640, "height": 360},
-                "conversation_id": "conv_smoke",
-            }
-            resp = self.client.post(
-                "/api/capability/video_generates",
-                data=json.dumps(body),
-                content_type="application/json",
+    def _route_context(self, registry, sessions_root):
+        context = mock.Mock()
+        context.valid_live_conversation_id.side_effect = lambda value: (
+            isinstance(value, str)
+            and bool(value)
+            and value == value.strip()
+            and all(
+                char.isascii()
+                and (char.islower() or char.isdigit() or char in "_-")
+                for char in value
             )
-        self.assertEqual(resp.status_code, 200, resp.data)
-        payload = json.loads(resp.data)
-        self.assertIn("job", payload)
-        self.assertEqual(payload["job"]["id"], "job_abc123")
-        self.assertEqual(payload["job"]["status"], "queued")
-        self.assertEqual(payload["conversation_id"], "conv_smoke")
-        # placeholder_anchor is stamped onto the response job dict.
-        self.assertEqual(
-            payload["job"]["placeholder_anchor"],
-            {"x": 100, "y": 100, "width": 640, "height": 360},
         )
+        context.conversation_read_scope.side_effect = lambda value: (
+            self._conversation_scope(sessions_root, value)
+        )
+        context.load_async_capability_registry.return_value = registry
+        return context
+
+    def test_happy_path_preserves_declared_parameters_and_job_shape(self) -> None:
+        """The live handler queues every declared resolution without a 502."""
+        from capability_registry import CapabilityRegistry
+        from orchestrator.integrations import openrouter_images
+        from orchestrator.job_queue import JobQueue
+
+        provider_id = "openrouter:test/video-model"
+        registry = CapabilityRegistry(routing_config={
+            "slots": {
+                "video_generates": {
+                    "preferred": provider_id,
+                    "fallback": [],
+                },
+            },
+        })
+        registry.register_provider(
+            "video_generates",
+            provider_id,
+            openrouter_images._video_handler_factory("test/video-model"),
+        )
+
+        delivered: list[dict] = []
+
+        def fake_call(model_id, prompt, **parameters):
+            cancel_requested = parameters.pop("cancel_requested")
+            self.assertFalse(cancel_requested())
+            delivered.append({
+                "model_id": model_id,
+                "prompt": prompt,
+                **parameters,
+            })
+            return b"video"
+
+        contract = CapabilityRegistry().get_contract("video_generates")
+        resolution_spec = next(
+            spec for spec in contract["optional_inputs"]
+            if spec["name"] == "resolution"
+        )
+        declared_resolutions = tuple(resolution_spec["enum_values"])
+        view = self.server.app.view_functions[
+            "plugin_video_capability_video_generates"
+        ]
+        route_module = sys.modules[view.__module__]
+        with tempfile.TemporaryDirectory() as sessions_root:
+            (Path(sessions_root) / "conv_smoke").mkdir()
+            queue = JobQueue(sessions_root)
+            context = self._route_context(registry, sessions_root)
+
+            def run_inline(*args):
+                openrouter_images._run_video_job(*args)
+
+            with mock.patch.dict(
+                     sys.modules, {"openrouter_images": openrouter_images},
+                 ), mock.patch.object(route_module, "_context", context), \
+                 mock.patch.object(
+                     openrouter_images, "_resolve_key", return_value="test-key",
+                 ), mock.patch.object(
+                     openrouter_images, "_video_job_queue", return_value=queue,
+                 ), mock.patch.object(
+                     openrouter_images, "_start_video_worker", side_effect=run_inline,
+                 ), mock.patch.object(
+                     openrouter_images, "_call_video_model", side_effect=fake_call,
+                 ) as transport:
+                for resolution in declared_resolutions:
+                    with self.subTest(resolution=resolution):
+                        body = {
+                            "slot": "video_generates",
+                            "inputs": {
+                                "prompt": "  A cat surfing on a wave at sunset  ",
+                                "duration": 6.25,
+                                "resolution": resolution,
+                                "style": "  cinematic  ",
+                            },
+                            "placeholder_anchor": {
+                                "x": 100, "y": 100, "width": 640, "height": 360,
+                            },
+                            "conversation_id": "conv_smoke",
+                        }
+                        resp = self.client.post(
+                            "/api/capability/video_generates",
+                            data=json.dumps(body),
+                            content_type="application/json",
+                        )
+                        self.assertEqual(resp.status_code, 200, resp.data)
+                        self.assertEqual(delivered[-1], {
+                            "model_id": "test/video-model",
+                            "prompt": "  A cat surfing on a wave at sunset  ",
+                            "slot": "video_generates",
+                            "duration": 6.25,
+                            "resolution": resolution,
+                            "style": "  cinematic  ",
+                        })
+                        payload = json.loads(resp.data)
+                        self.assertEqual(payload["job"]["status"], "queued")
+                        self.assertEqual(payload["conversation_id"], "conv_smoke")
+                        self.assertEqual(
+                            payload["job"]["placeholder_anchor"],
+                            {"x": 100, "y": 100, "width": 640, "height": 360},
+                        )
+                        completed = queue.get_job(
+                            "conv_smoke", payload["job"]["id"],
+                        )
+                        self.assertEqual(completed["status"], "complete")
+                        result_url = completed["result_ref"]["video_url"]
+                        self.assertIn(payload["job"]["id"], result_url)
+                        artifact = (
+                            Path(sessions_root)
+                            / "conv_smoke"
+                            / "uploads"
+                            / result_url.rsplit("/", 1)[-1]
+                        )
+                        self.assertEqual(artifact.read_bytes(), b"video")
+
+                transport.side_effect = RuntimeError("upstream generation failed")
+                failed_resp = self.client.post(
+                    "/api/capability/video_generates",
+                    data=json.dumps({
+                        "slot": "video_generates",
+                        "inputs": {"prompt": "A generation that fails upstream"},
+                        "conversation_id": "conv_smoke",
+                    }),
+                    content_type="application/json",
+                )
+                self.assertEqual(failed_resp.status_code, 200, failed_resp.data)
+                failed_payload = json.loads(failed_resp.data)
+                self.assertEqual(failed_payload["job"]["status"], "queued")
+                failed = queue.get_job(
+                    "conv_smoke", failed_payload["job"]["id"],
+                )
+                self.assertEqual(failed["status"], "failed")
+                self.assertIn("upstream generation failed", failed["error"])
+
+    def test_provider_fallback_keeps_the_requested_dialogue_binding(self) -> None:
+        """Replicate refusal cannot send OpenRouter output to a default bucket."""
+        from capability_registry import CapabilityError, CapabilityRegistry
+        from orchestrator.integrations import openrouter_images
+        from orchestrator.job_queue import JobQueue
+
+        registry = CapabilityRegistry(routing_config={
+            "slots": {
+                "video_generates": {
+                    "preferred": "replicate",
+                    "fallback": ["openrouter:test/video-model"],
+                    "fallback_on": ["model_unavailable"],
+                },
+            },
+        })
+
+        def replicate_refusal(_inputs):
+            raise CapabilityError(
+                "model_unavailable", "Replicate unavailable",
+                slot="video_generates",
+            )
+
+        registry.register_provider(
+            "video_generates", "replicate", replicate_refusal,
+        )
+        registry.register_provider(
+            "video_generates",
+            "openrouter:test/video-model",
+            openrouter_images._video_handler_factory("test/video-model"),
+        )
+
+        view = self.server.app.view_functions[
+            "plugin_video_capability_video_generates"
+        ]
+        route_module = sys.modules[view.__module__]
+        with tempfile.TemporaryDirectory() as sessions_root:
+            (Path(sessions_root) / "fallback_dialogue").mkdir()
+            queue = JobQueue(sessions_root)
+            context = self._route_context(registry, sessions_root)
+
+            def run_inline(*args):
+                openrouter_images._run_video_job(*args)
+
+            with mock.patch.dict(
+                     sys.modules, {"openrouter_images": openrouter_images},
+                 ), mock.patch.object(route_module, "_context", context), \
+                 mock.patch.object(
+                     openrouter_images, "_resolve_key", return_value="test-key",
+                 ), mock.patch.object(
+                     openrouter_images, "_video_job_queue", return_value=queue,
+                 ), mock.patch.object(
+                     openrouter_images, "_start_video_worker", side_effect=run_inline,
+                 ), mock.patch.object(
+                     openrouter_images, "_call_video_model", return_value=b"video",
+                 ):
+                response = self.client.post(
+                    "/api/capability/video_generates",
+                    data=json.dumps({
+                        "slot": "video_generates",
+                        "inputs": {"prompt": "fallback test"},
+                        "conversation_id": "fallback_dialogue",
+                    }),
+                    content_type="application/json",
+                )
+
+            self.assertEqual(response.status_code, 200, response.data)
+            body = json.loads(response.data)
+            completed = queue.get_job(
+                "fallback_dialogue", body["job"]["id"],
+            )
+            self.assertEqual(completed["status"], "complete")
+            self.assertEqual(
+                completed["metadata"]["provider"],
+                "openrouter:test/video-model",
+            )
+            self.assertIn(
+                "/api/jobs/fallback_dialogue/",
+                completed["result_ref"]["video_url"],
+            )
+
+    def test_openrouter_submit_body_includes_validated_parameters(self) -> None:
+        """The real provider adapter carries all submitted fields to transport."""
+        from orchestrator.integrations import openrouter_images
+
+        calls = []
+        responses = [
+            json.dumps({
+                "id": "job-1",
+                "polling_url": "/api/v1/videos/job-1",
+            }).encode(),
+            json.dumps({
+                "status": "completed",
+                "unsigned_urls": [
+                    "https://openrouter.ai.attacker.example/video.mp4"
+                ],
+            }).encode(),
+            b"video",
+        ]
+
+        def fetch(url, **kwargs):
+            calls.append((url, kwargs))
+            return responses.pop(0), mock.sentinel.destination
+
+        with mock.patch.object(
+            openrouter_images, "_resolve_key", return_value="test-key",
+        ), mock.patch.object(
+            openrouter_images.time, "sleep", return_value=None,
+        ), mock.patch.object(
+            openrouter_images.network_policy,
+            "urllib_request_bytes",
+            side_effect=fetch,
+        ):
+            result = openrouter_images._call_video_model(
+                "vendor/model",
+                "A cat surfing",
+                poll_interval_s=0,
+                max_wait_s=10,
+                duration=6.25,
+                resolution="4k",
+                style="cinematic",
+            )
+
+        self.assertEqual(result, b"video")
+        submitted = json.loads(calls[0][1]["data"].decode("utf-8"))
+        self.assertEqual(submitted, {
+            "model": "vendor/model",
+            "prompt": "A cat surfing",
+            "duration": 6.25,
+            "style": "cinematic",
+            "resolution": "4k",
+        })
+        self.assertEqual(
+            calls[1][0],
+            "https://openrouter.ai/api/v1/videos/job-1",
+        )
+        self.assertEqual(
+            calls[1][1]["headers"]["Authorization"],
+            "Bearer test-key",
+        )
+        self.assertEqual(
+            calls[1][1]["required_origin"],
+            "https://openrouter.ai",
+        )
+        self.assertEqual(
+            calls[2][0],
+            "https://openrouter.ai.attacker.example/video.mp4",
+        )
+        self.assertNotIn("headers", calls[2][1])
+        self.assertNotIn("required_origin", calls[2][1])
+
+    def test_openrouter_hosted_result_uses_origin_locked_auth(self) -> None:
+        """Only the exact OpenRouter origin receives result credentials."""
+        from orchestrator.integrations import openrouter_images
+
+        calls = []
+        responses = [
+            json.dumps({
+                "id": "job-1",
+                "polling_url": "/api/v1/videos/job-1",
+            }).encode(),
+            json.dumps({
+                "status": "completed",
+                "video_url": (
+                    "https://openrouter.ai/api/v1/videos/job-1/content"
+                ),
+            }).encode(),
+            b"video",
+        ]
+
+        def fetch(url, **kwargs):
+            calls.append((url, kwargs))
+            return responses.pop(0), mock.sentinel.destination
+
+        with mock.patch.object(
+            openrouter_images, "_resolve_key", return_value="test-key",
+        ), mock.patch.object(
+            openrouter_images.time, "sleep", return_value=None,
+        ), mock.patch.object(
+            openrouter_images.network_policy,
+            "urllib_request_bytes",
+            side_effect=fetch,
+        ):
+            result = openrouter_images._call_video_model(
+                "vendor/model",
+                "A cat surfing",
+                poll_interval_s=0,
+                max_wait_s=10,
+            )
+
+        self.assertEqual(result, b"video")
+        self.assertEqual(
+            calls[2][0],
+            "https://openrouter.ai/api/v1/videos/job-1/content",
+        )
+        self.assertEqual(
+            calls[2][1]["headers"]["Authorization"],
+            "Bearer test-key",
+        )
+        self.assertEqual(
+            calls[2][1]["required_origin"],
+            "https://openrouter.ai",
+        )
+        self.assertEqual(calls[2][1]["max_redirects"], 0)
+
+    def test_openrouter_provider_terminal_states_remain_truthful(self) -> None:
+        """Cancelled stays cancelled; expired becomes an explicit failed job."""
+        from orchestrator.integrations import openrouter_images
+        from orchestrator.job_queue import JobQueue
+
+        for terminal_status in ("cancelled", "expired"):
+            with self.subTest(status=terminal_status):
+                calls = []
+                responses = [
+                    json.dumps({
+                        "id": "job-1",
+                        "polling_url": "/api/v1/videos/job-1",
+                    }).encode(),
+                    json.dumps({"status": terminal_status}).encode(),
+                ]
+
+                def fetch(url, **kwargs):
+                    calls.append((url, kwargs))
+                    return responses.pop(0), mock.sentinel.destination
+
+                with mock.patch.object(
+                    openrouter_images, "_resolve_key", return_value="test-key",
+                ), mock.patch.object(
+                    openrouter_images.time, "sleep", return_value=None,
+                ), mock.patch.object(
+                    openrouter_images.network_policy,
+                    "urllib_request_bytes",
+                    side_effect=fetch,
+                ):
+                    with tempfile.TemporaryDirectory() as sessions_root:
+                        (Path(sessions_root) / "video_dialogue").mkdir()
+                        queue = JobQueue(sessions_root)
+                        job = queue.dispatch(
+                            "video_dialogue",
+                            "video_generates",
+                            {"prompt": "A cat surfing"},
+                        )
+                        openrouter_images._run_video_job(
+                            queue,
+                            "video_dialogue",
+                            job["id"],
+                            "vendor/model",
+                            "A cat surfing",
+                            None,
+                            None,
+                            None,
+                        )
+                        terminal = queue.get_job("video_dialogue", job["id"])
+
+                expected_status = (
+                    "cancelled" if terminal_status == "cancelled" else "failed"
+                )
+                self.assertEqual(terminal["status"], expected_status)
+                if terminal_status == "expired":
+                    self.assertIn("expired", terminal["error"])
+                    self.assertNotIn("timed out", terminal["error"])
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(responses, [])
+
+    def test_openrouter_worker_observes_ora_cancellation_while_polling(self) -> None:
+        """An in-progress cancel stops the bounded worker before another poll."""
+        from orchestrator.integrations import openrouter_images
+        from orchestrator.job_queue import JobQueue
+
+        calls = []
+        with tempfile.TemporaryDirectory() as sessions_root:
+            (Path(sessions_root) / "video_dialogue").mkdir()
+            queue = JobQueue(sessions_root)
+            job = queue.dispatch(
+                "video_dialogue",
+                "video_generates",
+                {"prompt": "A cat surfing"},
+            )
+
+            def fetch(url, **kwargs):
+                calls.append((url, kwargs))
+                if len(calls) == 1:
+                    return json.dumps({
+                        "id": "job-1",
+                        "polling_url": "/api/v1/videos/job-1",
+                    }).encode(), mock.sentinel.destination
+                queue.request_cancel("video_dialogue", job["id"])
+                return json.dumps({
+                    "status": "running",
+                }).encode(), mock.sentinel.destination
+
+            with mock.patch.object(
+                openrouter_images, "_resolve_key", return_value="test-key",
+            ), mock.patch.object(
+                openrouter_images.time, "sleep", return_value=None,
+            ), mock.patch.object(
+                openrouter_images.network_policy,
+                "urllib_request_bytes",
+                side_effect=fetch,
+            ):
+                openrouter_images._run_video_job(
+                    queue,
+                    "video_dialogue",
+                    job["id"],
+                    "vendor/model",
+                    "A cat surfing",
+                    None,
+                    None,
+                    None,
+                )
+
+            terminal = queue.get_job("video_dialogue", job["id"])
+            self.assertEqual(terminal["status"], "cancelled")
+            self.assertEqual(len(calls), 2)
+
+    def test_untrusted_absolute_polling_origin_refuses_before_transport(self) -> None:
+        """A provider response cannot redirect the bearer to another origin."""
+        from orchestrator.integrations import openrouter_images
+
+        calls = []
+
+        def fetch(url, **kwargs):
+            calls.append((url, kwargs))
+            return json.dumps({
+                "id": "job-1",
+                "polling_url": (
+                    "https://openrouter.ai.attacker.example/videos/job-1"
+                ),
+            }).encode(), mock.sentinel.destination
+
+        with mock.patch.object(
+            openrouter_images, "_resolve_key", return_value="test-key",
+        ), mock.patch.object(
+            openrouter_images.network_policy,
+            "urllib_request_bytes",
+            side_effect=fetch,
+        ):
+            with self.assertRaises(Exception) as raised:
+                openrouter_images._call_video_model(
+                    "vendor/model",
+                    "A cat surfing",
+                    poll_interval_s=0,
+                    max_wait_s=10,
+                )
+
+        self.assertEqual(
+            getattr(raised.exception, "code", None),
+            "model_unavailable",
+        )
+        self.assertEqual(len(calls), 1)
 
     def test_missing_prompt_returns_400(self) -> None:
         """Bad input: empty prompt surfaces prompt_rejected."""
-        body = {"slot": "video_generates", "inputs": {}}
-        resp = self.client.post(
-            "/api/capability/video_generates",
-            data=json.dumps(body),
-            content_type="application/json",
-        )
+        from capability_registry import CapabilityRegistry
+
+        view = self.server.app.view_functions[
+            "plugin_video_capability_video_generates"
+        ]
+        route_module = sys.modules[view.__module__]
+        with tempfile.TemporaryDirectory() as sessions_root:
+            (Path(sessions_root) / "video_dialogue").mkdir()
+            context = self._route_context(
+                CapabilityRegistry(), sessions_root,
+            )
+            with mock.patch.object(route_module, "_context", context):
+                resp = self.client.post(
+                    "/api/capability/video_generates",
+                    data=json.dumps({
+                        "slot": "video_generates",
+                        "inputs": {},
+                        "conversation_id": "video_dialogue",
+                    }),
+                    content_type="application/json",
+                )
         self.assertEqual(resp.status_code, 400)
         payload = json.loads(resp.data)
         self.assertEqual(payload["error"]["code"], "prompt_rejected")
 
-    def test_invalid_resolution_silently_dropped(self) -> None:
-        """Unknown resolution is dropped from handler_inputs (not an error)."""
-        captured: dict = {}
+    def test_missing_or_unknown_dialogue_refuses_before_provider_loading(self) -> None:
+        """Async output cannot be filed under a synthetic or absent Dialogue."""
+        from capability_registry import CapabilityRegistry
 
-        from capability_registry import InvocationResult
-
-        def fake_invoke(self, slot, inputs, provider_id=None, **kw):
-            captured["inputs"] = dict(inputs)
-            return InvocationResult(
-                slot=slot,
-                provider_id="replicate",
-                output={"id": "j1", "status": "queued",
-                        "capability": slot, "parameters": inputs},
-                execution_pattern="async",
+        view = self.server.app.view_functions[
+            "plugin_video_capability_video_generates"
+        ]
+        route_module = sys.modules[view.__module__]
+        with tempfile.TemporaryDirectory() as sessions_root:
+            context = self._route_context(
+                CapabilityRegistry(), sessions_root,
             )
+            with mock.patch.object(route_module, "_context", context):
+                missing = self.client.post(
+                    "/api/capability/video_generates",
+                    data=json.dumps({
+                        "slot": "video_generates",
+                        "inputs": {"prompt": "test prompt"},
+                    }),
+                    content_type="application/json",
+                )
+                unknown = self.client.post(
+                    "/api/capability/video_generates",
+                    data=json.dumps({
+                        "slot": "video_generates",
+                        "inputs": {"prompt": "test prompt"},
+                        "conversation_id": "missing_dialogue",
+                    }),
+                    content_type="application/json",
+                )
 
-        with mock.patch("capability_registry.CapabilityRegistry.invoke",
-                        new=fake_invoke):
-            body = {
-                "slot": "video_generates",
-                "inputs": {
-                    "prompt": "test prompt",
-                    "resolution": "8k",  # not in valid set
-                },
-            }
-            resp = self.client.post(
-                "/api/capability/video_generates",
-                data=json.dumps(body),
-                content_type="application/json",
+            self.assertEqual(missing.status_code, 400, missing.data)
+            self.assertEqual(unknown.status_code, 404, unknown.data)
+            context.load_async_capability_registry.assert_not_called()
+
+    def test_invalid_parameters_are_rejected_before_invoke(self) -> None:
+        """Invalid or undeclared inputs visibly refuse instead of disappearing."""
+        from capability_registry import CapabilityRegistry
+
+        cases = (
+            ("undeclared resolution", {"resolution": "square"}, "resolution"),
+            ("unknown resolution", {"resolution": "8k"}, "resolution"),
+            ("coercible duration", {"duration": "6.25"}, "duration"),
+            ("boolean duration", {"duration": True}, "duration"),
+            ("invalid style", {"style": ["cinematic"]}, "style"),
+            ("unknown fps", {"fps": 24}, "fps"),
+            (
+                "input-level provider override",
+                {"provider_override": "openrouter:test/video-model"},
+                "provider_override",
+            ),
+        )
+        view = self.server.app.view_functions[
+            "plugin_video_capability_video_generates"
+        ]
+        route_module = sys.modules[view.__module__]
+        with tempfile.TemporaryDirectory() as sessions_root:
+            (Path(sessions_root) / "video_dialogue").mkdir()
+            context = self._route_context(
+                CapabilityRegistry(), sessions_root,
             )
-        self.assertEqual(resp.status_code, 200, resp.data)
-        # 'resolution' should not be in handler_inputs since 8k is rejected.
-        self.assertNotIn("resolution", captured.get("inputs", {}))
+            with mock.patch.object(route_module, "_context", context), \
+                 mock.patch(
+                     "capability_registry.CapabilityRegistry.invoke",
+                 ) as invoke:
+                for label, invalid, field in cases:
+                    with self.subTest(label=label):
+                        invoke.reset_mock()
+                        resp = self.client.post(
+                            "/api/capability/video_generates",
+                            data=json.dumps({
+                                "slot": "video_generates",
+                                "inputs": {
+                                    "prompt": "test prompt", **invalid,
+                                },
+                                "conversation_id": "video_dialogue",
+                            }),
+                            content_type="application/json",
+                        )
+                        self.assertEqual(resp.status_code, 400, resp.data)
+                        payload = json.loads(resp.data)
+                        self.assertEqual(
+                            payload["error"]["code"], "prompt_rejected",
+                        )
+                        self.assertIn(field, payload["error"]["message"])
+                        invoke.assert_not_called()
 
 
 class CapabilityImageEditsRouteTests(unittest.TestCase):
