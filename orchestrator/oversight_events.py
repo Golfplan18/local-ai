@@ -105,9 +105,15 @@ def emit(event) -> dict:
     # write so events derived from stealth conversations leave no on-disk
     # residue in ~/ora/data/oversight/events.jsonl.
     if stealth:
+        if event.get("publication_id"):
+            raise RuntimeError(
+                "watcher publication cannot be durably recorded in stealth context"
+            )
         event["stealth"] = True
     else:
-        _append_to_log(event)
+        appended = _append_to_log(event)
+        if not appended:
+            return event
 
     for handler in list(_handlers):
         try:
@@ -384,21 +390,49 @@ def read_event_log(since_offset: int = 0, max_events: int = 1000) -> tuple[list[
     return (events, new_offset)
 
 
-def _append_to_log(event: dict):
-    """Append a JSONL line to the event log. Thread-safe."""
+def _append_to_log(event: dict) -> bool:
+    """Durably append one event, suppressing watcher redelivery duplicates.
+
+    ``publication_id`` is intentionally a watcher-only contract. Ordinary
+    callers retain the existing append-every-emission behavior.
+    """
     log_path = _log_path()
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     line = (json.dumps(event, default=str) + "\n").encode("utf-8")
+    publication_id = event.get("publication_id")
     with _log_lock:
         with _rp.locked_file(log_path):
+            if publication_id and os.path.isfile(log_path):
+                try:
+                    with open(log_path, encoding="utf-8") as existing:
+                        for raw in existing:
+                            try:
+                                recorded = json.loads(raw)
+                            except json.JSONDecodeError:
+                                continue
+                            if recorded.get("publication_id") == publication_id:
+                                return False
+                except OSError:
+                    # The append below remains the authoritative failure path.
+                    pass
             flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
             fd = os.open(log_path, flags, 0o600)
             try:
-                os.write(fd, line)
+                if publication_id:
+                    written = 0
+                    while written < len(line):
+                        count = os.write(fd, line[written:])
+                        if count <= 0:
+                            raise OSError("watcher event log write made no progress")
+                        written += count
+                    os.fsync(fd)
+                else:
+                    os.write(fd, line)
             finally:
                 os.close(fd)
+    return True
 
 
 def _now_iso() -> str:

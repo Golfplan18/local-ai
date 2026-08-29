@@ -5,6 +5,7 @@ host required. Covers the judge's portability conditions."""
 
 from __future__ import annotations
 
+import contextlib
 import json
 import ntpath
 import os
@@ -106,6 +107,9 @@ class TestNoFcntlCrash(unittest.TestCase):
         self.assertFalse(hasattr(tool_events, "fcntl"))
         import oversight_actions
         self.assertFalse(hasattr(oversight_actions, "fcntl"))
+        from orchestrator import runtime_hygiene, triggers
+        self.assertFalse(hasattr(runtime_hygiene, "fcntl"))
+        self.assertFalse(hasattr(triggers, "fcntl"))
 
     def test_locked_file_without_fcntl_uses_msvcrt(self):
         # Simulate Windows: fcntl absent, a fake msvcrt present.
@@ -126,6 +130,54 @@ class TestNoFcntlCrash(unittest.TestCase):
                     _f.write("1")
         self.assertIn(1, calls)   # lock acquired
         self.assertIn(2, calls)   # lock released
+
+    def test_runtime_lock_consumers_use_windows_primitive_and_same_sidecars(self):
+        from orchestrator import runtime_hygiene, triggers
+
+        calls = []
+
+        class _FakeMsvcrt:
+            LK_NBLCK = 1
+            LK_UNLCK = 2
+
+            def locking(self, fd, mode, nbytes):
+                calls.append(mode)
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.object(runtime_paths, "_fcntl", None), \
+             mock.patch.object(runtime_paths, "_msvcrt", _FakeMsvcrt()), \
+             mock.patch.object(triggers._rp, "DATA_DIR_STR", tmp):
+            hygiene_lock = Path(tmp) / ".event-ledger.lock"
+            with runtime_hygiene._exclusive(hygiene_lock):
+                pass
+            with triggers._exclusive():
+                pass
+
+            trigger_lock = Path(tmp) / "triggers" / ".triggers.lock"
+            self.assertTrue(hygiene_lock.is_file())
+            self.assertTrue(trigger_lock.is_file())
+            self.assertFalse(Path(str(hygiene_lock) + ".lock").exists())
+            self.assertFalse(Path(str(trigger_lock) + ".lock").exists())
+
+        self.assertEqual(calls, [1, 2, 1, 2])
+
+    def test_runtime_lock_consumers_surface_contention_timeout(self):
+        from orchestrator import runtime_hygiene, triggers
+
+        @contextlib.contextmanager
+        def contended(_path, timeout=runtime_paths.DEFAULT_LOCK_TIMEOUT):
+            raise TimeoutError(f"lock remained contended for {timeout}s")
+            yield  # pragma: no cover
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.object(runtime_paths, "locked_file", contended), \
+             mock.patch.object(triggers._rp, "DATA_DIR_STR", tmp):
+            with self.assertRaisesRegex(TimeoutError, "remained contended"):
+                with runtime_hygiene._exclusive(Path(tmp) / ".event-ledger.lock"):
+                    pass
+            with self.assertRaisesRegex(TimeoutError, "remained contended"):
+                with triggers._exclusive():
+                    pass
 
     def test_locked_file_without_any_primitive_does_not_crash(self):
         with mock.patch.object(runtime_paths, "_fcntl", None), \
@@ -173,6 +225,36 @@ class TestCrossPlatformDirectArgv(unittest.TestCase):
                 'literal\\"quote',
             ],
         )
+
+    def test_windows_slash_commands_preserve_native_paths(self):
+        import slash_commands
+        command = (
+            r'/render "C:\Ora Files\spec.md" '
+            r'"\\server\share\Input Files\instance.md" '
+            r'"D:\Output Here"'
+        )
+        with mock.patch.object(slash_commands.os, "name", "nt"), \
+             mock.patch.object(
+                 slash_commands, "_cmd_render", return_value="rendered",
+             ) as render:
+            self.assertEqual(slash_commands.run_runtime_command(command), "rendered")
+        render.assert_called_once_with([
+            r"C:\Ora Files\spec.md",
+            r"\\server\share\Input Files\instance.md",
+            r"D:\Output Here",
+        ])
+
+    def test_posix_slash_command_tokenization_is_unchanged(self):
+        import shlex
+        import slash_commands
+        command = r"/render '/tmp/Ora Files/spec.md' /tmp/input\ file.md /tmp/output"
+        expected = shlex.split(command)[1:]
+        with mock.patch.object(slash_commands.os, "name", "posix"), \
+             mock.patch.object(
+                 slash_commands, "_cmd_render", return_value="rendered",
+             ) as render:
+            self.assertEqual(slash_commands.run_runtime_command(command), "rendered")
+        render.assert_called_once_with(expected)
 
     def test_windows_foreground_uses_prepared_argv_without_shell(self):
         import bash_execute

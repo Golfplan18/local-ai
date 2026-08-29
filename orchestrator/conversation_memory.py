@@ -155,6 +155,14 @@ CONVERSATION_TAGS: tuple[str, ...] = ("", "stealth", "private")
 MUTABLE_PRIVACY_TAGS: tuple[str, ...] = ("", "private")
 TURN_PRIVACY_VALUES: tuple[str, ...] = ("standard", "private", "stealth")
 CONTRIBUTOR_KINDS: tuple[str, ...] = ("conversation", "atomic_note")
+KNOWLEDGE_RUNTIME_DERIVATIVE_KIND = "conversation_runtime_derivative"
+KNOWLEDGE_OWNER_CLAIM_FIELDS: tuple[str, ...] = (
+    "artifact_kind",
+    "managed_by",
+    "turn_privacy",
+    "source_chunk_id",
+    "source_turn_index",
+)
 
 
 def conversation_privacy_allows(source_tag: str, target_tag: str) -> bool:
@@ -251,6 +259,174 @@ def turn_privacy_allows(source_privacy: Any, target_tag: Any) -> bool:
     if source_tag is None or target_tag not in CONVERSATION_TAGS:
         return False
     return conversation_privacy_allows(source_tag, str(target_tag))
+
+
+def _knowledge_metadata_tags(metadata: Any) -> set[str]:
+    """Return exact privacy tags across current and legacy metadata shapes."""
+    if not isinstance(metadata, dict):
+        return set()
+    raw = metadata.get("tags")
+    if isinstance(raw, (list, tuple, set, frozenset)):
+        values = raw
+    elif isinstance(raw, str):
+        values = re.findall(r"[a-z0-9][a-z0-9_/-]*", raw.casefold())
+    else:
+        values = ()
+    tags = {
+        str(value).strip().strip("[](){}\"'").casefold()
+        for value in values
+        if str(value).strip().strip("[](){}\"'")
+    }
+    stored_tag = metadata.get("tag")
+    if isinstance(stored_tag, str):
+        tags.update(
+            re.findall(r"[a-z0-9][a-z0-9_/-]*", stored_tag.casefold())
+        )
+
+    def truthy(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        return str(value or "").strip().casefold() in {
+            "1", "true", "yes", "on",
+        }
+
+    for privacy in ("private", "stealth"):
+        if truthy(metadata.get(f"tag_{privacy}")):
+            tags.add(privacy)
+    return tags
+
+
+def knowledge_metadata_has_owner_claim(metadata: Any) -> bool:
+    """Return whether a knowledge row claims conversation-turn ownership.
+
+    ``source_file`` alone remains ordinary note provenance under the existing
+    vault schema. Every field that is specific to an Ora turn derivative is a
+    claim by presence, including malformed or empty values; such a row cannot
+    fall through to the ordinary-note privacy lane.
+    """
+    return isinstance(metadata, dict) and any(
+        field in metadata for field in KNOWLEDGE_OWNER_CLAIM_FIELDS
+    )
+
+
+def knowledge_metadata_owner_tuple(
+    metadata: Any,
+) -> tuple[str, str, str, int] | None:
+    """Authenticate one complete knowledge-derivative owner tuple."""
+    if not knowledge_metadata_has_owner_claim(metadata):
+        return None
+    artifact_kind = metadata.get("artifact_kind")
+    managed_by = metadata.get("managed_by")
+    source_file = metadata.get("source_file")
+    source_chunk_id = metadata.get("source_chunk_id")
+    source_turn_index = metadata.get("source_turn_index")
+    privacy = metadata.get("turn_privacy")
+    if (
+        artifact_kind != KNOWLEDGE_RUNTIME_DERIVATIVE_KIND
+        or managed_by != "ora"
+        or not isinstance(source_file, str)
+        or not source_file.strip()
+        or source_file != source_file.strip()
+        or not isinstance(source_chunk_id, str)
+        or not source_chunk_id.strip()
+        or source_chunk_id != source_chunk_id.strip()
+        or isinstance(source_turn_index, bool)
+        or not isinstance(source_turn_index, int)
+        or source_turn_index < 1
+        or privacy not in TURN_PRIVACY_VALUES
+    ):
+        return None
+
+    tags = _knowledge_metadata_tags(metadata)
+    if (
+        (privacy == "standard" and tags.intersection({"private", "stealth"}))
+        or (privacy == "private" and "stealth" in tags)
+        or (privacy == "stealth" and "private" in tags)
+    ):
+        return None
+    return (
+        str(privacy),
+        source_file,
+        source_chunk_id,
+        source_turn_index,
+    )
+
+
+def knowledge_metadata_privacy(metadata: Any) -> str | None:
+    """Resolve a knowledge row's exact privacy at its owning seam.
+
+    Ordinary notes continue to use their existing controlled note/tag
+    authority. Once any turn-owner field is present, the full typed Ora owner
+    tuple is mandatory and malformed or conflicting claims remain unknown.
+    """
+    if not isinstance(metadata, dict):
+        return None
+    if knowledge_metadata_has_owner_claim(metadata):
+        owner = knowledge_metadata_owner_tuple(metadata)
+        return owner[0] if owner is not None else None
+    tags = _knowledge_metadata_tags(metadata)
+    if "stealth" in tags:
+        return "stealth"
+    if "private" in tags:
+        return "private"
+    return "standard"
+
+
+def knowledge_metadata_allows(metadata: Any, target_tag: Any) -> bool:
+    """Return whether one knowledge row may enter the target privacy lane."""
+    return turn_privacy_allows(
+        knowledge_metadata_privacy(metadata), target_tag,
+    )
+
+
+def knowledge_admitted_paths(
+    metadata_rows: Any,
+    target_tag: Any,
+) -> list[str]:
+    """Return paths safe to name in a pre-vector knowledge query.
+
+    All metadata is grouped at the note path, the knowledge owner seam. If any
+    row on a path claims derivative ownership, every row on that path must
+    authenticate the same complete owner tuple and that tuple must be eligible.
+    This prevents a malformed chunk from entering the ordinary-note lane or a
+    safer-looking sibling chunk from laundering a conflicting owner.
+    """
+    if target_tag not in CONVERSATION_TAGS or not isinstance(metadata_rows, list):
+        return []
+    by_path: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for metadata in metadata_rows:
+        if not isinstance(metadata, dict):
+            continue
+        path = metadata.get("path")
+        if isinstance(path, str) and path.strip():
+            by_path[path.strip()].append(metadata)
+
+    admitted: list[str] = []
+    for path, rows in by_path.items():
+        derivative_claimed = any(
+            knowledge_metadata_has_owner_claim(metadata)
+            for metadata in rows
+        )
+        if derivative_claimed:
+            owners = [
+                knowledge_metadata_owner_tuple(metadata)
+                for metadata in rows
+            ]
+            if (
+                any(owner is None for owner in owners)
+                or len(set(owners)) != 1
+                or not turn_privacy_allows(owners[0][0], target_tag)
+            ):
+                continue
+        elif not all(
+            knowledge_metadata_allows(metadata, target_tag)
+            for metadata in rows
+        ):
+            continue
+        admitted.append(path)
+    return sorted(admitted)
 
 
 def filter_conversation_history_for_tag(
@@ -2223,6 +2399,88 @@ def _fork_point_message_count_for_turn(
     return turn_boundaries[turn_index]
 
 
+def _validate_fork_inherited_prefix(
+    messages: list[Any],
+    child_tag: str,
+) -> list[tuple[dict[str, Any], dict[str, Any], str, str]]:
+    """Authenticate every message in a proposed inherited fork prefix.
+
+    Forking is an authority boundary, so the permissive conversation readers
+    are not sufficient here: an ignored orphan, system message, building
+    placeholder, or unowned pair would otherwise survive beside the exchanges
+    they recognize.  A valid prefix is zero or more adjacent user/assistant
+    pairs whose two halves have the same exact privacy, chunk owner, history
+    owner, and inherited turn identity.
+    """
+    if not isinstance(messages, list):
+        raise ValueError("fork parent history is incomplete")
+    if len(messages) % 2:
+        raise ValueError(
+            "fork parent history is incomplete: inherited prefix contains "
+            "an orphan message"
+        )
+
+    exchanges: list[tuple[dict[str, Any], dict[str, Any], str, str]] = []
+    for offset in range(0, len(messages), 2):
+        user = messages[offset]
+        assistant = messages[offset + 1]
+        if (
+            not isinstance(user, dict)
+            or not isinstance(assistant, dict)
+            or user.get("role") != "user"
+            or assistant.get("role") != "assistant"
+            or not isinstance(user.get("content"), str)
+            or not user.get("content", "").strip()
+            or not isinstance(assistant.get("content"), str)
+            or not assistant.get("content", "").strip()
+            or (
+                isinstance(assistant.get("visual_outcome"), dict)
+                and assistant["visual_outcome"].get("state") == "building"
+            )
+        ):
+            raise ValueError(
+                "fork parent history is incomplete: inherited prefix must "
+                "contain only complete user/assistant exchanges"
+            )
+
+        privacy = complete_exchange_privacy(user, assistant)
+        if privacy is None or not turn_privacy_allows(privacy, child_tag):
+            raise ValueError(
+                "fork privacy cannot admit an unknown, conflicting, or "
+                "stricter inherited exchange"
+            )
+
+        user_chunk = user.get("chunk_id")
+        assistant_chunk = assistant.get("chunk_id")
+        if (
+            not isinstance(user_chunk, str)
+            or not user_chunk.strip()
+            or assistant_chunk != user_chunk
+        ):
+            raise ValueError(
+                "fork parent history is incomplete: inherited exchange is "
+                "not owned by one matching chunk"
+            )
+
+        owner = user.get("_ora_history_owner")
+        turn_identity = user.get("_ora_history_turn_index")
+        if (
+            not isinstance(owner, str)
+            or not owner.strip()
+            or assistant.get("_ora_history_owner") != owner
+            or isinstance(turn_identity, bool)
+            or not isinstance(turn_identity, int)
+            or turn_identity < 1
+            or assistant.get("_ora_history_turn_index") != turn_identity
+        ):
+            raise ValueError(
+                "fork parent history is incomplete: inherited exchange lacks "
+                "one matching turn owner"
+            )
+        exchanges.append((user, assistant, privacy, user_chunk.strip()))
+    return exchanges
+
+
 def fork_conversation(
     parent_id: str,
     new_id: str,
@@ -2302,23 +2560,27 @@ def fork_conversation(
         ),
     )
     inherited = effective_parent[:effective_boundary_message_count]
-    inherited_exchanges = iter_complete_exchanges(inherited)
-    # Every inherited complete exchange must carry sufficient exact authority.
-    # A malformed/incomplete authority is never guessed from the envelope.
-    if any(
-        privacy is None or not turn_privacy_allows(privacy, child_tag)
-        for _ui, _user, _ai, _assistant, privacy in inherited_exchanges
+    inherited_exchanges = _validate_fork_inherited_prefix(
+        inherited, child_tag,
+    )
+    inherited_chunk_id = (
+        inherited_exchanges[-1][3] if inherited_exchanges else None
+    )
+    if (
+        fork_point_chunk_id is not None
+        and fork_point_chunk_id != inherited_chunk_id
     ):
         raise ValueError(
-            "fork privacy cannot admit an unknown or stricter inherited exchange"
+            "fork point chunk identity does not match the inherited prefix"
         )
-    # Inherit display name with a "(fork)" suffix so the user sees a
-    # distinct row but can rename it.
-    parent_display = parent.get("display_name") or ""
-    if isinstance(parent_display, str) and parent_display.strip():
-        derived_display = (parent_display.strip() + " (fork)")[:200]
-    else:
-        derived_display = ""
+
+    # Dialogue-wide display metadata may have been generated from a later,
+    # withheld turn.  Rebuild the child title only from its authenticated
+    # inherited prefix and leave description empty until the child owns one.
+    inherited_title = _derive_title(inherited)
+    derived_display = (
+        (inherited_title + " (fork)")[:200] if inherited_title else ""
+    )
 
     forked_at = timestamp or _dt.now().isoformat(timespec="seconds")
 
@@ -2334,13 +2596,10 @@ def fork_conversation(
         "parent_conversation_id":  parent_id,
         "fork_point_message_count": boundary_message_count,
         "fork_point_effective_message_count": effective_boundary_message_count,
-        "fork_point_chunk_id":     fork_point_chunk_id,
+        "fork_point_chunk_id":     inherited_chunk_id,
         "forked_at":               forked_at,
         "project_ids":             list(parent_projects),
-        "description":             (
-            parent.get("description")
-            if isinstance(parent.get("description"), str) else ""
-        ),
+        "description":             "",
         "contributors":            copy.deepcopy(parent_contributors),
         "messages":                [],
     }

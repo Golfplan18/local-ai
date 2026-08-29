@@ -25,6 +25,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -40,6 +41,32 @@ from tools import knowledge_index  # noqa: E402
 # depend on Ollama running. Cross-platform — pure Python.
 from orchestrator.embedding import install_test_stub, resolve_collection  # noqa: E402
 install_test_stub()
+
+
+# ---------------------------------------------------------------------------
+# Direct entry point — documented invocation must not depend on caller cwd.
+# ---------------------------------------------------------------------------
+
+
+class TestDirectEntryPoint(unittest.TestCase):
+
+    def test_clean_cwd_reaches_usage_without_starting_an_index(self):
+        script = Path(knowledge_index.__file__).resolve()
+        with tempfile.TemporaryDirectory(prefix="ora-knowledge-cli-") as clean_cwd:
+            result = subprocess.run(
+                [sys.executable, str(script)],
+                cwd=clean_cwd,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(list(Path(clean_cwd).iterdir()), [])
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Usage: python3 knowledge_index.py", result.stdout)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertNotIn("ModuleNotFoundError", result.stderr)
 
 
 # ---------------------------------------------------------------------------

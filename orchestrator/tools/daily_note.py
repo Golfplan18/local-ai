@@ -87,6 +87,9 @@ _SUMMARY_MARKER_VERSION = 1
 _CHUNK_OWNER_RE = re.compile(
     r'<!-- ora-conversation-id: (?P<value>"(?:[^"\\]|\\.)*") -->'
 )
+_CHUNK_ID_RE = re.compile(
+    r'<!-- ora-chunk-id: (?P<value>"(?:[^"\\]|\\.)*") -->'
+)
 _TURN_PRIVACY_RE = re.compile(
     r'<!-- ora-turn-privacy: (?P<value>"(?:[^"\\]|\\.)*") -->'
 )
@@ -146,8 +149,16 @@ def _locked_daily_note_paths(root: Path):
 
 # ── Conversations ──────────────────────────────────────────────────────────
 
-def _display_name(conversation_id: str) -> str:
-    env_path = os.path.join(SESSIONS_DIR, conversation_id, "conversation.json")
+def _display_name(
+    conversation_id: str,
+    *,
+    sessions_dir: str | Path | None = None,
+) -> str:
+    env_path = os.path.join(
+        os.fspath(sessions_dir) if sessions_dir is not None else SESSIONS_DIR,
+        conversation_id,
+        "conversation.json",
+    )
     try:
         with open(env_path, encoding="utf-8") as f:
             env = json.load(f)
@@ -178,11 +189,46 @@ def _chunk_turn_privacy(chunk_text: str) -> str | None:
     return value if value in {"standard", "private", "stealth"} else None
 
 
-def collect_conversations(date_str: str, *, include_private: bool = False) -> list[dict]:
+def _chunk_id(chunk_text: str) -> str | None:
+    match = _CHUNK_ID_RE.search(str(chunk_text or ""))
+    if match is None:
+        return None
+    try:
+        value = json.loads(match.group("value"))
+    except json.JSONDecodeError:
+        return None
+    return value if isinstance(value, str) and value else None
+
+
+def _standard_safe_chunk_title(chunk_text: str, *, max_len: int = 60) -> str:
+    """Derive a title from this exact eligible exchange, never its envelope."""
+    match = re.search(
+        r"\*\*User:\*\*\s*(.*?)(?=\n\*\*Assistant:\*\*|\Z)",
+        str(chunk_text or ""),
+        flags=re.DOTALL,
+    )
+    value = " ".join((match.group(1) if match else "").split())
+    if len(value) <= max_len:
+        return value
+    return value[: max_len - 1].rstrip() + "…"
+
+
+def collect_conversations(
+    date_str: str,
+    *,
+    include_private: bool = False,
+    conversations_dir: str | Path | None = None,
+    sessions_dir: str | Path | None = None,
+    privacy_overrides: dict[str, str] | None = None,
+) -> list[dict]:
     """Group that day's chunk files by conversation panel. Returns
     [{id, name, exchanges, first, last, gist}] sorted by first time."""
     convs: dict[str, dict] = {}
-    pattern = os.path.join(_conversations_path(), f"{date_str}_*.md")
+    pattern = os.path.join(
+        os.fspath(conversations_dir)
+        if conversations_dir is not None else _conversations_path(),
+        f"{date_str}_*.md",
+    )
     for path in sorted(glob.glob(pattern)):
         fname = os.path.basename(path)
         m = _FNAME_TIME_RE.match(fname)
@@ -193,7 +239,16 @@ def collect_conversations(date_str: str, *, include_private: bool = False) -> li
                 text = f.read(4000)
         except OSError:
             continue
+        chunk_id = _chunk_id(text)
         turn_privacy = _chunk_turn_privacy(text)
+        if (chunk_id is not None and privacy_overrides
+                and chunk_id in privacy_overrides):
+            override = privacy_overrides[chunk_id]
+            turn_privacy = (
+                override
+                if override in {"standard", "private", "stealth"}
+                else None
+            )
         if turn_privacy is None:
             # A Daily Note is a broad surface. Unknown authority cannot be
             # inferred from a Dialogue-wide envelope or legacy YAML tag.
@@ -223,15 +278,21 @@ def collect_conversations(date_str: str, *, include_private: bool = False) -> li
             panel = ym.group(1).strip() if ym else "unknown"
         entry = convs.setdefault(panel, {
             "id": panel, "exchanges": 0, "first": hhmm, "last": hhmm,
-            "gist": gist,
+            "gist": gist, "_safe_name": _standard_safe_chunk_title(text),
         })
         entry["exchanges"] += 1
         entry["last"] = hhmm
         if not entry["gist"] and gist:
             entry["gist"] = gist
+        if not entry.get("_safe_name"):
+            entry["_safe_name"] = _standard_safe_chunk_title(text)
     out = []
     for entry in convs.values():
-        entry["name"] = _display_name(entry["id"])
+        safe_name = entry.pop("_safe_name", "")
+        entry["name"] = (
+            _display_name(entry["id"], sessions_dir=sessions_dir)
+            if include_private else safe_name or entry["id"]
+        )
         out.append(entry)
     out.sort(key=lambda e: e["first"])
     return out
@@ -493,8 +554,12 @@ def reconcile_conversation_summaries(
     new_display_name: str = "",
     previous_display_name: str = "",
     daily_notes_dir: str | Path | None = None,
+    conversations_dir: str | Path | None = None,
+    sessions_dir: str | Path | None = None,
+    source_chunk_ids: set[str] | None = None,
+    previous_turn_privacy: str = "",
 ) -> dict[str, Any]:
-    """Delete, rename, or hide exact Ora-managed Daily Note summaries.
+    """Delete, rename, hide, or privacy-refresh exact managed summaries.
 
     New summaries carry a versioned identity marker and a hash of the visible
     generated text. A same-line user edit therefore causes a loud error rather
@@ -508,8 +573,10 @@ def reconcile_conversation_summaries(
     cid = str(conversation_id or "").strip()
     if not cid:
         raise ValueError("conversation_id must be non-empty")
-    if action not in {"delete", "rename", "hide_private"}:
-        raise ValueError("action must be delete, rename, or hide_private")
+    if action not in {"delete", "rename", "hide_private", "refresh_privacy"}:
+        raise ValueError(
+            "action must be delete, rename, hide_private, or refresh_privacy"
+        )
     if action == "rename" and not _one_line(new_display_name):
         raise ValueError("new_display_name must be non-empty for rename")
 
@@ -523,6 +590,7 @@ def reconcile_conversation_summaries(
         "files_updated": [],
         "summaries_removed": 0,
         "summaries_renamed": 0,
+        "summaries_refreshed": 0,
         "legacy_summaries_migrated": 0,
         "errors": [],
     }
@@ -545,10 +613,73 @@ def reconcile_conversation_summaries(
             with _rp.locked_file(path):
                 original = path.read_text(encoding="utf-8")
                 lines = original.splitlines(keepends=True)
+                refreshed_target = None
+                legacy_refresh_target = None
+                refresh_reconstruction_ok = True
+                if action == "refresh_privacy":
+                    try:
+                        visible = collect_conversations(
+                            path.stem,
+                            conversations_dir=conversations_dir,
+                            sessions_dir=sessions_dir,
+                        )
+                        refreshed_target = next(
+                            (entry for entry in visible
+                             if str(entry.get("id") or "").casefold() == cid_key),
+                            None,
+                        )
+                        overrides = None
+                        if (previous_turn_privacy == "standard"
+                                and source_chunk_ids):
+                            overrides = {
+                                chunk_id: "standard"
+                                for chunk_id in source_chunk_ids
+                            }
+                        legacy_visible = collect_conversations(
+                            path.stem,
+                            conversations_dir=conversations_dir,
+                            sessions_dir=sessions_dir,
+                            privacy_overrides=overrides,
+                        )
+                        legacy_refresh_target = next(
+                            (entry for entry in legacy_visible
+                             if str(entry.get("id") or "").casefold() == cid_key),
+                            None,
+                        )
+                        if legacy_refresh_target is not None:
+                            # Pre-marker notes used the envelope display name.
+                            # Reconstruct that old line only for exact-match
+                            # ownership; replacements remain Standard-safe.
+                            legacy_refresh_target = dict(
+                                legacy_refresh_target,
+                                name=_display_name(
+                                    cid, sessions_dir=sessions_dir,
+                                ),
+                            )
+                    except Exception as exc:
+                        refresh_reconstruction_ok = False
+                        result["errors"].append(
+                            f"daily-note lifecycle {path}: privacy refresh "
+                            f"reconstruction failed: {exc}"
+                        )
                 changed = False
                 marker_found = False
                 removed_before = result["summaries_removed"]
                 output: list[str] = []
+                owned_marker_count = 0
+                for candidate_line in original.splitlines():
+                    candidate = _parse_summary_line(candidate_line)
+                    if candidate is None:
+                        continue
+                    owner = candidate[1].get("conversation_id")
+                    if isinstance(owner, str) and owner.casefold() == cid_key:
+                        owned_marker_count += 1
+                ambiguous_markers = owned_marker_count > 1
+                if ambiguous_markers:
+                    result["errors"].append(
+                        f"daily-note lifecycle {path}: multiple managed "
+                        f"summaries for {cid}; retained for manual review"
+                    )
 
                 for raw_line in lines:
                     ending = "\n" if raw_line.endswith("\n") else ""
@@ -580,6 +711,24 @@ def reconcile_conversation_summaries(
                             f"{cid} was edited; refusing to erase user text"
                         )
                         output.append(raw_line)
+                        continue
+
+                    if ambiguous_markers:
+                        output.append(raw_line)
+                        continue
+
+                    if action == "refresh_privacy":
+                        if not refresh_reconstruction_ok:
+                            output.append(raw_line)
+                            continue
+                        changed = True
+                        if refreshed_target is None:
+                            result["summaries_removed"] += 1
+                            continue
+                        output.append(
+                            _conversation_summary_line(refreshed_target) + ending
+                        )
+                        result["summaries_refreshed"] += 1
                         continue
 
                     if action in {"delete", "hide_private"}:
@@ -621,21 +770,27 @@ def reconcile_conversation_summaries(
                 # on title alone.
                 if not marker_found:
                     date_str = path.stem
-                    try:
-                        conversations = collect_conversations(
-                            date_str, include_private=True,
+                    if action == "refresh_privacy":
+                        target = legacy_refresh_target
+                    else:
+                        try:
+                            conversations = collect_conversations(
+                                date_str,
+                                include_private=True,
+                                conversations_dir=conversations_dir,
+                                sessions_dir=sessions_dir,
+                            )
+                        except Exception as exc:
+                            result["errors"].append(
+                                f"daily-note lifecycle {path}: legacy reconstruction "
+                                f"failed: {exc}"
+                            )
+                            conversations = []
+                        target = next(
+                            (entry for entry in conversations
+                             if str(entry.get("id") or "").casefold() == cid_key),
+                            None,
                         )
-                    except Exception as exc:
-                        result["errors"].append(
-                            f"daily-note lifecycle {path}: legacy reconstruction "
-                            f"failed: {exc}"
-                        )
-                        conversations = []
-                    target = next(
-                        (entry for entry in conversations
-                         if str(entry.get("id") or "").casefold() == cid_key),
-                        None,
-                    )
                     if target is not None:
                         target = dict(target)
                         if previous_display_name:
@@ -671,9 +826,17 @@ def reconcile_conversation_summaries(
                             legacy_ending = (
                                 "\n" if current_lines[index].endswith("\n") else ""
                             )
-                            if action in {"delete", "hide_private"}:
+                            if (action in {"delete", "hide_private"}
+                                    or (action == "refresh_privacy"
+                                        and refreshed_target is None)):
                                 current_lines.pop(index)
                                 result["summaries_removed"] += 1
+                            elif action == "refresh_privacy":
+                                current_lines[index] = (
+                                    _conversation_summary_line(refreshed_target)
+                                    + legacy_ending
+                                )
+                                result["summaries_refreshed"] += 1
                             else:
                                 target["name"] = _one_line(new_display_name)
                                 current_lines[index] = (

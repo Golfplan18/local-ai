@@ -14,6 +14,7 @@ import threading
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -477,6 +478,58 @@ class TestServerLaunchers(unittest.TestCase):
         assert 'set "WORKSPACE=%~dp0"' in source
         assert 'set "ORA_HOME=!WORKSPACE!"' in source
         assert "%USERPROFILE%\\ora" not in source
+
+        launch_block = re.search(
+            r'^setlocal DisableDelayedExpansion\r?\n'
+            r'(?P<launch>%PYTHON% -c "[^\r\n]*subprocess\.Popen[^\r\n]*" %\*)\r?\n'
+            r'^endlocal\r?$',
+            source,
+            re.MULTILINE,
+        )
+        assert launch_block, (
+            "start.bat must disable cmd delayed expansion around its embedded "
+            "Python spawn and forwarded argv"
+        )
+        launch_line = launch_block.group("launch")
+        match = re.fullmatch(r'%PYTHON% -c "(.*)" %\*', launch_line)
+        assert match, "start.bat no longer exposes one testable Python spawn"
+        launch_code = match.group(1)
+        target = self.tmp_path / "ora root" / "server" / "app.py"
+        pid_file = self.tmp_path / "ora root" / ".ora-server.pid"
+        target.parent.mkdir(parents=True)
+
+        def launched_argv(*args):
+            process = mock.Mock(pid=4242)
+            env = {
+                **os.environ,
+                "ORA_SERVER_TARGET": str(target),
+                "ORA_SERVER_PID_FILE": str(pid_file),
+            }
+            with mock.patch.dict(os.environ, env, clear=True), \
+                 mock.patch.object(sys, "argv", ["-c", *args]), \
+                 mock.patch.object(
+                     subprocess, "CREATE_NEW_PROCESS_GROUP", 0, create=True,
+                 ), \
+                 mock.patch.object(
+                     subprocess, "Popen", return_value=process,
+                 ) as popen:
+                exec(compile(launch_code, "start.bat", "exec"), {})
+            return popen.call_args.args[0]
+
+        assert launched_argv("--scheduler") == [
+            sys.executable,
+            str(target),
+            "--oversight",
+            "--scheduler",
+        ]
+        assert launched_argv(
+            "--scheduler", "--no-oversight", "--future-option"
+        ) == [
+            sys.executable,
+            str(target),
+            "--scheduler",
+            "--future-option",
+        ]
 
     def test_windows_health_probe_rejects_a_different_checkout(self):
         source = _bat_source(START_BAT)
@@ -1345,4 +1398,3 @@ class TestServerLaunchers(unittest.TestCase):
         assert forced.returncode == 0, forced.stderr
         assert not state.exists()
         assert not plist_path.exists()
-

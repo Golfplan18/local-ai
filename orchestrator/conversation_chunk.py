@@ -352,7 +352,10 @@ def build_chroma_metadata(
         ts_local = when.isoformat(timespec="seconds")
         ts_utc = ts_local
 
-    conversation_title = (first_user_input or user_input or "")[:80].strip()
+    # This metadata rides one exact exchange. A Dialogue-wide first turn may
+    # be Private even when the current row is Standard, so only the owned user
+    # text may supply its searchable title.
+    conversation_title = (user_input or "")[:80].strip()
     if not conversation_title:
         conversation_title = f"Session {session_id}"
 

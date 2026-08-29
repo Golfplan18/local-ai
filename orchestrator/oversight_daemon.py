@@ -369,12 +369,21 @@ class OversightDaemon:
         except Exception as e:
             print(f"[oversight_daemon] router install failed: {e}")
 
-        self._running = True
-        self._stop_event.clear()
         from orchestrator.runtime_hygiene import (
             deadline_queue,
             recover_retention_intents,
+            restore_incomplete_events,
         )
+        restored = restore_incomplete_events()
+        if restored:
+            print(f"[oversight_daemon] restored interrupted events: {restored}")
+        from orchestrator import triggers
+        replayed = triggers.service().replay_completion_deliveries()
+        if replayed:
+            print(f"[oversight_daemon] replayed Trigger completions: {replayed}")
+
+        self._running = True
+        self._stop_event.clear()
         self._deadline_queue = deadline_queue()
         recovery = recover_retention_intents(queue=self._deadline_queue)
         if recovery["failed"]:
@@ -696,18 +705,14 @@ class OversightDaemon:
     def _run_ped_watcher(self, emit):
         try:
             import ped_watcher
-            events = ped_watcher.sweep()
-            for evt in events:
-                emit(evt)
+            ped_watcher.sweep(emit_event=emit)
         except Exception as e:
             print(f"[oversight_daemon] ped_watcher failed: {e}")
 
     def _run_corpus_watcher(self, emit):
         try:
             import corpus_watcher
-            events = corpus_watcher.sweep()
-            for evt in events:
-                emit(evt)
+            corpus_watcher.sweep(emit_event=emit)
         except Exception as e:
             print(f"[oversight_daemon] corpus_watcher failed: {e}")
 

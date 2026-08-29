@@ -2,6 +2,7 @@
 curated model registry).
 """
 import json
+import importlib.util
 import os
 import sys
 import tempfile
@@ -108,9 +109,11 @@ class TestLoadRegistry(_RegistryFixture):
 
 class TestOverlayRoutingConfig(_RegistryFixture):
 
-    def test_missing_context_defaults_to_256k(self):
+    def test_missing_context_uses_named_conservative_floor(self):
         self.assertEqual(
-            self.module.context_window_for_model("unknown/model"), 256_000)
+            self.module.context_window_for_model("unknown/model"),
+            self.module.CONSERVATIVE_ADMISSION_CONTEXT_WINDOW,
+        )
 
     def test_native_and_latest_aliases_resolve_to_registry_capacity(self):
         self.registry_path.write_text(json.dumps({
@@ -155,7 +158,9 @@ class TestOverlayRoutingConfig(_RegistryFixture):
             "minimax/minimax-m3",
         )
         self.assertEqual(
-            self.module.context_window_for_model("MiniMax-M3"), 256_000)
+            self.module.context_window_for_model("MiniMax-M3"),
+            self.module.CONSERVATIVE_ADMISSION_CONTEXT_WINDOW,
+        )
 
     def test_overlay_preserves_explicit_small_and_large_capacities(self):
         result = self.module.overlay_routing_config({
@@ -168,7 +173,98 @@ class TestOverlayRoutingConfig(_RegistryFixture):
         self.assertEqual(result["endpoints"][0]["context_window"], 128_000)
         self.assertEqual(result["endpoints"][1]["context_window"], 2_000_000)
         self.assertEqual(
-            result["endpoints"][2]["context_window"], 256_000)
+            result["endpoints"][2]["context_window"],
+            self.module.CONSERVATIVE_ADMISSION_CONTEXT_WINDOW,
+        )
+
+    def test_overlay_falls_through_transport_id_to_canonical_model_id(self):
+        registry = json.loads(json.dumps(SAMPLE_REGISTRY))
+        registry["models"]["openai/gpt-4o"]["context_length"] = 128_000
+        self.registry_path.write_text(json.dumps(registry))
+        self.module.reload()
+
+        endpoint = {
+            "id": "openai-api-gpt4o",
+            "type": "api",
+            "service": "openai",
+            "model_id": "gpt-4o",
+            "vision_capable": False,
+        }
+        result = self.module.overlay_routing_config({"endpoints": [endpoint]})
+
+        self.assertIs(result["endpoints"][0]["vision_capable"], True)
+        self.assertEqual(result["endpoints"][0]["context_window"], 128_000)
+        self.assertEqual(result["_registry_overlaid_count"], 1)
+
+    def test_router_load_and_projection_keep_registry_and_transport_truth(self):
+        from router import Router
+
+        router = Router(config_dict={"endpoints": [{
+            "id": "moonshotai/kimi-k2.6",
+            "type": "api",
+            "service": "moonshot",
+            "model_id": "moonshotai/kimi-k2.6",
+            "vision_capable": True,
+            "openrouter_fallback_model_id": "moonshotai/kimi-k2.6",
+            "base_url": "https://api.moonshot.example/v1",
+            "enabled": True,
+            "status": "active",
+        }]})
+
+        endpoint = router._to_v1_endpoint(
+            router._endpoints["moonshotai/kimi-k2.6"])
+        self.assertIs(endpoint["vision_capable"], False)
+        self.assertEqual(
+            endpoint["openrouter_fallback_model_id"],
+            "moonshotai/kimi-k2.6",
+        )
+        self.assertEqual(endpoint["base_url"], "https://api.moonshot.example/v1")
+
+    def test_router_reload_reapplies_changed_registry_truth(self):
+        from router import Router
+
+        routing_path = Path(self.tmpdir) / "routing-config.json"
+        routing_path.write_text(json.dumps({"endpoints": [{
+            "id": "moonshotai/kimi-k2.6", "type": "api",
+            "service": "openrouter", "model_id": "moonshotai/kimi-k2.6",
+            "vision_capable": True, "enabled": True, "status": "active",
+        }]}))
+        router = Router(config_path=routing_path)
+        self.assertIs(
+            router._endpoints["moonshotai/kimi-k2.6"]["vision_capable"], False)
+
+        changed = json.loads(json.dumps(SAMPLE_REGISTRY))
+        changed["models"]["moonshotai/kimi-k2.6"]["vision_capable"] = True
+        self.registry_path.write_text(json.dumps(changed))
+        router.reload()
+        self.assertIs(
+            router._endpoints["moonshotai/kimi-k2.6"]["vision_capable"], True)
+
+    def test_manual_sync_defaults_to_runtime_registry_and_keeps_override(self):
+        from orchestrator import runtime_paths
+
+        script_path = Path(WORKTREE_ROOT) / "scripts" / "sync_model_registry.py"
+        active_path = Path(self.tmpdir) / "runtime" / "model-registry.json"
+        explicit_path = Path(self.tmpdir) / "explicit" / "registry.json"
+
+        def load_sync_module(name):
+            spec = importlib.util.spec_from_file_location(name, script_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+        with patch.object(
+            runtime_paths, "model_registry_path", return_value=active_path,
+        ), patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("ORA_MODEL_REGISTRY_PATH", None)
+            default_module = load_sync_module("sync_registry_default_test")
+        self.assertEqual(default_module.REGISTRY_PATH, active_path)
+
+        with patch.dict(
+            os.environ, {"ORA_MODEL_REGISTRY_PATH": str(explicit_path)}, clear=False,
+        ):
+            explicit_module = load_sync_module("sync_registry_explicit_test")
+        self.assertEqual(explicit_module.REGISTRY_PATH, explicit_path)
 
     def test_overlay_corrects_vision_capable(self):
         # Simulate a routing-config where kimi is marked vision_capable=True

@@ -179,6 +179,24 @@ class TestOversightHealthIntegration(unittest.TestCase):
                                   side_effect=lambda name: None if name == "mlx_worker" else stale):
             self.assertEqual(oversight_health.check_health(), [])
 
+    def test_live_runtime_cannot_hide_incomplete_telemetry(self):
+        with mock.patch("oversight_daemon.runtime_health", return_value={
+                "running": True, "event_lane": True, "deadline_lane": True,
+        }), mock.patch(
+            "tool_events.get_telemetry_health",
+            return_value={
+                "incomplete": True, "failures": 2,
+                "last_error": "disposable recorder failed",
+            },
+        ), mock.patch.object(
+            oversight_health, "read_heartbeat", return_value=None,
+        ):
+            warnings = oversight_health.check_health()
+        self.assertEqual(
+            [warning["status"] for warning in warnings],
+            ["telemetry_incomplete"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

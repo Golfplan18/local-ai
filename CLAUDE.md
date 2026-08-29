@@ -20,14 +20,19 @@ The pairing convention:
 - **`~/ora/frameworks/mode-classification-directory.md` ↔ `Reference — Mode Classification Directory.md`** — **archived 2026-05-02 (Phase 9).** The Mode Classification Directory's intent-classification flow has been replaced by the four-stage pre-routing pipeline in `~/ora/architecture/pre-routing-pipeline.md`. Phase 7 archived the vault-side file; Phase 9 archived the ora-side file at `~/ora/Old AI Working Files/mode-classification-directory.md.archived-2026-05-02` once `boot.py` no longer read it.
 - `~/ora/CLAUDE.md` (this file), `~/ora/boot/boot.md`, `~/ora/mind.md`, `~/ora/mindspec/default-mindspec.md` — ora-only, no vault counterpart.
 
-**The recommended workflow when editing ora .md files:**
-1. Make your edit to the ora file (fast iteration).
-2. Immediately propagate the body change to the paired vault file (preserve vault's YAML; replace the body).
-3. OR surface the change so the user can run the Documentation-Code Parity (DCP) framework to reconcile.
+## Documentation-Code Parity (READ BEFORE CODE CHANGES)
 
-If you skip step 2 or 3, the user has to remember the divergence — and they will miss it. Don't make them.
+Every code-changing task must resolve changed paths through the ownership and discovery registry in the vault canonical `Projects/Ora/Reference — Documentation-Code Parity Configuration.md`. If behavior, a user or operator contract, configuration, a route, an output, or a material failure mode changes, update the owning vault canonical in the same coordinated task. Do not defer documentation until the implementation is "stable" and do not leave reconciliation for a later framework run.
 
-The canonical specification for the parity framework is `~/Documents/vault/Projects/Ora/Framework — Documentation-Code Parity.md`. DCP supersedes the prior `Framework — System File Drift Correction.md` (archived 2026-05-10) and absorbs its scope.
+If behavior does not change, place exactly one `Documentation-No-Impact: <surface-id>` trailer for that surface in the affected repository's final task commit and have the independent reviewer confirm it. Regenerate every registered body-only mirror or site derivative from the canonical before verification.
+
+The authoritative final check is the read-only `scripts/verify-implementation.py --check documentation-integrity` with explicit worktree roots and base commits for the vault, Ora, ora-ai-app, ora-ai-org, and MSI. It must never infer matching worktrees or fall back to live checkouts. The deterministic check proves declared ownership, typed references, lifecycle state, task dispositions, and propagation parity only; independent review owns semantic truth. Do not substitute `--check all`, the narrow `crossref` category, a full suite, or a full build.
+
+The managed hook set is installed and verified across all five repositories: one blocking local `pre-push` hook per repository, plus fail-open local `post-commit` framework-pair audit hooks in Ora and the vault. An owned-code push requires the task coordinator's complete explicit five-root context. These hooks are bypassable local controls, not remote certification. Five repositories do not commit atomically, so the coordinator still withholds every participating merge until the combined gate passes. Recovery is Git revert in reverse landing order; hooks do not roll back work.
+
+The canonical framework specification is `~/Documents/vault/Projects/Ora/Framework — Documentation-Code Parity.md`. Its DCP-Sweep, Audit, Reconcile, Specify, and Deprecate modes are specified but not installed or callable as a runtime framework.
+
+> **Testing is evidence for the changed behavior, not a second project. Every implementation scope lock must name the complete list of checks before work starts. Run every check on that list and nothing additional. Do not run a full suite, full build, benchmark, broad audit, or extra confidence check unless the user explicitly approves it or the changed surface genuinely cannot be judged by a narrower check. If a new check becomes necessary, stop and revise the scope before running it. Stop testing when the named checks pass and material review is satisfied. The completion report must list every check actually run.**
 
 ## Project Plugin Convention (READ BEFORE ADDING APPLICATION CODE)
 

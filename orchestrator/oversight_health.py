@@ -125,7 +125,7 @@ def check_health() -> list[dict]:
     (could be early-startup or never-ran). The daemon_down warning catches
     the "nothing is running" case.
     """
-    warnings: list[dict] = []
+    warnings: list[dict] = _telemetry_warnings()
     now = time.time()
     any_recent_heartbeat = False
 
@@ -239,12 +239,12 @@ def check_health() -> list[dict]:
 
     warnings.extend(per_watcher)
 
-    # Execution Review Phase 1 — telemetry-incomplete banner. If the
-    # tool-event recorder has failed to write, the dispatch-signal
-    # substrate is blind and downstream routing/packets are untrustworthy.
-    # Surface it the same way as daemon_down/stale so the user sees it in
-    # the active conversation. (Gated actions still fail closed regardless;
-    # this is about observability, not enforcement.)
+    return warnings
+
+
+def _telemetry_warnings() -> list[dict]:
+    """Evaluate telemetry completeness before any clean-health return."""
+    warnings: list[dict] = []
     try:
         try:
             import tool_events as _te_h
@@ -266,7 +266,6 @@ def check_health() -> list[dict]:
             })
     except Exception:
         pass
-
     return warnings
 
 

@@ -60,6 +60,11 @@ class TriggerBase(unittest.TestCase):
         patcher = mock.patch.object(hygiene._rp, "DATA_DIR_STR", str(self.data))
         patcher.start()
         self.addCleanup(patcher.stop)
+        trigger_root = mock.patch.object(
+            triggers._rp, "DATA_DIR_STR", str(self.data)
+        )
+        trigger_root.start()
+        self.addCleanup(trigger_root.stop)
         roots = mock.patch.object(
             triggers, "_watch_roots", lambda: [str(self.watched.resolve())])
         roots.start()
@@ -501,6 +506,72 @@ class CompletionTests(TriggerBase):
         self.assertEqual(self.service.firings("first")[0]["status"], "failed")
         self.assertEqual(self.service.firings("second"), [])
 
+    def test_a_crash_after_source_completion_replays_one_child(self):
+        self.service.create(self.tool_spec(
+            trigger_id="second", name="Second", cause="trigger_completion",
+            condition={"source_trigger_id": "first"}))
+        self.activate("second")
+        with mock.patch.object(
+            self.service, "_dispatch_completion",
+            side_effect=RuntimeError("simulated crash before child claim"),
+        ):
+            self.service.run_manual("first", request_id="r-crash")
+
+        self.assertEqual(self.service.firings("first")[0]["status"], "completed")
+        self.assertEqual(self.service.firings("second"), [])
+
+        restarted = triggers.TriggerService(
+            queue=self.queue, ledger=self.service.ledger, executor=_inline,
+        )
+        replayed = restarted.replay_completion_deliveries()
+        self.assertEqual(len(replayed), 1)
+        self.assertEqual(len(restarted.firings("second")), 1)
+        self.assertEqual(restarted.replay_completion_deliveries(), [])
+        self.assertEqual(len(restarted.firings("second")), 1)
+
+    def test_completion_replays_after_source_row_is_pruned(self):
+        self.service.create(self.tool_spec(
+            trigger_id="second", name="Second", cause="trigger_completion",
+            condition={"source_trigger_id": "first"}))
+        self.activate("second")
+        with mock.patch.object(
+            self.service, "_deliver_completion",
+            side_effect=RuntimeError("simulated crash before child claim"),
+        ):
+            self.service.run_manual("first", request_id="r-pruned")
+
+        source_event_id = self.service.firings("first")[0]["event_id"]
+        delivery = self.service._pending_completion_deliveries()[0]
+        self.assertEqual(
+            delivery["source_completion"]["event_id"], source_event_id,
+        )
+        self.assertTrue(delivery["source_completion"]["completed_at"])
+
+        ledger_module = sys.modules[self.service.ledger.__class__.__module__]
+        with mock.patch.object(
+            ledger_module, "LEDGER_TERMINAL_RETENTION", 1,
+        ):
+            for index in range(2):
+                event_id = hygiene.event_identity(
+                    "prune-fixture", {"index": index},
+                )
+                self.service.ledger.claim(
+                    event_id=event_id, event_type="prune-fixture",
+                    subject={"index": index},
+                )
+                self.service.ledger.transition(
+                    event_id, {"claimed"}, "completed",
+                    completed_at=triggers._now(),
+                )
+        self.assertIsNone(self.service.ledger.get(source_event_id))
+
+        restarted = triggers.TriggerService(
+            queue=self.queue, ledger=self.service.ledger, executor=_inline,
+        )
+        self.assertEqual(len(restarted.replay_completion_deliveries()), 1)
+        self.assertEqual(len(restarted.firings("second")), 1)
+        self.assertEqual(restarted.replay_completion_deliveries(), [])
+
     def test_a_direct_completion_cycle_is_refused(self):
         with self.assertRaises(triggers.TriggerConflict) as caught:
             self.service.create(self.tool_spec(
@@ -587,6 +658,93 @@ class FiringTests(TriggerBase):
         firing = self.service.firings("nightly")[0]
         self.assertEqual(firing["status"], "failed")
         self.assertIn("restart recovery", firing["error"])
+
+    @unittest.skipUnless(os.name == "posix", "process-group assertion is POSIX-only")
+    def test_timeout_terminates_work_before_the_next_firing(self):
+        acknowledged = self.root / "termination-acknowledged"
+        _project, script = self.make_project(script_body=(
+            "import signal, time\n"
+            "from pathlib import Path\n"
+            "def stop(*_):\n"
+            f"    Path({str(acknowledged)!r}).write_text('stopped')\n"
+            "    raise SystemExit(0)\n"
+            "signal.signal(signal.SIGTERM, stop)\n"
+            "while True:\n"
+            "    time.sleep(0.05)\n"
+        ))
+        service = triggers.TriggerService(
+            queue=self.queue, ledger=self.service.ledger, executor=_inline,
+            firing_timeout_sec=1.0, terminate_actions=True,
+        )
+        service.create(self.tool_spec())
+
+        with mock.patch.dict(os.environ, {"ORA_HOME": str(self.root)}):
+            service.run_manual("nightly", request_id="times-out")
+            timed_out = service.firings("nightly")[0]
+            self.assertEqual(timed_out["status"], "failed")
+            self.assertIn("deadline", timed_out["error"])
+            self.assertTrue(acknowledged.is_file())
+            self.assertNotIn("nightly", triggers._RUNNING)
+
+            script.write_text('print(\'{"ok": true}\')', encoding="utf-8")
+            service.run_manual("nightly", request_id="after-timeout")
+        latest = service.firings("nightly")[0]
+        self.assertEqual(latest["status"], "completed")
+        self.assertNotEqual(latest["receipt"]["outcome"], "skipped")
+
+    @unittest.skipUnless(os.name == "posix", "process assertion is POSIX-only")
+    def test_parent_callback_error_reaps_work_before_next_firing(self):
+        self.make_project(script_body='print(\'{"ok": true}\')')
+        service = triggers.TriggerService(
+            queue=self.queue, ledger=self.service.ledger, executor=_inline,
+            firing_timeout_sec=30.0, terminate_actions=True,
+        )
+        service.create(self.tool_spec())
+        review = service.activation_review("nightly")
+        service.activate("nightly", expected_spec_digest=review["spec_digest"])
+        child_pid = self.root / "parent-callback-child.pid"
+        fork_context = triggers.multiprocessing.get_context("fork")
+
+        def contact_then_wait(*_args, on_provider_contact=None, **_kwargs):
+            child_pid.write_text(str(os.getpid()), encoding="utf-8")
+            on_provider_contact()
+            while True:
+                threading.Event().wait(60)
+
+        ledger = service.ledger
+        real_transition = ledger.transition
+
+        def fail_parent_callback(event_id, expected, status, **fields):
+            if fields.get("provider_contacted"):
+                raise RuntimeError("injected parent callback failure")
+            return real_transition(event_id, expected, status, **fields)
+
+        with (
+            mock.patch.object(
+                triggers.multiprocessing, "get_context",
+                return_value=fork_context,
+            ),
+            mock.patch.object(
+                triggers, "_execute_action", side_effect=contact_then_wait,
+            ),
+            mock.patch.object(
+                ledger, "transition", side_effect=fail_parent_callback,
+            ),
+            mock.patch.object(triggers, "TERMINATION_GRACE_SEC", 0.1),
+        ):
+            service.run_manual("nightly", request_id="callback-error")
+
+        pid = int(child_pid.read_text(encoding="utf-8"))
+        with self.assertRaises(ProcessLookupError):
+            os.kill(pid, 0)
+        self.assertNotIn("nightly", triggers._RUNNING)
+        self.assertEqual(service.firings("nightly")[0]["status"], "failed")
+
+        with mock.patch.dict(os.environ, {"ORA_HOME": str(self.root)}):
+            service.run_manual("nightly", request_id="after-callback-error")
+        latest = service.firings("nightly")[0]
+        self.assertEqual(latest["status"], "completed")
+        self.assertNotEqual(latest["receipt"]["outcome"], "skipped")
 
 
 # ── Action resolution ────────────────────────────────────────────────────

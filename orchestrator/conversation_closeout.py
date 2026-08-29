@@ -502,24 +502,75 @@ def _frontmatter_value(text: str, key: str) -> str | None:
     return value
 
 
-def _set_private_frontmatter_tag(path: Path, private: bool) -> bool:
-    """Add/remove the controlled ``private`` YAML tag in one chunk file."""
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"refusing non-regular chunk file {path}")
-    text = path.read_text(encoding="utf-8")
-    opening_end = text.find("\n") + 1
-    if opening_end <= 0 or text[:opening_end].strip() != "---":
+_FRONTMATTER_DELIMITER_RE = re.compile(r"^---\r?$", re.MULTILINE)
+
+
+def _frontmatter_bounds(text: str) -> tuple[int, int]:
+    """Return content bounds for one exact-line YAML frontmatter block."""
+    opening = _FRONTMATTER_DELIMITER_RE.match(text)
+    if opening is None:
         raise ValueError("missing YAML frontmatter")
-    close = text.find("\n---", opening_end)
-    if close < 0:
+    if opening.end() >= len(text) or text[opening.end()] != "\n":
         raise ValueError("unterminated YAML frontmatter")
+    opening_end = opening.end() + 1
+    closing = _FRONTMATTER_DELIMITER_RE.search(text, opening_end)
+    if closing is None:
+        raise ValueError("unterminated YAML frontmatter")
+    return opening_end, closing.start()
+
+
+def _private_frontmatter_text(
+    text: str,
+    private: bool,
+    *,
+    require_unique_tags: bool = False,
+) -> str:
+    """Return text with its one controlled Private tag reconciled."""
+    opening_end, close = _frontmatter_bounds(text)
 
     front = text[opening_end:close]
     lines = front.splitlines()
-    tag_idx = next(
-        (idx for idx, line in enumerate(lines) if re.match(r"^\s*tags\s*:", line)),
-        None,
-    )
+    legacy_line_indexes: dict[str, int] = {}
+    if require_unique_tags:
+        entries = _frontmatter_mapping_entries(text)
+        try:
+            from yaml.nodes import ScalarNode  # type: ignore
+        except Exception as exc:
+            raise ValueError("YAML scalar authority is unavailable") from exc
+        for key in ("tag", "tag_private"):
+            values = entries.get(key, [])
+            if len(values) > 1:
+                raise ValueError(f"legacy {key} field is duplicated")
+            if not values:
+                continue
+            node = values[0]
+            if (not isinstance(node, ScalarNode)
+                    or node.start_mark.line != node.end_mark.line):
+                raise ValueError(f"legacy {key} field is not a scalar")
+            legacy_line_indexes[key] = node.start_mark.line
+
+    # Exact retag already authenticated these optional legacy claims. Rewrite
+    # their semantic root-map lines before changing the size of the tags block
+    # so quoted keys and valid root indentation cannot leave a stale claim.
+    for key, line_index in legacy_line_indexes.items():
+        if line_index >= len(lines) or ":" not in lines[line_index]:
+            raise ValueError(f"legacy {key} field has no writable scalar seam")
+        prefix = lines[line_index].split(":", 1)[0] + ":"
+        if key == "tag":
+            value = "private" if private else ""
+        else:
+            value = "true" if private else "false"
+        lines[line_index] = f"{prefix} {value}"
+
+    tag_indexes = [
+        idx for idx, line in enumerate(lines)
+        if re.match(r"^\s*tags\s*:", line)
+    ]
+    if require_unique_tags and len(tag_indexes) != 1:
+        raise ValueError(
+            f"expected one canonical tags field, found {len(tag_indexes)}"
+        )
+    tag_idx = tag_indexes[0] if tag_indexes else None
     tags: list[str] = []
     start = end = len(lines)
     indent = ""
@@ -567,26 +618,358 @@ def _set_private_frontmatter_tag(path: Path, private: bool) -> bool:
 
     deduped: list[str] = []
     for value in tags:
-        if value != "private" and value not in deduped:
+        if value.strip().casefold() != "private" and value not in deduped:
             deduped.append(value)
     if private:
         deduped.append("private")
     replacement = [f"{indent}tags:"]
     replacement.extend(f"{indent}  - {value}" for value in deduped)
     new_lines = lines[:start] + replacement + lines[end:]
-    # Recovered pending chunks also carry a legacy scalar ``tag`` field.
-    # Keep it synchronized when present; canonical chunks do not have it.
-    for idx, line in enumerate(new_lines):
-        match = re.match(r"^(\s*)tag\s*:\s*.*$", line)
-        if match:
-            new_lines[idx] = f"{match.group(1)}tag: {('private' if private else '')}"
-            break
+    # Recovered pending chunks also carry legacy scalar privacy fields. Exact
+    # retag used the semantic root-map line coordinates above; the fallback
+    # loop is retained only for the older broad retag path.
+    if not require_unique_tags:
+        for idx, line in enumerate(new_lines):
+            match = re.match(r"^([ \t]*tag[ \t]*:)[^\n]*$", line)
+            if match:
+                new_lines[idx] = (
+                    f"{match.group(1)} {('private' if private else '')}"
+                )
+            private_match = re.match(
+                r"^([ \t]*tag_private[ \t]*:)[^\n]*$", line,
+            )
+            if private_match:
+                new_lines[idx] = (
+                    f"{private_match.group(1)} "
+                    f"{'true' if private else 'false'}"
+                )
     new_front = "\n".join(new_lines)
-    new_text = text[:opening_end] + new_front + text[close:]
+    line_ending = "\r\n" if text[:opening_end].endswith("\r\n") else "\n"
+    return text[:opening_end] + new_front + line_ending + text[close:]
+
+
+def _set_private_frontmatter_tag(path: Path, private: bool) -> bool:
+    """Add/remove the controlled ``private`` YAML tag in one chunk file."""
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"refusing non-regular chunk file {path}")
+    text = path.read_text(encoding="utf-8")
+    new_text = _private_frontmatter_text(text, private)
     if new_text == text:
         return False
     _atomic_write_text(path, new_text)
     return True
+
+
+_RUNTIME_DERIVATIVE_OWNER_FIELDS: tuple[str, ...] = (
+    "artifact_kind",
+    "managed_by",
+    "source_file",
+    "source_chunk_id",
+    "source_turn_index",
+    "turn_privacy",
+)
+
+
+def _frontmatter_has_scalar_claim(
+    entries: dict[str, list[Any]], key: str, expected: str,
+) -> bool:
+    """Return whether parsed frontmatter contains an expected scalar claim."""
+    try:
+        from yaml.nodes import ScalarNode  # type: ignore
+    except Exception as exc:
+        raise ValueError(
+            "YAML scalar claim discovery is unavailable"
+        ) from exc
+    return any(
+        isinstance(node, ScalarNode) and node.value == expected
+        for node in entries.get(key, [])
+    )
+
+
+def _frontmatter_discovery_scalar_claims(text: str, key: str) -> set[str]:
+    """Recover root scalar claims without treating them as authority.
+
+    Strict owner authentication rejects duplicate keys, merge keys, and
+    malformed frontmatter.  Discovery still has to remember a matching owner
+    claim from such a file so that validation failure cannot make the file
+    disappear from retag propagation.  The relaxed semantic reads handle
+    quoted YAML keys and inherited merge claims.  A deliberately narrow raw
+    line fallback preserves quoted or unquoted root claims when composition
+    fails, without treating nested mappings or body text as ownership.
+    """
+    claims: set[str] = set()
+    opening = _FRONTMATTER_DELIMITER_RE.match(text)
+    if (opening is None or opening.end() >= len(text)
+            or text[opening.end()] != "\n"):
+        return claims
+    opening_end = opening.end() + 1
+    closing = _FRONTMATTER_DELIMITER_RE.search(text, opening_end)
+    frontmatter_end = closing.start() if closing is not None else len(text)
+    frontmatter = text[opening_end:frontmatter_end]
+    key_forms = (key, f"'{key}'", f'"{key}"')
+    raw_pattern = re.compile(
+        rf"(?:{'|'.join(re.escape(form) for form in key_forms)})"
+        r"[ \t]*:[ \t]*([^#]*?)[ \t]*$"
+    )
+    for line in frontmatter.splitlines():
+        match = raw_pattern.fullmatch(line)
+        if match is None:
+            continue
+        value = match.group(1).strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        claims.add(value)
+    if closing is None:
+        return claims
+    try:
+        import yaml  # type: ignore
+        from yaml.nodes import MappingNode, ScalarNode  # type: ignore
+        root = yaml.compose(frontmatter)
+    except Exception:
+        return claims
+    if not isinstance(root, MappingNode):
+        return claims
+    for key_node, value_node in root.value:
+        if (
+            isinstance(key_node, ScalarNode)
+            and key_node.value == key
+            and isinstance(value_node, ScalarNode)
+            and isinstance(value_node.value, str)
+        ):
+            claims.add(value_node.value)
+    try:
+        resolved = yaml.safe_load(frontmatter)
+    except Exception:
+        return claims
+    if isinstance(resolved, dict):
+        resolved_claim = resolved.get(key)
+        if isinstance(resolved_claim, str):
+            claims.add(resolved_claim)
+    return claims
+
+
+def _frontmatter_mapping_entries(text: str) -> dict[str, list[Any]]:
+    """Parse one YAML mapping without collapsing duplicate semantic keys."""
+    opening_end, close = _frontmatter_bounds(text)
+    try:
+        import yaml  # type: ignore
+        from yaml.nodes import MappingNode, ScalarNode  # type: ignore
+        root = yaml.compose(text[opening_end:close])
+    except Exception as exc:
+        raise ValueError("YAML frontmatter is malformed") from exc
+    if not isinstance(root, MappingNode):
+        raise ValueError("YAML frontmatter is not a mapping")
+    entries: dict[str, list[Any]] = {}
+    for key_node, value_node in root.value:
+        if not isinstance(key_node, ScalarNode) or not isinstance(
+            key_node.value, str
+        ):
+            raise ValueError("YAML frontmatter has a non-scalar key")
+        key = key_node.value
+        if key == "<<":
+            raise ValueError("YAML frontmatter merge keys are ambiguous")
+        entries.setdefault(key, []).append(value_node)
+    return entries
+
+
+def _unique_frontmatter_scalar(
+    entries: dict[str, list[Any]], key: str,
+) -> str:
+    try:
+        from yaml.nodes import ScalarNode  # type: ignore
+    except Exception as exc:
+        raise ValueError("YAML scalar authority is unavailable") from exc
+    values = entries.get(key, [])
+    if len(values) != 1:
+        raise ValueError(
+            f"expected one canonical {key} field, found {len(values)}"
+        )
+    if not isinstance(values[0], ScalarNode):
+        raise ValueError(f"{key} is not a scalar")
+    value = values[0].value
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{key} is empty")
+    return value
+
+
+def _frontmatter_privacy_tags(entries: dict[str, list[Any]]) -> list[str]:
+    """Return unique controlled privacy tags from one canonical tags field."""
+    try:
+        from yaml.nodes import ScalarNode, SequenceNode  # type: ignore
+    except Exception as exc:
+        raise ValueError("YAML tag authority is unavailable") from exc
+    values = entries.get("tags", [])
+    if len(values) != 1:
+        raise ValueError(
+            f"expected one canonical tags field, found {len(values)}"
+        )
+    tags: list[str] = []
+    tag_node = values[0]
+    if isinstance(tag_node, SequenceNode):
+        for item in tag_node.value:
+            if not isinstance(item, ScalarNode):
+                raise ValueError("tags field contains a non-scalar item")
+            tags.append(str(item.value).strip().casefold())
+    elif isinstance(tag_node, ScalarNode) and tag_node.tag.endswith(":null"):
+        tags = []
+    else:
+        raise ValueError("tags field is not a list")
+    privacy_tags = [tag for tag in tags if tag in {"private", "stealth"}]
+    if len(privacy_tags) != len(set(privacy_tags)):
+        raise ValueError("privacy tag is duplicated")
+    if set(privacy_tags) == {"private", "stealth"}:
+        raise ValueError("privacy tags conflict")
+    return privacy_tags
+
+
+def _require_legacy_frontmatter_privacy(
+    entries: dict[str, list[Any]], expected: str,
+) -> None:
+    """Authenticate optional legacy scalar privacy claims semantically."""
+    try:
+        from yaml.nodes import ScalarNode  # type: ignore
+    except Exception as exc:
+        raise ValueError("YAML scalar authority is unavailable") from exc
+
+    tag_values = entries.get("tag", [])
+    if len(tag_values) > 1:
+        raise ValueError("legacy tag field is duplicated")
+    if tag_values:
+        node = tag_values[0]
+        if (not isinstance(node, ScalarNode)
+                or node.start_mark.line != node.end_mark.line):
+            raise ValueError("legacy tag field is not a scalar")
+        if node.tag.endswith(":null"):
+            claim = "standard"
+        elif node.tag.endswith(":str"):
+            raw_claim = str(node.value).strip().casefold()
+            if raw_claim == "":
+                claim = "standard"
+            elif raw_claim in {"private", "stealth"}:
+                claim = raw_claim
+            else:
+                raise ValueError("legacy tag privacy is invalid")
+        else:
+            raise ValueError("legacy tag field is not a string")
+        if claim != expected:
+            raise ValueError("legacy tag conflicts with turn_privacy")
+
+    private_values = entries.get("tag_private", [])
+    if len(private_values) > 1:
+        raise ValueError("legacy tag_private field is duplicated")
+    if private_values:
+        node = private_values[0]
+        if (not isinstance(node, ScalarNode)
+                or node.start_mark.line != node.end_mark.line
+                or not node.tag.endswith(":bool")):
+            raise ValueError("legacy tag_private field is not a boolean")
+        normalized = str(node.value).strip().casefold()
+        if normalized in {"true", "yes", "on"}:
+            claim_private = True
+        elif normalized in {"false", "no", "off"}:
+            claim_private = False
+        else:
+            raise ValueError("legacy tag_private field is not a boolean")
+        if claim_private != (expected == "private"):
+            raise ValueError("legacy tag_private conflicts with turn_privacy")
+
+
+def _require_markdown_privacy(
+    text: str,
+    expected: str,
+    *,
+    entries: dict[str, list[Any]] | None = None,
+) -> None:
+    authority = (
+        entries if entries is not None else _frontmatter_mapping_entries(text)
+    )
+    privacy_tags = _frontmatter_privacy_tags(authority)
+    required = ["private"] if expected == "private" else []
+    if privacy_tags != required:
+        raise ValueError("frontmatter privacy tags conflict with turn_privacy")
+    _require_legacy_frontmatter_privacy(authority, expected)
+
+
+def _json_marker_values(text: str, name: str) -> list[Any]:
+    values: list[Any] = []
+    for raw in re.findall(
+        rf"(?m)^[ ]{{0,3}}<!--[ \t]*{re.escape(name)}[ \t]*:"
+        rf"[ \t]*(.*?)[ \t]*-->[ \t]*$",
+        text,
+    ):
+        try:
+            values.append(json.loads(raw))
+        except Exception:
+            values.append(None)
+    return values
+
+
+def _runtime_derivative_markdown_authority(
+    text: str,
+) -> tuple[str, str, str, int]:
+    """Authenticate one unambiguous runtime-derivative owner preimage."""
+    entries = _frontmatter_mapping_entries(text)
+    values = {
+        field: _unique_frontmatter_scalar(entries, field)
+        for field in _RUNTIME_DERIVATIVE_OWNER_FIELDS
+    }
+    if (values["artifact_kind"] != "conversation_runtime_derivative"
+            or values["managed_by"] != "ora"):
+        raise ValueError("runtime derivative lacks canonical Ora ownership")
+    source_file = values["source_file"]
+    source_chunk_id = values["source_chunk_id"]
+    if (not source_file or source_file != source_file.strip()
+            or not source_chunk_id
+            or source_chunk_id != source_chunk_id.strip()):
+        raise ValueError("runtime derivative owner identity is malformed")
+    if not re.fullmatch(r"[1-9][0-9]*", values["source_turn_index"]):
+        raise ValueError("source_turn_index is not a positive integer")
+    source_turn_index = int(values["source_turn_index"])
+    privacy = values["turn_privacy"]
+    if privacy not in {"standard", "private", "stealth"}:
+        raise ValueError("turn_privacy is invalid")
+    if any(
+        _json_marker_values(text, marker)
+        for marker in (
+            "ora-conversation-id", "ora-chunk-id", "ora-turn-privacy",
+        )
+    ):
+        raise ValueError("runtime derivative has a second marker authority")
+    _require_markdown_privacy(text, privacy, entries=entries)
+    return privacy, source_file, source_chunk_id, source_turn_index
+
+
+def _require_chunk_markdown_authority(
+    text: str,
+    *,
+    conversation_id: str,
+    chunk_id: str,
+    turn_privacy: str,
+) -> None:
+    """Require one exact marker tuple and one consistent privacy value."""
+    conversation_values = _json_marker_values(text, "ora-conversation-id")
+    chunk_values = _json_marker_values(text, "ora-chunk-id")
+    privacy_values = _json_marker_values(text, "ora-turn-privacy")
+    if (len(conversation_values) != 1
+            or not _same_conversation(conversation_values[0], conversation_id)):
+        raise ValueError("conversation owner marker is missing or ambiguous")
+    if len(chunk_values) != 1 or chunk_values[0] != chunk_id:
+        raise ValueError("chunk owner marker is missing or ambiguous")
+    if len(privacy_values) != 1 or privacy_values[0] != turn_privacy:
+        raise ValueError("turn privacy marker is missing or ambiguous")
+    entries = _frontmatter_mapping_entries(text)
+    parallel_fields = (
+        "artifact_kind", "managed_by", "conversation_id", "panel_id",
+        "chunk_id", "source_file", "source_chunk_id", "source_turn_index",
+        "turn_privacy",
+    )
+    claimed = [field for field in parallel_fields if entries.get(field)]
+    if claimed:
+        raise ValueError(
+            "chunk has a second frontmatter owner/privacy authority: "
+            + ", ".join(claimed)
+        )
+    _require_markdown_privacy(text, turn_privacy, entries=entries)
 
 
 def _scan_recovered_chunks(root: Path, conversation_id: str) -> list[Path]:
@@ -612,12 +995,16 @@ def _scan_recovered_chunks(root: Path, conversation_id: str) -> list[Path]:
 
 def _has_conversation_marker(text: str, conversation_id: str) -> bool:
     """Match the redundant JSON marker using the casefold lifecycle identity."""
-    for raw in re.findall(r"(?m)^<!-- ora-conversation-id:\s*(.+?)\s*-->$", text):
-        try:
-            value = json.loads(raw)
-        except Exception:
-            continue
+    for value in _json_marker_values(text, "ora-conversation-id"):
         if _same_conversation(value, conversation_id):
+            return True
+    return False
+
+
+def _has_chunk_marker(text: str, chunk_id: str) -> bool:
+    """Match the redundant JSON chunk marker exactly."""
+    for value in _json_marker_values(text, "ora-chunk-id"):
+        if isinstance(value, str) and value == chunk_id:
             return True
     return False
 
@@ -1576,10 +1963,83 @@ def _delete_submission_records(
     return removed
 
 
+def _raw_header_claims(header: str, key: str) -> list[str]:
+    return re.findall(
+        rf"(?m)^[ \t]*{re.escape(key)}[ \t]*:[ \t]*([^\n]*)$",
+        header,
+    )
+
+
+def _raw_header_scalar(raw: str, *, field: str, allow_empty: bool) -> str:
+    value = raw.strip()
+    if not value:
+        if allow_empty:
+            return ""
+        raise ValueError(f"{field} is empty")
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+        return value[1:-1]
+    if "#" in value:
+        raise ValueError(f"{field} is not a canonical scalar")
+    return value
+
+
+def _require_raw_log_header_authority(
+    text: str,
+    *,
+    conversation_id: str,
+    expected_tag: str,
+    require_owner: bool,
+) -> None:
+    """Authenticate active raw-log owner and legacy privacy header claims."""
+    boundary = re.search(r"(?m)^---[ \t]*$", text)
+    if boundary is None:
+        if require_owner:
+            raise ValueError("raw log header boundary is missing")
+        return
+    header = text[:boundary.start()]
+    panel_claims = _raw_header_claims(header, "panel_id")
+    if len(panel_claims) > 1:
+        raise ValueError("raw log panel_id is duplicated")
+    if require_owner and len(panel_claims) != 1:
+        raise ValueError("raw log panel_id is missing")
+    if panel_claims:
+        panel_id = _raw_header_scalar(
+            panel_claims[0], field="panel_id", allow_empty=False,
+        )
+        if not _same_conversation(panel_id, conversation_id):
+            raise ValueError("raw log panel_id owner mismatches the Dialogue")
+
+    tag_claims = _raw_header_claims(header, "tag")
+    private_claims = _raw_header_claims(header, "tag_private")
+    if len(tag_claims) > 1:
+        raise ValueError("raw log tag is duplicated")
+    if len(private_claims) > 1:
+        raise ValueError("raw log tag_private is duplicated")
+    if tag_claims:
+        tag_claim = _raw_header_scalar(
+            tag_claims[0], field="tag", allow_empty=True,
+        ).casefold()
+        if tag_claim not in {"", "private", "stealth"}:
+            raise ValueError("raw log tag privacy is invalid")
+        if tag_claim != expected_tag:
+            raise ValueError("raw log tag conflicts with canonical privacy")
+    if private_claims:
+        raw_private = _raw_header_scalar(
+            private_claims[0], field="tag_private", allow_empty=False,
+        ).casefold()
+        if raw_private not in {"true", "false"}:
+            raise ValueError("raw log tag_private is not a boolean")
+        if (raw_private == "true") != (expected_tag == "private"):
+            raise ValueError(
+                "raw log tag_private conflicts with canonical privacy"
+            )
+
+
 def _update_raw_log_privacy_headers(
     raw_root: Path,
     conversation_id: str,
     private: bool,
+    previous_tag: str,
     errors: list[str],
 ) -> list[str]:
     """Retag exact owned raw-audit headers without touching exchange text."""
@@ -1602,31 +2062,42 @@ def _update_raw_log_privacy_headers(
                 if boundary is None:
                     continue
                 header = text[:boundary.start()]
-                panel = re.search(
-                    r"(?m)^panel_id\s*:\s*([^#\n]*?)\s*$", header,
-                )
-                value = panel.group(1).strip() if panel else ""
-                if (len(value) >= 2 and value[0] == value[-1]
-                        and value[0] in "'\""):
-                    value = value[1:-1]
-                if not _same_conversation(value, conversation_id):
+                panel_values: list[str | None] = []
+                for raw in _raw_header_claims(header, "panel_id"):
+                    try:
+                        panel_values.append(_raw_header_scalar(
+                            raw, field="panel_id", allow_empty=False,
+                        ))
+                    except ValueError:
+                        panel_values.append(None)
+                if not any(
+                    _same_conversation(value, conversation_id)
+                    for value in panel_values
+                ):
                     continue
+                _require_raw_log_header_authority(
+                    text,
+                    conversation_id=conversation_id,
+                    expected_tag=previous_tag,
+                    require_owner=True,
+                )
 
                 tag_value = "private" if private else ""
                 replacement_header = header
-                if re.search(r"(?m)^tag\s*:", replacement_header):
+                if _raw_header_claims(replacement_header, "tag"):
                     replacement_header = re.sub(
-                        r"(?m)^tag\s*:.*$", f"tag: {tag_value}",
-                        replacement_header, count=1,
+                        r"(?m)^([ \t]*tag[ \t]*:)[^\n]*$",
+                        lambda match: f"{match.group(1)} {tag_value}",
+                        replacement_header,
                     )
                 else:
                     replacement_header += f"tag: {tag_value}\n"
                 bool_value = "true" if private else "false"
-                if re.search(r"(?m)^tag_private\s*:", replacement_header):
+                if _raw_header_claims(replacement_header, "tag_private"):
                     replacement_header = re.sub(
-                        r"(?m)^tag_private\s*:.*$",
-                        f"tag_private: {bool_value}",
-                        replacement_header, count=1,
+                        r"(?m)^([ \t]*tag_private[ \t]*:)[^\n]*$",
+                        lambda match: f"{match.group(1)} {bool_value}",
+                        replacement_header,
                     )
                 else:
                     replacement_header += f"tag_private: {bool_value}\n"
@@ -1667,27 +2138,66 @@ def update_conversation_privacy_tag(
         )
 
 
-def _set_exact_turn_privacy_file(path: Path, turn_privacy: str) -> bool:
-    """Retag one already-validated owned chunk/derivative in place."""
-    private = turn_privacy == "private"
-    _set_private_frontmatter_tag(path, private)
+def _set_exact_turn_privacy_file(
+    path: Path,
+    turn_privacy: str,
+    *,
+    artifact_kind: str,
+    conversation_id: str,
+    chunk_id: str,
+    turn_index: int,
+    previous_turn_privacy: str,
+) -> bool:
+    """Authenticate and atomically retag one owned Markdown artifact."""
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"refusing non-regular privacy artifact {path}")
     text = path.read_text(encoding="utf-8")
-    marker_re = re.compile(r'(?m)^<!-- ora-turn-privacy:\s*"[^"]*"\s*-->$')
-    marker = "<!-- ora-turn-privacy: " + json.dumps(turn_privacy) + " -->"
-    if marker_re.search(text):
-        replacement = marker_re.sub(marker, text, count=1)
-    elif re.search(r"(?m)^turn_privacy\s*:", text):
-        replacement = re.sub(
-            r"(?m)^turn_privacy\s*:.*$",
-            "turn_privacy: " + json.dumps(turn_privacy),
+    if artifact_kind == "conversation_chunk":
+        _require_chunk_markdown_authority(
             text,
-            count=1,
+            conversation_id=conversation_id,
+            chunk_id=chunk_id,
+            turn_privacy=previous_turn_privacy,
+        )
+        privacy_seam = "marker"
+    elif artifact_kind == "conversation_runtime_derivative":
+        owner = _runtime_derivative_markdown_authority(text)
+        if (
+            owner[0] != previous_turn_privacy
+            or not _same_conversation(owner[1], conversation_id)
+            or owner[2] != chunk_id
+            or owner[3] != turn_index
+        ):
+            raise ValueError(
+                "runtime derivative owner/privacy tuple does not match the "
+                "canonical exchange"
+            )
+        privacy_seam = "frontmatter"
+    else:
+        raise ValueError("unknown privacy artifact kind")
+
+    private = turn_privacy == "private"
+    replacement = _private_frontmatter_text(
+        text, private, require_unique_tags=True,
+    )
+    if privacy_seam == "marker":
+        marker_re = re.compile(
+            r'(?m)^([ ]{0,3})<!--[ \t]*ora-turn-privacy[ \t]*:'
+            r'[ \t]*.*?[ \t]*-->[ \t]*$'
+        )
+        marker = "<!-- ora-turn-privacy: " + json.dumps(turn_privacy) + " -->"
+        replacement, count = marker_re.subn(
+            lambda match: match.group(1) + marker, replacement,
         )
     else:
-        frontmatter = re.match(r"\A---\s*\n.*?\n---\s*\n", text, re.DOTALL)
-        if frontmatter is None:
-            raise ValueError(f"owned privacy artifact has no insertion seam: {path}")
-        replacement = text[:frontmatter.end()] + marker + "\n\n" + text[frontmatter.end():]
+        replacement, count = re.subn(
+            r"(?m)^turn_privacy\s*:.*$",
+            "turn_privacy: " + json.dumps(turn_privacy),
+            replacement,
+            count=1,
+        )
+    if count != 1:
+        raise ValueError("owned privacy artifact has no unique privacy seam")
     if replacement == text:
         return False
     _atomic_write_text(path, replacement)
@@ -1834,6 +2344,9 @@ def _update_conversation_turn_privacy_unlocked(
     raw_paths: set[Path] = set()
     chroma_updated = 0
     envelope_result: dict[str, Any] | None = None
+    canonical_chunk_id = ""
+    previous_turn_privacy = ""
+    canonical_conversation_tag = ""
 
     # Resolve exact ownership from the canonical pair before touching caches.
     # This preserves a chunk that is still named by the envelope even when its
@@ -1849,6 +2362,13 @@ def _update_conversation_turn_privacy_unlocked(
     elif envelope.get("tag") == "stealth":
         raise PermissionError("Off Record is creation-only and cannot be retagged")
     else:
+        if envelope.get("tag") not in {"", "private"}:
+            _record_error(
+                errors, "turn privacy preflight",
+                "Dialogue composer privacy authority is invalid",
+            )
+        else:
+            canonical_conversation_tag = str(envelope.get("tag") or "")
         messages = envelope.get("messages")
         current_turn = 0
         pending: dict[str, Any] | None = None
@@ -1864,9 +2384,27 @@ def _update_conversation_turn_privacy_unlocked(
                     found = True
                     user_chunk = pending.get("chunk_id")
                     assistant_chunk = raw.get("chunk_id")
-                    if (isinstance(user_chunk, str)
-                            and user_chunk == assistant_chunk):
+                    user_privacy = pending.get("turn_privacy")
+                    assistant_privacy = raw.get("turn_privacy")
+                    if (not isinstance(user_chunk, str) or not user_chunk
+                            or user_chunk != assistant_chunk):
+                        _record_error(
+                            errors,
+                            "turn privacy preflight",
+                            "complete exchange chunk ownership is missing or conflicting",
+                        )
+                    else:
+                        canonical_chunk_id = user_chunk
                         selected_chunk_ids.add(user_chunk)
+                    if (user_privacy not in {"standard", "private"}
+                            or user_privacy != assistant_privacy):
+                        _record_error(
+                            errors,
+                            "turn privacy preflight",
+                            "complete exchange privacy authority is missing or conflicting",
+                        )
+                    else:
+                        previous_turn_privacy = user_privacy
                     break
                 pending = None
         if not found:
@@ -1914,6 +2452,7 @@ def _update_conversation_turn_privacy_unlocked(
     collections = _open_conversations_collections(
         chromadb_path=chroma, collection=collection, errors=errors,
     )
+    exact_index_rows = 0
     for physical_name, current in collections:
         rows = _conversation_collection_rows(
             current, cid, errors=errors,
@@ -1923,7 +2462,20 @@ def _update_conversation_turn_privacy_unlocked(
             stored_turn = meta.get("turn_index", meta.get("pair_num"))
             if stored_turn != turn_index:
                 continue
-            selected_chunk_ids.add(row_id)
+            stored_chunk = meta.get("chunk_id")
+            indexed_chunk_id = (
+                stored_chunk
+                if isinstance(stored_chunk, str) and stored_chunk
+                else row_id
+            )
+            if indexed_chunk_id != canonical_chunk_id:
+                _record_error(
+                    errors,
+                    f"turn privacy index ownership {physical_name} {row_id}",
+                    "matching turn points to a different chunk; retained",
+                )
+                continue
+            exact_index_rows += 1
             path_value = meta.get("chunk_path") or meta.get("obsidian_path")
             if isinstance(path_value, str) and path_value:
                 try:
@@ -1947,16 +2499,30 @@ def _update_conversation_turn_privacy_unlocked(
                 chroma_updated += 1
             except Exception as exc:
                 _record_error(errors, f"turn privacy metadata {physical_name} {row_id}", exc)
+    if exact_index_rows == 0:
+        _record_error(
+            errors,
+            "turn privacy index ownership",
+            f"exact row for chunk {canonical_chunk_id!r} is missing",
+        )
 
     manifest_path = Path(_rp.DATA_DIR_STR) / "conversation-manifest.jsonl"
+    exact_manifest_entries = 0
 
     def update_manifest(record: dict[str, Any]) -> dict[str, Any]:
+        nonlocal exact_manifest_entries
         if (not _same_conversation(record.get("conversation_id"), cid)
                 or record.get("turn_index") != turn_index):
             return record
         chunk = record.get("chunk_id")
-        if isinstance(chunk, str) and chunk:
-            selected_chunk_ids.add(chunk)
+        if chunk != canonical_chunk_id:
+            _record_error(
+                errors,
+                "turn privacy manifest ownership",
+                "matching turn points to a different or missing chunk; retained",
+            )
+            return record
+        exact_manifest_entries += 1
         cp = record.get("chunk_path")
         if isinstance(cp, str) and cp:
             try:
@@ -1982,6 +2548,18 @@ def _update_conversation_turn_privacy_unlocked(
         manifest_path, errors=errors, label="turn privacy manifest",
         mutate=update_manifest,
     )
+    if exact_manifest_entries == 0:
+        _record_error(
+            errors,
+            "turn privacy manifest ownership",
+            f"exact entry for chunk {canonical_chunk_id!r} is missing",
+        )
+    elif exact_manifest_entries > 1:
+        _record_error(
+            errors,
+            "turn privacy manifest ownership",
+            f"multiple exact entries for chunk {canonical_chunk_id!r}",
+        )
     failures_updated = _rewrite_jsonl(
         Path(_rp.DATA_DIR_STR) / "conversation-indexing-failures.jsonl",
         errors=errors, label="turn privacy indexing failure",
@@ -1994,30 +2572,85 @@ def _update_conversation_turn_privacy_unlocked(
         ),
     )
 
+    # The canonical chunk marker is an independent ownership preimage. Scan
+    # the configured chunk root so a missing manifest or index pointer cannot
+    # leave the owned file stale while still reporting success.
+    for path in _scan_owned_chunks(cdir, cid):
+        try:
+            head = path.read_text(encoding="utf-8")[:8192]
+        except OSError as exc:
+            _record_error(errors, f"turn privacy chunk scan {path}", exc)
+            continue
+        if _has_chunk_marker(head, canonical_chunk_id):
+            chunk_paths.add(path)
+
+    if not chunk_paths:
+        _record_error(
+            errors,
+            "turn privacy chunk ownership",
+            f"exact file for chunk {canonical_chunk_id!r} is missing",
+        )
+    if not raw_paths:
+        _record_error(
+            errors,
+            "turn privacy raw ownership",
+            f"exact raw-log pointer for chunk {canonical_chunk_id!r} is missing",
+        )
+
     updated_chunk_paths: list[str] = []
     for path in sorted(chunk_paths, key=str):
         try:
-            _set_exact_turn_privacy_file(path, turn_privacy)
+            if path.is_symlink() or not path.is_file():
+                raise ValueError(f"refusing non-regular chunk file {path}")
+            head = path.read_text(encoding="utf-8")[:8192]
+            if (not _has_conversation_marker(head, cid)
+                    or not _has_chunk_marker(head, canonical_chunk_id)):
+                raise ValueError(
+                    "exact conversation/chunk ownership marker mismatch"
+                )
+            _set_exact_turn_privacy_file(
+                path,
+                turn_privacy,
+                artifact_kind="conversation_chunk",
+                conversation_id=cid,
+                chunk_id=canonical_chunk_id,
+                turn_index=turn_index,
+                previous_turn_privacy=previous_turn_privacy,
+            )
             updated_chunk_paths.append(str(path))
         except Exception as exc:
             _record_error(errors, f"turn privacy chunk {path}", exc)
 
     raw_updated = 0
     raw_pattern = re.compile(
-        rf"(?m)^(<!--\s*pair\s+{turn_index:03d}\s*\|\s*[^|>]+?)"
-        r"(?:\s*\|\s*privacy:\s*(?:standard|private|stealth))?\s*-->$"
+        rf"(?m)^([ ]{{0,3}}<!--[ \t]*pair[ \t]+{turn_index:03d}"
+        r"[ \t]*\|[ \t]*[^|>]+?)"
+        r"(?:[ \t]*\|[ \t]*privacy[ \t]*:[ \t]*"
+        r"(?:standard|private|stealth))?[ \t]*-->[ \t]*$"
     )
     for path in sorted(raw_paths, key=str):
         try:
             if path.is_symlink() or not path.is_file():
                 raise ValueError(f"refusing non-regular raw log {path}")
             text = path.read_text(encoding="utf-8")
-            replacement, count = raw_pattern.subn(
-                rf"\1 | privacy: {turn_privacy} -->", text, count=1,
+            _require_raw_log_header_authority(
+                text,
+                conversation_id=cid,
+                expected_tag=canonical_conversation_tag,
+                require_owner=False,
             )
-            if count:
-                _atomic_write_text(path, replacement)
-                raw_updated += 1
+            replacement, count = raw_pattern.subn(
+                lambda match: (
+                    f"{match.group(1)} | privacy: {turn_privacy} -->"
+                ),
+                text,
+            )
+            if count != 1:
+                raise ValueError(
+                    f"expected one exact pair marker, found {count}"
+                )
+            _atomic_write_text(path, replacement)
+            raw_updated += 1
         except Exception as exc:
             _record_error(errors, f"turn privacy raw {path}", exc)
 
@@ -2025,19 +2658,62 @@ def _update_conversation_turn_privacy_unlocked(
     for root in _runtime_derivative_roots(vault_root):
         for path in _iter_regular_markdown(root, errors=errors) or ():
             try:
-                head = path.read_text(encoding="utf-8")[:8192]
-            except OSError:
+                text = path.read_text(encoding="utf-8")
+            except OSError as exc:
+                _record_error(errors, f"turn privacy derivative {path}", exc)
                 continue
-            if (_frontmatter_value(head, "artifact_kind")
-                    == "conversation_runtime_derivative"
-                    and _frontmatter_value(head, "managed_by") == "ora"
-                    and _frontmatter_value(head, "source_chunk_id")
-                    in selected_chunk_ids):
-                derivative_paths.append(path)
+            try:
+                entries = _frontmatter_mapping_entries(text)
+                claims_source = _frontmatter_has_scalar_claim(
+                    entries, "source_chunk_id", canonical_chunk_id,
+                )
+            except ValueError as exc:
+                if canonical_chunk_id in _frontmatter_discovery_scalar_claims(
+                    text, "source_chunk_id",
+                ):
+                    _record_error(
+                        errors,
+                        f"ambiguous runtime derivative {path}",
+                        f"{exc}; retained",
+                    )
+                continue
+            if not claims_source:
+                continue
+            try:
+                owner = _runtime_derivative_markdown_authority(text)
+            except ValueError as exc:
+                _record_error(
+                    errors,
+                    f"ambiguous runtime derivative {path}",
+                    f"{exc}; retained",
+                )
+                continue
+            if (
+                owner[0] != previous_turn_privacy
+                or not _same_conversation(owner[1], cid)
+                or owner[2] != canonical_chunk_id
+                or owner[3] != turn_index
+            ):
+                _record_error(
+                    errors,
+                    f"ambiguous runtime derivative {path}",
+                    "matching source_chunk_id lacks the full canonical "
+                    "conversation/chunk/turn/privacy owner tuple; retained",
+                )
+                continue
+            derivative_paths.append(path)
     derivative_files: list[str] = []
     for path in derivative_paths:
         try:
-            _set_exact_turn_privacy_file(path, turn_privacy)
+            _set_exact_turn_privacy_file(
+                path,
+                turn_privacy,
+                artifact_kind="conversation_runtime_derivative",
+                conversation_id=cid,
+                chunk_id=canonical_chunk_id,
+                turn_index=turn_index,
+                previous_turn_privacy=previous_turn_privacy,
+            )
             derivative_files.append(str(path))
         except Exception as exc:
             _record_error(errors, f"turn privacy derivative {path}", exc)
@@ -2057,10 +2733,50 @@ def _update_conversation_turn_privacy_unlocked(
         for chunk_id in selected_chunk_ids:
             try:
                 result = current.get(where={"source_chunk_id": chunk_id})
-                for row_id, meta in zip(
-                    result.get("ids") or [], result.get("metadatas") or [],
-                ):
-                    if not isinstance(meta, dict):
+                row_ids = result.get("ids") or []
+                metadatas = result.get("metadatas") or []
+                if len(row_ids) != len(metadatas):
+                    _record_error(
+                        errors,
+                        f"turn privacy derivative index {physical_name}",
+                        f"returned {len(row_ids)} ids but "
+                        f"{len(metadatas)} metadata rows",
+                    )
+                for row_id, meta in zip(row_ids, metadatas):
+                    source_file = (
+                        meta.get("source_file")
+                        if isinstance(meta, dict) else None
+                    )
+                    source_chunk = (
+                        meta.get("source_chunk_id")
+                        if isinstance(meta, dict) else None
+                    )
+                    source_turn = (
+                        meta.get("source_turn_index")
+                        if isinstance(meta, dict) else None
+                    )
+                    if (not isinstance(meta, dict)
+                            or meta.get("artifact_kind")
+                            != "conversation_runtime_derivative"
+                            or meta.get("managed_by") != "ora"
+                            or not isinstance(source_file, str)
+                            or not source_file.strip()
+                            or source_file != source_file.strip()
+                            or not _same_conversation(source_file, cid)
+                            or not isinstance(source_chunk, str)
+                            or not source_chunk.strip()
+                            or source_chunk != source_chunk.strip()
+                            or source_chunk != canonical_chunk_id
+                            or isinstance(source_turn, bool)
+                            or not isinstance(source_turn, int)
+                            or source_turn != turn_index):
+                        _record_error(
+                            errors,
+                            f"ambiguous runtime knowledge row "
+                            f"{physical_name} {row_id}",
+                            "matching source_chunk_id lacks the full canonical "
+                            "conversation/chunk/turn owner tuple; retained",
+                        )
                         continue
                     replacement = _metadata_with_private_tag(
                         meta, turn_privacy == "private",
@@ -2070,6 +2786,29 @@ def _update_conversation_turn_privacy_unlocked(
                     derivative_rows += 1
             except Exception as exc:
                 _record_error(errors, f"turn privacy derivative index {physical_name}", exc)
+
+    daily_notes: dict[str, Any] = {}
+    if turn_privacy == "private":
+        try:
+            from orchestrator.tools.daily_note import (
+                reconcile_conversation_summaries,
+            )
+            daily_notes = reconcile_conversation_summaries(
+                cid,
+                action="refresh_privacy",
+                daily_notes_dir=(
+                    Path(vault_root) / "Daily Notes"
+                    if vault_root is not None else None
+                ),
+                conversations_dir=cdir,
+                sessions_dir=sroot,
+                source_chunk_ids=set(selected_chunk_ids),
+                previous_turn_privacy=previous_turn_privacy,
+            )
+            for error in daily_notes.get("errors") or []:
+                _record_error(errors, "daily-note turn privacy", error)
+        except Exception as exc:
+            _record_error(errors, "daily-note turn privacy", exc)
 
     if turn_privacy == "private" and not errors:
         update_envelope()
@@ -2095,6 +2834,7 @@ def _update_conversation_turn_privacy_unlocked(
         "runtime_derivative_files": derivative_files,
         "runtime_review_records": review_records,
         "runtime_knowledge_records": derivative_rows,
+        "daily_notes": daily_notes,
         "errors": errors,
     }
 
@@ -2153,6 +2893,8 @@ def _update_conversation_privacy_tag_unlocked(
     previous_tag = get_conversation_tag(cid, sessions_root=sessions_root)
     if previous_tag == "stealth":
         raise PermissionError("Off Record is creation-only and cannot be retagged")
+    if previous_tag not in {"", "private"}:
+        raise ValueError("canonical Dialogue privacy authority is unavailable")
 
     sroot = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
     cdir = Path(conversations_dir) if conversations_dir else _DEFAULT_CONVERSATIONS_DIR
@@ -2300,7 +3042,7 @@ def _update_conversation_privacy_tag_unlocked(
         _record_error(errors, "privacy visual emission log", exc)
 
     raw_headers_updated = _update_raw_log_privacy_headers(
-        craw, cid, tag == "private", errors,
+        craw, cid, tag == "private", previous_tag, errors,
     )
 
     daily_notes: dict[str, Any] = {}

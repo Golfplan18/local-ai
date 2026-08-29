@@ -31,6 +31,7 @@ import io
 import json
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -577,6 +578,308 @@ class PipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         # image_path is still on the extra_context that reaches the streamer.
         self.assertIn("image_path", captured["extra_context"])
+
+    def test_direct_uses_selected_profile_and_withholds_text_only_images(self) -> None:
+        import boot as boot_module
+
+        endpoint = {
+            "name": "text-only", "id": "text-only", "type": "api",
+            "service": "openrouter", "model": "vendor/text-only",
+            "vision_capable": False, "context_window": 32_000,
+        }
+        risk_gate = mock.MagicMock()
+        risk_gate.now_ts.return_value = 1.0
+        risk_gate.strip_risk_prefix.return_value = ("describe", None)
+        risk_gate.assign_tier.return_value = {"risk_tier": "light"}
+        risk_gate.evaluate_hold.return_value = (None, None)
+        images = [{"name": "diagram.png", "mime": "image/png", "base64": "AA=="}]
+        context = {}
+        prepared_paths = []
+
+        def fake_image_route(context_pkg, requested_model=None, **_kwargs):
+            prepared_path = context_pkg.get("image_path")
+            self.assertTrue(prepared_path)
+            self.assertTrue(Path(prepared_path).is_file())
+            prepared_paths.append(prepared_path)
+            context_pkg["vision_extraction_result"] = {
+                "entities": [{
+                    "id": "chart", "position": [0.5, 0.5],
+                    "label": "Quarterly revenue chart",
+                }],
+            }
+            context_pkg["vision_extraction_meta"] = {
+                "extractor_model": "vision-reader", "confidence": 0.9,
+            }
+            return requested_model, context_pkg
+
+        with (
+            mock.patch.object(self.server, "load_config", return_value={}),
+            mock.patch.object(self.server, "get_endpoint", return_value=endpoint)
+            as get_endpoint,
+            mock.patch.object(self.server, "_boot_context_api", return_value=boot_module),
+            mock.patch.object(boot_module, "route_for_image_input",
+                              side_effect=fake_image_route),
+            mock.patch.object(boot_module, "get_context_coverage", return_value={}),
+            mock.patch.object(self.server, "_direct_system_prompt", return_value="system"),
+            mock.patch.object(self.server, "set_permission_mode"),
+            mock.patch.object(self.server, "call_model", return_value="ok")
+            as call_model,
+            mock.patch("boot._run_visual_hook", return_value="ok"),
+            mock.patch.dict(sys.modules, {"risk_gate": risk_gate}),
+        ):
+            chunks = list(self.server._direct_stream_impl(
+                "describe", [], images=images, extra_context=context,
+                config_name="publisher-exact",
+            ))
+
+        get_endpoint.assert_called_once_with({}, config_name="publisher-exact")
+        self.assertIsNone(call_model.call_args.kwargs["images"])
+        sent_messages = call_model.call_args.args[0]
+        self.assertIn("=== VISION EXTRACTION ===", sent_messages[-1]["content"])
+        self.assertIn("Quarterly revenue chart", sent_messages[-1]["content"])
+        self.assertTrue(prepared_paths)
+        self.assertFalse(Path(prepared_paths[0]).exists())
+        self.assertNotIn("image_path", context)
+        self.assertTrue(any('"text": "ok"' in chunk for chunk in chunks))
+
+    def test_direct_persistence_keeps_selected_profile_identity(self) -> None:
+        selected = {
+            "name": "publisher-exact-endpoint",
+            "id": "publisher-exact-endpoint",
+            "type": "api",
+        }
+        default = {
+            "name": "default-endpoint",
+            "id": "default-endpoint",
+            "type": "api",
+        }
+        config = {}
+        panel_id = "profile-persistence"
+        captured_add = {}
+
+        def resolve_endpoint(_config, config_name=None):
+            return selected if config_name == "publisher-exact" else default
+
+        def fake_stream(*_args, **kwargs):
+            self.assertEqual(kwargs.get("config_name"), "publisher-exact")
+            yield self.server._sse("response", text="selected profile answer")
+
+        def fake_metadata(_user, _answer, _date, _panel, model_id, _pair):
+            return f"Retrieval header for model {model_id}.", ["routing"]
+
+        class FakeCollection:
+            def add(self, **kwargs):
+                captured_add.update(kwargs)
+
+        dispatch = mock.Mock(
+            effective_input="persist selected profile",
+            use_pipeline=False,
+            output_target="screen",
+            style_was_set=False,
+            style_id="",
+            risk_override=None,
+        )
+        history_state = {
+            "source": "test",
+            "envelope_exists": False,
+            "local_message_count": 0,
+            "local_turn_count": 0,
+            "first_user_input": "",
+        }
+        chromadb_stub = mock.Mock()
+        chromadb_stub.PersistentClient.return_value = object()
+
+        self.server._session_data.pop(panel_id, None)
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                raw_dir = Path(td) / "raw"
+                chunk_dir = Path(td) / "chunks"
+                with (
+                    mock.patch.object(self.server, "CONVERSATIONS_RAW", str(raw_dir)),
+                    mock.patch.object(self.server, "CONVERSATIONS_DIR", str(chunk_dir)),
+                    mock.patch.object(self.server, "load_config", return_value=config),
+                    mock.patch.object(
+                        self.server, "get_endpoint", side_effect=resolve_endpoint,
+                    ) as get_endpoint,
+                    mock.patch.object(
+                        self.server, "effective_framework_dispatch",
+                        return_value=dispatch,
+                    ),
+                    mock.patch.object(
+                        self.server, "_apply_project_model_locks",
+                        side_effect=lambda context: context,
+                    ),
+                    mock.patch.object(
+                        self.server, "_authoritative_dialogue_history",
+                        return_value=([], history_state),
+                    ),
+                    mock.patch.object(
+                        self.server, "_preflight_framework_turn", return_value=None,
+                    ),
+                    mock.patch.object(
+                        self.server, "agentic_loop_stream", side_effect=fake_stream,
+                    ),
+                    mock.patch.object(
+                        self.server, "_generate_chunk_metadata",
+                        side_effect=fake_metadata,
+                    ),
+                    mock.patch.object(self.server, "_nomic_embed", return_value=[0.1]),
+                    mock.patch.object(
+                        self.server, "_persist_turn_spatial_state_unlocked",
+                        return_value=True,
+                    ),
+                    mock.patch.object(self.server, "RUNTIME_PIPELINE_AVAILABLE", False),
+                    mock.patch(
+                        "orchestrator.embedding.get_or_create_collection",
+                        return_value=FakeCollection(),
+                    ),
+                    mock.patch.dict(sys.modules, {"chromadb": chromadb_stub}),
+                ):
+                    result = self.server._invoke_pipeline_unlocked(
+                        "persist selected profile", [], panel_id, True,
+                        output_destination=str(chunk_dir),
+                        config_name="publisher-exact",
+                    )
+
+                self.assertEqual(json.loads(result)["status"], "ok")
+                get_endpoint.assert_called_once_with(
+                    config, config_name="publisher-exact",
+                )
+                raw_text = next(raw_dir.glob("*.md")).read_text()
+                chunk_text = next(chunk_dir.glob("*.md")).read_text()
+                self.assertIn("model: publisher-exact-endpoint", raw_text)
+                self.assertNotIn("model: default-endpoint", raw_text)
+                self.assertIn(
+                    "Retrieval header for model publisher-exact-endpoint.",
+                    chunk_text,
+                )
+                metadata = captured_add["metadatas"][0]
+                self.assertEqual(metadata["model_id"], "publisher-exact-endpoint")
+                self.assertEqual(metadata["model_used"], "publisher-exact-endpoint")
+                self.assertIn(
+                    "Retrieval header for model publisher-exact-endpoint.",
+                    captured_add["documents"][0],
+                )
+        finally:
+            self.server._session_data.pop(panel_id, None)
+            identity = self.server._conversation_storage_identity(panel_id)
+            self.server._conversation_creation_tags.pop(identity, None)
+
+    def test_clarification_generation_keeps_selected_profile(self) -> None:
+        step1 = {
+            "triage_tier": 2,
+            "cleaned_prompt": "Need help",
+            "mode": "simple",
+        }
+        endpoint = {"name": "selected", "type": "api"}
+        with (
+            mock.patch.object(self.server, "get_slot_endpoint", return_value=endpoint)
+            as get_slot,
+            mock.patch.object(self.server, "call_model", return_value="1. Which outcome?"),
+        ):
+            questions = self.server._generate_clarification_questions(
+                step1, {}, config_name="publisher-exact")
+
+        self.assertEqual(questions, ["Which outcome?"])
+        get_slot.assert_called_once_with(
+            {}, "step1_cleanup", config_name="publisher-exact")
+
+    def test_clarification_precheck_uses_selected_profile(self) -> None:
+        endpoint = {"name": "selected", "type": "api"}
+        step1 = {
+            "triage_tier": 2,
+            "cleaned_prompt": "Need help",
+            "mode": "simple",
+            "pre_routing": {},
+            "classification_confidence": "",
+            "detected_invocation": "",
+        }
+        boot_api = mock.MagicMock()
+        risk_gate = mock.MagicMock()
+        risk_gate.handle_risk_command.return_value = None
+        risk_gate.is_task_gate_continuation.return_value = None
+        risk_gate.strip_risk_prefix.return_value = ("Need help", None)
+
+        def selected_only(_config, config_name=None):
+            return endpoint if config_name == "publisher-exact" else None
+
+        turn_state = {
+            "trace_dir": None, "kind": "unknown", "status": None,
+            "mode": None, "gear": None, "parent_ref": None,
+        }
+        try:
+            with (
+                mock.patch.object(self.server, "_begin_visual_outcome"),
+                mock.patch.object(self.server, "_boot_context_api", return_value=boot_api),
+                mock.patch.object(self.server, "load_config", return_value={}),
+                mock.patch.object(self.server, "get_endpoint", side_effect=selected_only)
+                as get_endpoint,
+                mock.patch.object(self.server, "run_step1_cleanup", return_value=step1),
+                mock.patch.object(self.server, "compare_intent_with_mode", return_value={}),
+                mock.patch.object(
+                    self.server, "_generate_clarification_questions",
+                    return_value=["Which outcome?"],
+                ) as generate_questions,
+                mock.patch("boot.PIPELINE_TRACE_AVAILABLE", False),
+                mock.patch.dict(sys.modules, {"risk_gate": risk_gate}),
+            ):
+                chunks = list(self.server._pipeline_stream_impl(
+                    "Need help", [], panel_id="profile-clarification",
+                    config_name="publisher-exact", turn_state=turn_state,
+                ))
+        finally:
+            self.server._pending_clarification.pop("profile-clarification", None)
+
+        get_endpoint.assert_called_once_with({}, config_name="publisher-exact")
+        generate_questions.assert_called_once_with(
+            step1, {}, config_name="publisher-exact",
+        )
+        self.assertTrue(any('"type": "clarification_needed"' in chunk
+                            for chunk in chunks))
+
+    def test_trace_debug_precheck_uses_selected_profile(self) -> None:
+        import trace_debug
+
+        endpoint = {"name": "selected", "type": "api"}
+        boot_api = mock.MagicMock()
+        risk_gate = mock.MagicMock()
+        risk_gate.handle_risk_command.return_value = None
+        risk_gate.is_task_gate_continuation.return_value = None
+        risk_gate.strip_risk_prefix.return_value = ("debug", None)
+
+        def selected_only(_config, config_name=None):
+            return endpoint if config_name == "publisher-exact" else None
+
+        turn_state = {
+            "trace_dir": None, "kind": "unknown", "status": None,
+            "mode": None, "gear": None, "parent_ref": None,
+        }
+        with (
+            mock.patch.object(self.server, "_begin_visual_outcome"),
+            mock.patch.object(self.server, "_boot_context_api", return_value=boot_api),
+            mock.patch.object(self.server, "load_config", return_value={}),
+            mock.patch.object(self.server, "get_endpoint", side_effect=selected_only)
+            as get_endpoint,
+            mock.patch.object(trace_debug, "build_debug_prompt",
+                              return_value=("debug prompt", {})),
+            mock.patch.object(trace_debug, "build_framework_command",
+                              return_value="/framework p-debug debug prompt"),
+            mock.patch.object(trace_debug, "record_diagnosis_learning"),
+            mock.patch("milestone_executor.run_framework_command",
+                       return_value="debug complete"),
+            mock.patch("boot._run_visual_hook", return_value="debug complete"),
+            mock.patch("boot.PIPELINE_TRACE_AVAILABLE", False),
+            mock.patch.dict(sys.modules, {"risk_gate": risk_gate}),
+        ):
+            chunks = list(self.server._pipeline_stream_impl(
+                "debug", [], panel_id="profile-trace-debug",
+                extra_context={"trace_debug": {"trace_ref": "conv/turn"}},
+                config_name="publisher-exact", turn_state=turn_state,
+            ))
+
+        get_endpoint.assert_called_once_with({}, config_name="publisher-exact")
+        self.assertTrue(any('"text": "debug complete"' in chunk
+                            for chunk in chunks))
 
 
 # ---------------------------------------------------------------------------

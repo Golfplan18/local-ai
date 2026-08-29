@@ -10,8 +10,9 @@
  * Markdown is canonical: "Save to Vault" writes a markdown note via POST
  * /api/export — into the active project's folder when one is set, and at the
  * vault root for Commons. Word and PDF land in ~/Documents/Ora Exports/.
- * The current output's raw markdown comes from
- * window.OraConversation.getCurrentTurn().
+ * The current output request carries only the exact owner tuple emitted with
+ * window.OraConversation.getCurrentTurn(). The server re-reads the canonical
+ * exchange; browser-rendered markdown is never export authority.
  */
 (() => {
   const mount = () => {
@@ -139,33 +140,52 @@
     }).catch(() => {});
   };
 
-  const firstHeading = (md) => {
-    for (const line of (md || '').split('\n')) {
-      const s = line.trim().replace(/^#+\s*/, '').trim();
-      if (s) return s.slice(0, 80);
-    }
-    return '';
+  const currentOutputAuthority = (conv) => {
+    const turn = conv && typeof conv.getCurrentTurn === 'function'
+      ? conv.getCurrentTurn() : null;
+    const user = turn && turn.user;
+    const assistant = turn && turn.assistant;
+    const conversationId = conv && typeof conv.getActiveConversationId === 'function'
+      ? conv.getActiveConversationId() : '';
+    if (!user || !assistant || !conversationId) return null;
+    const owner = user._ora_history_owner;
+    const ownerTurn = user._ora_history_turn_index;
+    const chunkId = user.chunk_id;
+    const privacy = user.turn_privacy;
+    if (typeof owner !== 'string' || !owner.trim()
+        || assistant._ora_history_owner !== owner
+        || !Number.isInteger(ownerTurn) || ownerTurn < 1
+        || assistant._ora_history_turn_index !== ownerTurn
+        || typeof chunkId !== 'string' || !chunkId.trim()
+        || assistant.chunk_id !== chunkId
+        || !['standard', 'private', 'stealth'].includes(privacy)
+        || assistant.turn_privacy !== privacy) return null;
+    return {
+      conversation_id: conversationId,
+      source_conversation_id: owner,
+      source_turn_index: ownerTurn,
+      source_chunk_id: chunkId,
+      turn_privacy: privacy,
+    };
   };
 
   async function runExport(action, setStatus) {
     const conv = window.OraConversation;
     if (action === 'output') {
-      const turn = conv && typeof conv.getCurrentTurn === 'function' ? conv.getCurrentTurn() : null;
-      const content = turn && turn.assistant ? (turn.assistant.content || '') : '';
-      if (!content.trim()) { setStatus('Nothing to save in this output.'); return; }
+      const authority = currentOutputAuthority(conv);
+      if (!authority) { setStatus('This output has no verified turn authority.'); return; }
       setStatus('Saving…');
-      await postExport({ scope: 'current_output', content, title: firstHeading(content) }, setStatus);
+      await postExport({ scope: 'current_output', ...authority }, setStatus);
     } else if (action === 'conversation') {
       const cid = conv && typeof conv.getActiveConversationId === 'function' ? conv.getActiveConversationId() : null;
       if (!cid) { setStatus('No Dialogue to save.'); return; }
       setStatus('Saving Dialogue…');
       await postExport({ scope: 'full_conversation', conversation_id: cid }, setStatus);
     } else if (action === 'docx' || action === 'pdf') {
-      const turn = conv && typeof conv.getCurrentTurn === 'function' ? conv.getCurrentTurn() : null;
-      const content = turn && turn.assistant ? (turn.assistant.content || '') : '';
-      if (!content.trim()) { setStatus('Nothing to export in this output.'); return; }
+      const authority = currentOutputAuthority(conv);
+      if (!authority) { setStatus('This output has no verified turn authority.'); return; }
       setStatus('Rendering ' + action.toUpperCase() + '…');
-      await postExport({ scope: 'current_output', format: action, content, title: firstHeading(content) }, setStatus);
+      await postExport({ scope: 'current_output', format: action, ...authority }, setStatus);
     }
   }
 

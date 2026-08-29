@@ -138,6 +138,7 @@ _SIDECAR_GITIGNORE_PATTERN = "*.fig-*.svg"
 
 # Used by filename sanitization. Keeps ASCII alphanumerics and hyphen.
 _SLUG_KEEP = re.compile(r"[^a-z0-9]+")
+_SOURCE_FREE_EXPORT_FALLBACK_TITLE = "Dialogue export"
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +421,153 @@ def _load_conversation(
         f"Looked under {sessions_root}/{conversation_id}/conversation.json "
         f"and {raw_conversations_dir}/*.md (by panel_id)."
     )
+
+
+def _authenticate_full_dialogue_exchanges(
+    conversation_id: str,
+    messages: list[dict[str, Any]],
+    exchanges: list[tuple[int, dict[str, Any], int, dict[str, Any], str | None]],
+    *,
+    sessions_root: Path,
+    snapshot_tag: Any,
+) -> tuple[set[str], bool]:
+    """Bind every effective exchange to its canonical local owner tuple."""
+    try:
+        from orchestrator.conversation_memory import (
+            complete_exchange_privacy,
+            displayed_exchange_owner,
+            iter_complete_exchanges,
+            read_conversation_history_envelope,
+        )
+    except Exception as exc:
+        raise ValueError(
+            f"Full Dialogue export authority is unavailable: {exc}"
+        ) from exc
+
+    target = read_conversation_history_envelope(
+        conversation_id, sessions_root=sessions_root,
+    )
+    target_id = target.get("conversation_id") if isinstance(target, dict) else None
+    if (not isinstance(target_id, str)
+            or target_id.strip().casefold() != conversation_id.casefold()):
+        raise ValueError(
+            "Full Dialogue export refused: canonical target identity is unavailable"
+        )
+    target_tag = target.get("tag")
+    if target_tag not in {"", "private", "stealth"}:
+        raise ValueError(
+            "Full Dialogue export refused: canonical target privacy is unknown"
+        )
+    if snapshot_tag != target_tag:
+        raise ValueError(
+            "Full Dialogue export refused: canonical target privacy changed"
+        )
+
+    owner_cache: dict[str, dict[str, Any]] = {
+        target_id.strip().casefold(): target,
+    }
+    authenticated_privacies: set[str] = set()
+    owner_stealth_identities: list[bool] = []
+    for displayed_index, exchange in enumerate(exchanges):
+        user_index, displayed_user, assistant_index, displayed_assistant, privacy = exchange
+        owner = displayed_exchange_owner(messages, displayed_index)
+        if not isinstance(owner, dict):
+            raise ValueError(
+                "Full Dialogue export refused: an exchange owner is missing or ambiguous"
+            )
+        owner_id = owner.get("conversation_id")
+        owner_turn = owner.get("turn_index")
+        owner_chunk = owner.get("chunk_id")
+        if (not isinstance(owner_id, str) or not owner_id.strip()
+                or owner_id != owner_id.strip()
+                or isinstance(owner_turn, bool)
+                or not isinstance(owner_turn, int) or owner_turn < 1
+                or not isinstance(owner_chunk, str) or not owner_chunk.strip()
+                or owner_chunk != owner_chunk.strip()
+                or owner.get("turn_privacy") != privacy):
+            raise ValueError(
+                "Full Dialogue export refused: an exchange owner tuple is incomplete"
+            )
+
+        identity = owner_id.casefold()
+        envelope = owner_cache.get(identity)
+        if envelope is None:
+            envelope = read_conversation_history_envelope(
+                owner_id, sessions_root=sessions_root,
+            )
+            if isinstance(envelope, dict):
+                owner_cache[identity] = envelope
+        canonical_id = (
+            envelope.get("conversation_id")
+            if isinstance(envelope, dict) else None
+        )
+        if (not isinstance(canonical_id, str)
+                or canonical_id.strip().casefold() != identity):
+            raise ValueError(
+                "Full Dialogue export refused: a canonical exchange owner is unavailable"
+            )
+        owner_tag = envelope.get("tag")
+        if owner_tag not in {"", "private", "stealth"}:
+            raise ValueError(
+                "Full Dialogue export refused: canonical owner privacy is unknown"
+            )
+        local_exchanges = iter_complete_exchanges(envelope.get("messages"))
+        if owner_turn > len(local_exchanges):
+            raise ValueError(
+                "Full Dialogue export refused: a canonical exchange is unavailable"
+            )
+        (
+            canonical_user_index,
+            canonical_user,
+            canonical_assistant_index,
+            canonical_assistant,
+            canonical_privacy,
+        ) = local_exchanges[owner_turn - 1]
+        if canonical_privacy is None or canonical_privacy != privacy:
+            raise ValueError(
+                "Full Dialogue export refused: canonical exchange privacy is mismatched"
+            )
+        if ((owner_tag == "stealth") != (canonical_privacy == "stealth")):
+            raise ValueError(
+                "Full Dialogue export refused: canonical exchange privacy "
+                "conflicts with its owner identity"
+            )
+        if (
+            displayed_user.get("_ora_history_owner") != owner_id
+            or displayed_assistant.get("_ora_history_owner") != owner_id
+            or displayed_user.get("_ora_history_turn_index") != owner_turn
+            or displayed_assistant.get("_ora_history_turn_index") != owner_turn
+            or displayed_user.get("_ora_history_message_index")
+            != canonical_user_index
+            or displayed_assistant.get("_ora_history_message_index")
+            != canonical_assistant_index
+            or displayed_user.get("chunk_id") != owner_chunk
+            or displayed_assistant.get("chunk_id") != owner_chunk
+            or canonical_user.get("turn_index") != owner_turn
+            or canonical_assistant.get("turn_index") != owner_turn
+            or canonical_user.get("chunk_id") != owner_chunk
+            or canonical_assistant.get("chunk_id") != owner_chunk
+            or complete_exchange_privacy(
+                canonical_user, canonical_assistant,
+            ) != canonical_privacy
+            or canonical_user.get("content") != displayed_user.get("content")
+            or canonical_assistant.get("content")
+            != displayed_assistant.get("content")
+            or user_index >= assistant_index
+        ):
+            raise ValueError(
+                "Full Dialogue export refused: canonical exchange owner tuple is mismatched"
+            )
+        authenticated_privacies.add(canonical_privacy)
+        owner_stealth_identities.append(owner_tag == "stealth")
+
+    target_is_stealth = target_tag == "stealth"
+    if not target_is_stealth and any(owner_stealth_identities):
+        raise ValueError(
+            "Full Dialogue export refused: a non-Stealth target includes "
+            "a Stealth-owned canonical exchange"
+        )
+    return authenticated_privacies, target_is_stealth
 
 
 # ---------------------------------------------------------------------------
@@ -878,18 +1026,33 @@ def export_session_to_vault(
         raise ValueError(
             "Full Dialogue export refused: an exchange is incomplete"
         )
-    export_privacies = {
-        privacy for *_pair, privacy in exchanges if privacy is not None
-    }
-    stealth_export = (
-        convo.get("tag") == "stealth"
-        or (bool(export_privacies) and export_privacies == {"stealth"})
+    export_privacies, stealth_export = _authenticate_full_dialogue_exchanges(
+        conversation_id,
+        messages,
+        exchanges,
+        sessions_root=sessions_root,
+        snapshot_tag=convo.get("tag"),
     )
 
     # Derive the session title + filename stem.
-    first_user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
-    resolved_title = session_title or convo.get("session_title") or (first_user[:80].strip() if first_user else "") or f"Ora session {conversation_id[:8]}"
-    stem = _derive_session_name(session_title or convo.get("session_title"), conversation_id, first_user)
+    first_user = next(
+        (m.get("content", "") for m in messages if m.get("role") == "user"),
+        "",
+    )
+    source_title = session_title or convo.get("session_title")
+    display_title = source_title or (
+        first_user[:80].strip() if first_user else ""
+    )
+    if stealth_export and not _slugify(display_title):
+        resolved_title = _SOURCE_FREE_EXPORT_FALLBACK_TITLE
+        stem = _derive_session_name(
+            _SOURCE_FREE_EXPORT_FALLBACK_TITLE, "", None,
+        )
+    else:
+        resolved_title = display_title or f"Ora session {conversation_id[:8]}"
+        stem = _derive_session_name(
+            source_title, conversation_id, first_user,
+        )
 
     # ── Prepare output directory ────────────────────────────────────────────
     sessions_dir = vault_root / sessions_subdir

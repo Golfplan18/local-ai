@@ -201,17 +201,13 @@ def dispatch_paths(paths: set[str]) -> dict:
     if vault_changes:
         try:
             import ped_watcher
-            events = ped_watcher.sweep()
-            for event in events:
-                emit(event)
+            events = ped_watcher.sweep(emit_event=emit)
             summary["ped_events"] = len(events)
         except Exception as exc:
             summary["errors"].append(f"ped watcher: {exc}")
         try:
             import corpus_watcher
-            events = corpus_watcher.sweep()
-            for event in events:
-                emit(event)
+            events = corpus_watcher.sweep(emit_event=emit)
             summary["corpus_events"] = len(events)
         except Exception as exc:
             summary["errors"].append(f"corpus watcher: {exc}")
@@ -293,11 +289,6 @@ def dispatch_paths(paths: set[str]) -> dict:
 def run(stop_event: threading.Event) -> None:
     """Block on OS notifications and dispatch coalesced exact paths."""
     from watchfiles import watch
-    from orchestrator.runtime_hygiene import restore_incomplete_events
-
-    restored = restore_incomplete_events()
-    if restored:
-        print(f"[runtime_event_dispatcher] restored interrupted events: {restored}")
     roots = _roots()
     if not roots:
         raise RuntimeError("runtime event dispatcher has no existing watch root")
