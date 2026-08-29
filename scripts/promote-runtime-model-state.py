@@ -70,6 +70,9 @@ def main() -> int:
                 _rp.atomic_write_text(
                     dst, json.dumps(current, indent=2) + "\n", mode=0o644,
                 )
+        elif dst.parent.name == "configurations":
+            with _rp.locked_file(dst):
+                _rp.atomic_write_text(dst, src.read_text(), mode=0o644)
         else:
             shutil.copy2(src, dst)
     print("\nPromoted runtime model state into seed files.")

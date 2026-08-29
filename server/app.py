@@ -19020,13 +19020,6 @@ def configurations_active_toggles():
         body = request.get_json(silent=True) or {}
         from orchestrator import active_configuration as ac
 
-        # Always update global preset state + rebake all four
-        # presets so the toggle's effect is visible on the preset
-        # cards regardless of which configuration is active.
-        ac.set_preset_toggles(body)
-        ac.bake_missing_presets(force=True)
-        global_toggles = ac.get_preset_toggles()
-
         # If the active config is anything OTHER than a canonical
         # preset file (free/budget/speed/premium), also write its
         # per-config toggle state so the in-card display stays in
@@ -19035,13 +19028,23 @@ def configurations_active_toggles():
         # lineage=budget but have their own filename, so the bake
         # to budget.json wouldn't reach them.
         name = ac.get_active_name()
-        per_config_updated = False
+        custom_profile_name = None
         if name not in ac.PRESET_ORDER:
             try:
-                ac.set_toggles(name, body)
-                per_config_updated = True
+                ac.get_toggles(name)
+                custom_profile_name = name
             except FileNotFoundError:
                 pass  # active points to nothing — skip silently
+
+        # Keep the global toggle update, preset rebake, and active-custom
+        # merge in one cross-process transaction. The custom writer nests its
+        # named-profile lock inside the global toggle lock.
+        global_toggles = ac.set_preset_toggles(
+            body,
+            rebake=True,
+            custom_profile_name=custom_profile_name,
+        )
+        per_config_updated = custom_profile_name is not None
 
         # Re-baking writes named profiles after the inventory-triggered Router
         # reload. Invalidate again only after every preset/custom write so the

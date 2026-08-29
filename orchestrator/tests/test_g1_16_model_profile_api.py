@@ -172,21 +172,17 @@ class ModelProfileApiTests(unittest.TestCase):
         with (
             mock.patch.object(
                 ac, 'set_preset_toggles',
-                side_effect=lambda body: (events.append('toggle') or body),
-            ),
-            mock.patch.object(
-                ac, 'bake_missing_presets',
-                side_effect=lambda *a, **k: (events.append('bake') or list(ac.PRESET_ORDER)),
-            ),
-            mock.patch.object(
-                ac, 'get_preset_toggles',
-                return_value={'adversarial_diversity': False,
-                              'vision_only': False, 'min_context_1m': False},
+                side_effect=lambda body, **kwargs: (
+                    events.append(('toggle_transaction', kwargs)) or body
+                ),
             ),
             mock.patch.object(ac, 'get_active_name', return_value='custom'),
             mock.patch.object(
-                ac, 'set_toggles',
-                side_effect=lambda *a, **k: events.append('custom'),
+                ac, 'get_toggles', return_value={
+                    'adversarial_diversity': True,
+                    'vision_only': False,
+                    'min_context_1m': False,
+                },
             ),
             mock.patch.object(
                 server, '_reload_pipeline_router_after_config_change',
@@ -199,7 +195,13 @@ class ModelProfileApiTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(events, ['toggle', 'bake', 'custom', 'reload'])
+        self.assertEqual(events, [
+            ('toggle_transaction', {
+                'rebake': True,
+                'custom_profile_name': 'custom',
+            }),
+            'reload',
+        ])
 
     def test_generic_project_patch_rejects_browser_supplied_locks(self):
         response = self.client.post('/api/projects/example', json={

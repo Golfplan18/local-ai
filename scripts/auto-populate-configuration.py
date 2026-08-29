@@ -63,6 +63,9 @@ CATALOG_PATH = Path(
 )
 PRESETS_PATH = CONFIG_DIR / "configuration-presets.json"
 
+sys.path.insert(0, str(REPO_ROOT / "orchestrator"))
+import runtime_paths as _rp
+
 
 # ─── Algorithm primitives ────────────────────────────────────────────────
 
@@ -1915,9 +1918,10 @@ def main():
 
     CONFIGURATIONS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = CONFIGURATIONS_DIR / f"{args.config_name}.json"
-    with open(out_path, "w") as f:
-        json.dump(config, f, indent=2)
-        f.write("\n")
+    with _rp.locked_file(out_path):
+        _rp.atomic_write_text(
+            out_path, json.dumps(config, indent=2) + "\n", mode=0o644,
+        )
     print(f"[auto-populate] Wrote {out_path}")
     if config["_auto_populate_metadata"]["loosening_log"]:
         print("[auto-populate] Loosening applied:")

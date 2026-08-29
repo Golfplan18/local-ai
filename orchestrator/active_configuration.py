@@ -513,13 +513,14 @@ def set_active_name(name: str) -> None:
             "pick an existing name or create one first"
         )
     with _lock:
-        validate_profile_allocation(_load_config(name))
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        tmp = ACTIVE_POINTER_PATH.with_suffix(".json.tmp")
-        with open(tmp, "w") as f:
-            json.dump({"name": name}, f, indent=2)
-            f.write("\n")
-        os.replace(tmp, ACTIVE_POINTER_PATH)
+        with rp.locked_file(ACTIVE_POINTER_PATH):
+            validate_profile_allocation(_load_config(name))
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            rp.atomic_write_text(
+                ACTIVE_POINTER_PATH,
+                json.dumps({"name": name}, indent=2) + "\n",
+                mode=0o644,
+            )
 
 
 def _runtime_overlay_active() -> bool:
@@ -571,14 +572,15 @@ def _load_config(name: str) -> dict:
         return json.load(f)
 
 
-def _save_config(name: str, config: dict) -> None:
+def _save_config(name: str, config: dict, *, _locked: bool = False) -> None:
     path = _config_path(name, for_write=True)
-    tmp = path.with_suffix(".json.tmp")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(tmp, "w") as f:
-        json.dump(config, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, path)
+    payload = json.dumps(config, indent=2) + "\n"
+    if _locked:
+        rp.atomic_write_text(path, payload, mode=0o644)
+        return
+    with rp.locked_file(path):
+        rp.atomic_write_text(path, payload, mode=0o644)
 
 
 def get_toggles(name: str) -> dict:
@@ -622,7 +624,8 @@ def set_toggles(name: str, toggles: dict) -> dict:
     """
     if not isinstance(toggles, dict):
         raise ValueError("toggles payload must be an object")
-    with _lock:
+    path = _config_path(name, for_write=True)
+    with _lock, rp.locked_file(path):
         config = _load_config(name)
         existing = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
         merged = dict(existing)
@@ -630,7 +633,7 @@ def set_toggles(name: str, toggles: dict) -> dict:
             if key in toggles:
                 merged[key] = bool(toggles[key])
         config["toggles"] = merged
-        _save_config(name, config)
+        _save_config(name, config, _locked=True)
     return get_toggles(name)
 
 
@@ -687,26 +690,64 @@ def get_preset_toggles() -> dict:
                 "min_context_1m": False}
 
 
-def set_preset_toggles(toggles: dict) -> dict:
+def set_preset_toggles(
+    toggles: dict,
+    *,
+    rebake: bool = False,
+    custom_profile_name: str | None = None,
+) -> dict:
     """Persist the global preset toggle state. Partial update OK —
-    either key may be omitted to leave that toggle unchanged."""
+    either key may be omitted to leave that toggle unchanged.
+
+    When ``rebake`` is true, keep the same cross-process toggle lock through
+    the forced preset bake. When ``custom_profile_name`` is supplied, merge
+    the same partial toggle update into that named profile before releasing
+    the global lock. The named-profile writer nests its own lock in the
+    accepted global-toggle -> named-profile order, so overlapping requests
+    cannot leave preset state from one request and custom state from another.
+    """
     if not isinstance(toggles, dict):
         raise ValueError("toggles payload must be an object")
-    with _lock:
+    with _lock, rp.locked_file(PRESET_TOGGLES_PATH):
         current = get_preset_toggles()
         for key in ("adversarial_diversity", "vision_only", "min_context_1m"):
             if key in toggles:
                 current[key] = bool(toggles[key])
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        tmp = PRESET_TOGGLES_PATH.with_suffix(".json.tmp")
-        with open(tmp, "w") as f:
-            json.dump(current, f, indent=2)
-            f.write("\n")
-        os.replace(tmp, PRESET_TOGGLES_PATH)
+        rp.atomic_write_text(
+            PRESET_TOGGLES_PATH,
+            json.dumps(current, indent=2) + "\n",
+            mode=0o644,
+        )
+        if rebake:
+            _bake_missing_presets_locked(force=True)
+        if custom_profile_name is not None:
+            try:
+                set_toggles(custom_profile_name, toggles)
+            except FileNotFoundError:
+                pass
     return current
 
 
 def bake_missing_presets(
+    force: bool = False,
+    *,
+    preset_names: tuple[str, ...] | list[str] | None = None,
+    log: Callable[[str], None] | None = None,
+) -> list:
+    """Bake presets from one toggle snapshot under the toggle sidecar lock.
+
+    Standalone inventory/catalog-triggered bakes share this lock with toggle
+    updates, so an older snapshot cannot finish after a later toggle request
+    and restore stale preset documents.
+    """
+    with _lock, rp.locked_file(PRESET_TOGGLES_PATH):
+        return _bake_missing_presets_locked(
+            force=force, preset_names=preset_names, log=log,
+        )
+
+
+def _bake_missing_presets_locked(
     force: bool = False,
     *,
     preset_names: tuple[str, ...] | list[str] | None = None,
@@ -1026,10 +1067,14 @@ def duplicate_configuration(source_name: str, new_name: str | None = None) -> st
     if new_name is None or not new_name.strip():
         new_name = _next_auto_name()
     new_name = new_name.strip()
-    if _config_path(new_name).exists():
+    target_path = _config_path(new_name, for_write=True)
+    if target_path.exists():
         raise ValueError(f"Model Profile {new_name!r} already exists; "
                          f"pick a different name or delete the existing one")
-    with _lock:
+    with _lock, rp.locked_file(target_path):
+        if target_path.exists():
+            raise ValueError(f"Model Profile {new_name!r} already exists; "
+                             f"pick a different name or delete the existing one")
         with open(source_path) as f:
             source = json.load(f)
         copy = dict(source)
@@ -1042,7 +1087,7 @@ def duplicate_configuration(source_name: str, new_name: str | None = None) -> st
         # output of an auto-populate run and the timestamps would
         # mislead about when picks were last refreshed.
         copy.pop("_auto_populate_metadata", None)
-        _save_config(new_name, copy)
+        _save_config(new_name, copy, _locked=True)
     return new_name
 
 
@@ -1060,9 +1105,12 @@ def create_blank_configuration(new_name: str | None = None) -> str:
     if new_name is None or not new_name.strip():
         new_name = _next_auto_name()
     new_name = new_name.strip()
-    if _config_path(new_name).exists():
+    target_path = _config_path(new_name, for_write=True)
+    if target_path.exists():
         raise ValueError(f"Model Profile {new_name!r} already exists")
-    with _lock:
+    with _lock, rp.locked_file(target_path):
+        if target_path.exists():
+            raise ValueError(f"Model Profile {new_name!r} already exists")
         config = {
             "name": new_name,
             "description": "Custom Model Profile created from the Models pane.",
@@ -1092,7 +1140,7 @@ def create_blank_configuration(new_name: str | None = None) -> str:
                 },
             },
         }
-        _save_config(new_name, config)
+        _save_config(new_name, config, _locked=True)
     return new_name
 
 
@@ -1148,19 +1196,25 @@ def delete_configuration(name: str) -> None:
     path = _config_path(name)
     if not path.exists():
         raise FileNotFoundError(f"no Model Profile named {name!r}")
-    was_active = (name == get_active_name())
-    with _lock:
-        path.unlink()
-    if was_active:
-        # Revert to the Free preset. set_active_name validates that
-        # the target exists, and Free is always baked by
-        # bake_missing_presets on Models-pane open.
-        try:
-            set_active_name("free")
-        except Exception:
-            # Free configuration somehow missing — leave the pointer
-            # in its now-stale state rather than crash the delete.
-            pass
+    with _lock, rp.locked_file(path):
+        if not path.exists():
+            raise FileNotFoundError(f"no Model Profile named {name!r}")
+        with rp.locked_file(ACTIVE_POINTER_PATH):
+            was_active = (name == get_active_name())
+            path.unlink()
+            if was_active:
+                # Free is baked on Models-pane open. Preserve the historical
+                # stale-pointer fallback if it is unexpectedly unavailable.
+                try:
+                    validate_profile_allocation(_load_config("free"))
+                    DATA_DIR.mkdir(parents=True, exist_ok=True)
+                    rp.atomic_write_text(
+                        ACTIVE_POINTER_PATH,
+                        json.dumps({"name": "free"}, indent=2) + "\n",
+                        mode=0o644,
+                    )
+                except Exception:
+                    pass
 
 
 def _next_auto_name() -> str:
@@ -1513,12 +1567,13 @@ def set_visual_substitute(name: str, model_id: str) -> dict:
     if not isinstance(model_id, str) or not model_id.strip():
         raise ValueError("model_id must be a non-empty string")
     model_id = model_id.strip()
-    with _lock:
+    target_path = _config_path(name, for_write=True)
+    with _lock, rp.locked_file(target_path):
         config = _load_config(name)
         cells = config.setdefault("cells", {})
         _walk_and_set_vision_substitute(cells, model_id)
         validate_profile_allocation(config)
-        _save_config(name, config)
+        _save_config(name, config, _locked=True)
     return config
 
 
@@ -1549,7 +1604,8 @@ def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
         raise ValueError("model_id must be a non-empty string")
     model_id = model_id.strip()
 
-    with _lock:
+    target_path = _config_path(name, for_write=True)
+    with _lock, rp.locked_file(target_path):
         config = _load_config(name)
         cells = config.setdefault("cells", {})
         for path in SLOT_LABEL_TO_PATHS[slot_label]:
@@ -1575,7 +1631,7 @@ def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
         if config.get("_incomplete") and _is_baseline_complete(config):
             config.pop("_incomplete", None)
         validate_profile_allocation(config)
-        _save_config(name, config)
+        _save_config(name, config, _locked=True)
     return config
 
 
@@ -1618,7 +1674,8 @@ def set_slot_fallback(name: str, popout_label: str, index: int, model_id: str) -
     model_id = model_id.strip()  # empty → delete
 
     path = POPOUT_LABEL_TO_CELL[popout_label]
-    with _lock:
+    target_path = _config_path(name, for_write=True)
+    with _lock, rp.locked_file(target_path):
         config = _load_config(name)
         cells = config.setdefault("cells", {})
         node = cells
@@ -1647,7 +1704,7 @@ def set_slot_fallback(name: str, popout_label: str, index: int, model_id: str) -
             while fallback and fallback[-1] is None:
                 fallback.pop()
         validate_profile_allocation(config)
-        _save_config(name, config)
+        _save_config(name, config, _locked=True)
     return config
 
 

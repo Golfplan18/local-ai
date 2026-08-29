@@ -289,20 +289,26 @@ def _run(args) -> int:
         print("\n(dry-run — nothing written)")
         return 0
 
-    # The named-configuration rewrites below are a separate R12 transaction
-    # surface and intentionally remain unchanged in this R10 slice.
-    def _atomic(path: Path, text: str):
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(text)
-        os.replace(tmp, path)
-
     _rp.atomic_write_text(
         ROUTING, json.dumps(routing, indent=2), mode=0o644,
     )
-    for p, new in cfg_edits.items():
-        _atomic(p, new)
-    print(f"\nwrote {ROUTING} + {len(cfg_edits)} config file(s)")
+    written_configs = 0
+    for path in _config_files():
+        with _rp.locked_file(path):
+            # A Models-pane or migration save may have completed after the
+            # routing plan was built. Repoint that latest complete document,
+            # not the stale pre-lock snapshot used for the dry-run summary.
+            try:
+                current = path.read_text()
+            except FileNotFoundError:
+                # A supported concurrent delete won the same target lock.
+                continue
+            updated, count = _repoint_text(current, remove_to_canon)
+            if not count:
+                continue
+            _rp.atomic_write_text(path, updated, mode=0o644)
+            written_configs += 1
+    print(f"\nwrote {ROUTING} + {written_configs} config file(s)")
     return 0
 
 
@@ -314,8 +320,9 @@ def main() -> int:
     if args.dry_run:
         return _run(args)
     # Endpoint canonicalization rereads routing state only after the same
-    # sidecar lock every other routing writer uses.  The adjacent named-config
-    # updates remain the serialized R12 follow-on, per the scope boundary.
+    # sidecar lock every other routing writer uses. Named configurations are
+    # then reread and replaced under their own target locks while the routing
+    # transaction remains serialized behind this landed R10 lock.
     with _rp.locked_file(ROUTING):
         return _run(args)
 
