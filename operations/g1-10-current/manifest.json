@@ -24,7 +24,7 @@
     "operations/g1-10-current/macos/vault-cloud-sync.py": "f9b05b15a3998273b292e28c7e58ae8fd1c253e8721d90725e29481e5c50daf9",
     "operations/g1-10-current/macos/vault-derive-sync.sh": "93fc2c711214a1430d6152bb01cebebe7d85de3766f200c331bc54faaf4ab4b4",
     "operations/g1-10-current/macos/vault-event-pipeline.py": "f2b2353d5decc38c849bbae9a53e1a054d94b00cda710f3f222ecf20023d30ee",
-    "operations/g1-10-current/macos/vault-git-sync.py": "946f3b9f2dabe1662a059993702438a0213a62b647a3bff04844386f6ca55a64"
+    "operations/g1-10-current/macos/vault-git-sync.py": "08e0db8b0f89c27aeb2ebd94702057b4bad0bbb740cb9cd6de29df9cfe3f1468"
   },
   "purpose": "G1.10 tracked post-cutover operational source identities",
   "schema_version": 1

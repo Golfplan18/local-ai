@@ -5495,6 +5495,9 @@ def programming_run():
         approved = payload.get("approved") is True
         resume_branch = str(payload.get("resume_branch") or "") or None
         continuation = str(payload.get("continuation") or "")
+        documentation_review = payload.get("documentation_review")
+        if documentation_review is not None and not isinstance(documentation_review, dict):
+            raise ProgrammingError("documentation_review must be an evidence object")
         if not objective or not repository_path or not isinstance(plan, dict):
             raise ProgrammingError("objective, repository_path, and plan are required")
         if not approved:
@@ -5520,6 +5523,7 @@ def programming_run():
                     progress=emit,
                     resume_branch=resume_branch,
                     continuation=continuation,
+                    documentation_review=documentation_review,
                 )
                 events.put({"type": "result", **result})
             except Exception as exc:

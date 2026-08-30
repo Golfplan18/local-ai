@@ -310,6 +310,84 @@ class DcpHookBehaviorTests(DcpHookFixture):
         self.assertEqual(result.returncode, 0)
         self.assertIn("DCP commit hook FAILED", result.stderr)
 
+    def test_post_commit_uses_narrow_audit_and_reports_exact_accepted_states(self):
+        arguments = Path(self.temp.name) / "verifier-arguments.txt"
+        fake_python = Path(self.temp.name) / "accepted-audit-python"
+        write(
+            fake_python,
+            "#!/bin/sh\n"
+            f"printf '%s\\n' \"$@\" > '{arguments}'\n"
+            "printf '%s\\n' 'paired clean=61, paired drifted=0, accepted external=2, audit failures=0'\n"
+            "printf '%s\\n' 'accepted external finding: paired_body_drift:pair:e093'\n"
+            "printf '%s\\n' 'accepted external finding: paired_runtime_missing:pair:video'\n"
+            "printf '%s\\n' 'Queue write: 0 authenticated finding(s) appended; 2 current finding(s); retry-safe.'\n"
+            "exit 0\n",
+            executable=True,
+        )
+        environment = {
+            **os.environ,
+            "ORA_HOME": str(self.roots["ora"]),
+            "ORA_VAULT": str(self.roots["vault"]),
+            "ORA_PYTHON": str(fake_python),
+        }
+
+        result = subprocess.run(
+            ["sh", str(self.roots["ora"] / "scripts/dcp-commit-hook.sh")],
+            cwd=self.roots["ora"],
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(
+            arguments.read_text(encoding="utf-8").splitlines()[1:],
+            [
+                "--check",
+                "framework-pairs-audit",
+                "--verbose",
+                "--enqueue-framework-findings",
+            ],
+        )
+        log = (self.roots["ora"] / "logs/dcp-commit-hook.log").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("exit=0 accepted-external=2", log)
+
+    def test_new_framework_audit_finding_stays_loud_but_fail_open(self):
+        fake_python = Path(self.temp.name) / "new-finding-python"
+        write(
+            fake_python,
+            "#!/bin/sh\n"
+            "printf '%s\\n' 'new or changed framework finding: paired_body_drift:pair:new'\n"
+            "printf '%s\\n' 'Queue write: 1 authenticated finding(s) appended; 3 current finding(s); retry-safe.'\n"
+            "exit 1\n",
+            executable=True,
+        )
+        environment = {
+            **os.environ,
+            "ORA_HOME": str(self.roots["ora"]),
+            "ORA_VAULT": str(self.roots["vault"]),
+            "ORA_PYTHON": str(fake_python),
+        }
+
+        result = subprocess.run(
+            ["sh", str(self.roots["ora"] / "scripts/dcp-commit-hook.sh")],
+            cwd=self.roots["ora"],
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("DCP commit hook audit FAILED", result.stderr)
+        log = (self.roots["ora"] / "logs/dcp-commit-hook.log").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("FAIL", log)
+        self.assertIn("paired_body_drift:pair:new", log)
+
     def test_pre_push_blocks_code_without_or_with_incomplete_context(self):
         self.commit_change("app", "src/feature.ts", "export const value = 1;\n", "Code")
 

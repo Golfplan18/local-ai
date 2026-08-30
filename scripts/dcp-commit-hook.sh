@@ -74,18 +74,24 @@ if [ ! -f "$VERIFY" ]; then
 fi
 
 SHA=$(git rev-parse --short HEAD 2>/dev/null)
-OUT=$("$PYTHON" "$VERIFY" --check framework-pairs --enqueue-framework-findings 2>&1)
+OUT=$("$PYTHON" "$VERIFY" --check framework-pairs-audit --verbose --enqueue-framework-findings 2>&1)
 STATUS=$?
 
-# Exit 1 means findings are open, which is the normal state while drift is
-# queued. Exit 2 is a queue-write failure and is a real problem.
+# The narrow audit classifies only the two byte-exact externally owned states
+# as accepted. Exit 1 therefore means a new, changed, or no-longer-exact
+# finding. Exit 2 covers verifier and queue-write failures. The hook remains
+# fail-open, but both states are real failures and stay loud.
 QLINE=$(printf '%s\n' "$OUT" | grep 'Queue write:' || true)
 CLINE=$(printf '%s\n' "$OUT" | grep 'paired clean=' || true)
-log "run $SHA exit=$STATUS ${CLINE:-no-count} ${QLINE:-no-queue-line}"
+ACOUNT=$(printf '%s\n' "$OUT" | grep -c 'accepted external finding:' || true)
+log "run $SHA exit=$STATUS accepted-external=${ACOUNT:-0} ${CLINE:-no-count} ${QLINE:-no-queue-line}"
 
 if [ "$STATUS" -ge 2 ]; then
     log "ERROR $OUT"
     echo "DCP commit hook FAILED (exit $STATUS) — drift is not being recorded. See $LOG" >&2
+elif [ "$STATUS" -eq 1 ]; then
+    log "FAIL $OUT"
+    echo "DCP commit hook audit FAILED — a framework finding is new, changed, or no longer exact. See $LOG" >&2
 fi
 
 case "$QLINE" in
