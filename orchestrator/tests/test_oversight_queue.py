@@ -6,6 +6,7 @@ Covers:
   - Stable id synthesis from queued_at + event_type + project_nexus
   - add_entry: writes record, applies AI naming (mocked), template fallback
   - rename, mark_engagement, link_discussion, remove_by_id, find_raw_index_by_id
+  - interrupted Paused-queue adds, rewrites, and removals preserve old bytes
   - list_operating: re-eval queue + active elicitations
 """
 from __future__ import annotations
@@ -243,6 +244,125 @@ class TestQueueMutations(unittest.TestCase):
         idx2 = find_raw_index_by_id(e2.id)
         self.assertEqual(idx1, 0)
         self.assertEqual(idx2, 1)
+
+
+# ---------- atomic queue persistence ----------
+
+class TestAtomicPausedQueuePersistence(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="ora-atomic-queue-")
+        self.paths = _patch_paths(self, self.tmp)
+        import redefinition_handler
+        patcher = mock.patch.object(
+            redefinition_handler, "HUMAN_QUEUE_PATH", self.paths["queue"],
+        )
+        patcher.start()
+        self._patches.append(patcher)
+
+    def tearDown(self):
+        for patcher in self._patches:
+            patcher.stop()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _seed_queue(self, record: dict) -> bytes:
+        payload = (json.dumps(record, sort_keys=True) + "\n").encode("utf-8")
+        with open(self.paths["queue"], "wb") as stream:
+            stream.write(payload)
+        return payload
+
+    def _assert_interruption_preserves_old_bytes(
+        self, operation, *, exception_is_swallowed: bool = False,
+    ) -> None:
+        with open(self.paths["queue"], "rb") as stream:
+            before = stream.read()
+
+        import runtime_paths
+        with mock.patch.object(
+            runtime_paths.os, "replace", side_effect=OSError("interrupted before swap"),
+        ):
+            if exception_is_swallowed:
+                self.assertIsNone(operation())
+            else:
+                with self.assertRaisesRegex(OSError, "interrupted before swap"):
+                    operation()
+
+        with open(self.paths["queue"], "rb") as stream:
+            self.assertEqual(stream.read(), before)
+        basename = os.path.basename(self.paths["queue"])
+        leftovers = [
+            name for name in os.listdir(os.path.dirname(self.paths["queue"]))
+            if name.startswith(f".{basename}.") and name.endswith(".tmp")
+        ]
+        self.assertEqual(leftovers, [])
+
+    def test_primary_add_interruption_preserves_old_bytes(self):
+        from oversight_queue import add_entry
+        self._seed_queue({"id": "old", "queued_at": "2026-01-01T00:00:00Z"})
+        self._assert_interruption_preserves_old_bytes(lambda: add_entry({
+            "name": "New card",
+            "queued_at": "2026-01-02T00:00:00Z",
+            "event": {"event_type": "ExecutionGateBlocked"},
+        }))
+
+    def test_fallback_add_interruption_preserves_old_bytes(self):
+        from oversight_actions import _append_human_queue
+        self._seed_queue({"id": "old", "queued_at": "2026-01-01T00:00:00Z"})
+        self._assert_interruption_preserves_old_bytes(
+            lambda: _append_human_queue({
+                "id": "new", "event_type": "ExecutionReviewEscalation",
+            }),
+        )
+
+    def test_metadata_rewrite_interruption_preserves_old_bytes(self):
+        from oversight_queue import rename
+        self._seed_queue({
+            "id": "card-1", "name": "Old name",
+            "queued_at": "2026-01-01T00:00:00Z",
+        })
+        self._assert_interruption_preserves_old_bytes(
+            lambda: rename("card-1", "New name"),
+        )
+
+    def test_id_removal_interruption_preserves_old_bytes(self):
+        from oversight_queue import remove_by_id
+        self._seed_queue({"id": "card-1", "queued_at": "2026-01-01T00:00:00Z"})
+        self._assert_interruption_preserves_old_bytes(
+            lambda: remove_by_id("card-1"),
+        )
+
+    def test_redefinition_removal_interruption_preserves_old_bytes(self):
+        from redefinition_handler import _remove_queue_entry
+        self._seed_queue({
+            "id": "redefinition-1", "queued_at": "2026-01-01T00:00:00Z",
+            "redefinition": True,
+        })
+        self._assert_interruption_preserves_old_bytes(
+            lambda: _remove_queue_entry(0),
+        )
+
+    def test_slash_gate_removal_interruption_preserves_old_bytes(self):
+        import slash_commands
+        import tool_events
+        self._seed_queue({
+            "id": "gate-1",
+            "kind": "execution_gate",
+            "discussion_conversation_id": "dialogue-1",
+            "queued_at": "2026-01-01T00:00:00Z",
+            "event": {
+                "conversation_id": "dialogue-1",
+                "principal_id": "principal:user",
+            },
+        })
+        with mock.patch.object(
+            tool_events, "resolve_gate_entry", return_value="Approved",
+        ):
+            self._assert_interruption_preserves_old_bytes(
+                lambda: slash_commands._maybe_resolve_gate_entry_at(
+                    0, approve=True, conversation_id="dialogue-1",
+                ),
+                exception_is_swallowed=True,
+            )
 
 
 # ---------- list_operating ----------
