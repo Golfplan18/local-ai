@@ -7039,7 +7039,6 @@ _FIELD_CLASSIFICATION_OVERRIDES = {
     "plan_description": "artifact_text",
     "launch_plan_description": "artifact_text",
     "strategy_description": "artifact_text",
-    "situation_with_multiple_explanations": "enumeration",
 
     # prior_reference
     "prior_dialectical_attempts": "prior_reference",

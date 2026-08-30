@@ -122,6 +122,37 @@ class TestStage3InputCompletenessCheck(unittest.TestCase):
         # Long, substantive prompt should satisfy situation_or_artifact
         self.assertTrue(r["inputs_complete"])
 
+    def test_competing_hypotheses_selected_contract_controls_list_requirement(self):
+        accessible = boot.stage3_input_completeness_check(
+            "competing-hypotheses",
+            (
+                "Our warehouse has started missing same-day shipping targets "
+                "even though order volume and staffing have not changed. "
+                "Generate plausible competing hypotheses and weigh them against "
+                "what we know."
+            ),
+            {},
+        )
+        self.assertEqual(accessible["contract_version"], "accessible_mode")
+        self.assertTrue(accessible["inputs_complete"])
+        self.assertEqual(accessible["missing_fields"], [])
+
+        expert = boot.stage3_input_completeness_check(
+            "competing-hypotheses",
+            (
+                "Build an ACH matrix using Heuer's diagnosticity method for "
+                "our warehouse shipping delays."
+            ),
+            {},
+        )
+        self.assertEqual(expert["contract_version"], "expert_mode")
+        self.assertFalse(expert["inputs_complete"])
+        self.assertEqual(
+            expert["missing_fields"],
+            ["hypothesis_set", "evidence_inventory"],
+        )
+        self.assertIsNotNone(expert["completeness_question"])
+
 
 class TestDispatchAnnouncement(unittest.TestCase):
     def test_format_has_italic_parenthetical(self):
