@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
-"""Source-driven Chroma rebuilds into an explicit, inactive store.
+"""Protected Chroma copying, source replay, promotion, and rollback tools.
 
-The live Chroma directory is a derived cache.  This module rebuilds logical
-collections from their durable sources without reading the old Chroma store or
-mutating those sources.  Implemented phases are:
+Implemented phases are:
 
 * ``protected-inactive-copy`` — metadata-only conversation repair from one
-  operator-supplied, count/digest-bound per-row privacy authority plan;
+  operator-supplied, count/digest-bound per-row privacy authority plan.  This
+  phase reads an existing Chroma collection, copies its stored vectors into a
+  fresh same-store target, and does not embed, checkpoint/resume, alter runtime
+  configuration, or activate the target;
 * ``conversations`` — historical rows from the authoritative cleaned-pair
   archive plus manifest-owned live/legacy chunk Markdown;
 * ``knowledge`` — vault Engrams, Resources, the Ora mental-model library, and
   the MSI News mirror with its special metadata/body filter and HCP layout;
 * ``msi-news-articles`` — MSI's canonical published articles composed through
-  the project-owned news indexer (the sibling Columns tree is not in scope).
+  the project-owned news indexer (the sibling Columns tree is not in scope);
+* ``promote-conversations`` and ``rollback-conversations`` — explicit mapping
+  changes over validated conversation collections while Ora is stopped.
 
-All phases require an explicit inactive target, use deterministic ids and
-atomic checkpoints for resume, and validate their complete source plans before
-opening Chroma.  Source-derived phases batch ``embedding.embed_texts`` and pass
-explicit 4,096-dimensional vectors to Chroma; ``--dry-run`` cannot call an
-embedding API.
+The three source-replay phases rebuild logical collections from durable sources
+without reading the old Chroma store or mutating those sources.  They require
+an explicit inactive target, use deterministic ids and atomic checkpoints for
+resume, and validate their complete source plans before opening Chroma.  They
+batch ``embedding.embed_texts`` and pass explicit vectors to Chroma;
+``--dry-run`` cannot call an embedding API.
 """
 
 from __future__ import annotations
@@ -2254,7 +2258,9 @@ def protected_conversation_inactive_copy(
     target_identity: tuple[str, str | int] | None = None
     try:
         target = client.create_collection(
-            name=target_name, metadata=dict(collection_metadata),
+            name=target_name,
+            metadata=dict(collection_metadata),
+            embedding_function=None,
         )
         created = True
         target_identity = _protected_collection_identity(target)
@@ -3764,22 +3770,56 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="phase", required=True)
 
-    protected = subparsers.add_parser("protected-inactive-copy")
+    protected = subparsers.add_parser(
+        "protected-inactive-copy",
+        help=(
+            "copy stored conversation rows into a fresh inactive collection "
+            "and rewrite only authorized privacy metadata"
+        ),
+        description=(
+            "Copy an existing conversation collection into a fresh same-store "
+            "inactive target under an exact privacy authority plan. The phase "
+            "uses stored vectors and does not embed, replay sources, alter "
+            "runtime configuration, or activate the target."
+        ),
+    )
     protected.add_argument("--chroma-path", required=True)
     protected.add_argument("--authority-plan", required=True)
     protected.add_argument("--batch-size", type=int, default=128)
 
-    promote = subparsers.add_parser("promote-conversations")
+    promote = subparsers.add_parser(
+        "promote-conversations",
+        help="copy a validated replay into the active store and change its mapping",
+        description=(
+            "Copy a validated inactive conversation replay into a fresh active-store "
+            "collection, verify it, and change the configured mapping while Ora is stopped."
+        ),
+    )
     promote.add_argument("--inactive-chromadb-path", required=True)
     promote.add_argument("--target-physical-collection", required=True)
     promote.add_argument("--expected-current-physical", required=True)
     promote.add_argument("--batch-size", type=int, default=128)
 
-    rollback = subparsers.add_parser("rollback-conversations")
+    rollback = subparsers.add_parser(
+        "rollback-conversations",
+        help="restore the mapping to a retained conversation collection",
+        description=(
+            "Restore the configured conversation mapping to a retained compatible "
+            "collection while Ora is stopped."
+        ),
+    )
     rollback.add_argument("--restore-physical-collection", required=True)
     rollback.add_argument("--expected-current-physical", required=True)
 
-    conversations = subparsers.add_parser("conversations")
+    conversations = subparsers.add_parser(
+        "conversations",
+        help="replay authoritative conversation sources into an inactive Chroma store",
+        description=(
+            "Validate authoritative conversation sources, then rebuild them with "
+            "deterministic ids, explicit vectors, and resumable atomic checkpoints "
+            "in an explicit inactive Chroma store."
+        ),
+    )
     conversations.add_argument(
         "--historical-archive", default=str(rp.historical_archive_dir())
     )
@@ -3800,7 +3840,15 @@ def _parser() -> argparse.ArgumentParser:
     conversations.add_argument("--resume", action="store_true")
     conversations.add_argument("--dry-run", action="store_true")
 
-    knowledge = subparsers.add_parser("knowledge")
+    knowledge = subparsers.add_parser(
+        "knowledge",
+        help="replay authoritative knowledge sources into an inactive Chroma store",
+        description=(
+            "Validate the configured knowledge sources, then rebuild them with "
+            "deterministic ids, explicit vectors, and resumable atomic checkpoints "
+            "in an explicit inactive Chroma store."
+        ),
+    )
     knowledge.add_argument(
         "--engrams-root", default=str(rp.vault_dir() / "Engrams")
     )
@@ -3823,7 +3871,15 @@ def _parser() -> argparse.ArgumentParser:
     knowledge.add_argument("--resume", action="store_true")
     knowledge.add_argument("--dry-run", action="store_true")
 
-    msi = subparsers.add_parser("msi-news-articles")
+    msi = subparsers.add_parser(
+        "msi-news-articles",
+        help="replay canonical MSI articles into an inactive Chroma store",
+        description=(
+            "Validate canonical MSI article sources through the project-owned "
+            "composer, then rebuild them with deterministic ids, explicit vectors, "
+            "and resumable atomic checkpoints in an explicit inactive Chroma store."
+        ),
+    )
     msi.add_argument(
         "--articles-root",
         default=str(

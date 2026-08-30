@@ -347,14 +347,16 @@ class _ProtectedCopyClient(_PromotionClient):
     def __init__(self, collections, **kwargs):
         super().__init__(collections, **kwargs)
         self.get_collection_names = []
+        self.create_embedding_functions = []
 
     def get_collection(self, *, name):
         self.get_collection_names.append(name)
         return self.collections[name]
 
-    def create_collection(self, *, name, metadata):
+    def create_collection(self, *, name, metadata, embedding_function):
         if name in self.collections:
             raise AssertionError("test attempted to overwrite a collection")
+        self.create_embedding_functions.append(embedding_function)
         collection = _PromotionCollection(
             name, metadata,
             fail_upsert=self.fail_created_upsert,
@@ -628,6 +630,7 @@ class ProtectedInactiveCopyTests(unittest.TestCase):
             client.get_collection_names,
             [self.source_name, self.target_name, self.source_name],
         )
+        self.assertEqual(client.create_embedding_functions, [None])
         embedder.assert_not_called()
         ambient_client.assert_not_called()
         replay.assert_not_called()
