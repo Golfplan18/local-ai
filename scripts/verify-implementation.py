@@ -17,6 +17,7 @@ Categories:
     runtime        — Runtime config completeness (entry per mode_id)
     drift          — Drift parity for registered pairs
     framework-pairs — Full manifest-backed vault/runtime framework coverage
+    framework-pairs-audit — Fail-open-hook view with exact accepted states classified
     documentation-integrity — Focused five-repository documentation gate
     debt           — Architectural debt (no stale references)
     routing        — Routing accuracy (post-Phase-6+9 only)
@@ -490,24 +491,37 @@ def _safe_repo_relative_path(value: Any, *, field_name: str) -> str:
     return value
 
 
-def _normalized_framework_body(path: Path, *, strip_vault_yaml: bool) -> str:
+def _normalized_framework_content(
+    content: str,
+    *,
+    strip_vault_yaml: bool,
+    label: str,
+) -> str:
     """Return the exact G1.13 comparison body.
 
     Newlines are normalized, vault frontmatter and its one separator blank line
     are removed, and terminal newline count is ignored. No prose, headings,
     interior whitespace, ordering, or links are normalized.
     """
-    content = read_file(path).replace("\r\n", "\n").replace("\r", "\n")
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
     if strip_vault_yaml and content.startswith("---\n"):
         end = content.find("\n---\n", 4)
         if end == -1:
             raise FrameworkManifestError(
-                f"unterminated vault YAML frontmatter: {path}"
+                f"unterminated vault YAML frontmatter: {label}"
             )
         content = content[end + 5:]
         if content.startswith("\n"):
             content = content[1:]
     return content.rstrip("\n")
+
+
+def _normalized_framework_body(path: Path, *, strip_vault_yaml: bool) -> str:
+    return _normalized_framework_content(
+        read_file(path),
+        strip_vault_yaml=strip_vault_yaml,
+        label=str(path),
+    )
 
 
 def _bounded_repo_path(root: Path, relative_path: str) -> Path:
@@ -1839,6 +1853,150 @@ def load_documentation_accepted_findings(
     )
 
 
+def _framework_body_digest_at_commit(
+    *,
+    root: Path,
+    commit: str,
+    relative_path: Optional[str],
+    strip_vault_yaml: bool,
+    repository_name: str,
+) -> Optional[str]:
+    if relative_path is None:
+        return None
+    state = DocumentationRepositoryState(
+        name=repository_name,
+        root=root,
+        base_commit=commit,
+        head_commit=commit,
+        changed_paths=(),
+    )
+    content = _git_blob_at_revision(
+        state,
+        relative_path,
+        commit,
+        revision_label="accepted-finding pin",
+    )
+    if content is None:
+        return None
+    normalized = _normalized_framework_content(
+        content,
+        strip_vault_yaml=strip_vault_yaml,
+        label=f"{repository_name}:{commit}:{relative_path}",
+    )
+    return _sha256_text(normalized)
+
+
+def _is_exact_accepted_external_finding(
+    finding: FrameworkPairFinding,
+    accepted: DocumentationAcceptedFinding,
+    *,
+    vault_root: Path,
+    ora_root: Path,
+) -> bool:
+    payload = finding.payload
+    if (
+        payload.get("finding_type"),
+        payload.get("pair_id"),
+        payload.get("canonical_path"),
+        payload.get("runtime_path"),
+        payload.get("disposition"),
+        payload.get("severity"),
+    ) != (
+        accepted.finding_type,
+        accepted.pair_id,
+        accepted.canonical_path,
+        accepted.runtime_path,
+        accepted.disposition,
+        accepted.severity,
+    ):
+        return False
+    canonical_digest = _framework_body_digest_at_commit(
+        root=vault_root,
+        commit=accepted.repository_commits["vault"],
+        relative_path=accepted.canonical_path,
+        strip_vault_yaml=True,
+        repository_name="vault",
+    )
+    runtime_digest = _framework_body_digest_at_commit(
+        root=ora_root,
+        commit=accepted.repository_commits["ora"],
+        relative_path=accepted.runtime_path,
+        strip_vault_yaml=False,
+        repository_name="ora",
+    )
+    return (
+        payload.get("canonical_body_sha256") == canonical_digest
+        and payload.get("runtime_body_sha256") == runtime_digest
+    )
+
+
+def check_framework_pair_audit(verbose: bool = False) -> CheckResult:
+    """Classify only the two exact external findings as audit non-failures."""
+    result = CheckResult(name="framework-pairs-audit", passed=True)
+    try:
+        evaluation = evaluate_framework_pair_manifest()
+        accepted_records = load_documentation_accepted_findings(
+            DOCUMENTATION_CONFIGURATION_FILE
+        )
+        accepted_by_anchor = {
+            (record.finding_type, record.pair_id): record
+            for record in accepted_records
+            if (record.finding_type, record.pair_id)
+            in PROTECTED_FRAMEWORK_FINDING_OWNERS
+        }
+        exact_anchors: set[tuple[str, str]] = set()
+        accepted_details: list[str] = []
+        audit_failure_count = 0
+        for finding in evaluation.findings:
+            payload = finding.payload
+            anchor = (payload["finding_type"], payload["pair_id"])
+            accepted = accepted_by_anchor.get(anchor)
+            if accepted is not None and _is_exact_accepted_external_finding(
+                finding,
+                accepted,
+                vault_root=VAULT_ROOT,
+                ora_root=ORA_ROOT,
+            ):
+                exact_anchors.add(anchor)
+                accepted_details.append(
+                    "accepted external finding: "
+                    f"{accepted.finding_type}:{accepted.pair_id} "
+                    f"[{accepted.owner}; receipt={finding.finding_digest}]"
+                )
+                continue
+            result.passed = False
+            audit_failure_count += 1
+            result.details.append(
+                "new or changed framework finding: "
+                f"{payload['finding_type']}:{payload['pair_id']} "
+                f"[{payload['severity']}; receipt={finding.finding_digest}]"
+            )
+        for anchor, accepted in sorted(accepted_by_anchor.items()):
+            if anchor not in exact_anchors:
+                result.passed = False
+                audit_failure_count += 1
+                result.details.append(
+                    "accepted external finding is no longer exact: "
+                    f"{accepted.finding_type}:{accepted.pair_id} [{accepted.owner}]"
+                )
+        result.details[:0] = accepted_details
+        if verbose:
+            result.details.insert(
+                0,
+                "Manifest "
+                f"{evaluation.manifest.manifest_id} "
+                f"sha256={evaluation.manifest.manifest_sha256}; "
+                f"paired clean={evaluation.paired_clean}, "
+                f"paired drifted={evaluation.paired_drifted}, "
+                f"accepted external={len(exact_anchors)}, "
+                f"audit failures={audit_failure_count}",
+            )
+    except (OSError, FrameworkManifestError, DocumentationIntegrityError) as exc:
+        result.passed = False
+        result.details.append(f"Framework-pair audit classification failure: {exc}")
+    return result
+
+
 def _git_read(root: Path, *arguments: str, binary: bool = False) -> str | bytes:
     env = dict(os.environ)
     env["GIT_OPTIONAL_LOCKS"] = "0"
@@ -2455,11 +2613,87 @@ def _registered_document_surfaces_for_path(
 
 
 def _markdown_has_section(content: str, section: str) -> bool:
+    return _markdown_section_content(
+        content,
+        section,
+        label="canonical markdown",
+    ) is not None
+
+
+def _markdown_section_content(
+    content: str,
+    section: str,
+    *,
+    label: str,
+) -> Optional[str]:
+    """Return one named Markdown section, including its nested subsections.
+
+    A declared canonical section is an exact routing boundary. The section
+    begins at its matching heading and ends at the next heading of the same or
+    higher level. Duplicate matching headings are ambiguous and therefore
+    cannot safely discharge a documentation obligation.
+    """
     expected = re.sub(r"^#{1,6}\s+", "", section.strip())
-    return any(
-        match.group(1).strip() == expected
-        for match in re.finditer(r"^#{1,6}\s+(.+?)\s*$", content, re.MULTILINE)
+    headings = list(
+        re.finditer(r"^(#{1,6})[ \t]+(.+?)[ \t]*$", content, re.MULTILINE)
     )
+    matches = [
+        (index, heading)
+        for index, heading in enumerate(headings)
+        if heading.group(2).strip() == expected
+    ]
+    if len(matches) > 1:
+        raise DocumentationIntegrityError(
+            f"{label} has ambiguous duplicate section {expected!r}"
+        )
+    if not matches:
+        return None
+    index, heading = matches[0]
+    level = len(heading.group(1))
+    finish = len(content)
+    for following in headings[index + 1:]:
+        if len(following.group(1)) <= level:
+            finish = following.start()
+            break
+    # Separator blank lines belong to the Markdown boundary, not to either
+    # named section.  Normalize only that trailing boundary so inserting a
+    # following sibling section cannot falsely discharge this owner.
+    return content[heading.start():finish].rstrip(" \t\r\n") + "\n"
+
+
+def _documentation_canonical_changed(
+    vault: DocumentationRepositoryState,
+    surface: DocumentationSurface,
+) -> bool:
+    """Compare the declared canonical scope between the pinned base and HEAD."""
+    if surface.canonical_section is None:
+        return _documentation_path_changed(vault, surface.canonical_path)
+
+    base_content = _git_blob_at_revision(
+        vault,
+        surface.canonical_path,
+        vault.base_commit,
+        revision_label="pinned base",
+    )
+    head_content = _git_blob_at_revision(
+        vault,
+        surface.canonical_path,
+        vault.head_commit,
+        revision_label="task HEAD",
+    )
+    if base_content is None or head_content is None:
+        return base_content != head_content
+    base_section = _markdown_section_content(
+        base_content,
+        surface.canonical_section,
+        label=f"pinned base {surface.canonical_path}",
+    )
+    head_section = _markdown_section_content(
+        head_content,
+        surface.canonical_section,
+        label=f"task HEAD {surface.canonical_path}",
+    )
+    return base_section != head_section
 
 
 def _python_symbols(content: str) -> set[str]:
@@ -2750,6 +2984,10 @@ def evaluate_documentation_integrity(
         vault,
         configuration_relative_path,
     )
+    if base_accepted is None:
+        raise DocumentationIntegrityError(
+            "pinned vault base predates the activated accepted-finding block"
+        )
 
     findings: list[str] = []
     evidence: list[str] = [
@@ -2758,35 +2996,31 @@ def evaluate_documentation_integrity(
         for name, state in repositories.items()
     ]
 
-    # Once an accepted-finding block exists in the pinned base, the task may
-    # only carry an exact row forward or remove it after the finding resolves.
-    # Adding or editing a row in the same task would let a new failure
-    # authorize itself. The one bootstrap exception is a base that truly has
-    # no accepted-finding block at all (None, distinct from an active empty
-    # block).
-    if base_accepted is not None:
-        base_by_anchor = {
-            _accepted_finding_anchor(finding): finding
-            for finding in base_accepted
-        }
-        accepted_by_anchor = {
-            _accepted_finding_anchor(finding): finding
-            for finding in accepted
-        }
-        for anchor, finding in sorted(accepted_by_anchor.items()):
-            base_finding = base_by_anchor.get(anchor)
-            if base_finding is None:
-                findings.append(
-                    "accepted finding addition is not authorized by the pinned "
-                    f"vault base: {finding.finding_type}:{finding.pair_id}"
-                )
-            elif _accepted_finding_exact_state(
-                finding
-            ) != _accepted_finding_exact_state(base_finding):
-                findings.append(
-                    "accepted finding material mutation is not authorized by "
-                    f"the pinned vault base: {finding.finding_type}:{finding.pair_id}"
-                )
+    # Activation ended the one-time bootstrap path. A task may carry an exact
+    # accepted row forward or remove it after resolution, but a pre-activation
+    # base may never re-enter the historical bootstrap state.
+    base_by_anchor = {
+        _accepted_finding_anchor(finding): finding
+        for finding in base_accepted
+    }
+    accepted_by_anchor = {
+        _accepted_finding_anchor(finding): finding
+        for finding in accepted
+    }
+    for anchor, finding in sorted(accepted_by_anchor.items()):
+        base_finding = base_by_anchor.get(anchor)
+        if base_finding is None:
+            findings.append(
+                "accepted finding addition is not authorized by the pinned "
+                f"vault base: {finding.finding_type}:{finding.pair_id}"
+            )
+        elif _accepted_finding_exact_state(
+            finding
+        ) != _accepted_finding_exact_state(base_finding):
+            findings.append(
+                "accepted finding material mutation is not authorized by "
+                f"the pinned vault base: {finding.finding_type}:{finding.pair_id}"
+            )
 
     current_surfaces_by_id = {
         surface.surface_id: surface for surface in registry.surfaces
@@ -3075,6 +3309,47 @@ def evaluate_documentation_integrity(
     affected_surfaces = tuple(
         sorted({surface.surface_id for surface in surface_states.values()})
     )
+    no_impact_surface_ids_by_repository: dict[str, set[str]] = {
+        name: set() for name in DOCUMENTATION_REPOSITORIES
+    }
+    canonical_changed_by_state: dict[tuple[Any, ...], bool] = {}
+    for key, repository_names in affected_repositories.items():
+        surface = surface_states[key]
+        canonical_changed = _documentation_canonical_changed(vault, surface)
+        canonical_changed_by_state[key] = canonical_changed
+        if canonical_changed:
+            continue
+        for repository_name in repository_names:
+            no_impact_surface_ids_by_repository[repository_name].add(
+                surface.surface_id
+            )
+
+    # A task may declare no impact only for a surface the gate actually
+    # attributed to that repository's diff.  Unknown, cross-repository, and
+    # duplicate trailers otherwise create the appearance of review evidence
+    # for work the gate never evaluated.
+    trailer_cache: dict[str, list[str]] = {}
+    for repository_name, state in repositories.items():
+        if state.head_commit == state.base_commit:
+            continue
+        trailers = _final_commit_trailers(state)
+        trailer_cache[repository_name] = trailers
+        allowed = no_impact_surface_ids_by_repository[repository_name]
+        for surface_id in sorted(set(trailers)):
+            count = trailers.count(surface_id)
+            if surface_id not in allowed:
+                findings.append(
+                    f"unused Documentation-No-Impact trailer in "
+                    f"{repository_name} final commit: {surface_id} does not "
+                    "correspond to a no-impact disposition owed by that repository"
+                )
+            elif count > 1:
+                findings.append(
+                    f"surplus Documentation-No-Impact trailer in "
+                    f"{repository_name} final commit: {surface_id} appears "
+                    f"{count} times"
+                )
+
     current_state_keys = {
         _documentation_surface_state_identity(surface)
         for surface in registry.surfaces
@@ -3087,13 +3362,10 @@ def evaluate_documentation_integrity(
                 if error:
                     findings.append(f"surface {surface.surface_id}: {error}")
 
-    trailer_cache: dict[str, list[str]] = {}
     disposition_checks: set[tuple[str, str, str]] = set()
     for key in sorted(affected_repositories, key=repr):
         surface = surface_states[key]
-        canonical_changed = _documentation_path_changed(
-            vault, surface.canonical_path
-        )
+        canonical_changed = canonical_changed_by_state[key]
         if canonical_changed:
             continue
         for repository_name in sorted(affected_repositories[key]):
@@ -4092,6 +4364,7 @@ CHECK_FUNCTIONS = {
     "runtime": check_runtime_config,
     "drift": check_drift_parity,
     "framework-pairs": check_framework_pair_manifest,
+    "framework-pairs-audit": check_framework_pair_audit,
     "documentation-integrity": check_documentation_integrity,
     "debt": check_architectural_debt,
     "routing": check_routing_accuracy,
@@ -4123,14 +4396,19 @@ def main() -> int:
         action="store_true",
         help=(
             "atomically append authenticated findings to the existing DCP "
-            "queue; valid only with --check framework-pairs"
+            "queue; valid only with --check framework-pairs or the narrow "
+            "framework-pairs-audit"
         ),
     )
     args = parser.parse_args()
 
-    if args.enqueue_framework_findings and args.check != "framework-pairs":
+    if args.enqueue_framework_findings and args.check not in {
+        "framework-pairs",
+        "framework-pairs-audit",
+    }:
         parser.error(
-            "--enqueue-framework-findings requires --check framework-pairs"
+            "--enqueue-framework-findings requires --check framework-pairs "
+            "or --check framework-pairs-audit"
         )
 
     documentation_roots = {
@@ -4161,7 +4439,9 @@ def main() -> int:
         # The five-root task gate has no defaults and is intentionally never
         # smuggled into the broad legacy `all` category.
         checks_to_run = [
-            name for name in CHECK_FUNCTIONS if name != "documentation-integrity"
+            name
+            for name in CHECK_FUNCTIONS
+            if name not in {"documentation-integrity", "framework-pairs-audit"}
         ]
     else:
         checks_to_run = [args.check]

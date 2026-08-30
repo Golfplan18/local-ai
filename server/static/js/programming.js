@@ -310,6 +310,49 @@
   };
 
   const renderDecision = (event, state) => {
+    const coordinatedCorrection = event.coordinated_correction_required === true;
+    if (coordinatedCorrection) {
+      state.body.innerHTML = `
+        <div class="programming-heading">Coordinated documentation correction required</div>
+        <div class="programming-copy">${escapeHtml(event.detail || event.outcome)}</div>
+        <div class="programming-copy">The submitted packet is cleared from this panel. Correct the participating task branches through the five-repository coordinator, then recover this task and submit fresh evidence.</div>`;
+      return;
+    }
+    if (event.dcp_evidence_required === true) {
+      const targetBody = state.body;
+      targetBody.innerHTML = `
+        <div class="programming-heading">Final documentation evidence required</div>
+        <div class="programming-copy">${escapeHtml(event.detail || event.outcome)}</div>
+        <label>Complete five-repository evidence packet (JSON)
+          <textarea rows="10" data-programming-documentation-review></textarea>
+        </label>
+        <div class="programming-copy" data-programming-evidence-error aria-live="polite"></div>
+        <div class="programming-actions">
+          <button type="button" class="programming-primary" data-programming-resume>Resume final review</button>
+        </div>`;
+      targetBody.querySelector('[data-programming-resume]').addEventListener('click', () => {
+        const input = targetBody.querySelector('[data-programming-documentation-review]');
+        const error = targetBody.querySelector('[data-programming-evidence-error]');
+        const raw = input ? (input.value || '').trim() : '';
+        if (!raw) {
+          error.textContent = 'Paste the complete evidence JSON before resuming.';
+          return;
+        }
+        let packet;
+        try {
+          packet = JSON.parse(raw);
+        } catch (_error) {
+          error.textContent = 'The evidence packet is not valid JSON.';
+          return;
+        }
+        if (!packet || typeof packet !== 'object' || Array.isArray(packet)) {
+          error.textContent = 'The evidence packet must be one JSON object.';
+          return;
+        }
+        runApprovedPlan(event.branch, '', state, packet, raw);
+      });
+      return;
+    }
     const retryable = event.retryable === true;
     const targetBody = state.body;
     targetBody.innerHTML = `
@@ -361,20 +404,23 @@
   const runApprovedPlan = async (
     resumeBranch = '',
     continuation = '',
-    initialState = currentWorkflow()
+    initialState = currentWorkflow(),
+    documentationReview = null,
+    documentationReviewText = ''
   ) => {
     let state = initialState;
     const selectionEpoch = conversationSelectionEpoch;
-    const hasContinuation = !!String(continuation || '').trim();
+    const privacyText = String(documentationReviewText || continuation || '').trim();
+    const hasPrivateInput = !!privacyText;
     const repositoryPath = repositoryPathFor(state);
-    if (hasContinuation && !workflowOwnsObservedDialogue(initialState)) {
+    if (hasPrivateInput && !workflowOwnsObservedDialogue(initialState)) {
       return false;
     }
     let acceptedForState = false;
-    if (!(await checkPrivacy(continuation, '', () => {
+    if (!(await checkPrivacy(privacyText, '', () => {
       if (conversationSelectionEpoch !== selectionEpoch
           || activeConversationId !== initialState.id) return;
-      state = hasContinuation ? adoptCurrentWorkflow(initialState) : initialState;
+      state = hasPrivateInput ? adoptCurrentWorkflow(initialState) : initialState;
       acceptedForState = true;
     }, initialState)) || !acceptedForState) return false;
     state.body.innerHTML = `
@@ -391,6 +437,7 @@
           approved: true,
           resume_branch: resumeBranch || undefined,
           continuation,
+          documentation_review: documentationReview || undefined,
         }),
       });
       if (!response.ok) {
@@ -412,8 +459,16 @@
           if (event.type === 'result') {
             renderAssistantForWorkflow(
               state,
-              event.outcome === 'DONE'
+              event.outcome === 'DONE' && event.reviewed_local_branches
+                ? event.coordinated_finish_required === true
+                  ? 'Final Documentation-Code Parity review accepted the five current local branches. The approved five-repository coordinator finish may now land only those exact reviewed heads.'
+                  : 'Final Documentation-Code Parity review accepted the five current local branches. The approved finish stops locally; no push, pull request, or merge was performed.'
+                : event.outcome === 'DONE'
                 ? `Programming completed on ${event.branch}.`
+                : event.coordinated_correction_required === true
+                ? `Programming requires a coordinated five-repository correction before final review can resume: ${event.detail || event.outcome}`
+                : event.dcp_evidence_required === true
+                ? `Programming needs fresh final Documentation-Code Parity evidence for ${event.branch}.`
                 : `Programming needs a decision: ${event.detail || event.outcome}.`
             );
           }
