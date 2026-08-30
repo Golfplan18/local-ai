@@ -1008,11 +1008,13 @@ def obligating_invented_tests(invented_tests: list) -> list:
 
 # ── Stop rule (§13) — converge OR escalate, never churn ────────────────────────
 def converged(capture: CaptureResult, findings: list, verdict: str | None = None,
-              verify_ran: bool = True) -> bool:
-    """Converge when the evidence is sufficient AND no high-severity finding of ANY
-    class remains (§13/⚖ Rev-1) AND the verify actually RAN AND did not explicitly
-    FAIL. Sufficiency is the runner's Contract judgment (empty / owed lanes are NOT
-    sufficient — absence ≠ pass, §16-2).
+              verify_ran: bool = True,
+              invented_tests: list | None = None) -> bool:
+    """Converge when the evidence is sufficient, no high-severity finding of ANY
+    class remains (§13/⚖ Rev-1), no current acceptance-kind verifier obligation
+    remains, and the verify actually RAN and did not explicitly FAIL. Sufficiency is
+    the runner's Contract judgment (empty / owed lanes are NOT sufficient — absence
+    ≠ pass, §16-2).
 
     - An explicit ``VERDICT: FAIL`` from the different-family verifier BLOCKS
       convergence even when the mechanical evidence is sufficient and no finding parsed
@@ -1022,20 +1024,25 @@ def converged(capture: CaptureResult, findings: list, verdict: str | None = None
       grading-your-own-homework (judge P1 fold)."""
     if verdict == "FAIL" or not verify_ran:
         return False
+    if obligating_invented_tests(invented_tests or []):
+        return False
     return bool(capture and capture.sufficient) and not has_high_severity(findings)
 
 
 def escalation_warranted(capture: CaptureResult, findings: list,
-                         verdict: str | None = None) -> bool:
-    """Escalate ONLY on real negative evidence — a RAN-and-FAILED check, a persistent
-    high-severity finding, OR an explicit ``VERDICT: FAIL`` from the different-family
-    verifier (a reviewer rejection with nothing left to revise is a genuine unresolved
-    failure a human must adjudicate). NEVER on an owed / deferred / empty lane (⚖ Rev-1
-    + Rev-2: a source-read owed provenance lane, a repo-less no-catalog contract, a
-    deferred mutating check, or a no-sandbox refusal are honest 'can't verify here',
-    not test failures — escalating them would churn every such turn, and a human can't
-    fix an environment limit mid-loop)."""
+                         verdict: str | None = None,
+                         invented_tests: list | None = None) -> bool:
+    """Escalate ONLY on a real unresolved obligation — a RAN-and-FAILED check, a
+    persistent high-severity finding, an explicit ``VERDICT: FAIL`` from the
+    different-family verifier, or a current acceptance-kind invented test. Diagnostic,
+    exploratory, and preference suggestions remain advisory. NEVER escalate an owed /
+    deferred / empty lane (⚖ Rev-1 + Rev-2: a source-read owed provenance lane, a
+    repo-less no-catalog contract, a deferred mutating check, or a no-sandbox refusal
+    are honest 'can't verify here', not test failures — escalating them would churn
+    every such turn, and a human can't fix an environment limit mid-loop)."""
     if verdict == "FAIL":
+        return True
+    if obligating_invented_tests(invented_tests or []):
         return True
     if capture and capture.ran_and_failed():
         return True
@@ -1255,7 +1262,8 @@ def handback_reference(*, packet: Any, packet_path: str | None, branch_ref: str 
 
 def push_handback(entry: dict) -> bool:
     """Best-effort push of the handback reference to the durable Paused queue. Never
-    raises; returns True on a successful hand-off (or a deliberate stealth skip).
+    raises; returns True only on a successful hand-off. Returns False for a deliberate
+    stealth skip or when both durable queue backends fail.
 
     Defense in depth: ``run_loop`` already gates on non-stealth, but the design relies
     on the handback INHERITING the human-queue's stealth-skip — and the PRIMARY path
@@ -1397,8 +1405,9 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
     Capture → dual-family Verify → revision router → stop/escalate over the ALREADY-
     produced ``response`` on a non-self-evidencing turn. Populates the §9 packet
     blocks and writes the packet trace-local. Returns a POSSIBLY-REVISED response (the
-    actuator re-invoked the gear) or None when the response is unchanged. NEVER raises
-    — every failure degrades to the Phase-4 record behaviour.
+    actuator re-invoked the gear), the response plus a visible mandatory-handoff failure,
+    or None when the response is unchanged. NEVER raises — every failure degrades to the
+    Phase-4 record behaviour.
 
     Callbacks are injected for testability: ``verify_invoker(system,user,endpoint)->str``,
     ``actuator(exec_findings, plan_findings, iteration)->str|None`` (re-invokes the
@@ -1492,8 +1501,9 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
         # Phase 8: MIXED mutation+source-read turns get the provenance fill the
         # owed branch never gave them (scout-confirmed gap). The lane renders
         # under an INFORMATIONAL header and is NOT a convergence input —
-        # converged() still reads only capture.sufficient + findings (OQ-4
-        # deferral, judge-approved). Filled once over the ORIGINAL response;
+        # converged() still reads only capture.sufficient, findings, and current
+        # acceptance obligations (OQ-4 deferral, judge-approved). Filled once over
+        # the ORIGINAL response;
         # actuator revisions do not re-map in this phase (recorded limitation).
         if src_read:
             _l2_inv, _l2_note = _level2_invoker(config, config_name,
@@ -1505,7 +1515,8 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
 
         # Phase 8 Chunk C: fill any DECLARED lanes (deploy_probe / render_inspect)
         # on the mutation branch too — informational, never a convergence input
-        # (converged() reads only capture.sufficient + findings).
+        # (converged() reads only capture.sufficient + findings + current
+        # acceptance obligations).
         fill_declared_lanes(packet, context_pkg=context_pkg, capture=capture,
                             trace_dir=trace_dir, stealth=stealth, runner=runner)
 
@@ -1515,13 +1526,16 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                                     endpoint=verify_ep, same_family=same_family,
                                     risk_tier=risk_tier)
             findings = verify_rec.get("findings") or []
+            invented_tests = verify_rec.get("invented_tests") or []
+            acceptance_obligations = obligating_invented_tests(invented_tests)
             verdict = verify_rec.get("verdict")
             verify_ran = bool(verify_rec.get("ran"))
             loop_state["iteration"] = iteration
 
-            # Converge? (sufficient + no high-severity finding of any class + the verify
-            # actually RAN + did not explicitly FAIL).
-            if (converged(capture, findings, verdict, verify_ran)
+            # Converge? (sufficient + no high-severity finding of any class + no
+            # current acceptance-kind verifier obligation + the verify actually RAN
+            # and did not explicitly FAIL).
+            if (converged(capture, findings, verdict, verify_ran, invented_tests)
                     and not verify_rec.get("escalate_human")):
                 loop_state["stop_condition"] = "criteria_met"
                 break
@@ -1532,10 +1546,22 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
             # (no finding to route and no ran-and-failed check — a purely owed/deferred
             # lane). Re-invoking the gear on an owed lane is futile churn (P4).
             exec_findings, plan_findings = route_findings(findings)
+            # A verifier-authored acceptance test is current executor work (§12), not
+            # an advisory suggestion. Thread it through the existing actuator contract
+            # without turning diagnostic/exploratory suggestions into obligations.
+            exec_findings.extend({
+                "class": "execution_level",
+                "severity": "medium",
+                "description": (
+                    "Verifier acceptance obligation: "
+                    + str(t.get("name") or "unnamed")),
+                "invented_test_kind": "acceptance",
+            } for t in acceptance_obligations)
             actionable = bool(exec_findings or plan_findings) or (capture and capture.ran_and_failed())
             if (iteration >= MAX_LOOP_ITERATIONS or actuator is None
                     or verify_rec.get("escalate_human") or not actionable):
-                if escalation_warranted(capture, findings, verdict) or verify_rec.get("escalate_human"):
+                if (escalation_warranted(capture, findings, verdict, invented_tests)
+                        or verify_rec.get("escalate_human")):
                     loop_state["stop_condition"] = "max_iterations_escalated"
                 else:
                     # Owed/deferred/empty lanes only (or a verify that could not run on
@@ -1580,12 +1606,11 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
         #     INSPECT the abandoned attempt, so §13 requires an inspectable branch. If
         #     none can be built (base-unknown / no repo / git failure) → base-unknown
         #     stays owed → DEGRADE (no dangling branchless evidence escalation, judge P1).
-        #   * POLICY / human-review escalation (§12 `escalate_human`: single-family or
-        #     unverified review on high-risk / irreversible work) — a branch-INDEPENDENT
-        #     safety obligation: a human must review because high-risk work shipped
-        #     without cross-family assurance, NOT because there is an abandoned diff to
-        #     inspect. This MUST reach the human queue even when no branch exists
-        #     (silently degrading it would defeat §12 — adversarial re-check fold).
+        #   * POLICY / human-review escalation (§12 `escalate_human` or a current
+        #     acceptance obligation) — a branch-INDEPENDENT safety obligation. A human
+        #     must review because assurance is inadequate or must exercise the existing
+        #     waiver authority, NOT because there is necessarily an abandoned diff to
+        #     inspect. This MUST reach the human queue even when no branch exists.
         escalation = None
         if loop_state.get("stop_condition") == "max_iterations_escalated":
             base_sha = ((context_pkg or {}).get("exec_review_state_before") or {}).get("head")
@@ -1593,7 +1618,11 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                        or (context_pkg or {}).get("conversation_id") or "task")
             branch_ref = (branch_creator or create_escalation_branch)(
                 capture.repo_root, base_sha, task_id, trace_dir=trace_dir)
-            policy_escalation = bool(verify_rec.get("escalate_human"))
+            # Acceptance obligations are branch-independent policy escalations: the
+            # existing Paused-resolution authority is also the existing waiver path,
+            # so a missing §13 branch must never downgrade the obligation to prose.
+            policy_escalation = bool(
+                verify_rec.get("escalate_human") or acceptance_obligations)
             if branch_ref or policy_escalation:
                 reason = ("execution-review did not converge: "
                           + ("a declared check ran and failed" if capture.ran_and_failed()
@@ -1608,6 +1637,8 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                              else "the single-family verifier returned VERDICT: FAIL "
                                   "(lowered assurance) on high-risk work"
                              if verify_rec.get("verdict") == "FAIL"
+                             else "an acceptance-kind verifier obligation remains unresolved"
+                             if acceptance_obligations
                              else "the execution-review verify could not run (unverified) on high-risk work"
                              if not verify_rec.get("ran")
                              else "single-family verify on high-risk work — human review required"))
@@ -1620,7 +1651,7 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                     escalation["kind"] = "policy_human_review"
                     escalation["no_branch_reason"] = (
                         "no inspectable abandoned-attempt branch — base-unknown / no repo; "
-                        "this is a §12 verification-gap human-review escalation, not a §13 "
+                        "this is a §12 verifier-obligation human-review escalation, not a §13 "
                         "abandoned-attempt escalation")
                 # ⚖ Rev-1 P4 / OQ4 honesty, NARROWED by Phase 8 (§3.4/OQ-9): if the
                 # executor COMMITTED in place (HEAD advanced past the pre-execution
@@ -1701,7 +1732,32 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                 packet=packet, packet_path=packet_path,
                 branch_ref=escalation["abandoned_attempt_branch"],
                 reason=escalation["reason"], context_pkg=context_pkg)
-            (queue_push or push_handback)(entry)
+            try:
+                handoff_delivered = bool((queue_push or push_handback)(entry))
+            except Exception as e:
+                _mark_failure(e, "execution_loop_handback_delivery")
+                handoff_delivered = False
+            if not handoff_delivered:
+                loop_state["human_handoff"] = {
+                    "status": "pending",
+                    "retryable": True,
+                    "human_reached": False,
+                    "reason": "mandatory human-review queue delivery failed",
+                    "packet_ref": packet_path,
+                }
+                _ep.populate_loop_fields(packet, loop=loop_state, now_iso=now_iso)
+                _ep.write_packet(packet, trace_dir)
+                _mark_failure(
+                    RuntimeError("mandatory human-review handoff failed; no human was reached"),
+                    "execution_loop_handback_delivery")
+                notice = (
+                    "Execution Review handoff failed: the mandatory human-review "
+                    "entry could not be delivered. No human was reached. The "
+                    "handoff remains pending and retryable in the execution-review "
+                    "packet."
+                )
+                visible = str(current_response or "").rstrip()
+                return (visible + "\n\n" + notice) if visible else notice
 
         return current_response if current_response != response else None
     except Exception as e:
