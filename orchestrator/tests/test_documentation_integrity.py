@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -151,7 +152,6 @@ class DocumentationIntegrityFixture(unittest.TestCase):
             "schema_version": 1,
             "manifest_id": VERIFY.FRAMEWORK_MANIFEST_ID,
             "source_audit": "test",
-            "as_of": "2026-08-28",
             "normalization": "test",
             "expected_counts": counts,
             "entries": self.manifest_entries,
@@ -707,6 +707,35 @@ class DocumentationIntegrityBehaviorTests(DocumentationIntegrityFixture):
             any("documentation disposition missing" in item for item in result.details)
         )
 
+    def test_change_elsewhere_in_canonical_does_not_discharge_named_section(self):
+        write(
+            self.roots["ora"] / "orchestrator/feature.py",
+            "def feature():\n    return 'changed'\n",
+        )
+        canonical_body = (
+            "# Feature\n\n## Behavior\n\nInitial behavior.\n\n"
+            "## Maintenance notes\n\nChanged outside the owned section.\n"
+        )
+        write(
+            self.roots["vault"] / "Projects/Ora/Reference — Feature.md",
+            "---\nnexus:\n  - ora\ntype: reference\n---\n\n" + canonical_body,
+        )
+        write(self.roots["ora"] / "docs/feature.md", canonical_body)
+        self.commit("vault", "Change another canonical section")
+        self.commit("ora", "Change feature behavior and mirror")
+
+        result = self.check()
+
+        self.assertFalse(result.passed)
+        self.assertTrue(
+            any(
+                "documentation disposition missing for ora.feature"
+                in item
+                for item in result.details
+            ),
+            result.details,
+        )
+
     def test_rename_attributes_both_prior_and_current_ownership_families(self):
         ownership = self._ownership_document()
         for suffix in ("old", "new"):
@@ -803,6 +832,31 @@ class DocumentationIntegrityBehaviorTests(DocumentationIntegrityFixture):
         result = self.check()
 
         self.assertTrue(result.passed, result.details)
+
+    def test_no_impact_trailer_is_rejected_when_canonical_section_changed(self):
+        write(
+            self.roots["ora"] / "orchestrator/feature.py",
+            "def feature():\n    return 'changed'\n",
+        )
+        self.update_feature_canonical("Changed behavior.", mirror=True)
+        self.commit("vault", "Document changed feature behavior")
+        self.commit(
+            "ora",
+            "Change feature behavior\n\nDocumentation-No-Impact: ora.feature",
+        )
+
+        result = self.check()
+
+        self.assertFalse(result.passed)
+        self.assertTrue(
+            any(
+                "unused Documentation-No-Impact trailer in ora final commit: "
+                "ora.feature"
+                in item
+                for item in result.details
+            ),
+            result.details,
+        )
 
     def test_matching_subject_line_is_not_a_git_trailer(self):
         write(
@@ -1062,7 +1116,7 @@ class DocumentationIntegrityBehaviorTests(DocumentationIntegrityFixture):
 
         self.assertTrue(result.passed, result.details)
 
-    def test_first_block_may_bootstrap_only_when_pinned_base_has_none(self):
+    def test_preactivation_base_cannot_bootstrap_an_accepted_finding_block(self):
         self._write_configuration(include_accepted=False)
         self.bases["vault"] = self.commit("vault", "Pre-bootstrap configuration")
         self._write_configuration()
@@ -1070,7 +1124,15 @@ class DocumentationIntegrityBehaviorTests(DocumentationIntegrityFixture):
 
         result = self.check()
 
-        self.assertTrue(result.passed, result.details)
+        self.assertFalse(result.passed)
+        self.assertTrue(
+            any(
+                "pinned vault base predates the activated accepted-finding block"
+                in item
+                for item in result.details
+            ),
+            result.details,
+        )
 
     def test_incomplete_repository_coverage_fails_before_configuration_work(self):
         incomplete_roots = dict(self.roots)
@@ -1180,6 +1242,88 @@ class DocumentationIntegrityBehaviorTests(DocumentationIntegrityFixture):
             )
         self.assertTrue(
             any("referential/state evidence only" in item for item in result.details)
+        )
+
+
+class ProductionDocumentationContractTests(unittest.TestCase):
+    def production_roots(self) -> dict[str, Path]:
+        roots: dict[str, Path] = {}
+        for name in VERIFY.DOCUMENTATION_REPOSITORIES:
+            value = os.environ.get(f"DCP_{name.upper()}_ROOT")
+            if not value:
+                self.skipTest("explicit five-root production contract is unavailable")
+            roots[name] = Path(value).resolve()
+        return roots
+
+    def test_production_ownership_map_resolves_declared_contract(self):
+        roots = self.production_roots()
+        registry = VERIFY.load_documentation_ownership_registry(
+            VERIFY.DOCUMENTATION_CONFIGURATION_FILE
+        )
+        states: dict[str, VERIFY.DocumentationRepositoryState] = {}
+        for name, root in roots.items():
+            head = git(root, "rev-parse", "HEAD")
+            states[name] = VERIFY.DocumentationRepositoryState(
+                name=name,
+                root=root,
+                base_commit=head,
+                head_commit=head,
+                changed_paths=(),
+            )
+
+        self.assertEqual(
+            {surface.surface_class for surface in registry.surfaces},
+            VERIFY.DOCUMENTATION_SURFACE_CLASSES,
+        )
+        self.assertEqual(
+            set(registry.discovery), VERIFY.DOCUMENTATION_SURFACE_CLASSES
+        )
+        for surface in registry.surfaces:
+            self.assertIn(
+                surface.propagation["type"],
+                VERIFY.DOCUMENTATION_PROPAGATION_TYPES,
+            )
+            canonical = VERIFY._bounded_documentation_path(
+                roots["vault"], surface.canonical_path
+            )
+            self.assertTrue(canonical.is_file(), surface.surface_id)
+            if surface.canonical_section is not None:
+                self.assertTrue(
+                    VERIFY._markdown_has_section(
+                        VERIFY.read_file(canonical), surface.canonical_section
+                    ),
+                    f"{surface.surface_id}: {surface.canonical_section}",
+                )
+            for reference in surface.references:
+                self.assertIsNone(
+                    VERIFY._resolve_documentation_reference(reference, states),
+                    surface.surface_id,
+                )
+
+        thinking_tools = next(
+            surface
+            for surface in registry.surfaces
+            if surface.surface_id == "ora.thinking-tools"
+        )
+        self.assertEqual(thinking_tools.propagation["type"], "ora_body_only")
+        self.assertEqual(thinking_tools.propagation["path"], "thinking-tools.md")
+
+    def test_production_audit_accepts_only_the_two_exact_external_findings(self):
+        self.production_roots()
+        result = VERIFY.check_framework_pair_audit(verbose=True)
+
+        self.assertTrue(result.passed, result.details)
+        self.assertTrue(
+            any(
+                "accepted external=2, audit failures=0" in detail
+                for detail in result.details
+            ),
+            result.details,
+        )
+        self.assertEqual(
+            sum(detail.startswith("accepted external finding:")
+                for detail in result.details),
+            2,
         )
 
 

@@ -69,7 +69,6 @@ def _write_manifest(path: Path, entries: list[dict]) -> None:
         "schema_version": 1,
         "manifest_id": VERIFY.FRAMEWORK_MANIFEST_ID,
         "source_audit": "test",
-        "as_of": "2026-07-22",
         "normalization": "test",
         "expected_counts": counts,
         "entries": entries,

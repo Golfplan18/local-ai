@@ -9,6 +9,7 @@ state and rollback mechanism.
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import json
 import mimetypes
@@ -20,7 +21,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 from urllib.parse import urlsplit
 
 try:
@@ -30,12 +31,32 @@ except ImportError:  # pragma: no cover
 
 
 OUTCOMES = {"CONTINUE", "FIX", "DONE", "ASK USER"}
+DCP_REPOSITORIES = ("vault", "ora", "app", "org", "msi")
+DCP_VERDICT_RE = re.compile(
+    r"^Documentation-(No-Impact-)?Verdict:\s*([^:]+):\s*(ACCEPT|REJECT)\s*$",
+    re.IGNORECASE,
+)
+DCP_ROOT_RE = re.compile(
+    r"^\s*(vault|ora|app|org|msi)\s+root:\s+(.+)\s+"
+    r"\(base\s+([0-9a-f]{40})\)\s*$",
+    re.IGNORECASE,
+)
+DCP_HEAD_RE = re.compile(
+    r"^\s*read\s+(vault|ora|app|org|msi)\s+at\s+([0-9a-f]{40})\s+"
+    r"from\s+(.+)\s+\(\d+\s+changed path\(s\)\)\s*$",
+    re.IGNORECASE,
+)
+DCP_AFFECTED_SURFACES_RE = re.compile(
+    r"^\s*affected surfaces:\s*(.*?)\s*$", re.IGNORECASE,
+)
+DCP_TASK_BRANCH_RE = re.compile(r"^(?:codex|ora)/[A-Za-z0-9][A-Za-z0-9._/-]*$")
 _MODEL_TOOL_RE = re.compile(
     r"<tool_call>\s*<n>(.*?)</n>\s*<parameters>(.*?)</parameters>\s*</tool_call>",
     re.DOTALL,
 )
 _SBPL_UNSAFE = ('"', "\\", "(", ")", "\n", "\r")
 _RECOVERY_REFLOG_PREFIX = "Programming approved plan "
+DCP_EMPTY_DIFF = "[no changes]"
 _ROLE_REPOSITORY_TOOLS = {
     "plan": {"repo_read", "repo_search"},
     "execute": {
@@ -239,6 +260,40 @@ def inspect_repository(repository_path: str | os.PathLike[str]) -> dict[str, Any
         "test_candidates": tests,
         "automation": automation,
     }
+
+
+def _repository_requires_dcp(root: Path) -> bool:
+    """Read the active DCP mandate from tracked top-level repository instructions."""
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        tracked = _run(
+            ["git", "ls-files", "--error-unmatch", "--", name], cwd=root
+        ).returncode == 0
+        path = root / name
+        if not tracked or not path.is_file():
+            continue
+        content = _text(path, 100_000)
+        for heading in re.finditer(
+            r"(?m)^(#{1,6})\s+Documentation-Code Parity"
+            r"(?:\s+\([^\n]*\))?\s*$",
+            content,
+        ):
+            level = len(heading.group(1))
+            remainder = content[heading.end():]
+            next_heading = re.search(rf"(?m)^#{{1,{level}}}\s+", remainder)
+            section = remainder[:next_heading.start()] if next_heading else remainder
+            if (
+                re.search(
+                    r"\b(?:for\s+)?every code-changing task\b",
+                    section,
+                    re.IGNORECASE,
+                )
+                and re.search(
+                    r"Reference — Documentation-Code Parity\s+Configuration\.md",
+                    section,
+                )
+            ):
+                return True
+    return False
 
 
 def _tool_calls(text: str) -> list[dict[str, Any]]:
@@ -1076,8 +1131,29 @@ def _plan_payload_contract_contradictions(payload: dict[str, Any]) -> list[str]:
     return observed
 
 
+def _visible_git_finish_line(plan: str) -> str | None:
+    """Read the one finish authority the browser-visible plan states."""
+    matches = re.findall(
+        r"(?im)\bgit\s+finish\s+line\s*:\s*([^\n]+)", str(plan or "")
+    )
+    if len(matches) != 1:
+        return None
+    value = re.sub(r"^[\s*`_~-]+", "", matches[0]).casefold()
+    for finish, pattern in (
+        ("coordinated_dcp", r"^coordinated[\s_-]+dcp\b"),
+        ("local_commits", r"^local[\s_-]+commits?\b"),
+        ("pull_request", r"^pull[\s_-]+requests?\b"),
+        ("push", r"^push\b"),
+        ("merge", r"^merge\b"),
+    ):
+        if re.search(pattern, value):
+            return finish
+    return ""
+
+
 def _plan_payload_issues(
     payload: dict[str, Any], configured_remotes: list[dict[str, Any]] | None = None,
+    *, repository_requires_dcp: bool = False,
 ) -> list[str]:
     """Return schema and authority-contract defects in a plan response."""
     issues = _plan_payload_contract_contradictions(payload)
@@ -1096,10 +1172,55 @@ def _plan_payload_issues(
         or not any(str(item).strip() for item in milestones)
     ):
         issues.append("missing milestones")
+    documentation = payload.get("documentation_impact")
+    if not isinstance(documentation, dict) or not isinstance(
+        documentation.get("required"), bool
+    ):
+        issues.append("missing or invalid documentation-impact declaration")
+    else:
+        surfaces = documentation.get("affected_surfaces")
+        if not isinstance(surfaces, list) or not all(
+            isinstance(item, str) and item.strip() for item in surfaces
+        ):
+            issues.append("invalid affected documentation surfaces")
+        elif len(surfaces) != len({item.strip() for item in surfaces}):
+            issues.append("duplicate affected documentation surfaces")
+        elif documentation["required"] and not surfaces:
+            issues.append("missing affected documentation surfaces")
+        elif not documentation["required"] and surfaces:
+            issues.append("no-impact plan unexpectedly declares affected surfaces")
+    declared_dcp_required = (
+        isinstance(documentation, dict)
+        and documentation.get("required") is True
+    )
+    if repository_requires_dcp and not declared_dcp_required:
+        issues.append(
+            "active repository instructions require Documentation-Code Parity"
+        )
+    if declared_dcp_required and not repository_requires_dcp:
+        issues.append(
+            "repository instructions do not activate Documentation-Code Parity"
+        )
+    dcp_required = declared_dcp_required or repository_requires_dcp
     finish = str(payload.get("git_finish_line") or "").strip()
-    if finish not in {"local_commits", "push", "pull_request", "merge"}:
+    if finish not in {
+        "local_commits", "push", "pull_request", "merge", "coordinated_dcp",
+    }:
         issues.append("unsupported Git finish line")
-    if finish != "local_commits":
+    elif dcp_required and finish not in {"local_commits", "coordinated_dcp"}:
+        issues.append(
+            "documentation-impacting plans cannot use a single-repository finish line"
+        )
+    elif not dcp_required and finish == "coordinated_dcp":
+        issues.append(
+            "coordinated DCP finish requires documentation-impacting work"
+        )
+    visible_finish = _visible_git_finish_line(plan)
+    if visible_finish is None:
+        issues.append("visible Git finish line is missing or ambiguous")
+    elif visible_finish != finish:
+        issues.append("visible Git finish line does not match its structured authority")
+    if finish in {"push", "pull_request", "merge"}:
         remote = str(payload.get("git_remote") or "").strip()
         target = str(payload.get("git_push_target") or "").strip()
         if not remote:
@@ -1149,6 +1270,7 @@ def plan_programming(
         raise ProgrammingError("Programming permits at most two question rounds")
     snapshot = inspect_repository(repository_path)
     root = Path(snapshot["root"])
+    repository_requires_dcp = _repository_requires_dcp(root)
     if endpoints is None:
         endpoints = configured_endpoints()
     if call_model_fn is None:
@@ -1164,7 +1286,9 @@ Ask only questions whose answers materially change product outcome, scope, risk,
 
 Otherwise return one concise plan readable in about a minute. Use visible labels for Outcome, Component scope, Non-goals, Protected work, Milestones, Completion criteria, Checks, Authorized effects, and Git finish line. Do not include exact file whitelists, step counts, attempt ceilings, digests, schemas, ledgers, receipts, or tracking apparatus.
 
-For push, pull request, or merge, visibly name exactly one configured Git remote and its single push URL, and return them as git_remote and git_push_target. For pull request or merge, also visibly name and return an explicit git_pr_base. Return JSON only. For questions: {{"kind":"questions","questions":["..."]}}. For a plan: {{"kind":"plan","plan":"...","milestones":["..."],"git_finish_line":"local_commits|push|pull_request|merge","git_remote":"...","git_push_target":"...","git_pr_base":"..."}}.
+If the repository instructions require Documentation-Code Parity for the planned code work, return documentation_impact as {{"required":true,"affected_surfaces":["stable surface id"]}}. Use {{"required":false,"affected_surfaces":[]}} when those instructions do not apply. This declaration does not replace the later evidence packet or the reviewer's semantic verdict. A documentation-impacting plan uses git_finish_line `coordinated_dcp` when the approved outcome includes the five-repository coordinator landing the exact reviewed heads, or `local_commits` when approval stops locally. It never uses the ordinary single-repository push, pull-request, or merge values. A non-documentation-impacting plan never uses `coordinated_dcp`. The browser-visible `Git finish line:` label must say exactly the same authority in plain language: local commits, push, pull request, merge, or coordinated DCP.
+
+For push, pull request, or merge, visibly name exactly one configured Git remote and its single push URL, and return them as git_remote and git_push_target. For pull request or merge, also visibly name and return an explicit git_pr_base. Return JSON only. For questions: {{"kind":"questions","questions":["..."]}}. For a plan: {{"kind":"plan","plan":"...","milestones":["..."],"git_finish_line":"local_commits|push|pull_request|merge|coordinated_dcp","git_remote":"...","git_push_target":"...","git_pr_base":"...","documentation_impact":{{"required":true|false,"affected_surfaces":["..."]}}}}.
 {_tool_instructions('plan')}
 """
     user = json.dumps({
@@ -1185,7 +1309,11 @@ For push, pull request, or merge, visibly name exactly one configured Git remote
     )
     payload = _json_object(result["response"])
     if payload.get("kind") == "plan":
-        issues = _plan_payload_issues(payload, snapshot["automation"]["remotes"])
+        issues = _plan_payload_issues(
+            payload,
+            snapshot["automation"]["remotes"],
+            repository_requires_dcp=repository_requires_dcp,
+        )
         if issues:
             planner_messages.append({"role": "assistant", "content": result["response"]})
             planner_messages.append({
@@ -1208,7 +1336,11 @@ For push, pull request, or merge, visibly name exactly one configured Git remote
                 call_model_fn=call_model_fn,
             )
             payload = _json_object(result["response"])
-            remaining = _plan_payload_issues(payload, snapshot["automation"]["remotes"])
+            remaining = _plan_payload_issues(
+                payload,
+                snapshot["automation"]["remotes"],
+                repository_requires_dcp=repository_requires_dcp,
+            )
             if payload.get("kind") != "plan" or remaining:
                 raise ProgrammingError(
                     "planner repeated an invalid Programming plan"
@@ -1233,7 +1365,9 @@ For push, pull request, or merge, visibly name exactly one configured Git remote
     finish = str(payload.get("git_finish_line") or "local_commits").strip()
     if not plan or not isinstance(milestones, list) or not milestones:
         raise ProgrammingError("planner returned an incomplete plan")
-    if finish not in {"local_commits", "push", "pull_request", "merge"}:
+    if finish not in {
+        "local_commits", "push", "pull_request", "merge", "coordinated_dcp",
+    }:
         raise ProgrammingError("Git finish line is unsupported")
     planned = {
         "kind": "plan",
@@ -1245,6 +1379,10 @@ For push, pull request, or merge, visibly name exactly one configured Git remote
     for field in ("git_remote", "git_push_target", "git_pr_base"):
         if str(payload.get(field) or "").strip():
             planned[field] = str(payload[field]).strip()
+    if isinstance(payload.get("documentation_impact"), dict):
+        planned["documentation_impact"] = copy.deepcopy(
+            payload["documentation_impact"]
+        )
     return planned
 
 
@@ -1341,6 +1479,26 @@ def _raw_diff(root: Path, base: str, paths: set[str] | None = None) -> str:
     return "\n".join(part for part in parts if part)
 
 
+def _raw_cumulative_diff(root: Path, base: str) -> bytes:
+    """Return the tracked base-to-head diff without text or whitespace normalization."""
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--no-ext-diff", "--binary", base, "--"],
+            cwd=str(root),
+            capture_output=True,
+            timeout=120,
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ProgrammingError(f"git diff failed to run: {exc}") from exc
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or b"unknown error").decode(
+            "utf-8", "replace"
+        ).strip()
+        raise ProgrammingError(f"git diff failed: {detail}")
+    return result.stdout
+
+
 def _tree_fingerprint(root: Path, base: str, paths: set[str] | None = None) -> str:
     return hashlib.sha256(_raw_diff(root, base, paths).encode("utf-8")).hexdigest()
 
@@ -1397,7 +1555,14 @@ def _commit_subject(milestone: str) -> str:
     return "Programming: " + re.sub(r"\s+", " ", milestone).strip()[:68]
 
 
-def _commit_slice(root: Path, milestone: str, parent: str, patch: str) -> str | None:
+def _commit_slice(
+    root: Path,
+    milestone: str,
+    parent: str,
+    patch: str,
+    *,
+    allow_empty: bool = False,
+) -> str | None:
     with tempfile.TemporaryDirectory(prefix="ora-programming-index-") as temporary:
         index = str(Path(temporary) / "index")
         environment = {"GIT_INDEX_FILE": index}
@@ -1412,7 +1577,7 @@ def _commit_slice(root: Path, milestone: str, parent: str, patch: str) -> str | 
             )
         tree = _run(["git", "write-tree"], cwd=root, env=environment,
                     check=True).stdout.strip()
-    if tree == _git(root, "rev-parse", f"{parent}^{{tree}}"):
+    if tree == _git(root, "rev-parse", f"{parent}^{{tree}}") and not allow_empty:
         return None
     commit = _run(
         ["git", "commit-tree", tree, "-p", parent, "-m", _commit_subject(milestone)],
@@ -1447,11 +1612,365 @@ def _parse_review(text: str) -> tuple[str, str]:
     return first, "\n".join(lines[1:]).strip()
 
 
-def _review_terminal_issue(text: str) -> str | None:
+def _dcp_gate_records(
+    packet: Mapping[str, Any] | None,
+) -> tuple[dict[str, dict[str, str]], list[str], list[str]]:
+    """Parse roots, bases, heads, and the authoritative affected surfaces."""
+    if not isinstance(packet, Mapping):
+        return {}, [], ["the complete cross-repository evidence packet is absent"]
+    output = packet.get("verbose_gate_result")
+    if not isinstance(output, str) or not output.strip():
+        return {}, [], ["packet lacks the verbose five-root gate result"]
+
+    roots: dict[str, tuple[str, str]] = {}
+    heads: dict[str, tuple[str, str]] = {}
+    affected_lines: list[str] = []
+    issues: list[str] = []
+    for line in output.splitlines():
+        affected_match = DCP_AFFECTED_SURFACES_RE.match(line)
+        if affected_match:
+            affected_lines.append(affected_match.group(1))
+            continue
+        root_match = DCP_ROOT_RE.match(line)
+        if root_match:
+            name = root_match.group(1).casefold()
+            if name in roots:
+                issues.append(f"verbose gate output repeats the {name} root/base")
+            else:
+                roots[name] = (root_match.group(2).strip(), root_match.group(3).lower())
+            continue
+        head_match = DCP_HEAD_RE.match(line)
+        if head_match:
+            name = head_match.group(1).casefold()
+            if name in heads:
+                issues.append(f"verbose gate output repeats the {name} head")
+            else:
+                heads[name] = (head_match.group(3).strip(), head_match.group(2).lower())
+
+    expected = set(DCP_REPOSITORIES)
+    if set(roots) != expected:
+        issues.append("verbose gate output must identify all five roots and bases exactly once")
+    if set(heads) != expected:
+        issues.append("verbose gate output must identify all five heads exactly once")
+    pass_lines = re.findall(r"(?m)^\s*(PASS|FAIL)\s*$", output)
+    failed_summaries = re.findall(r"(?m)^Failed:\s+(\d+)\b", output)
+    if pass_lines != ["PASS"] or failed_summaries != ["0"]:
+        issues.append("verbose gate output does not show a passing focused gate")
+
+    affected_surfaces: list[str] = []
+    if len(affected_lines) != 1:
+        issues.append(
+            "verbose gate output must identify affected surfaces exactly once"
+        )
+    else:
+        values = [item.strip() for item in affected_lines[0].split(",")]
+        if not affected_lines[0].strip() or any(not item for item in values):
+            issues.append("verbose gate affected surfaces are malformed")
+        elif any(item.casefold() == "none" for item in values):
+            if len(values) != 1 or values[0].casefold() != "none":
+                issues.append("verbose gate cannot mix none with affected surfaces")
+        else:
+            affected_surfaces = list(dict.fromkeys(values))
+
+    records: dict[str, dict[str, str]] = {}
+    if set(roots) == expected and set(heads) == expected:
+        for name in DCP_REPOSITORIES:
+            root, base = roots[name]
+            head_root, head = heads[name]
+            if head_root != root:
+                issues.append(f"verbose gate output disagrees about the {name} root")
+            records[name] = {"root": root, "base": base, "head": head}
+        if len({record["root"] for record in records.values()}) != len(DCP_REPOSITORIES):
+            issues.append("verbose gate roots must be five distinct worktrees")
+    return records, affected_surfaces, issues
+
+
+def _live_dcp_repository_states(
+    packet: Mapping[str, Any] | None,
+    *,
+    programming_root: Path,
+    expected_current_base: str,
+    expected_current_branch: str,
+) -> tuple[dict[str, dict[str, str]], list[str]]:
+    """Bind printed gate state to five clean, attached, live task worktrees."""
+    records, _gate_surfaces, issues = _dcp_gate_records(packet)
+    if issues:
+        return {}, issues
+
+    packet_states = packet.get("repository_states") if isinstance(packet, Mapping) else None
+    packet_diffs = packet.get("repository_diffs") if isinstance(packet, Mapping) else None
+    expected_names = set(DCP_REPOSITORIES)
+    if not isinstance(packet_states, Mapping) or set(packet_states) != expected_names:
+        issues.append("packet must identify all five task branches and gate states")
+    if not isinstance(packet_diffs, Mapping) or set(packet_diffs) != expected_names:
+        issues.append("packet must contain all five cumulative repository diffs")
+    if issues:
+        return {}, issues
+
+    live: dict[str, dict[str, str]] = {}
+    programming_name = ""
+    resolved_roots: set[Path] = set()
+    for name in DCP_REPOSITORIES:
+        record = records[name]
+        submitted_state = packet_states[name]
+        if not isinstance(submitted_state, Mapping):
+            issues.append(f"{name} packet task state is malformed")
+            continue
+        submitted = {
+            key: str(submitted_state.get(key) or "").strip()
+            for key in ("root", "base", "branch", "head")
+        }
+        for key in ("root", "base", "head"):
+            if submitted[key] != record[key]:
+                issues.append(f"{name} packet {key} differs from the verbose gate")
+        if not DCP_TASK_BRANCH_RE.fullmatch(submitted["branch"]):
+            issues.append(f"{name} packet branch is not an explicit task branch")
+
+        raw_root = record["root"]
+        if not Path(raw_root).is_absolute():
+            issues.append(f"{name} gate root is not absolute")
+            continue
+        try:
+            root = _repository_root(raw_root)
+        except ProgrammingError as exc:
+            issues.append(f"{name} gate root is unavailable: {exc}")
+            continue
+        if str(root) != raw_root:
+            issues.append(f"{name} gate root is not the exact resolved Git root")
+            continue
+        if root in resolved_roots:
+            issues.append(f"{name} gate root duplicates another repository")
+            continue
+        resolved_roots.add(root)
+
+        actual_head = _git(root, "rev-parse", "HEAD", check=False)
+        actual_branch = _git(root, "branch", "--show-current", check=False)
+        resolved_base = _git(root, "rev-parse", f"{record['base']}^{{commit}}", check=False)
+        base_is_valid = resolved_base == record["base"]
+        if not base_is_valid:
+            issues.append(f"{name} gate base is not the supplied full commit")
+        elif _run(
+            ["git", "merge-base", "--is-ancestor", record["base"], "HEAD"],
+            cwd=root,
+        ).returncode != 0:
+            issues.append(f"{name} gate base is not an ancestor of its task head")
+        if actual_head != record["head"]:
+            issues.append(f"{name} live head no longer equals the verbose gate head")
+        if not actual_branch:
+            issues.append(f"{name} worktree is not on an attached task branch")
+        elif actual_branch != submitted["branch"]:
+            issues.append(f"{name} live branch differs from the packet task branch")
+        if _git(root, "status", "--porcelain=v1", check=False):
+            issues.append(f"{name} worktree is no longer clean")
+        if base_is_valid and actual_head == record["head"]:
+            actual_diff = _raw_cumulative_diff(root, record["base"])
+            try:
+                expected_diff = (
+                    actual_diff.decode("utf-8") if actual_diff else DCP_EMPTY_DIFF
+                )
+            except UnicodeDecodeError:
+                issues.append(
+                    f"{name} cumulative diff is not valid UTF-8 evidence"
+                )
+                expected_diff = None
+            submitted_diff = packet_diffs.get(name)
+            if not isinstance(submitted_diff, str) or submitted_diff != expected_diff:
+                issues.append(
+                    f"{name} cumulative diff does not equal its gated base-to-head diff"
+                )
+
+        live[name] = {
+            "root": str(root),
+            "base": record["base"],
+            "branch": actual_branch,
+            "head": actual_head,
+        }
+        if root == programming_root:
+            programming_name = name
+
+    if not programming_name:
+        issues.append("the current Programming repository is absent from the five-root gate")
+    elif programming_name in live:
+        current = live[programming_name]
+        if current["base"] != expected_current_base:
+            issues.append("the current Programming baseline differs from the five-root gate")
+        if current["branch"] != expected_current_branch:
+            issues.append("the current Programming branch differs from the gated task branch")
+    return (live if not issues else {}), issues
+
+
+def _documentation_review_contract(
+    plan: Mapping[str, Any], packet: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    declaration = plan.get("documentation_impact")
+    if not isinstance(declaration, dict) or declaration.get("required") is not True:
+        return {"required": False, "issues": [], "surfaces": [], "no_impact": set()}
+
+    declared_surfaces = declaration.get("affected_surfaces")
+    surfaces = (
+        [item.strip() for item in declared_surfaces]
+        if isinstance(declared_surfaces, list)
+        and all(isinstance(item, str) and item.strip() for item in declared_surfaces)
+        else []
+    )
+    issues: list[str] = []
+    if not surfaces or len(surfaces) != len(set(surfaces)):
+        issues.append("the approved plan lacks a unique affected-surface list")
+    if not isinstance(packet, Mapping):
+        return {
+            "required": True,
+            "issues": issues + ["the complete cross-repository evidence packet is absent"],
+            "surfaces": surfaces,
+            "no_impact": set(),
+        }
+
+    _gate_records, gate_surfaces, gate_issues = _dcp_gate_records(packet)
+    issues.extend(issue for issue in gate_issues if issue not in issues)
+
+    raw_packet_surfaces = packet.get("affected_surfaces")
+    packet_surfaces = (
+        [item.strip() for item in raw_packet_surfaces]
+        if isinstance(raw_packet_surfaces, list)
+        and all(
+            isinstance(item, str) and item.strip()
+            for item in raw_packet_surfaces
+        )
+        else []
+    )
+    if (
+        not packet_surfaces
+        or len(packet_surfaces) != len(set(packet_surfaces))
+    ):
+        issues.append("packet lacks a unique affected-surface list")
+    if not (
+        set(surfaces) == set(packet_surfaces) == set(gate_surfaces)
+    ):
+        issues.append(
+            "plan and packet affected surfaces do not equal the authoritative gate set"
+        )
+
+    diffs = packet.get("repository_diffs")
+    if not isinstance(diffs, Mapping) or set(diffs) != set(DCP_REPOSITORIES) or any(
+        not isinstance(diffs.get(repo), str) or diffs.get(repo) == ""
+        for repo in DCP_REPOSITORIES
+    ):
+        issues.append("packet must contain all five cumulative repository diffs")
+
+    states = packet.get("repository_states")
+    if not isinstance(states, Mapping) or set(states) != set(DCP_REPOSITORIES):
+        issues.append("packet must identify all five task branches and gate states")
+    else:
+        for repo in DCP_REPOSITORIES:
+            state = states.get(repo)
+            if not isinstance(state, Mapping) or set(state) != {
+                "root", "base", "branch", "head",
+            }:
+                issues.append(f"packet {repo} task state is malformed")
+                continue
+            root_value = str(state.get("root") or "").strip()
+            base_value = str(state.get("base") or "").strip()
+            branch_value = str(state.get("branch") or "").strip()
+            head_value = str(state.get("head") or "").strip()
+            if not Path(root_value).is_absolute():
+                issues.append(f"packet {repo} task root is not absolute")
+            if not re.fullmatch(r"[0-9a-f]{40}", base_value):
+                issues.append(f"packet {repo} task base is not a full commit")
+            if not re.fullmatch(r"[0-9a-f]{40}", head_value):
+                issues.append(f"packet {repo} task head is not a full commit")
+            if not DCP_TASK_BRANCH_RE.fullmatch(branch_value):
+                issues.append(f"packet {repo} branch is not an explicit task branch")
+
+    if not isinstance(packet.get("unversioned_instruction_changes"), str) or not str(
+        packet.get("unversioned_instruction_changes")
+    ).strip():
+        issues.append("packet lacks the global/skill instruction changes")
+
+    canonical = packet.get("canonical_section_changes")
+    if not isinstance(canonical, Mapping):
+        issues.append("packet lacks canonical-section changes")
+        canonical = {}
+
+    no_impact_items = packet.get("no_impact_declarations")
+    no_impact: set[str] = set()
+    if not isinstance(no_impact_items, list):
+        issues.append("packet lacks no-impact declarations and rationales")
+        no_impact_items = []
+    for item in no_impact_items:
+        if not isinstance(item, Mapping):
+            issues.append("a no-impact declaration is malformed")
+            continue
+        surface = str(item.get("surface_id") or "").strip()
+        trailer = str(item.get("trailer") or "").strip()
+        rationale = str(item.get("rationale") or "").strip()
+        if (
+            not surface
+            or trailer != f"Documentation-No-Impact: {surface}"
+            or not rationale
+            or surface in no_impact
+        ):
+            issues.append("a no-impact declaration lacks an exact trailer or rationale")
+            continue
+        no_impact.add(surface)
+
+    canonical_surfaces = {
+        str(key).strip() for key, value in canonical.items()
+        if str(key).strip() and isinstance(value, str) and value.strip()
+    }
+    if canonical_surfaces & no_impact:
+        issues.append("a surface has both a canonical change and a no-impact declaration")
+    if canonical_surfaces | no_impact != set(gate_surfaces):
+        issues.append("canonical/no-impact dispositions do not cover exactly the affected surfaces")
+
+    for field, label in (
+        ("propagation_results", "registered propagation results"),
+        ("verbose_gate_result", "verbose five-root gate result"),
+        ("authorized_test_output", "authorized test output"),
+    ):
+        value = packet.get(field)
+        if value is None or value == "" or value == [] or value == {}:
+            issues.append(f"packet lacks {label}")
+
+    return {
+        "required": True,
+        "issues": issues,
+        "surfaces": gate_surfaces,
+        "no_impact": no_impact,
+    }
+
+
+def _review_terminal_issue(
+    text: str, documentation: Mapping[str, Any] | None = None,
+) -> str | None:
     try:
-        _parse_review(text)
+        outcome, _detail = _parse_review(text)
     except ProgrammingError as exc:
         return str(exc)
+    if not documentation or not documentation.get("required"):
+        return None
+    if outcome not in {"CONTINUE", "DONE"}:
+        return None
+    issues = list(documentation.get("issues") or [])
+    if issues:
+        return "documentation review cannot accept incomplete evidence: " + "; ".join(issues)
+
+    verdicts: dict[str, tuple[bool, str]] = {}
+    for line in (text or "").splitlines()[1:]:
+        match = DCP_VERDICT_RE.match(line.strip())
+        if not match:
+            continue
+        surface = match.group(2).strip()
+        if surface in verdicts:
+            return f"documentation review repeated the verdict for {surface}"
+        verdicts[surface] = (bool(match.group(1)), match.group(3).upper())
+    expected = set(documentation.get("surfaces") or [])
+    if set(verdicts) != expected:
+        return "documentation review must give one explicit verdict for every affected surface"
+    no_impact = set(documentation.get("no_impact") or [])
+    for surface, (is_no_impact, verdict) in verdicts.items():
+        if is_no_impact != (surface in no_impact):
+            return f"documentation verdict type is wrong for {surface}"
+        if verdict != "ACCEPT":
+            return f"documentation review rejected {surface}; an accepting outcome is invalid"
     return None
 
 
@@ -1466,6 +1985,7 @@ def _review(
     call_model_fn: Callable[..., str],
     web_fetch_fn: Callable[..., Any] | None,
     web_search_fn: Callable[..., Any] | None,
+    documentation_review: Mapping[str, Any] | None = None,
     include_worktree: bool = True,
     task_paths: set[str] | None = None,
 ) -> dict[str, Any]:
@@ -1490,22 +2010,41 @@ def _review(
         )
     diff = _raw_diff(review_root, diff_base)
     reviewed_patch = _raw_diff(review_root, review_parent)
+    documentation = (
+        _documentation_review_contract(plan, documentation_review)
+        if milestone == "FINAL"
+        else {"required": False, "issues": [], "surfaces": [], "no_impact": set()}
+    )
+    documentation_instruction = ""
+    if documentation["required"]:
+        documentation_instruction = """
+
+Documentation-Code Parity is in scope. The deterministic gate proves mechanical correspondence only; you own semantic truth. Compare changed behavior with each owning canonical section, or explicitly accept the declared no-impact rationale. An accepting CONTINUE or DONE response must include exactly one line per affected surface: `Documentation-Verdict: <surface-id>: ACCEPT` for a canonical update, or `Documentation-No-Impact-Verdict: <surface-id>: ACCEPT` for a no-impact declaration. Use REJECT with FIX when a disposition is false. Missing evidence is not acceptance."""
     system = f"""You are Ora's clean-context Programming reviewer. This is a fresh model call. You receive no executor transcript, hidden reasoning, summary, or executor claims.
 
-Inspect the repository, raw diff, and relevant checks yourself. Judge only the approved plan. Reject wrong user-visible behavior, unmet criteria, content or data loss, runtime failure, unauthorized scope, broken atomicity, or lost user work. Do not add preferred abstractions, speculative safeguards, documentation style, tracking, or unrequested generality.
+Inspect the repository and raw diff yourself, and run only the exact checks the approved plan schedules for review. Judge only the approved plan. Reject wrong user-visible behavior, unmet criteria, content or data loss, runtime failure, unauthorized scope, broken atomicity, or lost user work. Do not add tests, builds, benchmarks, audits, lint, reassurance checks, preferred abstractions, speculative safeguards, documentation style, tracking, or unrequested generality. If a material risk cannot be judged within the approved testing ceiling, return ASK USER before running another check.
 
 For external facts or live state, independently inspect the smallest sufficient authoritative source with web_search/web_fetch. A citation or description is not evidence unless you inspect its source. For an image, PDF, rendered interface, audio, video, or other non-text criterion, use the matching inspection tool and directly inspect its attached evidence. Executor descriptions are never evidence. If required evidence cannot be obtained, keep it unverified.
 
 Return one of exactly four tokens on the first line: CONTINUE, FIX, DONE, ASK USER. After FIX or ASK USER, give one consolidated, substantive explanation. CONTINUE means this slice is sound and approved work remains. DONE means the exact complete plan is satisfied. ASK USER is reserved for changed scope/authority, human-only access, unsafe user work, repeated no-progress, or the soft spend boundary.
+{documentation_instruction}
 {_tool_instructions('review')}
 """
-    user = "\n\n".join((
+    packet_text = ""
+    if documentation["required"]:
+        packet_text = "DOCUMENTATION-CODE PARITY EVIDENCE PACKET\n" + (
+            json.dumps(documentation_review, ensure_ascii=False, indent=2)
+            if documentation_review is not None
+            else "[missing]"
+        )
+    user = "\n\n".join(item for item in (
         "APPROVED PLAN\n" + plan["plan"],
         "MILESTONES\n" + "\n".join(f"- {item}" for item in plan["milestones"]),
         "REVIEW TARGET\n" + milestone,
         "RUNTIME BASELINE\n" + json.dumps(runtime_baseline, ensure_ascii=False),
         "RAW TASK DIFF\n" + (diff or "[no diff]"),
-    ))
+        packet_text,
+    ) if item)
     try:
         result = _agent(
             root=review_root,
@@ -1515,11 +2054,13 @@ Return one of exactly four tokens on the first line: CONTINUE, FIX, DONE, ASK US
             call_model_fn=call_model_fn,
             web_fetch_fn=web_fetch_fn,
             web_search_fn=web_search_fn,
-            terminal_validator=_review_terminal_issue,
+            terminal_validator=lambda text: _review_terminal_issue(text, documentation),
             terminal_correction=(
                 "PROTOCOL CORRECTION: your review must begin with exactly one of "
                 "CONTINUE, FIX, DONE, or ASK USER on the first line. Return the "
-                "evidence-based review outcome now."
+                "evidence-based review outcome now. If Documentation-Code Parity "
+                "is in scope, an accepting outcome also requires one explicit "
+                "per-surface documentation verdict in the requested form."
             ),
         )
     finally:
@@ -1584,6 +2125,10 @@ def _pr_number(url: str, repository: str) -> str:
 
 def _finish(root: Path, branch: str, plan: dict[str, Any]) -> dict[str, str]:
     finish_line = str(plan.get("git_finish_line") or "local_commits")
+    if finish_line == "coordinated_dcp":
+        raise ProgrammingError(
+            "the five-repository coordinator, not Programming, owns the DCP finish"
+        )
     if finish_line == "local_commits":
         return {"finish_line": finish_line, "branch": branch}
     remote, target = str(plan.get("git_remote") or "").strip(), str(plan.get("git_push_target") or "").strip()
@@ -1656,6 +2201,7 @@ def run_approved_programming(
     soft_boundary_seconds: int = 5_400,
     resume_branch: str | None = None,
     continuation: str = "",
+    documentation_review: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Execute one approved plan through fresh review and accepted-slice commits."""
     emit = progress or (lambda _event: None)
@@ -1664,11 +2210,17 @@ def run_approved_programming(
     if not isinstance(plan, dict):
         raise ProgrammingError("approved plan is incomplete")
     root = _repository_root(repository_path)
-    plan_issues = _plan_payload_issues(plan, _configured_remotes(root))
+    repository_requires_dcp = _repository_requires_dcp(root)
+    plan_issues = _plan_payload_issues(
+        plan,
+        _configured_remotes(root),
+        repository_requires_dcp=repository_requires_dcp,
+    )
     if plan_issues:
         raise ProgrammingError(
             "approved plan is incomplete or unauthorized: " + ", ".join(plan_issues)
         )
+    dcp_required = repository_requires_dcp
     baseline = dict(plan.get("baseline") or {})
     baseline_head = str(baseline.get("head") or "")
     current_head = _git(root, "rev-parse", "HEAD")
@@ -1721,6 +2273,28 @@ def run_approved_programming(
         emit({"type": "decision", **result})
         return result
 
+    def ask_for_dcp_evidence(detail: str) -> dict[str, Any]:
+        result = {
+            "outcome": "ASK USER",
+            "detail": detail,
+            "branch": branch,
+            "head": _git(root, "rev-parse", "HEAD"),
+            "dcp_evidence_required": True,
+        }
+        emit({"type": "decision", **result})
+        return result
+
+    def coordinated_dcp_correction(detail: str) -> dict[str, Any]:
+        result = {
+            "outcome": "FIX",
+            "detail": detail,
+            "branch": branch,
+            "head": _git(root, "rev-parse", "HEAD"),
+            "coordinated_correction_required": True,
+        }
+        emit({"type": "decision", **result})
+        return result
+
     initial_dirty = set(_dirty_paths(root, current_head if resumed else baseline_head))
     task_paths = {path for path in initial_dirty if _plan_mentions_path(plan, path)}
     protected_paths = initial_dirty - task_paths
@@ -1749,7 +2323,7 @@ def run_approved_programming(
     milestones = [str(item) for item in plan["milestones"]]
     executor_messages: list[dict[str, str]] = [{
         "role": "system",
-        "content": f"""You are Ora's repository executor. Implement only the approved plan in the real task repository. Inspect before editing, preserve unrelated behavior, run meaningful checks, and complete the named milestone as one coherent slice. repo_command runs in a disposable copy and cannot change the task tree; use repo_write, repo_edit, or repo_delete for intended source changes. Do not commit, stage, switch branches, push, deploy, publish, message, or use credentials; the coordinator owns Git and finish-line effects. Use the repository tools, then report concisely.\n{_tool_instructions('execute')}""",
+        "content": f"""You are Ora's repository executor. Implement only the approved plan in the real task repository. Inspect before editing, preserve unrelated behavior, run only the exact checks the approved plan schedules for this slice, and complete the named milestone as one coherent slice. Do not add a test, build, benchmark, audit, lint, or reassurance check; return the material risk if it cannot be judged within the approved ceiling. repo_command runs in a disposable copy and cannot change the task tree; use repo_write, repo_edit, or repo_delete for intended source changes. Do not commit, stage, switch branches, push, deploy, publish, message, or use credentials; the coordinator owns Git and finish-line effects. Use the repository tools, then report concisely.\n{_tool_instructions('execute')}""",
     }]
     if resumed:
         executor_messages.append({
@@ -1767,6 +2341,7 @@ def run_approved_programming(
     )
     last_failure: tuple[str, str] | None = None
     repeated_failure = 0
+    milestones_executed = False
     for milestone in milestones:
         if _commit_subject(milestone) in accepted_subjects:
             emit({"type": "milestone", "milestone": milestone,
@@ -1834,6 +2409,7 @@ def run_approved_programming(
                 call_model_fn=call_model_fn,
                 web_fetch_fn=web_fetch_fn,
                 web_search_fn=web_search_fn,
+                documentation_review=None,
                 task_paths=task_paths,
             )
             public_review = {key: value for key, value in review.items() if not key.startswith("_")}
@@ -1866,9 +2442,14 @@ def run_approved_programming(
                 correction = review["detail"] or "Correct the substantive review defects."
                 continue
             commit = _commit_slice(
-                root, milestone, review["_parent"], review["_patch"]
+                root,
+                milestone,
+                review["_parent"],
+                review["_patch"],
+                allow_empty=dcp_required,
             )
             accepted_subjects.add(_commit_subject(milestone))
+            milestones_executed = True
             emit({
                 "type": "milestone",
                 "milestone": milestone,
@@ -1879,6 +2460,97 @@ def run_approved_programming(
             last_failure = None
             repeated_failure = 0
             break
+
+    if dcp_required:
+        if not resumed or milestones_executed:
+            return ask_for_dcp_evidence(
+                "Milestone execution is committed locally. Generate the complete "
+                "five-repository Documentation-Code Parity packet from these current "
+                "heads, then resume final review with that fresh JSON evidence."
+            )
+
+        documentation_contract = _documentation_review_contract(
+            plan, documentation_review
+        )
+        if documentation_contract["issues"]:
+            return ask_for_dcp_evidence(
+                "Final Documentation-Code Parity evidence is incomplete or malformed: "
+                + "; ".join(documentation_contract["issues"])
+            )
+
+        gated_states, gate_issues = _live_dcp_repository_states(
+            documentation_review,
+            programming_root=root,
+            expected_current_base=baseline_head,
+            expected_current_branch=branch,
+        )
+        if gate_issues:
+            return ask_for_dcp_evidence(
+                "Final Documentation-Code Parity evidence is absent, stale, or does "
+                "not identify the five current clean task branches: "
+                + "; ".join(gate_issues)
+            )
+
+        review = _review_with_provider_retry(
+            root=root,
+            plan=plan,
+            milestone="FINAL",
+            runtime_baseline=runtime_baseline,
+            diff_base=baseline_head,
+            endpoint=endpoints["reviewer"],
+            call_model_fn=call_model_fn,
+            web_fetch_fn=web_fetch_fn,
+            web_search_fn=web_search_fn,
+            documentation_review=documentation_review,
+            include_worktree=False,
+            task_paths=task_paths,
+        )
+        public_review = {
+            key: value for key, value in review.items() if not key.startswith("_")
+        }
+        emit({"type": "review", "milestone": "FINAL", **public_review})
+        if review["outcome"] == "ASK USER":
+            return {**public_review, "branch": branch}
+
+        current_states, current_issues = _live_dcp_repository_states(
+            documentation_review,
+            programming_root=root,
+            expected_current_base=baseline_head,
+            expected_current_branch=branch,
+        )
+        if current_issues or current_states != gated_states:
+            detail = "; ".join(current_issues) if current_issues else (
+                "a gated branch changed during final review"
+            )
+            return ask_for_dcp_evidence(
+                "The five-repository evidence is no longer current: " + detail
+            )
+
+        if review["outcome"] == "DONE":
+            finish_line = str(plan.get("git_finish_line") or "local_commits")
+            result = {
+                "outcome": "DONE",
+                "detail": review["detail"],
+                "branch": branch,
+                "head": _git(root, "rev-parse", "HEAD"),
+                "finish_line": finish_line,
+                "coordinated_finish_required": finish_line == "coordinated_dcp",
+                "reviewed_local_branches": current_states,
+            }
+            emit({"type": "done", **result})
+            return result
+
+        correction = review["detail"] or "Correct the final substantive defects."
+        if review["outcome"] == "CONTINUE":
+            correction = "Final review did not establish completion. " + correction
+        if (
+            _git(root, "rev-parse", "HEAD") != review["_parent"]
+            or _raw_diff(root, review["_parent"], task_paths) != review["_patch"]
+        ):
+            return ask_for_separation(
+                "repository work changed during final review and cannot be corrected safely"
+            )
+        return coordinated_dcp_correction(correction)
 
     final_base = _git(root, "rev-parse", "HEAD")
     correction = ""
@@ -1918,6 +2590,7 @@ def run_approved_programming(
             call_model_fn=call_model_fn,
             web_fetch_fn=web_fetch_fn,
             web_search_fn=web_search_fn,
+            documentation_review=documentation_review,
             include_worktree=bool(correction),
             task_paths=task_paths,
         )

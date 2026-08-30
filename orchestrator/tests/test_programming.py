@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -66,7 +67,9 @@ class RepositoryCase(unittest.TestCase):
     def complete_planner_payload():
         return {
             "kind": "plan", "milestones": ["Fix and verify VALUE"],
-            "git_finish_line": "local_commits", "plan": (
+            "git_finish_line": "local_commits",
+            "documentation_impact": {"required": False, "affected_surfaces": []},
+            "plan": (
                 "Outcome: fix VALUE. Scope: app behavior. Non-goals: deployment. "
                 "Protected work: unrelated work. Milestones: implement and verify. "
                 "Completion: pytest passes. Checks: pytest. Authorized effects: local. "
@@ -86,7 +89,139 @@ class RepositoryCase(unittest.TestCase):
             ),
             "milestones": milestones or ["Make VALUE equal 2 and prove the test"],
             "git_finish_line": "local_commits",
+            "documentation_impact": {"required": False, "affected_surfaces": []},
             "baseline": {key: snapshot[key] for key in ("root", "head", "branch", "status")},
+        }
+
+    def dcp_plan(self, plan=None, *, finish_line="local_commits"):
+        plan = plan or self.plan()
+        plan["git_finish_line"] = finish_line
+        visible_finish = {
+            "local_commits": "local commits",
+            "coordinated_dcp": "coordinated DCP",
+        }[finish_line]
+        plan["plan"] = re.sub(
+            r"(?i)(\bgit\s+finish\s+line\s*:\s*)"
+            r"(?:local[\s_-]+commits?|push|pull[\s_-]+requests?|merge|"
+            r"coordinated[\s_-]+dcp)\b",
+            lambda match: match.group(1) + visible_finish,
+            plan["plan"],
+        )
+        for field in ("git_remote", "git_push_target", "git_pr_base"):
+            plan.pop(field, None)
+        plan["documentation_impact"] = {
+            "required": True,
+            "affected_surfaces": ["ora.runtime", "ora.operator-guide"],
+        }
+        return plan
+
+    @staticmethod
+    def dcp_packet(states=None):
+        if states is None:
+            states = {
+                name: {
+                    "root": f"/dcp-task/{name}",
+                    "base": f"{index + 1:040x}",
+                    "branch": f"codex/dcp-task-{name}",
+                    "head": f"{index + 11:040x}",
+                }
+                for index, name in enumerate(programming.DCP_REPOSITORIES)
+            }
+        repository_diffs = {
+            "vault": "diff -- vault canonical",
+            "ora": "diff -- runtime",
+            "app": "[no changes]",
+            "org": "[no changes]",
+            "msi": "[no changes]",
+        }
+        for name in programming.DCP_REPOSITORIES:
+            root = Path(states[name]["root"])
+            if root.is_dir():
+                actual = programming._raw_cumulative_diff(
+                    root, states[name]["base"]
+                )
+                repository_diffs[name] = (
+                    actual.decode("utf-8")
+                    if actual
+                    else programming.DCP_EMPTY_DIFF
+                )
+        gate_lines = ["Running 1 verification check(s)...", ""]
+        gate_lines.extend(
+            f"  {name:5} root: {states[name]['root']} (base {states[name]['base']})"
+            for name in programming.DCP_REPOSITORIES
+        )
+        gate_lines.extend(["", "--- documentation-integrity ---", "  PASS"])
+        gate_lines.append(
+            "    affected surfaces: ora.runtime, ora.operator-guide"
+        )
+        gate_lines.extend(
+            f"    read {name} at {states[name]['head']} from {states[name]['root']} "
+            "(1 changed path(s))"
+            for name in programming.DCP_REPOSITORIES
+        )
+        gate_lines.extend([
+            "", "SUMMARY", "Passed:  1 — ['documentation-integrity']",
+            "Failed:  0 — []", "Skipped: 0 — []",
+        ])
+        return {
+            "repository_diffs": repository_diffs,
+            "repository_states": states,
+            "unversioned_instruction_changes": "diff -- global instructions and skill",
+            "affected_surfaces": ["ora.runtime", "ora.operator-guide"],
+            "canonical_section_changes": {
+                "ora.runtime": "Reference — Ora Technical Documentation.md#Runtime",
+            },
+            "no_impact_declarations": [{
+                "surface_id": "ora.operator-guide",
+                "trailer": "Documentation-No-Impact: ora.operator-guide",
+                "rationale": "The operator-visible contract is unchanged.",
+            }],
+            "propagation_results": "registered body-only mirrors match",
+            "verbose_gate_result": "\n".join(gate_lines),
+            "authorized_test_output": "focused command: passed",
+        }
+
+    def dcp_roots_and_bases(self):
+        (self.repo / "AGENTS.md").write_text(
+            "## Documentation-Code Parity\n\n"
+            "Every code-changing task in this repository must resolve changed paths "
+            "through `Reference — Documentation-Code Parity Configuration.md`.\n",
+            encoding="utf-8",
+        )
+        git(self.repo, "add", "AGENTS.md")
+        git(self.repo, "commit", "-m", "activate DCP instructions")
+        peers = tempfile.TemporaryDirectory(prefix="ora-programming-dcp-peers-")
+        self.addCleanup(peers.cleanup)
+        roots = {"ora": self.repo}
+        for name in programming.DCP_REPOSITORIES:
+            if name == "ora":
+                continue
+            root = Path(peers.name) / name
+            root.mkdir()
+            git(root, "init")
+            git(root, "config", "user.name", "Ora Test")
+            git(root, "config", "user.email", "ora-test@example.invalid")
+            (root / "state.txt").write_text(f"{name}\n", encoding="utf-8")
+            git(root, "add", "state.txt")
+            git(root, "commit", "-m", "baseline")
+            git(root, "checkout", "-b", f"codex/programming-{name}")
+            roots[name] = root
+        bases = {
+            name: git(roots[name], "rev-parse", "HEAD")
+            for name in programming.DCP_REPOSITORIES
+        }
+        return roots, bases
+
+    @staticmethod
+    def dcp_states(roots, bases):
+        return {
+            name: {
+                "root": str(roots[name].resolve()),
+                "base": bases[name],
+                "branch": git(roots[name], "branch", "--show-current"),
+                "head": git(roots[name], "rev-parse", "HEAD"),
+            }
+            for name in programming.DCP_REPOSITORIES
         }
 
     def finish_plan(self, finish_line="merge"):
@@ -190,6 +325,8 @@ class InspectionAndPlanningTests(RepositoryCase):
             )
 
     def test_planner_returns_a_single_concise_approvable_plan(self):
+        self.assertFalse(programming._repository_requires_dcp(self.repo))
+
         def model(messages, endpoint, images=None):
             return self.planner_result(messages, self.complete_planner_payload())
 
@@ -202,6 +339,75 @@ class InspectionAndPlanningTests(RepositoryCase):
         self.assertEqual(result["kind"], "plan")
         self.assertEqual(result["baseline"]["head"], git(self.repo, "rev-parse", "HEAD"))
         self.assertEqual(result["milestones"], ["Fix and verify VALUE"])
+
+    def test_active_repository_mandate_cannot_be_disabled_by_the_planner(self):
+        planner_only = self.dcp_plan()
+        with self.assertRaisesRegex(
+            programming.ProgrammingError,
+            "repository instructions do not activate Documentation-Code Parity",
+        ):
+            programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=planner_only,
+                approved=True,
+                endpoints=self.endpoints(),
+                call_model_fn=lambda *_args, **_kwargs: self.fail(
+                    "planner declaration activated DCP without repository authority"
+                ),
+            )
+
+        (self.repo / "AGENTS.md").write_text(
+            "## Documentation-Code Parity (READ BEFORE CODE CHANGES)\n\n"
+            "Every code-changing task in this repository must resolve changed paths "
+            "through `Reference — Documentation-Code Parity\n"
+            "Configuration.md`.\n",
+            encoding="utf-8",
+        )
+        self.assertTrue(programming._repository_requires_dcp(self.repo))
+        planner_calls = 0
+
+        def model(messages, endpoint, images=None):
+            nonlocal planner_calls
+            if messages[-1]["content"].startswith("[Tool results]"):
+                planner_calls += 1
+            payload = self.complete_planner_payload()
+            if any(
+                "PLANNING CONTRACT CORRECTION" in item["content"]
+                for item in messages
+            ):
+                payload["documentation_impact"] = {
+                    "required": True,
+                    "affected_surfaces": ["ora.runtime"],
+                }
+            return self.planner_result(messages, payload)
+
+        result = programming.plan_programming(
+            objective="Fix the value",
+            repository_path=str(self.repo),
+            endpoints=self.endpoints(),
+            call_model_fn=model,
+        )
+        self.assertEqual(planner_calls, 2)
+        self.assertTrue(result["documentation_impact"]["required"])
+
+        forged = self.plan()
+        original_branch = git(self.repo, "branch", "--show-current")
+        with self.assertRaisesRegex(
+            programming.ProgrammingError,
+            "active repository instructions require Documentation-Code Parity",
+        ):
+            programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=forged,
+                approved=True,
+                endpoints=self.endpoints(),
+                call_model_fn=lambda *_args, **_kwargs: self.fail(
+                    "runtime mandate failed before model use"
+                ),
+            )
+        self.assertEqual(git(self.repo, "branch", "--show-current"), original_branch)
 
     def test_planner_contract_contradiction_gets_one_correction_turn(self):
         prompts = []
@@ -463,6 +669,323 @@ class ExecutionAndReviewTests(RepositoryCase):
             web_search_fn=None,
         )
         self.assertIn(marker, prompts[0])
+
+    def test_dcp_review_receives_complete_packet_and_requires_surface_verdicts(self):
+        prompts = []
+
+        def reviewer(messages, endpoint, images=None):
+            prompts.append(messages[-1]["content"])
+            if messages[-1]["content"].startswith("[Tool results]"):
+                return (
+                    "DONE\n"
+                    "Documentation-Verdict: ora.runtime: ACCEPT\n"
+                    "Documentation-No-Impact-Verdict: ora.operator-guide: ACCEPT"
+                )
+            return '<tool_call><n>repo_read</n><parameters>{"path":"app.py"}</parameters></tool_call>'
+
+        review = programming._review(
+            root=self.repo,
+            plan=self.dcp_plan(),
+            milestone="FINAL",
+            runtime_baseline={"head": git(self.repo, "rev-parse", "HEAD")},
+            diff_base=git(self.repo, "rev-parse", "HEAD"),
+            endpoint=self.endpoints()["reviewer"],
+            call_model_fn=reviewer,
+            web_fetch_fn=None,
+            web_search_fn=None,
+            documentation_review=self.dcp_packet(),
+        )
+
+        self.assertEqual(review["outcome"], "DONE")
+        packet_prompt = next(
+            item for item in prompts
+            if "DOCUMENTATION-CODE PARITY EVIDENCE PACKET" in item
+        )
+        for repository in programming.DCP_REPOSITORIES:
+            self.assertIn(f'"{repository}"', packet_prompt)
+        self.assertIn("verbose_gate_result", packet_prompt)
+        self.assertIn("unversioned_instruction_changes", packet_prompt)
+
+    def test_dcp_review_cannot_accept_when_required_packet_is_missing(self):
+        def reviewer(messages, endpoint, images=None):
+            latest = messages[-1]["content"]
+            if "PROTOCOL CORRECTION" in latest:
+                return "ASK USER\nThe complete Documentation-Code Parity evidence is missing."
+            if latest.startswith("[Tool results]"):
+                return "DONE\nDocumentation-Verdict: ora.runtime: ACCEPT"
+            return '<tool_call><n>repo_read</n><parameters>{"path":"app.py"}</parameters></tool_call>'
+
+        review = programming._review(
+            root=self.repo,
+            plan=self.dcp_plan(),
+            milestone="FINAL",
+            runtime_baseline={"head": git(self.repo, "rev-parse", "HEAD")},
+            diff_base=git(self.repo, "rev-parse", "HEAD"),
+            endpoint=self.endpoints()["reviewer"],
+            call_model_fn=reviewer,
+            web_fetch_fn=None,
+            web_search_fn=None,
+            documentation_review=None,
+        )
+
+        self.assertEqual(review["outcome"], "ASK USER")
+        self.assertIn("evidence is missing", review["detail"])
+
+    def test_no_impact_surface_requires_an_explicit_no_impact_verdict(self):
+        contract = programming._documentation_review_contract(
+            self.dcp_plan(), self.dcp_packet()
+        )
+        issue = programming._review_terminal_issue(
+            "DONE\n"
+            "Documentation-Verdict: ora.runtime: ACCEPT\n"
+            "Documentation-Verdict: ora.operator-guide: ACCEPT",
+            contract,
+        )
+        self.assertIn("verdict type is wrong", issue)
+
+    def test_dcp_execution_requires_fresh_final_evidence_and_withholds_finish(self):
+        roots, bases = self.dcp_roots_and_bases()
+        single_repository_finish = self.finish_plan("merge")
+        single_repository_finish["documentation_impact"] = {
+            "required": True,
+            "affected_surfaces": ["ora.runtime"],
+        }
+        self.assertIn(
+            "documentation-impacting plans cannot use a single-repository finish line",
+            programming._plan_payload_issues(
+                single_repository_finish, repository_requires_dcp=True
+            ),
+        )
+        non_dcp_coordinated = self.plan()
+        non_dcp_coordinated["git_finish_line"] = "coordinated_dcp"
+        self.assertIn(
+            "coordinated DCP finish requires documentation-impacting work",
+            programming._plan_payload_issues(non_dcp_coordinated),
+        )
+        visibly_local = self.dcp_plan()
+        visibly_local["git_finish_line"] = "coordinated_dcp"
+        self.assertIn(
+            "visible Git finish line does not match its structured authority",
+            programming._plan_payload_issues(
+                visibly_local, repository_requires_dcp=True
+            ),
+        )
+        self.assertEqual(
+            programming._plan_payload_issues(
+                self.dcp_plan(finish_line="coordinated_dcp"),
+                repository_requires_dcp=True,
+            ),
+            [],
+        )
+        plan = self.dcp_plan()
+        plan["milestones"] = ["Make VALUE equal 2", "Review the final state"]
+        pre_execution_packet = self.dcp_packet(self.dcp_states(roots, bases))
+        review_prompts = []
+        final_reviews = 0
+
+        def model(messages, endpoint, images=None):
+            nonlocal final_reviews
+            latest = messages[-1]["content"]
+            if endpoint["id"] == "executor":
+                if latest.startswith("[Tool results]"):
+                    return "Implemented the requested local change."
+                if "FINAL REVIEW DEFECTS" in latest:
+                    self.fail("DCP final correction used the single-repository executor")
+                if "CURRENT MILESTONE\nReview the final state" in latest:
+                    return '<tool_call><n>repo_status</n><parameters>{}</parameters></tool_call>'
+                return (
+                    '<tool_call><n>repo_edit</n><parameters>{"path":"app.py",'
+                    '"old":"VALUE = 1","new":"VALUE = 2"}</parameters></tool_call>'
+                )
+
+            if not latest.startswith("[Tool results]"):
+                return '<tool_call><n>repo_read</n><parameters>{"path":"app.py"}</parameters></tool_call>'
+            prompt = next(
+                item["content"] for item in messages
+                if item["role"] == "user" and "REVIEW TARGET" in item["content"]
+            )
+            review_prompts.append(prompt)
+            if "REVIEW TARGET\nFINAL" not in prompt:
+                return "CONTINUE"
+            final_reviews += 1
+            if final_reviews == 1:
+                return (
+                    "FIX\n"
+                    "Ora: repair the final runtime behavior.\n"
+                    "Vault: update the owning canonical to match."
+                )
+            return (
+                "DONE\n"
+                "Documentation-Verdict: ora.runtime: ACCEPT\n"
+                "Documentation-No-Impact-Verdict: ora.operator-guide: ACCEPT"
+            )
+
+        with mock.patch.object(
+            programming, "_finish", side_effect=AssertionError("DCP cannot use _finish")
+        ) as finish:
+            executed = programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=plan,
+                approved=True,
+                endpoints=self.endpoints(),
+                call_model_fn=model,
+                documentation_review=pre_execution_packet,
+            )
+            self.assertEqual(executed["outcome"], "ASK USER")
+            self.assertTrue(executed["dcp_evidence_required"])
+            self.assertEqual(final_reviews, 0)
+
+            stale_states = self.dcp_states(roots, bases)
+            stale_states["ora"]["head"] = pre_execution_packet[
+                "repository_states"
+            ]["ora"]["head"]
+            stale = programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=plan,
+                approved=True,
+                resume_branch=executed["branch"],
+                endpoints=self.endpoints(),
+                call_model_fn=model,
+                documentation_review=self.dcp_packet(stale_states),
+            )
+            self.assertEqual(stale["outcome"], "ASK USER")
+            self.assertTrue(stale["dcp_evidence_required"])
+            self.assertIn("no longer equals", stale["detail"])
+            self.assertEqual(final_reviews, 0)
+
+            (self.repo / "app.py").write_text("VALUE = 2  \n", encoding="utf-8")
+            git(self.repo, "add", "app.py")
+            git(self.repo, "commit", "-m", "preserve trailing whitespace evidence")
+            first_final_states = self.dcp_states(roots, bases)
+            stale_diff_packet = self.dcp_packet(first_final_states)
+            self.assertTrue(
+                stale_diff_packet["repository_diffs"]["ora"].endswith("  \n")
+            )
+            stale_diff_packet["repository_diffs"]["ora"] = (
+                stale_diff_packet["repository_diffs"]["ora"][:-1]
+            )
+            stale_diff = programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=plan,
+                approved=True,
+                resume_branch=executed["branch"],
+                endpoints=self.endpoints(),
+                call_model_fn=model,
+                documentation_review=stale_diff_packet,
+            )
+            self.assertEqual(stale_diff["outcome"], "ASK USER")
+            self.assertIn("cumulative diff", stale_diff["detail"])
+            self.assertEqual(final_reviews, 0)
+
+            default_branch_states = self.dcp_states(roots, bases)
+            default_branch_states["vault"]["branch"] = "main"
+            default_branch = programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=plan,
+                approved=True,
+                resume_branch=executed["branch"],
+                endpoints=self.endpoints(),
+                call_model_fn=model,
+                documentation_review=self.dcp_packet(default_branch_states),
+            )
+            self.assertEqual(default_branch["outcome"], "ASK USER")
+            self.assertIn("explicit task branch", default_branch["detail"])
+            self.assertEqual(final_reviews, 0)
+
+            wrong_surfaces = self.dcp_packet(first_final_states)
+            wrong_surfaces["verbose_gate_result"] = wrong_surfaces[
+                "verbose_gate_result"
+            ].replace(
+                "affected surfaces: ora.runtime, ora.operator-guide",
+                "affected surfaces: ora.runtime, ora.operator-guide, ora.unplanned",
+            )
+            gate_controlled = programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=plan,
+                approved=True,
+                resume_branch=executed["branch"],
+                endpoints=self.endpoints(),
+                call_model_fn=model,
+                documentation_review=wrong_surfaces,
+            )
+            self.assertIn("authoritative gate set", gate_controlled["detail"])
+            self.assertEqual(final_reviews, 0)
+
+            first_final_packet = self.dcp_packet(first_final_states)
+            corrected = programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=plan,
+                approved=True,
+                resume_branch=executed["branch"],
+                endpoints=self.endpoints(),
+                call_model_fn=model,
+                documentation_review=first_final_packet,
+            )
+            self.assertEqual(corrected["outcome"], "FIX")
+            self.assertTrue(corrected["coordinated_correction_required"])
+            self.assertEqual(final_reviews, 1)
+            self.assertEqual(
+                corrected["head"], first_final_states["ora"]["head"]
+            )
+            self.assertEqual(
+                corrected["detail"],
+                "Ora: repair the final runtime behavior.\n"
+                "Vault: update the owning canonical to match.",
+            )
+
+            peer = roots["vault"]
+            (peer / "coordinated-correction.txt").write_text(
+                "corrected\n", encoding="utf-8"
+            )
+            git(peer, "add", "coordinated-correction.txt")
+            git(peer, "commit", "-m", "coordinated correction")
+
+            refreshed_packet = self.dcp_packet(self.dcp_states(roots, bases))
+            result = programming.run_approved_programming(
+                objective="Fix the value",
+                repository_path=str(self.repo),
+                plan=plan,
+                approved=True,
+                resume_branch=executed["branch"],
+                endpoints=self.endpoints(),
+                call_model_fn=model,
+                documentation_review=refreshed_packet,
+            )
+
+        self.assertEqual(result["outcome"], "DONE")
+        self.assertFalse(result["coordinated_finish_required"])
+        self.assertEqual(result["finish_line"], "local_commits")
+        self.assertEqual(
+            set(result["reviewed_local_branches"]),
+            set(programming.DCP_REPOSITORIES),
+        )
+        self.assertEqual(
+            result["reviewed_local_branches"]["ora"]["branch"], executed["branch"]
+        )
+        self.assertEqual(
+            result["reviewed_local_branches"]["ora"]["head"],
+            git(self.repo, "rev-parse", "HEAD"),
+        )
+        self.assertTrue(all(
+            programming.DCP_TASK_BRANCH_RE.fullmatch(state["branch"])
+            for state in result["reviewed_local_branches"].values()
+        ))
+        finish.assert_not_called()
+        milestone_prompt = next(
+            prompt for prompt in review_prompts
+            if "REVIEW TARGET\nFINAL" not in prompt
+        )
+        self.assertNotIn("DOCUMENTATION-CODE PARITY EVIDENCE PACKET", milestone_prompt)
+        self.assertTrue(all(
+            "DOCUMENTATION-CODE PARITY EVIDENCE PACKET" in prompt
+            for prompt in review_prompts if "REVIEW TARGET\nFINAL" in prompt
+        ))
 
     def test_real_repository_execution_fresh_review_and_accepted_slice_commit(self):
         calls = []

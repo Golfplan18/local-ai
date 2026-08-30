@@ -2,7 +2,7 @@
 
 *Task-indexed guide for installing, running, and operating an installed Ora system. It derives from [[Reference — Ora Technical Documentation]] and adds no new claims. Find your task, do the steps.*
 
-**Documentation baseline.** Install and general-operation guidance retains its established platform pins. The Programming section describes the current explicit standalone implementation. Aside help and the optional video feature describe the current landed behavior. The vault guide remains canonical; synchronize body-only to `help/user-guide.md`.
+**Documentation baseline.** Install and general-operation guidance retains its established platform pins except for the scoped current Windows-launch correction below. The Scheduled section describes the separate current Trigger surface; the Programming section describes the current explicit standalone implementation and its Documentation-Code Parity review contract. Aside help and the optional video feature describe the current landed behavior. The vault guide remains canonical; synchronize body-only to `help/user-guide.md`.
 
 **Platform labels.** Every command is labeled. `[macOS]` is the tested path (Apple Silicon). `[Linux server]` is the supported headless path. `[Windows-native]` and `[WSL]` are labeled where they differ; **`[Windows-native]` is intended but untested** — treat it as best-effort until a clean-room Windows install has been verified. If a command carries no label, it applies everywhere Ora runs.
 
@@ -203,9 +203,11 @@ Solo is the only supported profile today. Hybrid and Organization are reserved �
    ```powershell
    py -3 scripts\install.py --profile solo
    ```
-3. Start the server with `start.bat`.
+3. Start the server with `start.bat`. Oversight is enabled by default. For a one-off diagnostic launch without the Oversight event/deadline lanes, use `start.bat --no-oversight`.
 
-Two things to know before you rely on this. The native Windows path has not passed a clean-install test yet. And `start.bat` launches the server but does **not** set the runtime feature flags that `start.sh` sets — so a Windows launch runs a reduced pipeline. Until Windows is verified, prefer WSL.
+The native Windows path has not passed a clean-install test. The current launcher does honor `ORA_HOME`, prefer the checkout's virtual environment before `py -3`/`python`, validate an explicit `PORT`, forward arguments safely, stop only the server owned by this checkout, and verify that the responding server reports this checkout before opening the browser. Those improvements do not give it the same feature defaults as the POSIX foreground launcher: `start.bat` enables the Execution Review loop but does not itself enable the POSIX defaults for RAG selection and fit-gate slot, web extraction, runtime engram promotion and auto-commit, deliverable scrubbing, or OR statistics. Unless you set those environment variables separately, Windows may run a reduced or differently configured pipeline even though Oversight is on.
+
+Quoted native paths in slash commands now retain their backslashes and lose only their balanced wrapper quotes. That fixes the shared parser; it does not prove every downstream tool against every Windows path. Native process handling, keyring behavior, Bash-dependent maintenance helpers, MLX alternatives, and the complete browser/server lifecycle remain untested. Treat both Windows-native and WSL as unverified desktop paths; the supported non-Mac target remains the Linux server profile.
 
 ### Windows — WSL `[WSL]`
 
@@ -261,7 +263,7 @@ For a one-session, unsupervised macOS launch, run `./start.sh` before installing
 ```
 Open the exact URL that `start.sh` prints. The script is verified on macOS only; on WSL and Linux desktop it is untested.
 
-**Start** `[Windows-native]`: run `start.bat` (see the caveat above).
+**Start** `[Windows-native]`: run `start.bat`. Oversight and the Execution Review loop are on by default; `start.bat --no-oversight` is the explicit diagnostic opt-out. Use the exact URL the launcher reports. The launcher does not set the additional POSIX feature defaults named above, so supply them explicitly if you need equivalent behavior.
 
 **Stop** `[macOS]` `[WSL]` `[Linux]`:
 ```bash
@@ -320,6 +322,29 @@ Invoke a framework with no input to have Ora walk you through it one question at
 
 ---
 
+## Schedule exact work with Triggers
+
+Use a Trigger when an already registered unit of work should run on one explicit cause: your manual request, a file change, a named-timezone calendar occurrence, or successful completion of another Trigger. This is separate from Programming. A Trigger can invoke a registered project tool or a user-invocable framework; the narrow email action is manual-only. You cannot paste an arbitrary shell command into this surface.
+
+### Create and activate a Trigger
+
+1. Open **Oversight → Scheduled** and click **+**.
+2. Name the Trigger, choose its cause, and choose the registered action. For a file change, choose a path under a root Ora is actually watching. For a calendar cause, choose the local schedule and explain why time itself—rather than an available runtime event—is the cause.
+3. Save the draft. You may use **Run now** before activation to verify what the action does; retired Triggers cannot run.
+4. Choose **Review and activate…**. Read the cause, exact action binding, specification digest, and any calendar/intermittency notice. **Approve and activate** accepts only that exact digest; if the draft changes, review it again.
+
+An active card shows status, next due time when relevant, and recent firing history. Expand it to inspect its bound message, run once, pause, resume, or retire it. Retiring removes it from the default Scheduled list; the default list shows draft, active, and paused Triggers, not retired ones. An approved email can be cancelled and retired only before provider contact; Ora cannot recall a message after it reaches the provider.
+
+### Understand availability and failure
+
+Triggers act only while Ora is running. There is no cron, launchd, sweep, interval scan, or promise of 24/7 execution while the computer is off. A calendar Trigger follows its declared missed-occurrence policy when Ora returns. A file change that happens entirely while its event lane is unavailable is not reconstructed from a later scan.
+
+The Scheduled group shows warnings only for lane availability or repeated lane restarts, and separately reports the internal maintenance deadlines Ora arms for itself. Firing-evidence or telemetry degradation appears through general Oversight health, not as a Scheduled-card warning. A Trigger firing is claimed durably before work begins. Action work has a whole-firing deadline; a timeout terminates the action process tree and records a failed firing. A successful source Trigger stages dependent deliveries durably and unfinished deliveries replay on startup. If the dependent Trigger changed after the source completed, delivery fails visibly instead of running different work.
+
+The `/trigger` and `/triggers` slash commands expose the same Trigger service when a keyboard path is preferable.
+
+---
+
 ## Programming
 
 Use Programming when you want Ora to change and verify a real Git repository. Use ordinary Inquiry for answers, explanations, comparisons, drafts, and framework-guided thinking.
@@ -333,25 +358,27 @@ Programming begins only from the **Programming** toolbar action. Ora never class
 3. Describe what should change in ordinary language and submit the Inquiry input.
 4. Wait while Ora inspects repository instructions, implementation, tests, Git state, and visible automation.
 5. Answer only material questions Ora cannot responsibly resolve from inspection. Ora asks no more than three questions per round and no more than two rounds.
-6. Read the one proposed plan. It identifies the outcome, component scope, non-goals, protected work, milestones, checks, authorized effects, and Git finish line.
+6. Read the one proposed plan. It identifies the outcome, component scope, non-goals, protected work, milestones, checks, authorized effects, and Git finish line. Ora rejects a plan whose displayed finish line disagrees with its runtime authority. The tracked root instructions determine whether Documentation-Code Parity applies, so Ora rejects a planner attempt to turn it on or off.
 7. Choose **Approve and run** only if that complete boundary is right. Cancel leaves the repository unchanged.
 
 Planning is read-only. Ora rechecks the Git baseline before creating a task branch. Safely separable unrelated work is protected and left uncommitted while Programming continues; Ora stops only when task work and user work cannot be separated safely.
 
 ### Follow execution and review
 
-After approval, the Programming panel shows the current milestone, progress, accepted commit, and reviewer outcome. Ora's executor changes the real task repository and runs relevant commands. A separate fresh model call then inspects the raw diff, repository, and checks without receiving or trusting the executor's transcript.
+After approval, the Programming panel shows the current milestone, progress, accepted commit, and reviewer outcome. Ora's executor changes the real task repository and runs only the checks scheduled by the approved plan. A separate fresh model call then inspects the raw diff, repository, and authorized check results without receiving or trusting the executor's transcript.
+
+When the plan declares Documentation-Code Parity impact, milestone reviews do not use a packet that later commits would make stale. After all milestone commits, Programming pauses at **Final documentation evidence required**. Generate the complete five-repository packet from those current heads, paste the JSON into the panel, and choose **Resume final review**. The pasted text passes through the same Standard/Private/Stealth privacy check as other Programming text. The packet identifies each exact root, base, `codex/` or `ora/` task branch, and head. Its plan, packet, documentation dispositions, and later reviewer verdicts must all cover the stable unique set from the passing gate's one `affected surfaces:` line. Programming rejects invalid JSON, missing evidence, a default/other branch, dirty or detached worktrees, any head that no longer equals the verbose gate, or any supplied cumulative diff that is not byte-for-byte identical to its raw live gated base-to-head diff, including trailing spaces and newlines. Use `[no changes]` only for a genuinely empty diff.
 
 Reviewer outcomes mean:
 
 | Outcome | Meaning |
 |---|---|
 | **CONTINUE** | The current slice is sound and approved work remains. |
-| **FIX** | A substantive defect can be corrected within the approved plan. |
+| **FIX** | A substantive defect can be corrected within the approved plan; at DCP final review, the five-repository coordinator receives it instead of the single-repository executor. |
 | **DONE** | Final cumulative review proves the approved outcome complete. |
 | **ASK USER** | Safe continuation requires changed scope or authority, a human-only decision, separation of user work, or a spend decision. |
 
-Ora commits each accepted slice before continuing. Those commits are the rollback and resume points. There is no separate Run record, Process Library, trigger, lifecycle store, or background Programming daemon.
+Ora commits each accepted slice before continuing. Those commits are the rollback and resume points. Programming creates no separate Run record, Process Library, Trigger, lifecycle store, or background Programming daemon. The user-authored Scheduled Triggers above are a separate Oversight facility and do not wrap Programming work.
 
 ### Understand evidence and completion
 
@@ -364,25 +391,34 @@ Completion requires final **DONE**, clean accepted-slice commits, and the approv
 - **local commits** — stop with the task branch ready locally;
 - **push** — push that branch;
 - **pull request** — push and open a pull request; or
-- **merge** — perform the explicitly approved merge path.
+- **merge** — perform the explicitly approved merge path; or
+- **coordinated DCP** — return five reviewed local branches for the approved coordinator landing.
+
+For a documentation-impacting plan, **local commits** stops with all five reviewed branches local; the alternative **coordinated DCP** finish authorizes the five-repository coordinator to land only those exact reviewed heads. Ordinary single-repository push, pull-request, and merge finishes are not valid for DCP work. Programming reports the approved finish with the five reviewed roots, bases, branches, and heads, and never lands only the current repository. If final review returns **FIX**, or returns **CONTINUE** without completing the task, the panel changes to **Coordinated documentation correction required** and keeps the full consolidated defect. Programming clears the submitted packet, does not run the current repository's executor, and does not create a correction or empty commit. The five-repository coordinator corrects the participating task branches. Then recover the task and submit a fresh current gate and packet for final review.
 
 If a newly discovered finish-line effect would deploy, publish, message, use credentials, or mutate another system without plan authority, Ora returns **ASK USER**.
 
 ### Keep documentation and code together
 
-For code-changing work in the vault, Ora, ora-ai-app, ora-ai-org, or MSI, the plan identifies the documentation surface each changed path belongs to. If behavior, a user or operator promise, configuration, route, output, or material failure mode changes, update the owning vault canonical in the same task. If the change truly has no documentation effect, the final task commit records exactly one `Documentation-No-Impact: <surface-id>` line for that surface and the independent reviewer confirms it.
+For code-changing work in the vault, Ora, ora-ai-app, ora-ai-org, or MSI, the plan identifies the documentation surface each changed path belongs to. If behavior, a user or operator promise, configuration, route, output, or material failure mode changes, update the owning vault canonical in the same task. When the ownership map names a section, changing some other part of that file does not count. If the change truly has no documentation effect, the final task commit records exactly one `Documentation-No-Impact: <surface-id>` line for that surface and the independent reviewer confirms it. Extra, duplicate, or unrelated no-impact lines are rejected. An unfamiliar production path receives its repository's conservative owner rather than escaping the decision.
 
-Regenerate registered Ora help mirrors and public-site derivatives from their vault canonicals before final verification. The authoritative check is Ora's focused `documentation-integrity` verifier with explicit roots and base commits for all five task worktrees. It checks declared ownership, references, lifecycle state, task dispositions, and exact derivative parity. It does not determine whether ordinary prose is semantically true; that remains part of independent review.
+Regenerate registered Ora mirrors and public-site derivatives from their vault canonicals before final verification. Technical Documentation, Accessible Overview, Using Ora, and the Thinking Tools singleton use the body-only rule: remove the vault YAML and its one following blank line, then keep every remaining byte identical. The authoritative check is Ora's focused `documentation-integrity --verbose` verifier with explicit roots and base commits for all five task worktrees. It refuses a pre-activation vault base and checks declared ownership, named-section changes, references, lifecycle state, task dispositions, accepted-finding boundaries, and exact derivative parity. It does not determine whether ordinary prose is semantically true.
 
-Seven managed local hooks are installed and verified: one blocking pre-push hook in each of the five repositories, plus fail-open post-commit framework-pair audit hooks in Ora and the vault. An owned-code push blocks when the coordinator's complete five-root task context is missing. These hooks are bypassable and do not create remote enforcement or an atomic five-repository commit, so the coordinator still holds all participating merges until the combined check passes. Recovery is Git revert in reverse landing order.
+At the final evidence boundary, the independent reviewer receives all five exact live cumulative diffs and task-branch states, global/Programming-skill instruction changes, the authoritative affected-surface set printed once by the passing gate, exact canonical-section changes, every no-impact declaration with its rationale, propagation results, the verbose gate output, and the authorized focused-test output. It compares behavior with each canonical section or explicitly accepts the no-impact rationale, then gives one verdict per gate-affected surface. Missing, mismatched, or stale evidence is not acceptance.
 
-> **Testing is evidence for the changed behavior, not a second project. Every implementation scope lock must name the complete list of checks before work starts. Run every check on that list and nothing additional. Do not run a full suite, full build, benchmark, broad audit, or extra confidence check unless the user explicitly approves it or the changed surface genuinely cannot be judged by a narrower check. If a new check becomes necessary, stop and revise the scope before running it. Stop testing when the named checks pass and material review is satisfied. The completion report must list every check actually run.**
+Seven managed local hooks are installed and verified: one blocking pre-push hook in each of the five repositories, plus fail-open post-commit framework-pair audit hooks in Ora and the vault. An owned-code push blocks when the coordinator's complete five-root task context is missing. The audit labels only the exact accepted E-093 and Video/D35 states as accepted external findings; new, changed, verifier, and queue-write failures remain visible. These hooks are bypassable and do not create remote enforcement or an atomic five-repository commit, so the coordinator holds all participating merges until both the combined check and semantic review pass.
+
+When **coordinated DCP** was approved, the coordinator confirms after review that every clean branch head still equals the head printed by the gate. Only those exact reviewed heads may use `--no-verify`, solely to avoid repeating the same DCP pre-push hook; the exception does not bypass another protection. All remote task branches and pull requests must be ready before the first merge. Recovery is Git revert in reverse landing order.
+
+Vault auto-sync is the separate backup-transport case. It may bypass the local DCP hook so ordinary vault edits still reach the remote backup, but that push is not task certification and does not authorize a person to bypass the coordinated workflow. A later code task still evaluates any canonical state it touches.
+
+> **Testing is evidence for the changed behavior, not a second project. The task scope lock's named check list is the exact testing ceiling: run every named check and nothing additional. Do not run a full suite, full build, benchmark, broad audit, `--check all`, or an extra reassurance check. If a newly discovered material risk cannot be judged by that list, stop and revise the scope with the user before running another check. Stop when the named checks pass and material review is satisfied. The completion report must list every check actually run.**
 
 ### Leave, resume, cancel, or recover
 
 Closing the Programming panel restores ordinary Inquiry; it does not create a persistent browser workflow. Before approval, cancel simply discards the proposal. During or after execution, the plan, task branch, commits, current diff, and checks are the recovery record.
 
-To continue later, return to that repository and branch. Do not look for a Run Inspector, review queue, Trigger Manager, Process Library, activation control, or generic reopen action; standalone Programming does not create those objects.
+To continue later, return to that repository and branch. Do not look for a Programming Run Inspector, process review queue, process-bound Trigger Manager, Process Library, activation control, or generic reopen action; standalone Programming does not create those objects. The separate **Oversight → Scheduled** Trigger surface is for exact event/deadline work, not Programming recovery.
 
 ### Troubleshoot Programming
 
@@ -391,8 +427,11 @@ To continue later, return to that repository and branch. Do not look for a Run I
 | Repository required | No repository name or Git worktree path was supplied | Enter a short name or the worktree root |
 | Planning stopped | Inspection or the configured planner failed | Read the visible error, correct repository/model access, and submit again |
 | Baseline changed | Git state differs from the inspected plan baseline | Preserve or finish the unrelated work, then request a new plan |
-| **FIX** repeats without progress | The same substantive defect survived three cycles without a changed task diff | Review Ora's consolidated **ASK USER** blocker |
+| **FIX** repeats without progress | The same substantive defect survived three ordinary non-DCP cycles without a changed task diff | Review Ora's consolidated **ASK USER** blocker |
 | Required evidence is unavailable | The reviewer could not directly inspect a source or artifact | Grant only the exact authority/access needed or revise the plan |
+| Documentation review cannot accept | A five-repository packet item, disposition, propagation result, gate result, test output, or per-surface semantic verdict is missing or contradictory | Complete or correct the exact evidence shown; do not substitute a broad test or an extra no-impact line |
+| Final documentation evidence required | Milestones changed the branch or a prior packet is stale | Generate the focused five-root gate and complete packet from the current clean branches, paste that JSON, and resume final review |
+| Coordinated documentation correction required | Final DCP review found a defect that may span the five repositories | Give the displayed consolidated defect to the five-repository coordinator, correct the participating branches, recover the task, then paste a fresh current packet |
 | Programming needs a decision | Ora cannot continue responsibly inside the approved boundary | Decide the specific scope, authority, access, or spend question shown |
 | Work is complete locally | The approved finish line was local commits | Inspect or continue from the task branch; push only when intended |
 
@@ -523,7 +562,7 @@ For a script that is broken at the source level, `help/install-manual.md` reprod
 
 | What you see | What it means | What to do |
 |---|---|---|
-| Browser: "connection refused" | The server isn't running | On macOS install supervision with `./scripts/ora-launchd.sh install`, or run `./start.sh`; use the exact URL either command reports. On Windows-native, run `start.bat` `[untested, flag-incomplete]` |
+| Browser: "connection refused" | The server isn't running | On macOS install supervision with `./scripts/ora-launchd.sh install`, or run `./start.sh`; use the exact URL either command reports. On Windows-native, run `start.bat` `[implemented, untested]`; oversight is on by default and `--no-oversight` is the diagnostic opt-out, but the additional POSIX feature defaults are not supplied by that launcher |
 | "No AI endpoints configured" | No working model key | Start the server, open its reported local URL, then add a key in **Settings → External APIs** |
 | `<tool_call>` tags in the response | You're connected to a commercial AI directly, not to Ora's local server | Use the exact local URL Ora reports, not claude.ai / ChatGPT |
 | Health passes, but Ora cannot read `~/Documents` | macOS privacy controls denied the supervised process access | Inspect `logs/ora-server.stderr.log`. In **System Settings → Privacy & Security**, grant the selected Python/Ora process **Files & Folders** access or **Full Disk Access**, then restart the service |
