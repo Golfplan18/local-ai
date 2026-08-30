@@ -106,6 +106,69 @@ class TestCompactContextObservability(unittest.TestCase):
         self.assertEqual(summary_msg["role"], "system")
         self.assertIn("the model did not say this", summary_msg["content"])
 
+    def test_r48_hook_pre_compact_output_delivered_once(self):
+        def good_summary(messages, endpoint):
+            return "Summary: discussed X, decided Y, open question Z. " * 5
+
+        def short_summary(messages, endpoint):
+            return "tiny"
+
+        def failed_summary(messages, endpoint):
+            raise RuntimeError("summarizer unavailable")
+
+        with_system = (
+            [{"role": "system", "content": "sys"}]
+            + [{"role": "user", "content": "u" * 1500}] * 4
+            + [{"role": "assistant", "content": "a" * 1500}] * 4
+        )
+        without_system = (
+            [{"role": "user", "content": "u" * 1500}] * 4
+            + [{"role": "assistant", "content": "a" * 1500}] * 4
+        )
+        no_middle = [{"role": "user", "content": "u" * 1500}] * 2
+
+        for case, msgs, summarizer, endpoint, prior_system in (
+            ("success", with_system, good_summary, {"name": "test-ep"}, "sys"),
+            ("short_summary", with_system, short_summary,
+             {"name": "test-ep"}, "sys"),
+            ("no_endpoint", with_system, good_summary, None, "sys"),
+            ("summary_exception", with_system, failed_summary,
+             {"name": "test-ep"}, "sys"),
+            ("no_model_fn", with_system, None, {"name": "test-ep"}, "sys"),
+            ("no_middle", no_middle, good_summary, {"name": "test-ep"}, None),
+            ("new_system", without_system, good_summary,
+             {"name": "test-ep"}, None),
+        ):
+            with self.subTest(case=case):
+                markers = ["PRE-COMPACT-MARKER-A", "PRE-COMPACT-MARKER-B"]
+                with mock.patch("hooks.fire_hooks",
+                                return_value=markers) as fire:
+                    with mock.patch("boot.load_routing_config", return_value={}):
+                        with mock.patch("boot.get_slot_endpoint", return_value=None):
+                            with mock.patch("boot.get_active_endpoint",
+                                            return_value=endpoint):
+                                out = compaction.compact_context(
+                                    msgs, call_model_fn=summarizer,
+                                    context_limit=200,
+                                )
+
+                fire.assert_called_once_with("pre_compact")
+                self.assertEqual(out[0]["role"], "system")
+                if prior_system:
+                    self.assertTrue(out[0]["content"].startswith(
+                        f"{prior_system}\n\n"
+                    ))
+                else:
+                    self.assertTrue(out[0]["content"].startswith(
+                        "[pre_compact hook]"
+                    ))
+                all_content = "\n".join(
+                    message.get("content") or "" for message in out
+                )
+                for marker in markers:
+                    self.assertIn(marker, out[0]["content"])
+                    self.assertEqual(all_content.count(marker), 1)
+
 
 # ---------------------------------------------------------------------------
 # RAG ranker truncation visibility

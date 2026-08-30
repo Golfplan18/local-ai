@@ -11,6 +11,8 @@ HOOKS_DIR = os.path.join(WORKSPACE, "config/hooks/")
 
 _hooks: list[dict] = []
 
+_INJECTABLE_EVENTS = frozenset({"pre_tool", "post_tool", "pre_compact"})
+
 
 def load_hooks():
     """Load all hook definitions from config/hooks/*.json."""
@@ -28,6 +30,13 @@ def load_hooks():
                 hook = json.load(f)
             # Validate required fields
             if "event" in hook and "command" in hook:
+                if (hook.get("inject_output", False)
+                        and hook["event"] not in _INJECTABLE_EVENTS):
+                    print(
+                        f"[hooks] Refused {filename}: inject_output has no "
+                        f"receiver for event {hook['event']!r}"
+                    )
+                    continue
                 hook["_source"] = filename
                 _hooks.append(hook)
         except Exception as e:
@@ -52,6 +61,17 @@ def fire_hooks(event: str, context: dict = None) -> list[str]:
 
     for hook in _hooks:
         if hook.get("event") != event:
+            continue
+
+        # Recheck at the execution boundary as well as load time. This keeps
+        # a stale or programmatically supplied definition from running before
+        # Ora discovers that its requested output has nowhere to go.
+        if (hook.get("inject_output", False)
+                and event not in _INJECTABLE_EVENTS):
+            print(
+                f"[hooks] Refused {hook.get('_source', 'unknown')}: "
+                f"inject_output has no receiver for event {event!r}"
+            )
             continue
 
         # Check tool_filter
