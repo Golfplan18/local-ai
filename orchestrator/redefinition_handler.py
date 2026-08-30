@@ -83,6 +83,7 @@ class QueueEntry:
     authority_request_type: str = ""
     forced_reason: str = ""
     context_summary: dict = field(default_factory=dict)
+    kind: str = ""
     queue_index: int = 0  # 0-based position in the queue file
 
 
@@ -127,6 +128,7 @@ def list_pending_redefinitions() -> list[QueueEntry]:
             ),
             forced_reason=data.get("forced_reason", ""),
             context_summary=data.get("context_summary", {}),
+            kind=str(data.get("kind") or ""),
             queue_index=i,
         ))
     return entries
@@ -168,6 +170,7 @@ def list_pending_escalations(redefinition_only: bool = False) -> list[QueueEntry
             authority_request_type=authority_request_type,
             forced_reason=data.get("forced_reason", ""),
             context_summary=data.get("context_summary", {}),
+            kind=str(data.get("kind") or ""),
             queue_index=i,
         ))
     return entries

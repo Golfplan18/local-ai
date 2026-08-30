@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -156,6 +157,149 @@ def test_family_fallback_never_treats_a_multi_vendor_transport_as_a_family():
     assert router.Router._training_family(
         {"provider": "qwen", "service": "qwen", "model_id": "glm-5.2"}
     ) == "glm"
+
+
+def test_server_execution_review_terminal_value_is_emitted_once(monkeypatch):
+    import boot as runtime_boot
+    import evidence_runner as runtime_evidence
+    import execution_loop as runtime_execution_loop
+    import risk_gate as runtime_risk_gate
+    import tool_events as runtime_tool_events
+
+    original = "Original pipeline response."
+    notice = "Execution Review handoff remains pending and retryable."
+    terminal_value = f"{original}\n\n{notice}"
+    observed = {}
+    terminal_calls = []
+
+    context_pkg = {
+        "cleaned_prompt": "test prompt",
+        "context_coverage": {},
+        "gear": 1,
+        "mode_name": "test-mode",
+        "mode_text": "",
+        "output_type": "unknown",
+    }
+    context_api = SimpleNamespace(
+        _append_codex_canvas_image_notice=lambda response, _images: response,
+        _context_source_exclusions=lambda *_args, **_kwargs: set(),
+        _finalize_optional_context_package=lambda *_args, **_kwargs: None,
+        _prepare_image_routing=lambda *_args, **_kwargs: None,
+    )
+
+    monkeypatch.setattr(server, "_boot_context_api", lambda: context_api)
+    monkeypatch.setattr(
+        server,
+        "run_step2_context_assembly",
+        lambda *_args, **_kwargs: dict(context_pkg),
+    )
+    monkeypatch.setattr(
+        runtime_tool_events,
+        "get_turn_context",
+        lambda: {"conversation_id": "unit-8-server-receiver"},
+    )
+    monkeypatch.setattr(
+        runtime_tool_events,
+        "update_turn_risk_tier",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        runtime_risk_gate,
+        "assign_tier",
+        lambda *_args, **_kwargs: {"risk_tier": "light"},
+    )
+    monkeypatch.setattr(
+        runtime_risk_gate, "tier_max", lambda assigned, _inherited: assigned
+    )
+    monkeypatch.setattr(
+        runtime_risk_gate,
+        "evaluate_hold",
+        lambda *_args, **_kwargs: (None, None),
+    )
+    monkeypatch.setattr(
+        runtime_risk_gate, "apply_criteria", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        server, "_make_server_criteria_invoker", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        runtime_evidence,
+        "apply_evidence_contract",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(runtime_execution_loop, "loop_enabled", lambda: False)
+    monkeypatch.setattr(server, "get_endpoint", lambda _config: {})
+    monkeypatch.setattr(
+        server,
+        "resolve_single_pass_endpoint",
+        lambda *_args, **_kwargs: ({"name": "test-endpoint"}, "breadth"),
+    )
+    monkeypatch.setattr(
+        server, "_single_pass_system_prompt", lambda *_args, **_kwargs: "system"
+    )
+    monkeypatch.setattr(
+        server,
+        "run_single_pass_with_tools",
+        lambda *_args, **_kwargs: original,
+    )
+    monkeypatch.setattr(
+        server, "_build_visual_fallback_frame", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        server, "_copy_visual_outcome_context", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        server, "_build_visual_diagnostics_frame", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        runtime_boot, "_run_visual_hook", lambda response, _context: response
+    )
+
+    def record_route_observed(*args, **kwargs):
+        observed["args"] = args
+        observed["kwargs"] = kwargs
+        return {"route": "observed"}
+
+    def execution_review_terminal(
+        route_observed,
+        response,
+        _context,
+        _trace_dir,
+        _stealth,
+        _config,
+        _config_name,
+    ):
+        terminal_calls.append((route_observed, response))
+        return terminal_value
+
+    monkeypatch.setattr(
+        runtime_risk_gate, "record_route_observed", record_route_observed
+    )
+    monkeypatch.setattr(
+        runtime_boot, "_execution_review_terminal", execution_review_terminal
+    )
+
+    chunks = list(
+        server._run_pipeline_from_step2(
+            {
+                "cleaned_prompt": "test prompt",
+                "mode": "test-mode",
+                "operational_notation": "test prompt",
+                "pre_routing": {},
+            },
+            {},
+            [],
+            "test prompt",
+        )
+    )
+    events = [json.loads(chunk[6:]) for chunk in chunks]
+    responses = [event["text"] for event in events if event["type"] == "response"]
+
+    assert observed["kwargs"]["output_text"] == original
+    assert terminal_calls == [({"route": "observed"}, original)]
+    assert responses == [terminal_value]
+    assert responses[0].count(original) == 1
+    assert responses[0].count(notice) == 1
 
 
 def _paused_entry(branch="execution-review/escalation-beta-edit-123"):

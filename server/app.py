@@ -2945,13 +2945,6 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         turn_state["status"] = (
             context_pkg.get("_trace_terminal_status") or "completed"
         )
-    yield _sse(
-        "pipeline_stage", stage="complete", gear=gear,
-        mode=step1["mode"], label="Pipeline complete",
-        context_coverage=context_pkg.get("context_coverage") or {},
-    )
-    yield _sse("response", text=response)
-
     # Execution Review Phase 2: after-clock — record route_observed on this
     # terminal path (condition 7). Best-effort, never raises.
     try:
@@ -2965,19 +2958,25 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         # signals (single fold; no packet ref on route_observed). Self-evidencing turn
         # (or loop disabled) → the Phase-4 trace-local record, byte-identical. Non-self-
         # evidencing turn with the loop enabled → the Phase-6 Capture→verify→stop/
-        # escalate loop (records the packet + escalates). The response was already
-        # streamed on this path, so a revised deliverable cannot replace it; with
-        # actuator=None (first landing) the loop never revises anyway, so the return is
-        # ignored. Guarded to non-stealth. Never raises.
+        # escalate loop (records the packet + escalates). Fold its terminal value before
+        # the server's single response event so browser and CLI users receive the same
+        # result exactly once. Guarded to non-stealth. Never raises.
         if conversation_tag != "stealth":
             try:
                 from boot import _execution_review_terminal as _ert
             except ImportError:  # pragma: no cover
                 from orchestrator.boot import _execution_review_terminal as _ert
-            _ert(_ro, response, context_pkg, trace_dir,
-                 conversation_tag == "stealth", config, config_name)
+            response = _ert(_ro, response, context_pkg, trace_dir,
+                            conversation_tag == "stealth", config, config_name)
     except Exception:
         pass
+
+    yield _sse(
+        "pipeline_stage", stage="complete", gear=gear,
+        mode=step1["mode"], label="Pipeline complete",
+        context_coverage=context_pkg.get("context_coverage") or {},
+    )
+    yield _sse("response", text=response)
 
     # Phase 0 — make suppressed visuals loud + actionable. The hook above
     # stashed per-visual diagnostics on context_pkg; surface the reason so the

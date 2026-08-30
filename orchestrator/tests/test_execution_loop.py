@@ -145,6 +145,10 @@ V_FAIL_PLAN_HIGH = ("VERDICT: FAIL\nCONFIDENCE: 0.5\n"
 V_FAIL_CRITICAL = ("VERDICT: FAIL\nCONFIDENCE: 0.2\n"
                    "FINDING: severity=critical; class=execution_level; deletes prod db\n")
 V_FAIL_PROSE = "VERDICT: FAIL\nCONFIDENCE: 0.2\nThe deliverable is unacceptable.\n"
+V_PASS_ACCEPTANCE = ("VERDICT: PASS\nCONFIDENCE: 0.9\n"
+                     "INVENTED_TEST: kind=acceptance; handles empty input\n")
+V_PASS_DIAGNOSTIC = ("VERDICT: PASS\nCONFIDENCE: 0.9\n"
+                     "INVENTED_TEST: kind=diagnostic; print timing\n")
 
 
 def _verify(text):
@@ -337,6 +341,15 @@ class TestStopRule(unittest.TestCase):
         self.assertTrue(el.converged(self._cap(sufficient=True), [], None))
         # and a FAIL verdict warrants escalation (not a silent degrade).
         self.assertTrue(el.escalation_warranted(self._cap(sufficient=True), [], "FAIL"))
+
+    def test_only_acceptance_invented_tests_block_and_escalate(self):
+        acceptance = [{"kind": "acceptance", "name": "handles empty input"}]
+        diagnostic = [{"kind": "diagnostic", "name": "print timing"}]
+        cap = self._cap(sufficient=True)
+        self.assertFalse(el.converged(cap, [], "PASS", True, acceptance))
+        self.assertTrue(el.escalation_warranted(cap, [], "PASS", acceptance))
+        self.assertTrue(el.converged(cap, [], "PASS", True, diagnostic))
+        self.assertFalse(el.escalation_warranted(cap, [], "PASS", diagnostic))
 
     def test_unverified_blocks_convergence(self):
         # judge P1 fold: a verify that did NOT run (empty/broken) cannot converge —
@@ -640,7 +653,8 @@ class TestRunLoop(unittest.TestCase):
     _OK_BRANCH = staticmethod(lambda *a, **k: "execution-review/escalation-test")
 
     def _run(self, sig, verify_text, runner, *, risk_tier="standard", actuator=None,
-             ctx=None, branch_creator="__ok__"):
+             ctx=None, branch_creator="__ok__", queue_delivery="__ok__",
+             trace_dir=None):
         pushes = []
         ctx = ctx or {"acceptance_criteria": "AC", "conversation_id": "c1", "task_id": "c1",
                       "exec_review_state_before": {"head": "a" * 40, "mode": "review_dirty_diff"}}
@@ -649,13 +663,18 @@ class TestRunLoop(unittest.TestCase):
         # git TestEscalationBranch); pass branch_creator=... to test the no-branch path.
         if branch_creator == "__ok__":
             branch_creator = self._OK_BRANCH
+        if queue_delivery == "__ok__":
+            def queue_delivery(entry):
+                pushes.append(entry)
+                return True
         pkt = ep.build_execution_packet(signals=sig, context_pkg=ctx, output_text="x",
                                         risk_tier=risk_tier)
         revised = el.run_loop(packet=pkt, context_pkg=ctx, response="x", signals=sig,
-                              risk_tier=risk_tier, trace_dir=None, config={}, config_name=None,
+                              risk_tier=risk_tier, trace_dir=trace_dir,
+                              config={}, config_name=None,
                               verify_invoker=_verify(verify_text), actuator=actuator,
                               runner=runner, router_obj=FakeRouter(),
-                              queue_push=lambda e: pushes.append(e),
+                              queue_push=queue_delivery,
                               branch_creator=branch_creator)
         return pkt, revised, pushes
 
@@ -665,6 +684,25 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(pkt.loop["stop_condition"], "criteria_met")
         self.assertEqual(pkt.status, "converged")
         self.assertEqual(pkt.verification["reviewer_a"]["family"], "gpt")
+        self.assertIsNone(revised)
+        self.assertEqual(pushes, [])
+
+    def test_acceptance_obligation_blocks_pass_and_reaches_existing_authority(self):
+        pkt, revised, pushes = self._run(
+            {"any_mutation": True}, V_PASS_ACCEPTANCE,
+            FakeRunner(sufficient=True))
+        self.assertEqual(pkt.loop["stop_condition"], "max_iterations_escalated")
+        self.assertEqual(pkt.status, "escalated")
+        self.assertIsNone(revised)
+        self.assertEqual(len(pushes), 1)
+        self.assertIn("acceptance-kind verifier obligation", pkt.loop["escalation"]["reason"])
+
+    def test_diagnostic_suggestion_does_not_block_pass(self):
+        pkt, revised, pushes = self._run(
+            {"any_mutation": True}, V_PASS_DIAGNOSTIC,
+            FakeRunner(sufficient=True))
+        self.assertEqual(pkt.loop["stop_condition"], "criteria_met")
+        self.assertEqual(pkt.status, "converged")
         self.assertIsNone(revised)
         self.assertEqual(pushes, [])
 
@@ -906,12 +944,17 @@ class TestRunLoop(unittest.TestCase):
         pkt = ep.build_execution_packet(signals={"any_mutation": True}, context_pkg=ctx,
                                         output_text="x", risk_tier="high-risk")
         pushes = []
+
+        def queue_delivery(entry):
+            pushes.append(entry)
+            return True
+
         el.run_loop(packet=pkt, context_pkg=ctx, response="x", signals={"any_mutation": True},
                     risk_tier="high-risk", config={},
                     verify_invoker=_verify("VERDICT: FAIL\nCONFIDENCE: 0.5\n"
                                            "FINDING: severity=medium; class=execution_level; concern\n"),
                     actuator=None, runner=FakeRunner(sufficient=False), router_obj=same_router,
-                    branch_creator=self._OK_BRANCH, queue_push=lambda e: pushes.append(e))
+                    branch_creator=self._OK_BRANCH, queue_push=queue_delivery)
         reason = pkt.loop["escalation"]["reason"]
         self.assertNotIn("different-family verifier returned", reason)
         self.assertIn("single-family verifier returned VERDICT: FAIL", reason)
@@ -930,6 +973,43 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(esc["kind"], "policy_human_review")
         self.assertIsNone(esc["abandoned_attempt_branch"])   # honestly no branch
         self.assertIn("unverified", esc["reason"])
+
+    def test_acceptance_obligation_reaches_authority_without_branch(self):
+        pkt, _, pushes = self._run(
+            {"any_mutation": True}, V_PASS_ACCEPTANCE,
+            FakeRunner(sufficient=True),
+            branch_creator=lambda *a, **k: None)
+        self.assertEqual(pkt.loop["stop_condition"], "max_iterations_escalated")
+        self.assertEqual(len(pushes), 1)
+        self.assertEqual(pkt.loop["escalation"]["kind"], "policy_human_review")
+        self.assertIsNone(pkt.loop["escalation"]["abandoned_attempt_branch"])
+
+    def test_failed_handoff_stays_retryable_and_visible(self):
+        import json as _json
+
+        attempted = []
+
+        def fail_delivery(entry):
+            attempted.append(entry)
+            return False
+
+        with tempfile.TemporaryDirectory(prefix="er-handoff-") as trace_dir:
+            pkt, returned, _ = self._run(
+                {"any_mutation": True}, V_FAIL_HIGH,
+                FakeRunner(sufficient=False), queue_delivery=fail_delivery,
+                trace_dir=trace_dir)
+            on_disk = _json.loads(
+                (Path(trace_dir) / ep._PACKET_FILENAME).read_text())
+
+        self.assertEqual(len(attempted), 1)
+        pending = pkt.loop["human_handoff"]
+        self.assertEqual(pending["status"], "pending")
+        self.assertTrue(pending["retryable"])
+        self.assertFalse(pending["human_reached"])
+        self.assertEqual(on_disk["loop"]["human_handoff"], pending)
+        self.assertIn("No human was reached", returned)
+        self.assertIn("pending and retryable", returned)
+        self.assertTrue(returned.startswith("x\n\n"))
 
     def test_verifier_renders_with_acceptance_criteria_not_absence_fence(self):
         # judge P1 fold: the packet must carry the criteria BEFORE the verify render,
@@ -981,18 +1061,55 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(revised, "revised deliverable")
         self.assertEqual(pkt.loop["iteration"], 1)
 
+    def test_actuator_clears_current_acceptance_obligation_then_converges(self):
+        calls = {"verify": 0, "actuator": []}
+
+        def verify(system, user, endpoint):
+            calls["verify"] += 1
+            return V_PASS_ACCEPTANCE if calls["verify"] == 1 else V_PASS
+
+        def actuator(exec_findings, plan_findings, iteration):
+            calls["actuator"].append((exec_findings, plan_findings, iteration))
+            return "acceptance obligation corrected"
+
+        ctx = {"acceptance_criteria": "AC", "task_id": "c1",
+               "exec_review_state_before": {"head": "a" * 40,
+                                             "mode": "review_dirty_diff"}}
+        pkt = ep.build_execution_packet(
+            signals={"any_mutation": True}, context_pkg=ctx,
+            output_text="x", risk_tier="standard")
+        revised = el.run_loop(
+            packet=pkt, context_pkg=ctx, response="x",
+            signals={"any_mutation": True}, risk_tier="standard", config={},
+            verify_invoker=verify, actuator=actuator,
+            runner=FakeRunner(sufficient=True), router_obj=FakeRouter())
+
+        self.assertEqual(pkt.loop["stop_condition"], "criteria_met")
+        self.assertEqual(revised, "acceptance obligation corrected")
+        self.assertEqual(calls["verify"], 2)
+        self.assertEqual(len(calls["actuator"]), 1)
+        exec_findings, plan_findings, iteration = calls["actuator"][0]
+        self.assertEqual(exec_findings[0]["invented_test_kind"], "acceptance")
+        self.assertEqual(plan_findings, [])
+        self.assertEqual(iteration, 1)
+
 
 # ── Handback (§7/§13) — reference-only + stealth defense-in-depth ──────────────
 class TestHandback(unittest.TestCase):
-    def _ref(self):
+    def _ref(self, conversation_id="c9"):
+        packet_context = {"raw_prompt": "do x"}
+        handback_context = {}
+        if conversation_id is not None:
+            packet_context["conversation_id"] = conversation_id
+            handback_context["conversation_id"] = conversation_id
         pkt = ep.build_execution_packet(signals={"any_mutation": True},
-                                        context_pkg={"raw_prompt": "do x", "conversation_id": "c9"},
+                                        context_pkg=packet_context,
                                         output_text="SECRET producer claim text",
                                         risk_tier="standard")
         return el.handback_reference(packet=pkt, packet_path="/trace/p.json",
                                      branch_ref="execution-review/escalation-c9",
                                      reason="did not converge",
-                                     context_pkg={"conversation_id": "c9"})
+                                     context_pkg=handback_context)
 
     def test_reference_has_top_level_conversation_id(self):
         ref = self._ref()
@@ -1016,6 +1133,263 @@ class TestHandback(unittest.TestCase):
         from unittest import mock
         with mock.patch.object(oe, "_is_stealth_context", return_value=True):
             self.assertFalse(el.push_handback(self._ref()))
+
+    def test_push_handback_reports_dual_backend_failure(self):
+        import oversight_actions as oa
+        import oversight_events as oe
+        import oversight_queue as oq
+        import tool_events as te
+        from unittest import mock
+
+        token = te.set_turn_context(
+            conversation_id="c9", principal_id="principal:user",
+        )
+        try:
+            with mock.patch.object(oe, "_is_stealth_context", return_value=False), \
+                    mock.patch.object(
+                        oq, "add_entry",
+                        side_effect=OSError("primary failed")) as primary, \
+                    mock.patch.object(
+                        oa, "_append_human_queue",
+                        side_effect=OSError("fallback failed")) as fallback:
+                self.assertFalse(el.push_handback(self._ref()))
+        finally:
+            te.reset_turn_context(token)
+        primary.assert_called_once()
+        fallback.assert_called_once()
+
+    def test_generated_handback_resolves_acceptance_and_waiver(self):
+        """A real generated handback is signed, typed, and terminally resolved.
+
+        Approve exercises the managed queue plus the real discussion chain.
+        Deny exercises the raw fallback plus the direct slash path. Neither
+        disposition may fall into PED handling or mint rerun authority.
+        """
+        import json
+        from contextlib import ExitStack
+        from unittest import mock
+
+        import oversight_actions as oa
+        import oversight_queue as oq
+        import redefinition_handler as rh
+        import resolution_chain as rc
+        import runtime_paths as rp
+        import slash_commands as sc
+        import tool_events as te
+
+        cases = (
+            ("accept", False, "accepted"),
+            ("waive", True, "waived"),
+        )
+        for disposition, force_fallback, expected_event in cases:
+            with self.subTest(disposition=disposition), \
+                    tempfile.TemporaryDirectory(
+                        prefix="er-handback-authority-",
+                    ) as tmp, ExitStack() as stack:
+                queue_path = os.path.join(tmp, "human-queue.jsonl")
+                approvals_path = os.path.join(tmp, "execution-approvals.json")
+                events_path = os.path.join(tmp, "tool-events.jsonl")
+                sessions_root = os.path.join(tmp, "sessions")
+                stack.enter_context(mock.patch.object(
+                    oq, "HUMAN_QUEUE_PATH", queue_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    oa, "HUMAN_QUEUE_PATH", queue_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    rh, "HUMAN_QUEUE_PATH", queue_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    te, "APPROVALS_PATH", approvals_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    te, "GLOBAL_SINK_DEFAULT", events_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    rp, "ORA_HOME", Path(tmp),
+                ))
+                stack.enter_context(mock.patch.object(
+                    oq, "_generate_name", return_value="Execution Review",
+                ))
+                stack.enter_context(mock.patch.object(
+                    rh, "approve_redefinition",
+                    side_effect=AssertionError("PED approval must not run"),
+                ))
+                stack.enter_context(mock.patch.object(
+                    rh, "deny_redefinition",
+                    side_effect=AssertionError("PED denial must not run"),
+                ))
+                if force_fallback:
+                    stack.enter_context(mock.patch.object(
+                        oq, "add_entry",
+                        side_effect=OSError("force raw fallback"),
+                    ))
+
+                principal_id = f"principal:{disposition}-turn"
+                token = te.set_turn_context(
+                    conversation_id="c9", principal_id=principal_id,
+                )
+                stack.callback(te.reset_turn_context, token)
+                te._queued_hashes.clear()
+                stack.callback(te._queued_hashes.clear)
+
+                unstamped = self._ref(conversation_id=None)
+                self.assertEqual(unstamped["conversation_id"], "")
+                self.assertEqual(unstamped["event"]["conversation_id"], "")
+
+                for location in ("top-level", "event"):
+                    conflicting = dict(unstamped)
+                    conflicting["event"] = dict(unstamped["event"])
+                    if location == "top-level":
+                        conflicting["conversation_id"] = "different-dialogue"
+                    else:
+                        conflicting["event"]["conversation_id"] = (
+                            "different-dialogue"
+                        )
+                    with mock.patch.object(
+                        te, "get_turn_context", wraps=te.get_turn_context,
+                    ) as get_turn_context, mock.patch.object(
+                        te, "_register_pending_approval",
+                    ) as register_pending:
+                        with self.assertRaisesRegex(
+                            ValueError, "conversation_id conflicts",
+                        ):
+                            te.prepare_execution_review_handback(conflicting)
+                    self.assertEqual(get_turn_context.call_count, 1)
+                    register_pending.assert_not_called()
+                    self.assertFalse(os.path.exists(approvals_path))
+                    self.assertFalse(os.path.exists(queue_path))
+
+                with mock.patch.object(
+                    te, "get_turn_context", wraps=te.get_turn_context,
+                ) as get_turn_context, mock.patch.object(
+                    te, "_register_pending_approval",
+                    return_value="snapshot-only-nonce",
+                ) as register_pending:
+                    snapshot_prepared, snapshot_nonce = (
+                        te.prepare_execution_review_handback(unstamped)
+                    )
+                self.assertEqual(get_turn_context.call_count, 1)
+                register_pending.assert_called_once()
+                self.assertEqual(snapshot_nonce, "snapshot-only-nonce")
+                self.assertEqual(snapshot_prepared["conversation_id"], "c9")
+                self.assertEqual(
+                    snapshot_prepared["event"]["conversation_id"], "c9",
+                )
+                self.assertEqual(
+                    snapshot_prepared["event"]["principal_id"], principal_id,
+                )
+                self.assertFalse(os.path.exists(approvals_path))
+                self.assertFalse(os.path.exists(queue_path))
+
+                self.assertTrue(el.push_handback(unstamped))
+                with open(queue_path, encoding="utf-8") as stream:
+                    stored = json.loads(stream.readline())
+
+                event = stored["event"]
+                self.assertEqual(stored["kind"], "execution_gate")
+                self.assertFalse(stored["redefinition"])
+                self.assertEqual(stored["conversation_id"], "c9")
+                self.assertEqual(event["conversation_id"], "c9")
+                self.assertEqual(event["principal_id"], principal_id)
+                self.assertEqual(
+                    event["event_type"], "ExecutionReviewEscalation",
+                )
+                self.assertEqual(
+                    stored["context_summary"]["kind"],
+                    "execution_review_escalation",
+                )
+                self.assertEqual(
+                    event["action"], "execution_review_handback",
+                )
+                self.assertEqual(
+                    event["args_hash"], te.normalize_args_hash(
+                        "execution_review_handback",
+                        event["handback_identity"],
+                    ),
+                )
+                self.assertEqual(
+                    event["handback_identity"]["conversation_id"], "c9",
+                )
+                self.assertTrue(te.has_live_approval_request(
+                    stored, principal_id=principal_id,
+                ))
+                approval_state = te._load_approvals()
+                self.assertEqual(approval_state["tokens"], [])
+                self.assertEqual(len(approval_state["pending"]), 1)
+                request = approval_state["pending"][0]
+                self.assertEqual(request["nonce"], event["approval_nonce"])
+                self.assertEqual(request["queue_id"], stored["id"])
+                self.assertEqual(request["action"], event["action"])
+                self.assertEqual(request["args_hash"], event["args_hash"])
+                self.assertEqual(request["conversation_id"], "c9")
+                self.assertEqual(request["principal_id"], principal_id)
+                self.assertEqual(
+                    request["queue_authority_digest"],
+                    te._queue_authority_digest(stored),
+                )
+                self.assertFalse(request["consumed"])
+                queue_text = sc.run_runtime_command("/queue")
+                self.assertIn("execution review handback", queue_text.lower())
+                self.assertNotIn("legacy_untyped", queue_text)
+
+                entry_id = stored["id"]
+                if disposition == "accept":
+                    started = rc.start_resolution(
+                        entry_id, sessions_root=sessions_root, config={},
+                    )
+                    result = rc.continue_resolution(
+                        rc.ContinuationContext(
+                            queue_id=entry_id, last_alternative="",
+                        ),
+                        [],
+                        "1",
+                        conversation_id=started["conversation_id"],
+                        principal_id=principal_id,
+                    )
+                    self.assertIn("Accepted and resolved", result)
+                else:
+                    result = sc.run_runtime_command(
+                        "/deny 0 deliberate verifier waiver",
+                        conversation_id="c9",
+                        principal_id=principal_id,
+                    )
+                    self.assertIn("Waived and rejected", result)
+                    self.assertIn(
+                        "The terminal Execution Review handback was "
+                        "deliberately rejected and marked waived for this "
+                        "preserved attempt.",
+                        result,
+                    )
+                    self.assertIn("deliberate verifier waiver", result)
+                    self.assertNotIn("acceptance obligation", result)
+
+                self.assertIn("No rerun authority was granted", result)
+                self.assertIsNone(oq.find_paused_by_id(entry_id))
+                self.assertEqual(oq.list_paused(), [])
+                self.assertFalse(te.has_live_approval_request(
+                    stored, principal_id=principal_id,
+                ))
+                self.assertIsNone(te.check_and_consume_approval(
+                    "execution_review_handback",
+                    event["args_hash"],
+                    "c9",
+                    principal_id=principal_id,
+                ))
+                approval_state = te._load_approvals()
+                self.assertEqual(approval_state["tokens"], [])
+                self.assertEqual(len(approval_state["pending"]), 1)
+                consumed = approval_state["pending"][0]
+                self.assertEqual(consumed["nonce"], event["approval_nonce"])
+                self.assertEqual(consumed["queue_id"], entry_id)
+                self.assertTrue(consumed["consumed"])
+                with open(events_path, encoding="utf-8") as stream:
+                    terminal_events = [
+                        json.loads(line) for line in stream if line.strip()
+                    ]
+                self.assertEqual(
+                    terminal_events[-1]["gate"]["decision"], expected_event,
+                )
 
 
 # ── Portability (Windows-sim pure logic) ───────────────────────────────────────
