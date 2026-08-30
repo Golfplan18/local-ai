@@ -1452,20 +1452,37 @@ def prepare_execution_review_handback(record_dict: dict) -> tuple[dict, str]:
     if context.get("kind") != EXECUTION_REVIEW_HANDBACK_CONTEXT_KIND:
         raise ValueError("execution-review handback context kind is invalid")
 
+    turn_context = get_turn_context()
     conversation_id = str(
-        prepared.get("conversation_id")
-        or event.get("conversation_id")
-        or ""
+        turn_context.get("conversation_id") or ""
     )
-    if not conversation_id:
-        raise ValueError("execution-review handback has no Dialogue identity")
+    if not conversation_id.strip():
+        raise ValueError(
+            "execution-review handback turn has no Dialogue identity"
+        )
+    draft_conversation_ids = (
+        ("top-level", prepared.get("conversation_id")),
+        ("event", event.get("conversation_id")),
+    )
+    for location, draft_conversation_id in draft_conversation_ids:
+        draft_conversation_id = str(draft_conversation_id or "")
+        if (
+            draft_conversation_id.strip()
+            and draft_conversation_id != conversation_id
+        ):
+            raise ValueError(
+                "execution-review handback "
+                f"{location} conversation_id conflicts with turn context"
+            )
     prepared["conversation_id"] = conversation_id
+    event["conversation_id"] = conversation_id
     prepared["kind"] = "execution_gate"
     prepared["redefinition"] = False
     prepared["context_summary"] = context
+    prepared["event"] = event
 
     principal_id = str(
-        get_turn_context().get("principal_id") or "principal:user"
+        turn_context.get("principal_id") or "principal:user"
     )
     identity = _execution_review_handback_identity(prepared)
     args_hash = normalize_args_hash(
@@ -2154,9 +2171,9 @@ def resolve_gate_entry(record_dict: dict, approve: bool,
         suffix = f" Reason: {reason}" if reason else ""
         return (
             "**Waived and rejected.** The terminal Execution Review handback "
-            "was deliberately rejected and its acceptance obligation was "
-            "waived for this preserved attempt. No rerun authority was "
-            f"granted.{suffix}"
+            "was deliberately rejected and marked waived for this preserved "
+            "attempt. No rerun authority was granted."
+            f"{suffix}"
         )
 
     if approve:

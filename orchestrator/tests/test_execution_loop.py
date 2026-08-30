@@ -1096,15 +1096,20 @@ class TestRunLoop(unittest.TestCase):
 
 # ── Handback (§7/§13) — reference-only + stealth defense-in-depth ──────────────
 class TestHandback(unittest.TestCase):
-    def _ref(self):
+    def _ref(self, conversation_id="c9"):
+        packet_context = {"raw_prompt": "do x"}
+        handback_context = {}
+        if conversation_id is not None:
+            packet_context["conversation_id"] = conversation_id
+            handback_context["conversation_id"] = conversation_id
         pkt = ep.build_execution_packet(signals={"any_mutation": True},
-                                        context_pkg={"raw_prompt": "do x", "conversation_id": "c9"},
+                                        context_pkg=packet_context,
                                         output_text="SECRET producer claim text",
                                         risk_tier="standard")
         return el.handback_reference(packet=pkt, packet_path="/trace/p.json",
                                      branch_ref="execution-review/escalation-c9",
                                      reason="did not converge",
-                                     context_pkg={"conversation_id": "c9"})
+                                     context_pkg=handback_context)
 
     def test_reference_has_top_level_conversation_id(self):
         ref = self._ref()
@@ -1133,15 +1138,23 @@ class TestHandback(unittest.TestCase):
         import oversight_actions as oa
         import oversight_events as oe
         import oversight_queue as oq
+        import tool_events as te
         from unittest import mock
 
-        with mock.patch.object(oe, "_is_stealth_context", return_value=False), \
-                mock.patch.object(
-                    oq, "add_entry", side_effect=OSError("primary failed")) as primary, \
-                mock.patch.object(
-                    oa, "_append_human_queue",
-                    side_effect=OSError("fallback failed")) as fallback:
-            self.assertFalse(el.push_handback(self._ref()))
+        token = te.set_turn_context(
+            conversation_id="c9", principal_id="principal:user",
+        )
+        try:
+            with mock.patch.object(oe, "_is_stealth_context", return_value=False), \
+                    mock.patch.object(
+                        oq, "add_entry",
+                        side_effect=OSError("primary failed")) as primary, \
+                    mock.patch.object(
+                        oa, "_append_human_queue",
+                        side_effect=OSError("fallback failed")) as fallback:
+                self.assertFalse(el.push_handback(self._ref()))
+        finally:
+            te.reset_turn_context(token)
         primary.assert_called_once()
         fallback.assert_called_once()
 
@@ -1212,20 +1225,73 @@ class TestHandback(unittest.TestCase):
                         side_effect=OSError("force raw fallback"),
                     ))
 
+                principal_id = f"principal:{disposition}-turn"
                 token = te.set_turn_context(
-                    conversation_id="c9", principal_id="principal:user",
+                    conversation_id="c9", principal_id=principal_id,
                 )
                 stack.callback(te.reset_turn_context, token)
                 te._queued_hashes.clear()
                 stack.callback(te._queued_hashes.clear)
 
-                self.assertTrue(el.push_handback(self._ref()))
+                unstamped = self._ref(conversation_id=None)
+                self.assertEqual(unstamped["conversation_id"], "")
+                self.assertEqual(unstamped["event"]["conversation_id"], "")
+
+                for location in ("top-level", "event"):
+                    conflicting = dict(unstamped)
+                    conflicting["event"] = dict(unstamped["event"])
+                    if location == "top-level":
+                        conflicting["conversation_id"] = "different-dialogue"
+                    else:
+                        conflicting["event"]["conversation_id"] = (
+                            "different-dialogue"
+                        )
+                    with mock.patch.object(
+                        te, "get_turn_context", wraps=te.get_turn_context,
+                    ) as get_turn_context, mock.patch.object(
+                        te, "_register_pending_approval",
+                    ) as register_pending:
+                        with self.assertRaisesRegex(
+                            ValueError, "conversation_id conflicts",
+                        ):
+                            te.prepare_execution_review_handback(conflicting)
+                    self.assertEqual(get_turn_context.call_count, 1)
+                    register_pending.assert_not_called()
+                    self.assertFalse(os.path.exists(approvals_path))
+                    self.assertFalse(os.path.exists(queue_path))
+
+                with mock.patch.object(
+                    te, "get_turn_context", wraps=te.get_turn_context,
+                ) as get_turn_context, mock.patch.object(
+                    te, "_register_pending_approval",
+                    return_value="snapshot-only-nonce",
+                ) as register_pending:
+                    snapshot_prepared, snapshot_nonce = (
+                        te.prepare_execution_review_handback(unstamped)
+                    )
+                self.assertEqual(get_turn_context.call_count, 1)
+                register_pending.assert_called_once()
+                self.assertEqual(snapshot_nonce, "snapshot-only-nonce")
+                self.assertEqual(snapshot_prepared["conversation_id"], "c9")
+                self.assertEqual(
+                    snapshot_prepared["event"]["conversation_id"], "c9",
+                )
+                self.assertEqual(
+                    snapshot_prepared["event"]["principal_id"], principal_id,
+                )
+                self.assertFalse(os.path.exists(approvals_path))
+                self.assertFalse(os.path.exists(queue_path))
+
+                self.assertTrue(el.push_handback(unstamped))
                 with open(queue_path, encoding="utf-8") as stream:
                     stored = json.loads(stream.readline())
 
                 event = stored["event"]
                 self.assertEqual(stored["kind"], "execution_gate")
                 self.assertFalse(stored["redefinition"])
+                self.assertEqual(stored["conversation_id"], "c9")
+                self.assertEqual(event["conversation_id"], "c9")
+                self.assertEqual(event["principal_id"], principal_id)
                 self.assertEqual(
                     event["event_type"], "ExecutionReviewEscalation",
                 )
@@ -1242,7 +1308,27 @@ class TestHandback(unittest.TestCase):
                         event["handback_identity"],
                     ),
                 )
-                self.assertTrue(te.has_live_approval_request(stored))
+                self.assertEqual(
+                    event["handback_identity"]["conversation_id"], "c9",
+                )
+                self.assertTrue(te.has_live_approval_request(
+                    stored, principal_id=principal_id,
+                ))
+                approval_state = te._load_approvals()
+                self.assertEqual(approval_state["tokens"], [])
+                self.assertEqual(len(approval_state["pending"]), 1)
+                request = approval_state["pending"][0]
+                self.assertEqual(request["nonce"], event["approval_nonce"])
+                self.assertEqual(request["queue_id"], stored["id"])
+                self.assertEqual(request["action"], event["action"])
+                self.assertEqual(request["args_hash"], event["args_hash"])
+                self.assertEqual(request["conversation_id"], "c9")
+                self.assertEqual(request["principal_id"], principal_id)
+                self.assertEqual(
+                    request["queue_authority_digest"],
+                    te._queue_authority_digest(stored),
+                )
+                self.assertFalse(request["consumed"])
                 queue_text = sc.run_runtime_command("/queue")
                 self.assertIn("execution review handback", queue_text.lower())
                 self.assertNotIn("legacy_untyped", queue_text)
@@ -1259,27 +1345,44 @@ class TestHandback(unittest.TestCase):
                         [],
                         "1",
                         conversation_id=started["conversation_id"],
-                        principal_id="principal:user",
+                        principal_id=principal_id,
                     )
                     self.assertIn("Accepted and resolved", result)
                 else:
                     result = sc.run_runtime_command(
                         "/deny 0 deliberate verifier waiver",
                         conversation_id="c9",
-                        principal_id="principal:user",
+                        principal_id=principal_id,
                     )
                     self.assertIn("Waived and rejected", result)
+                    self.assertIn(
+                        "The terminal Execution Review handback was "
+                        "deliberately rejected and marked waived for this "
+                        "preserved attempt.",
+                        result,
+                    )
                     self.assertIn("deliberate verifier waiver", result)
+                    self.assertNotIn("acceptance obligation", result)
 
                 self.assertIn("No rerun authority was granted", result)
                 self.assertIsNone(oq.find_paused_by_id(entry_id))
-                self.assertFalse(te.has_live_approval_request(stored))
+                self.assertEqual(oq.list_paused(), [])
+                self.assertFalse(te.has_live_approval_request(
+                    stored, principal_id=principal_id,
+                ))
                 self.assertIsNone(te.check_and_consume_approval(
                     "execution_review_handback",
                     event["args_hash"],
                     "c9",
+                    principal_id=principal_id,
                 ))
-                self.assertEqual(te._load_approvals()["tokens"], [])
+                approval_state = te._load_approvals()
+                self.assertEqual(approval_state["tokens"], [])
+                self.assertEqual(len(approval_state["pending"]), 1)
+                consumed = approval_state["pending"][0]
+                self.assertEqual(consumed["nonce"], event["approval_nonce"])
+                self.assertEqual(consumed["queue_id"], entry_id)
+                self.assertTrue(consumed["consumed"])
                 with open(events_path, encoding="utf-8") as stream:
                     terminal_events = [
                         json.loads(line) for line in stream if line.strip()
