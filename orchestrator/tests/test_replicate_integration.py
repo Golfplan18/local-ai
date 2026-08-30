@@ -402,6 +402,8 @@ class AsyncDispatchTests(unittest.TestCase):
             rep_mod, "_resolve_api_key", return_value="t-tok"
         )
         self._patch_key.start()
+        if hasattr(rep_mod._thread_local, "conversation_id"):
+            del rep_mod._thread_local.conversation_id
 
     def tearDown(self):
         self._patch_queue.stop()
@@ -414,6 +416,14 @@ class AsyncDispatchTests(unittest.TestCase):
         instance._api_base = api_base.rstrip("/")
         instance._session = self.fake
         instance._auth_error = None
+
+    def _create_dialogue(self, conversation_id):
+        dialogue_dir = Path(self.tmpdir.name) / conversation_id
+        dialogue_dir.mkdir(parents=True, exist_ok=True)
+        (dialogue_dir / "conversation.json").write_text(
+            json.dumps({"conversation_id": conversation_id, "messages": []}),
+            encoding="utf-8",
+        )
 
     def test_video_dispatch_files_queued_job(self):
         # Seed one full cycle's worth: model lookup, create, terminal poll.
@@ -428,13 +438,26 @@ class AsyncDispatchTests(unittest.TestCase):
             _FakeResponse(201, {"id": "vp", "status": "starting"}),
         )
         signed_url = "https://r.example/clip.mp4?token=never-persist"
-        self.fake.queue_get(
-            "/predictions/vp",
-            _FakeResponse(200, {"id": "vp", "status": "succeeded",
-                                "output": signed_url}),
-        )
+        binding_seen = []
+
+        def poll_after_durable_binding(_client, prediction_id):
+            persisted_jobs = json.loads(
+                (Path(self.tmpdir.name) / "conv-1" / "jobs.json").read_text(
+                    encoding="utf-8",
+                )
+            )
+            binding_seen.append(dict(persisted_jobs[0]["metadata"]))
+            return {"id": prediction_id, "status": "succeeded", "output": signed_url}
+
+        self._create_dialogue("conv-1")
         rep_mod.set_active_conversation("conv-1")
         with mock.patch.object(rep_mod, "_HAS_JOB_QUEUE", True), \
+             mock.patch.object(
+                 rep_mod.ReplicateClient,
+                 "poll",
+                 autospec=True,
+                 side_effect=poll_after_durable_binding,
+             ), \
              mock.patch.object(
                  rep_mod.network_policy, "urllib_request_bytes",
                  return_value=(b"video-bytes", mock.sentinel.destination),
@@ -453,6 +476,11 @@ class AsyncDispatchTests(unittest.TestCase):
         self.assertIn(job["status"], {"queued", "in_progress", "complete"})
         updated = self.queue.get_job("conv-1", job["id"])
         self.assertEqual(updated["status"], "complete")
+        self.assertEqual(len(binding_seen), 1)
+        self.assertEqual(binding_seen[0]["provider_submission_state"], "bound")
+        self.assertEqual(binding_seen[0]["provider_prediction_id"], "vp")
+        self.assertEqual(binding_seen[0]["provider_conversation_id"], "conv-1")
+        self.assertEqual(binding_seen[0]["provider_job_id"], job["id"])
         route = updated["result_ref"]["video_url"]
         self.assertTrue(route.startswith(f"/api/jobs/conv-1/{job['id']}/artifacts/"))
         self.assertNotIn("never-persist", json.dumps(updated))
@@ -465,6 +493,128 @@ class AsyncDispatchTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertNotIn("never-persist", persisted)
+
+    def test_restart_reconciles_bound_jobs_without_resubmission(self):
+        original = JobQueue(sessions_root=self.tmpdir.name)
+
+        def make_job(
+            conversation_id, prediction_id, *, indeterminate=False,
+            authenticated=True,
+        ):
+            if authenticated:
+                self._create_dialogue(conversation_id)
+            job = original.dispatch(
+                conversation_id,
+                "video_generates",
+                {"prompt": conversation_id},
+                metadata={"provider": "replicate", "model": "minimax/video-01"},
+            )
+            binding = {
+                "provider_submission_state": (
+                    "submitting" if indeterminate else "bound"
+                ),
+                "provider_version": "v-sha",
+                "provider_conversation_id": conversation_id,
+                "provider_job_id": job["id"],
+            }
+            if prediction_id is not None:
+                binding["provider_prediction_id"] = prediction_id
+            original.begin_submission(conversation_id, job["id"], binding)
+            if not indeterminate:
+                original.update_metadata(
+                    conversation_id,
+                    job["id"],
+                    {"provider_prediction_id": prediction_id},
+                    require_persisted=True,
+                )
+            return job
+
+        complete = make_job("restart-complete", "pred-complete")
+        failed = make_job("restart-failed", "pred-failed")
+        canceled = make_job("restart-canceled", "pred-canceled")
+        indeterminate = make_job("restart-indeterminate", None, indeterminate=True)
+        orphan = make_job(
+            "restart-orphan", "pred-orphan", authenticated=False,
+        )
+        del original
+
+        signed_url = "https://r.example/resumed.mp4?token=resume-never-persist"
+        self.fake.queue_get(
+            "/predictions/pred-complete",
+            _FakeResponse(200, {
+                "id": "pred-complete",
+                "status": "succeeded",
+                "output": signed_url,
+            }),
+        )
+        self.fake.queue_get(
+            "/predictions/pred-failed",
+            _FakeResponse(200, {
+                "id": "pred-failed",
+                "status": "failed",
+                "error": "provider rejected output",
+            }),
+        )
+        self.fake.queue_get(
+            "/predictions/pred-canceled",
+            _FakeResponse(200, {
+                "id": "pred-canceled",
+                "status": "canceled",
+            }),
+        )
+
+        restarted = JobQueue(sessions_root=self.tmpdir.name)
+        with mock.patch.object(rep_mod, "get_default_queue", return_value=restarted), \
+             mock.patch.object(
+                 rep_mod.network_policy,
+                 "urllib_request_bytes",
+                 return_value=(b"resumed-video", mock.sentinel.destination),
+             ) as fetch:
+            threads = rep_mod.reconcile_unfinished_jobs()
+            for thread in threads:
+                thread.join(timeout=5.0)
+                self.assertFalse(thread.is_alive())
+
+        self.assertEqual(len(threads), 3)
+        self.assertEqual(self.fake.posts, [])
+        self.assertEqual(
+            {url.rsplit("/", 1)[-1] for url, _headers in self.fake.gets},
+            {"pred-complete", "pred-failed", "pred-canceled"},
+        )
+        complete_state = restarted.get_job("restart-complete", complete["id"])
+        self.assertEqual(complete_state["status"], "complete")
+        route = complete_state["result_ref"]["video_url"]
+        artifact = (
+            Path(self.tmpdir.name)
+            / "restart-complete"
+            / "uploads"
+            / route.rsplit("/", 1)[-1]
+        )
+        self.assertEqual(artifact.read_bytes(), b"resumed-video")
+        fetch.assert_called_once_with(
+            signed_url, timeout=180, max_bytes=rep_mod._ASYNC_ARTIFACT_LIMIT,
+        )
+        self.assertEqual(
+            restarted.get_job("restart-failed", failed["id"])["status"],
+            "failed",
+        )
+        self.assertEqual(
+            restarted.get_job("restart-canceled", canceled["id"])["status"],
+            "cancelled",
+        )
+        indeterminate_state = restarted.get_job(
+            "restart-indeterminate", indeterminate["id"],
+        )
+        self.assertEqual(indeterminate_state["status"], "failed")
+        self.assertIn("Automatic resubmission is disabled", indeterminate_state["error"])
+        self.assertEqual(
+            restarted.get_job("restart-orphan", orphan["id"])["status"],
+            "in_progress",
+        )
+        persisted = (
+            Path(self.tmpdir.name) / "restart-complete" / "jobs.json"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("resume-never-persist", persisted)
 
     def test_style_training_materializes_case_varied_urls_in_values_and_keys(self):
         self.fake.queue_get(
@@ -488,6 +638,7 @@ class AsyncDispatchTests(unittest.TestCase):
                                     key_url: {"nested": [preview_url]},
                                 }}),
         )
+        self._create_dialogue("conv-style")
         rep_mod.set_active_conversation("conv-style")
         with mock.patch.object(rep_mod, "_HAS_JOB_QUEUE", True), \
              mock.patch.object(
@@ -540,6 +691,309 @@ class AsyncDispatchTests(unittest.TestCase):
                 "name": "my-style",
             })
         self.assertEqual(cm.exception.code, "insufficient_examples")
+
+    def test_style_trains_requires_an_explicit_live_dialogue(self):
+        request = {
+            "reference_images": ["data:a", "data:b", "data:c"],
+            "name": "watercolor",
+        }
+        for owner in ("default", "missing-dialogue"):
+            rep_mod.set_active_conversation(owner)
+            with self.assertRaises(rep_mod.ReplicateError) as cm:
+                rep_mod.dispatch_style_trains(request)
+            self.assertEqual(cm.exception.code, "prompt_rejected")
+        self.assertEqual(self.fake.gets, [])
+        self.assertEqual(self.fake.posts, [])
+
+    def test_cancel_wins_before_submission_and_contacts_no_provider(self):
+        conversation_id = "cancel-first"
+        self._create_dialogue(conversation_id)
+        job = self.queue.dispatch(
+            conversation_id,
+            "style_trains",
+            {},
+            metadata={"provider": "replicate", "model": "trainer"},
+        )
+        client = rep_mod.ReplicateClient(api_key="t-tok", session=self.fake)
+        ready = threading.Event()
+        release = threading.Event()
+        original_begin = self.queue.begin_submission
+
+        def blocked_begin(*args, **kwargs):
+            ready.set()
+            self.assertTrue(release.wait(5.0))
+            return original_begin(*args, **kwargs)
+
+        with mock.patch.object(
+            self.queue, "begin_submission", side_effect=blocked_begin,
+        ):
+            worker = threading.Thread(
+                target=rep_mod._poll_thread,
+                args=(
+                    "style_trains", client, {"model": "trainer"}, {},
+                    conversation_id, job["id"],
+                ),
+            )
+            worker.start()
+            self.assertTrue(ready.wait(5.0))
+            self.queue.request_cancel(conversation_id, job["id"])
+            release.set()
+            worker.join(5.0)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(
+            self.queue.get_job(conversation_id, job["id"])["status"],
+            "cancelled",
+        )
+        self.assertEqual(self.fake.gets, [])
+        self.assertEqual(self.fake.posts, [])
+
+    def test_submission_wins_then_persisted_cancel_reaches_prediction(self):
+        conversation_id = "submit-first"
+        self._create_dialogue(conversation_id)
+        job = self.queue.dispatch(
+            conversation_id,
+            "style_trains",
+            {},
+            metadata={"provider": "replicate", "model": "trainer"},
+        )
+        self.fake.queue_post(
+            "/predictions/pred-race/cancel",
+            _FakeResponse(200, {"id": "pred-race", "status": "canceled"}),
+        )
+        self.fake.queue_post(
+            "/predictions",
+            _FakeResponse(201, {"id": "pred-race", "status": "starting"}),
+        )
+        client = rep_mod.ReplicateClient(api_key="t-tok", session=self.fake)
+        ready = threading.Event()
+        release = threading.Event()
+
+        def blocked_version(_model):
+            ready.set()
+            self.assertTrue(release.wait(5.0))
+            return "v-race"
+
+        with mock.patch.object(client, "resolve_version", side_effect=blocked_version):
+            worker = threading.Thread(
+                target=rep_mod._poll_thread,
+                args=(
+                    "style_trains", client, {"model": "trainer"}, {},
+                    conversation_id, job["id"],
+                ),
+            )
+            worker.start()
+            self.assertTrue(ready.wait(5.0))
+            claimed = self.queue.get_job(conversation_id, job["id"])
+            self.assertEqual(claimed["status"], "in_progress")
+            self.assertEqual(
+                claimed["metadata"]["provider_submission_state"], "submitting",
+            )
+            self.queue.request_cancel(conversation_id, job["id"])
+            release.set()
+            worker.join(5.0)
+        self.assertFalse(worker.is_alive())
+        final = self.queue.get_job(conversation_id, job["id"])
+        self.assertEqual(final["status"], "cancelled")
+        self.assertTrue(final["cancel_requested"])
+        self.assertEqual(
+            [url.rsplit("/v1", 1)[-1] for url, _headers, _body in self.fake.posts],
+            ["/predictions", "/predictions/pred-race/cancel"],
+        )
+
+    def test_delete_waits_for_poll_and_cancel_ack_before_erasing_binding(self):
+        conversation_id = "delete-race"
+        self._create_dialogue(conversation_id)
+        job = self.queue.dispatch(
+            conversation_id,
+            "style_trains",
+            {},
+            metadata={"provider": "replicate", "model": "trainer"},
+        )
+        self.queue.begin_submission(
+            conversation_id,
+            job["id"],
+            {
+                "provider_submission_state": "bound",
+                "provider_prediction_id": "pred-delete",
+                "provider_conversation_id": conversation_id,
+                "provider_job_id": job["id"],
+            },
+        )
+        worker_client = mock.Mock()
+        poll_entered = threading.Event()
+        release_poll = threading.Event()
+
+        def blocked_poll(_prediction_id):
+            poll_entered.set()
+            self.assertTrue(release_poll.wait(5.0))
+            return {"id": "pred-delete", "status": "processing"}
+
+        worker_client.poll.side_effect = blocked_poll
+        worker = threading.Thread(
+            target=rep_mod._poll_thread,
+            args=(
+                "style_trains", worker_client, {}, {}, conversation_id, job["id"],
+                "pred-delete",
+            ),
+        )
+        worker.start()
+        self.assertTrue(poll_entered.wait(5.0))
+
+        delete_client = mock.Mock()
+        delete_client.cancel.return_value = {
+            "id": "pred-delete", "status": "processing",
+        }
+        confirmation_entered = threading.Event()
+        release_confirmation = threading.Event()
+
+        def blocked_confirmation(_prediction_id):
+            confirmation_entered.set()
+            self.assertTrue(release_confirmation.wait(5.0))
+            return {"id": "pred-delete", "status": "canceled"}
+
+        delete_client.poll.side_effect = blocked_confirmation
+        delete_done = threading.Event()
+        delete_result = []
+
+        def delete():
+            try:
+                delete_result.append(
+                    self.queue.forget_conversation(conversation_id)
+                )
+            finally:
+                delete_done.set()
+
+        deleter = threading.Thread(
+            target=delete,
+        )
+        with mock.patch.object(
+            rep_mod, "ReplicateClient", return_value=delete_client,
+        ):
+            deleter.start()
+            self.assertFalse(delete_done.wait(0.1))
+            release_poll.set()
+            self.assertTrue(confirmation_entered.wait(5.0))
+            self.assertFalse(delete_done.wait(0.1))
+
+            # Cancellation acknowledgement has not arrived, so the queue and
+            # its durable provider binding must still be recoverable.
+            during = self.queue.get_job(conversation_id, job["id"])
+            self.assertEqual(
+                during["metadata"]["provider_prediction_id"], "pred-delete",
+            )
+            persisted_during = json.loads(
+                (Path(self.tmpdir.name) / conversation_id / "jobs.json")
+                .read_text(encoding="utf-8")
+            )[0]
+            self.assertEqual(
+                persisted_during["metadata"]["provider_prediction_id"],
+                "pred-delete",
+            )
+
+            release_confirmation.set()
+            self.assertTrue(delete_done.wait(5.0))
+        deleter.join(5.0)
+        worker.join(5.0)
+        self.assertFalse(deleter.is_alive())
+        self.assertFalse(worker.is_alive())
+        worker_client.poll.assert_called_once_with("pred-delete")
+        worker_client.cancel.assert_not_called()
+        delete_client.cancel.assert_called_once_with("pred-delete")
+        delete_client.poll.assert_called_once_with("pred-delete")
+        self.assertEqual(delete_result, [1])
+        self.assertEqual(self.queue.list_jobs(conversation_id), [])
+
+    def test_delete_cancel_failure_reports_and_retains_durable_binding(self):
+        conversation_id = "delete-cancel-fails"
+        self._create_dialogue(conversation_id)
+        job = self.queue.dispatch(
+            conversation_id,
+            "style_trains",
+            {},
+            metadata={"provider": "replicate", "model": "trainer"},
+        )
+        self.queue.begin_submission(
+            conversation_id,
+            job["id"],
+            {
+                "provider_submission_state": "bound",
+                "provider_prediction_id": "pred-retained",
+                "provider_conversation_id": conversation_id,
+                "provider_job_id": job["id"],
+            },
+        )
+        client = mock.Mock()
+        client.cancel.side_effect = RuntimeError("controlled cancel failure")
+        client.poll.side_effect = RuntimeError("controlled confirmation failure")
+
+        with mock.patch.object(rep_mod, "ReplicateClient", return_value=client):
+            with self.assertRaises(RuntimeError) as raised:
+                self.queue.forget_conversation(conversation_id)
+
+        self.assertIn("was not confirmed", str(raised.exception))
+        retained = self.queue.get_job(conversation_id, job["id"])
+        self.assertEqual(retained["status"], "in_progress")
+        self.assertEqual(
+            retained["metadata"]["provider_prediction_id"], "pred-retained",
+        )
+        persisted = json.loads(
+            (Path(self.tmpdir.name) / conversation_id / "jobs.json")
+            .read_text(encoding="utf-8")
+        )[0]
+        self.assertEqual(
+            persisted["metadata"]["provider_prediction_id"], "pred-retained",
+        )
+        self.assertNotIn(
+            conversation_id.casefold(), self.queue._deleted_conversations,
+        )
+
+    def test_delete_blocks_locally_failed_indeterminate_paid_submission(self):
+        conversation_id = "delete-indeterminate"
+        self._create_dialogue(conversation_id)
+        job = self.queue.dispatch(
+            conversation_id,
+            "style_trains",
+            {},
+            metadata={"provider": "replicate", "model": "trainer"},
+        )
+        self.queue.begin_submission(
+            conversation_id,
+            job["id"],
+            {
+                "provider_submission_state": "submitting",
+                "provider_conversation_id": conversation_id,
+                "provider_job_id": job["id"],
+            },
+        )
+        self.queue.mark_failed(
+            conversation_id,
+            job["id"],
+            "submission outcome is indeterminate; never resubmit",
+        )
+
+        with mock.patch.object(rep_mod, "ReplicateClient") as client_type:
+            with self.assertRaisesRegex(
+                RuntimeError, "paid submission outcome is indeterminate",
+            ):
+                self.queue.forget_conversation(conversation_id)
+
+        client_type.assert_not_called()
+        retained = self.queue.get_job(conversation_id, job["id"])
+        self.assertEqual(retained["status"], "failed")
+        self.assertEqual(
+            retained["metadata"]["provider_submission_state"], "submitting",
+        )
+        persisted = json.loads(
+            (Path(self.tmpdir.name) / conversation_id / "jobs.json")
+            .read_text(encoding="utf-8")
+        )[0]
+        self.assertEqual(persisted["status"], "failed")
+        self.assertEqual(
+            persisted["metadata"]["provider_submission_state"], "submitting",
+        )
+        self.assertNotIn(
+            conversation_id.casefold(), self.queue._deleted_conversations,
+        )
 
     def test_async_stub_when_queue_missing(self):
         with mock.patch.object(rep_mod, "_HAS_JOB_QUEUE", False):

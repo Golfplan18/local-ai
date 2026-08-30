@@ -249,6 +249,10 @@ Without this subsystem there is no product. But "we need a UI" is not an archite
 
 **Startup and self-heal (`server.py:14780`–`15040`).** The `__main__` block is where the process assembles itself, and its ordering is load-bearing. It parses two flags — `--scheduler` (task scheduler, `server.py:14784`) and `--oversight` (meta-layer daemon, `server.py:14785`). It then binds the first free port in the range 5000–5010 by trying `socket.bind` on each in turn (`server.py:14789`); the first success wins and the loser ports are skipped. If all eleven are busy, the loop falls through with `port` still at its initial `5000` and `app.run` will then fail to bind — there is no explicit "all ports busy" error path.
 
+Port selection is immediately followed by the core job queue's one-shot paid-provider reconciliation, before active-project or Trigger migrations, any worker start, or Flask HTTP serving.
+This core-owned startup seam runs whether or not the optional video feature package is installed. It reattaches only a Replicate prediction durably bound to the same existing Dialogue and local job.
+An indeterminate paid contact without that exact prediction binding is failed locally and is never submitted again on restart.
+
 After the bind, a sequence of self-heal hooks runs, each wrapped in its own `try/except` so a failure prints and continues rather than aborting boot: `platform_check.startup_check` (engine-matches-machine validation, `server.py:14797`), the API in-flight pool cap sized from `install-state.json` via `mlx_mutex.configure_api_pool_from_install_state` (`server.py:14808`), an MLX worker heartbeat every 30s for the oversight health surface (`server.py:14822`), an embedding-readiness probe against the Ollama daemon (`server.py:14833`), index/RAG-manifest regeneration (shelling out to `bash generate-indexes.sh` / `compile-rag-manifest.sh` at `server.py:14856` / `14893` when the on-disk indexes drift from the directories), OpenRouter and direct-API catalog refreshes, local-MLX-model discovery that rewrites the `local_models` section of `config/models.json`, and a Lucide icon-set rebuild. Each is best-effort by design: this is a personal tool that should boot degraded rather than refuse to boot.
 
 Two of these hooks are the durability spine. The **orphan pending-submission scan** (`_scan_orphaned_pending_submissions`, defined at `server.py:5417`, called at `server.py:14984`) walks the pending submission directory at boot, surfaces each stuck submission as an errored chunk in the sidebar's Errored group with retry/dismiss controls, and moves the file to `processed/` so it is not re-surfaced next boot. This is the crash-recovery half of the lost-work guarantee. The **SIGINT/SIGTERM shutdown handler** (`_shutdown_handler`, `server.py:14959`, registered at `14975`–`14976`) fires `session_end` hooks, clears sidebar windows, and cleans up bash-execution state before exiting.
@@ -971,6 +975,10 @@ Approved staging notes and pending review records preserve the same exact owner 
 
 **Lifecycle and navigation.** Standard/Private Close sets `closed: true`; retained Dialogues disappear from the ordinary sidebar and remain restorable in Manage. The sidebar shows the current project's non-Stealth Dialogues plus only the active Stealth Dialogue. Exit Stealth selects the latest readable direct parent, even if that parent is Stealth, or creates a fresh Standard Dialogue; it does not close or delete. Delete Forever invokes protected Stealth purge even with descendants, which detach and retain only local turns. Ora-managed state is the purge boundary; deliberate exports and external/provider/Git/backup copies remain.
 
+Paid Replicate video and style work belongs to this same live Dialogue lifecycle. Delete Forever treats the shared queue as a synchronous pre-purge barrier.
+Every bound prediction must already be terminal or receive provider-cancelled or terminal confirmation before any purge or success response.
+On failure Ora retains `jobs.json` and the exact provider/Dialogue/job binding, unwinds the temporary server tombstone for retry, and emits no Delete Forever success receipt.
+
 Composer privacy and displayed-turn privacy are separate. Changing the composer affects only the next exchange. Retagging a displayed non-Stealth turn first authenticates its current complete owner. Tightening Standard to Private preflights and updates only exact-owned conversation rows, manifest and failure records, processed and raw representations, runtime derivatives and review records, knowledge rows, and its managed Daily Note projection; missing, edited, conflicting, or ambiguous state is untouched and returned as incomplete, and the canonical envelope changes only after that propagation succeeds. Relaxing Private to Standard changes the envelope first so any stale copy remains over-protective, then reports `reconciliation_required` if exact owned copies cannot all follow. Stealth cannot be retagged.
 
 **Current-output export.** The browser supplies no title or content, only the exact owner tuple attached to the displayed complete exchange. The server resolves effective membership, rereads the canonical local owner while its process-local lifecycle lock is held, and matches owner, turn, chunk, privacy, and content before deriving a title from the canonical Findings text. Private Markdown remains Private-tagged and visibly labelled; Private Word/PDF content is visibly labelled. Explicit Stealth output contains neither a privacy marker nor a source identity.
@@ -1334,6 +1342,11 @@ implementation and the instructions which define its output.
 non-video work. `server/static/transcribe-input.js` retains Inquiry-pane A/V
 drop. `server/static/js/v3-capability-async.js` remains the shared browser
 bootstrap; video consumes it through the context's async-capability registry.
+
+**Paid async-provider contract.** Replicate `video_generates` and `style_trains` require an existing live Dialogue. Before provider contact, the shared queue durably records the `submitting` transition.
+Before polling, it records the exact prediction ID with the same Dialogue and local job binding. Restart reattaches to that ID without resubmission.
+Submission and queued cancellation are lock-ordered, so a queued cancellation either wins before any provider call or becomes durable intent on the active job.
+Polling, terminal changes, cancellation, and artifact materialization authenticate the surviving Dialogue/job owner; artifacts are written only while that exact owner remains live.
 
 **Browser installation.** After complete validation, the loader replaces the
 single `<!-- ORA_FEATURE_PLUGIN_ASSETS -->` placeholder with the plugin's ordered

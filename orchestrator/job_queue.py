@@ -108,6 +108,7 @@ import os
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -158,6 +159,10 @@ class JobNotFound(Exception):
 
 class InvalidStatusTransition(Exception):
     """The requested transition is not permitted from the current state."""
+
+
+class JobOwnerUnavailable(Exception):
+    """The job's owning Dialogue is not live and authoritative."""
 
 
 # ---------------------------------------------------------------------------
@@ -251,8 +256,13 @@ class JobQueue:
             print(f"[job-queue] load failed for {conversation_id}: {exc}")
             return []
 
-    def _persist(self, conversation_id: str) -> None:
-        """Mirror the in-memory list to disk. Fail-open."""
+    def _persist(self, conversation_id: str) -> bool:
+        """Mirror the in-memory list to disk and report durability.
+
+        Ordinary queue mutations retain the existing fail-open behavior. A
+        provider that must prove a paid remote identity was recorded before it
+        continues can use :meth:`update_metadata` with ``require_persisted``.
+        """
         try:
             path = _rp.safe_owned_subdir(
                 self._root,
@@ -264,8 +274,31 @@ class JobQueue:
                 for job in self._jobs.get(conversation_id.casefold(), [])
             ]
             _rp.atomic_write_text(path, json.dumps(entries, indent=2))
+            return True
         except Exception as exc:  # pragma: no cover — log only
             print(f"[job-queue] persist failed for {conversation_id}: {exc}")
+            return False
+
+    def _persisted_conversation_ids(self) -> list[str]:
+        """Return safe direct-child Dialogue ids that own a jobs mirror."""
+        try:
+            if not self._root.is_dir() or self._root.is_symlink():
+                return []
+            found: list[str] = []
+            for child in self._root.iterdir():
+                if child.is_symlink() or not child.is_dir():
+                    continue
+                try:
+                    conversation_id = _conversation_segment(child.name)
+                except ValueError:
+                    continue
+                jobs_path = child / JOBS_FILENAME
+                if jobs_path.is_file() and not jobs_path.is_symlink():
+                    found.append(conversation_id)
+            return sorted(found)
+        except Exception as exc:  # pragma: no cover — log + loaded-only view
+            print(f"[job-queue] persisted job discovery failed: {exc}")
+            return []
 
     def _ensure_loaded(self, conversation_id: str) -> list[Job]:
         """Lazy-load the conversation's jobs from disk on first touch."""
@@ -313,6 +346,92 @@ class JobQueue:
 
     # --- Mutators -------------------------------------------------------
 
+    @contextmanager
+    def authenticated_conversation(
+        self,
+        conversation_id: str,
+        job_id: str | None = None,
+    ):
+        """Hold the existing lifecycle boundary for one live Dialogue/job.
+
+        Paid provider work may proceed only while its owning envelope remains
+        readable and names the same Dialogue.  When ``job_id`` is supplied,
+        the queue binding must also still exist.  Delete Forever shares this
+        lifecycle lock through :meth:`forget_conversation`.
+        """
+        conversation_id = _conversation_segment(conversation_id)
+        with _rp.conversation_lifecycle_lock(conversation_id):
+            try:
+                from orchestrator.conversation_memory import (
+                    read_conversation_history_envelope,
+                )
+            except ImportError:  # pragma: no cover - direct module context
+                from conversation_memory import read_conversation_history_envelope
+            envelope = read_conversation_history_envelope(
+                conversation_id,
+                sessions_root=self._root,
+            )
+            if (not isinstance(envelope, dict)
+                    or envelope.get("conversation_id") != conversation_id
+                    or not isinstance(envelope.get("messages"), list)):
+                raise JobOwnerUnavailable(
+                    f"Dialogue '{conversation_id}' is not live and authoritative"
+                )
+            with self._lock:
+                if conversation_id.casefold() in self._deleted_conversations:
+                    raise JobOwnerUnavailable(
+                        f"Dialogue '{conversation_id}' was permanently deleted"
+                    )
+                if job_id is not None:
+                    try:
+                        self._find(conversation_id, job_id)
+                    except JobNotFound as exc:
+                        raise JobOwnerUnavailable(
+                            f"job '{job_id}' no longer belongs to Dialogue "
+                            f"'{conversation_id}'"
+                        ) from exc
+            yield
+
+    def begin_submission(
+        self,
+        conversation_id: str,
+        job_id: str,
+        metadata: dict,
+    ) -> dict:
+        """Durably claim a queued job before any paid provider contact.
+
+        Status and provider submission metadata are one persisted transition,
+        so cancellation either wins while still queued (and no submission may
+        begin) or records intent against an already in-progress submission.
+        """
+        if not isinstance(metadata, dict):
+            raise TypeError("submission metadata must be a dict")
+        with self._lock:
+            job = self._find(conversation_id, job_id)
+            if job.status != STATUS_QUEUED:
+                raise InvalidStatusTransition(
+                    f"Cannot begin submission for job '{job_id}' from "
+                    f"'{job.status}'."
+                )
+            previous_metadata = dict(job.metadata)
+            previous_started_at = job.started_at
+            job.status = STATUS_IN_PROGRESS
+            job.started_at = time.time()
+            job.metadata.update(dict(metadata))
+            if not self._persist(conversation_id):
+                job.status = STATUS_QUEUED
+                job.started_at = previous_started_at
+                job.metadata = previous_metadata
+                raise OSError("submission start could not be persisted")
+            event = {
+                "type": "status_changed",
+                "conversation_id": conversation_id,
+                "job": job.to_dict(),
+                "previous_status": STATUS_QUEUED,
+            }
+        self._emit(event)
+        return job.to_dict()
+
     def dispatch(
         self,
         conversation_id: str,
@@ -351,6 +470,32 @@ class JobQueue:
             }
         self._emit(event)
         return job.to_dict()
+
+    def update_metadata(
+        self,
+        conversation_id: str,
+        job_id: str,
+        updates: dict,
+        *,
+        require_persisted: bool = False,
+    ) -> dict:
+        """Merge provider metadata into a job and mirror it immediately.
+
+        ``require_persisted`` is for the narrow paid-submission boundary: a
+        caller must not contact or poll a provider unless the corresponding
+        state is durably attached to this existing job.
+        """
+        if not isinstance(updates, dict):
+            raise TypeError("metadata updates must be a dict")
+        with self._lock:
+            job = self._find(conversation_id, job_id)
+            previous = dict(job.metadata)
+            job.metadata.update(dict(updates))
+            persisted = self._persist(conversation_id)
+            if require_persisted and not persisted:
+                job.metadata = previous
+                raise OSError("job metadata could not be persisted")
+            return job.to_dict()
 
     def _find(self, conversation_id: str, job_id: str) -> Job:
         jobs = self._ensure_loaded(conversation_id)
@@ -447,14 +592,36 @@ class JobQueue:
             job = self._find(conversation_id, job_id)
             if job.status == STATUS_QUEUED:
                 # Already-not-running ⇒ cancel immediately.
+                if job.metadata.get("provider") == "replicate":
+                    previous_completed_at = job.completed_at
+                    job.status = STATUS_CANCELLED
+                    job.completed_at = time.time()
+                    if not self._persist(conversation_id):
+                        job.status = STATUS_QUEUED
+                        job.completed_at = previous_completed_at
+                        raise OSError(
+                            "paid-job queued cancellation could not be persisted"
+                        )
+                    event = {
+                        "type": "status_changed",
+                        "conversation_id": conversation_id,
+                        "job": job.to_dict(),
+                        "previous_status": STATUS_QUEUED,
+                    }
+                    self._emit(event)
+                    return job.to_dict()
                 return self._transition(
                     conversation_id, job_id, STATUS_CANCELLED,
                     require_from={STATUS_QUEUED},
                     mutate=lambda j: setattr(j, "completed_at", time.time()),
                 )
             if job.status == STATUS_IN_PROGRESS:
+                previous_cancel_requested = job.cancel_requested
                 job.cancel_requested = True
-                self._persist(conversation_id)
+                persisted = self._persist(conversation_id)
+                if (not persisted and job.metadata.get("provider") == "replicate"):
+                    job.cancel_requested = previous_cancel_requested
+                    raise OSError("paid-job cancellation intent could not be persisted")
                 event = {
                     "type": "cancel_requested",
                     "conversation_id": conversation_id,
@@ -497,8 +664,15 @@ class JobQueue:
     def list_all_active_across_conversations(self) -> dict[str, list[dict]]:
         """Active jobs grouped by conversation. Used by the queue UI when
         it needs a global view (e.g., the chat bridge area listing all
-        in-progress jobs across the conversation surface)."""
+        in-progress jobs across the conversation surface). Persisted Dialogue
+        mirrors are discovered here so startup recovery is not limited to
+        conversations already touched in this process."""
         with self._lock:
+            for conversation_id in self._persisted_conversation_ids():
+                identity = conversation_id.casefold()
+                if (identity not in self._jobs
+                        and identity not in self._deleted_conversations):
+                    self._jobs[identity] = self._load(conversation_id)
             out: dict[str, list[dict]] = {}
             for cid, jobs in self._jobs.items():
                 active = [j.to_dict() for j in jobs
@@ -522,11 +696,19 @@ class JobQueue:
             return [j.to_dict() for j in self._ensure_loaded(conversation_id)]
 
     def forget_conversation(self, conversation_id: str) -> int:
-        """Drop a conversation's cached jobs without recreating its mirror.
+        """Quiesce paid work, then forget one permanently deleted Dialogue.
 
-        Delete Forever removes the whole session directory separately. This
-        method prevents a later queue read from retaining stale in-process job
-        objects after that filesystem purge.
+        Replicate predictions are metered remote work.  Delete Forever must
+        therefore receive provider-terminal acknowledgement while the durable
+        binding still exists.  A missing callback, malformed binding, failed
+        cancellation, or unavailable confirmation leaves both the in-memory
+        jobs and ``jobs.json`` untouched and raises for the lifecycle caller to
+        treat as a pre-purge failure.
+
+        The session directory remains the core deletion path's responsibility.
+        On success this method only tombstones the Dialogue in this process and
+        drops the queue cache after every bound or indeterminate Replicate
+        prediction is known to be terminal.
         """
         if not isinstance(conversation_id, str):
             raise ValueError("conversation_id must be a string")
@@ -536,11 +718,96 @@ class JobQueue:
                 or "\\" in legacy_id or "\x00" in legacy_id
                 or any(ord(ch) < 32 or ord(ch) == 127 for ch in legacy_id)):
             raise ValueError("invalid conversation_id")
-        with self._lock:
+
+        def needs_provider_quiesce(job: Job) -> bool:
+            metadata = job.metadata if isinstance(job.metadata, dict) else {}
+            return (
+                metadata.get("provider") == "replicate"
+                and (
+                    job.status == STATUS_IN_PROGRESS
+                    or metadata.get("provider_submission_state") in {
+                        "submitting", "bound",
+                    }
+                    or bool(metadata.get("provider_prediction_id"))
+                )
+            )
+
+        with _rp.conversation_lifecycle_lock(legacy_id):
             identity = legacy_id.casefold()
-            self._deleted_conversations.add(identity)
-            jobs = self._jobs.pop(identity, [])
-            return len(jobs)
+            with self._lock:
+                canonical_id = True
+                try:
+                    jobs = list(self._ensure_loaded(legacy_id))
+                except ValueError:
+                    # Legacy IDs were accepted before queue paths adopted the
+                    # canonical portable alphabet.  They can still be
+                    # tombstoned in memory, but must never be mapped to a new
+                    # or lossy on-disk path.
+                    canonical_id = False
+                    jobs = list(self._jobs.get(identity, []))
+                paid_jobs = [
+                    job.to_dict()
+                    for job in jobs
+                    if needs_provider_quiesce(job)
+                ]
+
+            cancellations: list[dict] = []
+            errors: list[str] = []
+            if paid_jobs:
+                try:
+                    from orchestrator.integrations import replicate
+                    cancel_bound = getattr(
+                        replicate, "cancel_bound_predictions", None,
+                    )
+                    if not callable(cancel_bound):
+                        raise RuntimeError(
+                            "Replicate cancellation callback is unavailable"
+                        )
+                    outcome = cancel_bound(legacy_id, paid_jobs)
+                    if not isinstance(outcome, dict):
+                        raise RuntimeError(
+                            "Replicate cancellation callback returned no result"
+                        )
+                    cancellations = list(outcome.get("confirmed") or [])
+                    errors.extend(str(item) for item in outcome.get("errors") or [])
+                except Exception as exc:
+                    errors.append(
+                        "Replicate cancellation confirmation failed: "
+                        f"{type(exc).__name__}: {exc}"
+                    )
+
+            if errors:
+                raise RuntimeError("; ".join(errors))
+
+            with self._lock:
+                # The provider worker and paid dispatcher share the lifecycle
+                # lock above.  Re-read before erasure so an unsupported direct
+                # queue mutation cannot silently add a fresh paid binding while
+                # cancellation is in flight.
+                current = (
+                    self._ensure_loaded(legacy_id)
+                    if canonical_id
+                    else self._jobs.get(identity, [])
+                )
+                current_paid_ids = {
+                    job.id
+                    for job in current
+                    if needs_provider_quiesce(job)
+                }
+                confirmed_ids = {
+                    str(item.get("job_id"))
+                    for item in cancellations
+                    if isinstance(item, dict) and item.get("job_id")
+                }
+                if current_paid_ids != confirmed_ids:
+                    raise RuntimeError(
+                        "Replicate job bindings changed before deletion could "
+                        "erase them"
+                    )
+                forgotten = len(current)
+                self._deleted_conversations.add(identity)
+                self._jobs.pop(identity, None)
+            return forgotten
 
     def release_cached(self, conversation_id: str) -> int:
         """Drop a conversation's in-memory jobs, keeping jobs.json intact.
@@ -593,3 +860,30 @@ def get_default_queue() -> JobQueue:
     if _default_queue is None:
         _default_queue = JobQueue()
     return _default_queue
+
+
+_default_recovery_started = False
+_default_recovery_lock = threading.Lock()
+
+
+def start_default_queue_recovery() -> list[threading.Thread]:
+    """Reattach paid jobs from the core queue startup seam exactly once."""
+    global _default_recovery_started
+    with _default_recovery_lock:
+        if _default_recovery_started:
+            return []
+        try:
+            from orchestrator.integrations import replicate
+            reconcile = getattr(replicate, "reconcile_unfinished_jobs", None)
+            if not callable(reconcile):
+                return []
+            threads = reconcile()
+            _default_recovery_started = True
+            return threads
+        except Exception as exc:  # pragma: no cover - startup remains fail-open
+            print(
+                f"[job-queue] Replicate startup reconciliation failed: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return []

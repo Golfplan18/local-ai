@@ -26,6 +26,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
@@ -161,15 +162,103 @@ class JobQueuePersistenceTests(unittest.TestCase):
         should rehydrate with full state."""
         q1 = JobQueue(sessions_root=self.root)
         a = q1.dispatch("conv1", "video_generates", {"prompt": "p"})
-        q1.mark_in_progress("conv1", a["id"])
+        q1.begin_submission(
+            "conv1",
+            a["id"],
+            {
+                "provider": "replicate",
+                "provider_submission_state": "submitting",
+                "provider_conversation_id": "conv1",
+                "provider_job_id": a["id"],
+            },
+        )
+        q1.update_metadata(
+            "conv1", a["id"],
+            {
+                "provider_submission_state": "bound",
+                "provider_prediction_id": "prediction-1",
+            },
+            require_persisted=True,
+        )
         del q1
 
         q2 = JobQueue(sessions_root=self.root)
-        jobs = q2.list_jobs("conv1")
+        active = q2.list_all_active_across_conversations()
+        self.assertEqual(set(active), {"conv1"})
+        jobs = active["conv1"]
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0]["id"], a["id"])
         self.assertEqual(jobs[0]["status"], STATUS_IN_PROGRESS)
         self.assertIsNotNone(jobs[0]["started_at"])
+        self.assertEqual(
+            jobs[0]["metadata"]["provider_prediction_id"],
+            "prediction-1",
+        )
+
+    def test_submission_begin_is_one_durable_status_and_binding_transition(self):
+        q = JobQueue(sessions_root=self.root)
+        job = q.dispatch(
+            "paid", "style_trains", {},
+            metadata={"provider": "replicate"},
+        )
+        begun = q.begin_submission(
+            "paid", job["id"],
+            {
+                "provider_submission_state": "submitting",
+                "provider_conversation_id": "paid",
+                "provider_job_id": job["id"],
+            },
+        )
+        persisted = json.loads(
+            (Path(self.root) / "paid" / "jobs.json").read_text()
+        )[0]
+        self.assertEqual(begun["status"], STATUS_IN_PROGRESS)
+        self.assertEqual(persisted["status"], STATUS_IN_PROGRESS)
+        self.assertEqual(
+            persisted["metadata"]["provider_submission_state"], "submitting",
+        )
+
+    def test_submission_begin_rolls_back_when_durability_fails(self):
+        q = JobQueue(sessions_root=self.root)
+        job = q.dispatch(
+            "paid", "style_trains", {},
+            metadata={"provider": "replicate"},
+        )
+        with mock.patch.object(q, "_persist", return_value=False):
+            with self.assertRaises(OSError):
+                q.begin_submission(
+                    "paid", job["id"],
+                    {"provider_submission_state": "submitting"},
+                )
+        current = q.get_job("paid", job["id"])
+        self.assertEqual(current["status"], STATUS_QUEUED)
+        self.assertIsNone(current["started_at"])
+        self.assertNotIn("provider_submission_state", current["metadata"])
+
+    def test_queued_paid_cancel_rolls_back_when_durability_fails(self):
+        q = JobQueue(sessions_root=self.root)
+        job = q.dispatch(
+            "paid-cancel", "style_trains", {},
+            metadata={"provider": "replicate"},
+        )
+        events = []
+        q.subscribe(events.append)
+
+        with mock.patch.object(q, "_persist", return_value=False):
+            with self.assertRaisesRegex(
+                OSError, "queued cancellation could not be persisted",
+            ):
+                q.request_cancel("paid-cancel", job["id"])
+
+        current = q.get_job("paid-cancel", job["id"])
+        self.assertEqual(current["status"], STATUS_QUEUED)
+        self.assertIsNone(current["completed_at"])
+        self.assertEqual(events, [])
+        persisted = json.loads(
+            (Path(self.root) / "paid-cancel" / "jobs.json").read_text()
+        )[0]
+        self.assertEqual(persisted["status"], STATUS_QUEUED)
+        self.assertIsNone(persisted["completed_at"])
 
     def test_unsafe_id_is_rejected_instead_of_colliding(self):
         """Path punctuation is never lossy-sanitized into another ID."""
