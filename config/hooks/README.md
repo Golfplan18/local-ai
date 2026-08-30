@@ -21,8 +21,11 @@ Events:
 - session_end: fires when the session terminates
 - pre_compact: fires before context compaction
 
-If inject_output is true, the hook's stdout is appended to the model's
-context as a system message. Use sparingly — this adds to context budget.
+Output injection is supported for pre_tool, post_tool, and pre_compact. Tool
+hook output reaches the next model context with the tool result; pre_compact
+output is added as a system message. An inject_output definition for
+session_start or session_end is refused because those events have no receiver.
+Structured tool results remain valid JSON when output is injected.
 
 Hook commands run with a 10-second timeout. If a hook times out or fails,
 the orchestrator logs the failure and continues — hooks never block the

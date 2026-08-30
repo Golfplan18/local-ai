@@ -29,7 +29,9 @@ if str(_TOOLS) not in sys.path:
     sys.path.append(str(_TOOLS))
 
 import dispatcher  # noqa: E402
+import hooks as lifecycle_hooks  # noqa: E402
 import oversight_queue  # noqa: E402
+import tool_selector as deterministic_tools  # noqa: E402
 import tool_events  # noqa: E402
 
 _RUNTIME_WORKSPACE = Path(dispatcher.WORKSPACE)
@@ -109,8 +111,69 @@ class CodeExecuteDispatchBase(unittest.TestCase):
         return _read_events(self.sink)
 
 
+class TestLifecycleHooks(unittest.TestCase):
+    def test_r48_hook_receiverless_session_injection_refused(self):
+        original_hooks = lifecycle_hooks._hooks
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                hook_path = Path(tmp) / "receiverless.json"
+                hook_path.write_text(json.dumps({
+                    "event": "session_start",
+                    "command": "echo SHOULD-NOT-RUN",
+                    "inject_output": True,
+                }))
+                lifecycle_hooks._hooks = []
+                with mock.patch.object(lifecycle_hooks, "HOOKS_DIR", tmp), \
+                        mock.patch.object(lifecycle_hooks.subprocess, "run") as run, \
+                        mock.patch("builtins.print") as logged:
+                    outputs = lifecycle_hooks.fire_hooks("session_start")
+
+                self.assertEqual(outputs, [])
+                run.assert_not_called()
+                self.assertTrue(any(
+                    "no receiver" in str(call)
+                    for call in logged.call_args_list
+                ))
+        finally:
+            lifecycle_hooks._hooks = original_hooks
+
+
 @unittest.skipUnless(dispatcher._TOOLS_LOADED, "dispatcher tools not loaded")
 class TestCodeExecute(CodeExecuteDispatchBase):
+    def test_r48_hook_pre_tool_output_delivered_once(self):
+        missing = object()
+        previous = dispatcher.TOOL_REGISTRY.get("r48_hook_tool", missing)
+        dispatcher.register_tool(
+            "r48_hook_tool", lambda _params: {
+                "title": "Structured tool result",
+                "markdown": "tool-result body remains available",
+            }, permission="auto", category="read", mutability="read",
+            sensitivity="private", egress="none",
+        )
+        events = []
+
+        def fire(event, context=None):
+            events.append(event)
+            return ["PRE-TOOL-MARKER"] if event == "pre_tool" else []
+
+        try:
+            with mock.patch.object(dispatcher, "fire_hooks", side_effect=fire):
+                result = dispatcher.dispatch("r48_hook_tool", {})
+        finally:
+            if previous is missing:
+                dispatcher.TOOL_REGISTRY.pop("r48_hook_tool", None)
+            else:
+                dispatcher.TOOL_REGISTRY["r48_hook_tool"] = previous
+
+        parsed = json.loads(result)
+        formatted = deterministic_tools._format_web_fetch_result(result)
+        self.assertEqual(events, ["pre_tool", "post_tool"])
+        self.assertEqual(parsed["title"], "Structured tool result")
+        self.assertIn("tool-result body", parsed["markdown"])
+        self.assertIn("tool-result body", formatted)
+        self.assertEqual(formatted.count("PRE-TOOL-MARKER"), 1)
+        self.assertEqual(result.count("PRE-TOOL-MARKER"), 1)
+
     def test_code_execute_registered_and_runs_sandboxed(self):
         import code_execute as ce
         if not ce.sandbox_available():

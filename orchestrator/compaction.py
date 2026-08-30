@@ -86,8 +86,9 @@ def compact_context(messages: list, call_model_fn, context_limit: int = 1_000_00
     Returns:
         The (possibly compacted) messages array. When compaction succeeds,
         the middle of the conversation is replaced by a SYSTEM-attributed
-        summary marker. When compaction fails, the original messages are
-        returned — but the failure is logged to
+        summary marker. When compaction fails, the original conversation
+        messages are returned with any pre_compact hook output preserved in
+        the first system context, and the failure is logged to
         ``~/ora/data/compaction-events.jsonl`` and stderr so the silent
         drop class is visible to a developer reviewing logs.
 
@@ -97,32 +98,61 @@ def compact_context(messages: list, call_model_fn, context_limit: int = 1_000_00
     turn, causing downstream turns to confabulate from the summary's
     gaps as if they were the model's own prior reasoning.
     """
-    if call_model_fn is None:
-        _log_compaction("skipped", reason="no_call_model_fn",
-                        current_tokens=total_message_tokens(messages),
-                        context_limit=context_limit)
-        return messages
-
     current_tokens = total_message_tokens(messages)
     threshold = int(context_limit * 0.8)
     if current_tokens < threshold:
-        return messages  # Below threshold, not logged (too noisy).
+        if call_model_fn is None:
+            _log_compaction("skipped", reason="no_call_model_fn",
+                            current_tokens=current_tokens,
+                            context_limit=context_limit)
+        return messages  # Ordinary below-threshold calls are not logged.
 
     # Fire pre_compact hook
+    hook_outputs = []
     try:
         from hooks import fire_hooks
-        fire_hooks("pre_compact")
-    except ImportError:
+        hook_outputs = fire_hooks("pre_compact")
+    except Exception:
         pass
 
     system_msg = messages[0] if messages and messages[0]["role"] == "system" else None
-    keep_tail = messages[-6:] if len(messages) > 6 else messages[1 if system_msg else 0:]
-    middle = messages[1:-len(keep_tail)] if system_msg else messages[:-len(keep_tail)]
+    messages_with_hooks = messages
+    if hook_outputs:
+        hook_content = "\n\n".join(
+            f"[pre_compact hook]\n{output}" for output in hook_outputs
+        )
+        if system_msg:
+            system_msg = dict(system_msg)
+            prior_content = system_msg.get("content") or ""
+            system_msg["content"] = (
+                f"{prior_content}\n\n{hook_content}"
+                if prior_content else hook_content
+            )
+            messages_with_hooks = [system_msg, *messages[1:]]
+        else:
+            system_msg = {"role": "system", "content": hook_content}
+            messages_with_hooks = [system_msg, *messages]
+
+    had_system_message = bool(messages and messages[0]["role"] == "system")
+    keep_tail = (
+        messages[-6:]
+        if len(messages) > 6 else messages[1 if had_system_message else 0:]
+    )
+    middle = (
+        messages[1:-len(keep_tail)]
+        if had_system_message else messages[:-len(keep_tail)]
+    )
+
+    if call_model_fn is None:
+        _log_compaction("skipped", reason="no_call_model_fn",
+                        current_tokens=current_tokens,
+                        context_limit=context_limit)
+        return messages_with_hooks
 
     if not middle:
         _log_compaction("skipped", reason="no_middle_to_compact",
                         current_tokens=current_tokens, context_limit=context_limit)
-        return messages
+        return messages_with_hooks
 
     middle_chars = sum(len(m.get("content", "") or "") for m in middle)
     middle_truncated_msgs = sum(
@@ -158,7 +188,7 @@ def compact_context(messages: list, call_model_fn, context_limit: int = 1_000_00
             _log_compaction("failed", reason="no_endpoint",
                             current_tokens=current_tokens,
                             middle_chars_lost_if_we_proceeded=middle_chars)
-            return messages
+            return messages_with_hooks
 
         summary = call_model_fn(compaction_messages, endpoint)
         if not summary or len(summary) < 50:
@@ -169,14 +199,14 @@ def compact_context(messages: list, call_model_fn, context_limit: int = 1_000_00
                 current_tokens=current_tokens,
                 middle_chars_lost_if_we_proceeded=middle_chars,
             )
-            return messages
+            return messages_with_hooks
 
     except Exception as e:
         _log_compaction("failed", reason="exception",
                         error=str(e)[:300],
                         current_tokens=current_tokens,
                         middle_chars_lost_if_we_proceeded=middle_chars)
-        return messages
+        return messages_with_hooks
 
     compacted = []
     if system_msg:

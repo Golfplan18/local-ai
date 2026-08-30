@@ -514,6 +514,53 @@ def _normalize_mcp_result(result, result_str: str) -> tuple[str, bool]:
     return f"[MCP error — {result_str}]", True
 
 
+def _inject_hook_outputs(result, result_str: str,
+                         hook_outputs: list[str]) -> str:
+    """Add hook stdout to the model-facing result without invalidating JSON.
+
+    ``web_fetch`` has a deterministic consumer that parses the dispatcher's
+    JSON and forwards only its ``markdown`` (or ``error``) field. Put hook
+    output in that field so it reaches that consumer exactly once. Other
+    structured results retain their root shape and carry a reserved metadata
+    member/item; scalar results keep the historical text suffix.
+    """
+    outputs = [str(output) for output in hook_outputs if str(output)]
+    if not outputs:
+        return result_str
+
+    hook_text = "\n".join(f"[hook: {output}]" for output in outputs)
+    if isinstance(result, dict):
+        model_result = dict(result)
+        if "markdown" in model_result:
+            markdown = model_result.get("markdown")
+            if isinstance(markdown, str) and markdown.strip():
+                # Prepend so the deterministic formatter's content cap cannot
+                # truncate the injected output off the end.
+                model_result["markdown"] = f"{hook_text}\n\n{markdown}"
+            else:
+                error = str(model_result.get("error") or "").strip()
+                model_result["error"] = (
+                    f"{error}; {hook_text}" if error else hook_text
+                )
+        else:
+            existing = model_result.get("_ora_hook_output")
+            if existing is None:
+                model_result["_ora_hook_output"] = outputs
+            elif isinstance(existing, list):
+                model_result["_ora_hook_output"] = [*existing, *outputs]
+            else:
+                model_result["_ora_hook_output"] = [existing, *outputs]
+        return json.dumps(model_result)
+
+    if isinstance(result, list):
+        return json.dumps([
+            *result,
+            {"_ora_hook_output": outputs},
+        ])
+
+    return f"{result_str}\n{hook_text}"
+
+
 # ── Main dispatch function ────────────────────────────────────────────────
 
 def _resolve_call_axes(tool_name: str, entry: dict | None,
@@ -993,11 +1040,14 @@ def dispatch(tool_name: str, parameters: dict,
             return f"[Path validation failed: {reason}]"
 
     # Pre-tool hooks
-    fire_hooks("pre_tool", {"tool_name": tool_name, "parameters": parameters})
+    pre_hook_outputs = fire_hooks(
+        "pre_tool", {"tool_name": tool_name, "parameters": parameters}
+    )
 
     # Execute
     result = None
     execution_error = False
+    structured_result_valid = False
     try:
         effect_context = (
             system_protection.protected_effect(protection_execution)
@@ -1023,12 +1073,15 @@ def dispatch(tool_name: str, parameters: dict,
                 result = entry["handler"](parameters)
         if isinstance(result, (dict, list)):
             result_str = json.dumps(result)
+            structured_result_valid = True
         else:
             result_str = str(result)
         if is_mcp:
             result_str, execution_error = _normalize_mcp_result(
                 result, result_str,
             )
+            if execution_error:
+                structured_result_valid = False
     except Exception as e:
         result_str = f"[Tool error — {tool_name}: {e}]"
         execution_error = True
@@ -1055,11 +1108,17 @@ def dispatch(tool_name: str, parameters: dict,
             # success without its terminal receipt.  The write-ahead record
             # remains a restart-visible broken-infrastructure signal.
             result_str = f"[SYSTEM PROTECTION BROKEN INFRASTRUCTURE — {exc}]"
+            structured_result_valid = False
 
     # Post-tool hooks
-    hook_outputs = fire_hooks("post_tool", {"tool_name": tool_name, "result": result_str[:500]})
-    if hook_outputs:
-        result_str += "\n" + "\n".join(f"[hook: {h}]" for h in hook_outputs)
+    hook_outputs = pre_hook_outputs + fire_hooks(
+        "post_tool", {"tool_name": tool_name, "result": result_str[:500]}
+    )
+    model_result_str = _inject_hook_outputs(
+        result if structured_result_valid else None,
+        result_str,
+        hook_outputs,
+    )
 
     duration = int((time.time() - start) * 1000)
     _log_dispatch(tool_name, parameters, classification, permission_status,
@@ -1166,6 +1225,6 @@ def dispatch(tool_name: str, parameters: dict,
 
     # Inject consecutive call warning as prefix
     if warning and _current_consecutive_count() >= 5:
-        result_str = f"[SYSTEM: {warning}]\n\n{result_str}"
+        model_result_str = f"[SYSTEM: {warning}]\n\n{model_result_str}"
 
-    return result_str
+    return model_result_str
