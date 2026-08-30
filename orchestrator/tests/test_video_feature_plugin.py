@@ -131,6 +131,12 @@ class PluginLoaderTests(unittest.TestCase):
             and isinstance(node.test, ast.Compare)
             and isinstance(node.test.left, ast.Name)
             and node.test.left.id == "__name__"
+            and any(
+                isinstance(child, ast.Call)
+                and isinstance(child.func, ast.Name)
+                and child.func.id == "_select_server_port"
+                for child in ast.walk(node)
+            )
         )
         calls = [node for node in ast.walk(main_guard) if isinstance(node, ast.Call)]
 
@@ -148,6 +154,69 @@ class PluginLoaderTests(unittest.TestCase):
         self.assertEqual(len(migration_calls), 1)
         self.assertLess(port_calls[0].lineno, recovery_calls[0].lineno)
         self.assertLess(recovery_calls[0].lineno, migration_calls[0].lineno)
+
+    def test_direct_launch_paid_owner_scope_uses_server_delete_barrier(self):
+        from orchestrator.integrations import replicate
+        from orchestrator.job_queue import JobOwnerUnavailable, JobQueue
+
+        source_path = ROOT / "server" / "app.py"
+        tree = ast.parse(source_path.read_text(encoding="utf-8"))
+
+        def is_main_guard(node):
+            return (
+                isinstance(node, ast.If)
+                and isinstance(node.test, ast.Compare)
+                and isinstance(node.test.left, ast.Name)
+                and node.test.left.id == "__name__"
+                and any(
+                    isinstance(child, ast.Assign)
+                    and any(
+                        isinstance(target, ast.Subscript)
+                        and isinstance(target.value, ast.Attribute)
+                        and isinstance(target.value.value, ast.Name)
+                        and target.value.value.id == "sys"
+                        and target.value.attr == "modules"
+                        and isinstance(target.slice, ast.Constant)
+                        and target.slice.value == "server.app"
+                        for target in child.targets
+                    )
+                    for child in node.body
+                )
+            )
+
+        alias_guard = next(node for node in tree.body if is_main_guard(node))
+        alias_code = compile(
+            ast.fix_missing_locations(ast.Module(
+                body=[alias_guard], type_ignores=[],
+            )),
+            str(source_path),
+            "exec",
+        )
+        direct_server = type(sys)("__main__")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            queue = JobQueue(sessions_root=root / "sessions")
+            read_scope = mock.MagicMock()
+            read_scope.return_value.__enter__.return_value = (
+                "style-owner", mock.sentinel.deleted,
+            )
+            direct_server._conversation_read_scope = read_scope
+            direct_server.rp = mock.Mock(ORA_HOME=root)
+
+            with mock.patch.dict(
+                sys.modules, {"__main__": direct_server}, clear=False,
+            ):
+                sys.modules.pop("server.app", None)
+                exec(alias_code, {"sys": sys, "__name__": "__main__"})
+                self.assertIs(sys.modules["server.app"], direct_server)
+                with self.assertRaises(JobOwnerUnavailable):
+                    with replicate._authenticated_owner_scope(
+                        queue, "style-owner",
+                    ):
+                        self.fail("deleted Dialogue must not admit paid work")
+
+        read_scope.assert_called_once_with("style-owner")
 
     def test_paid_job_barrier_failure_reopens_dialogue_without_cleanup(self):
         import orchestrator

@@ -592,6 +592,24 @@ class JobQueue:
             job = self._find(conversation_id, job_id)
             if job.status == STATUS_QUEUED:
                 # Already-not-running ⇒ cancel immediately.
+                if job.metadata.get("provider") == "replicate":
+                    previous_completed_at = job.completed_at
+                    job.status = STATUS_CANCELLED
+                    job.completed_at = time.time()
+                    if not self._persist(conversation_id):
+                        job.status = STATUS_QUEUED
+                        job.completed_at = previous_completed_at
+                        raise OSError(
+                            "paid-job queued cancellation could not be persisted"
+                        )
+                    event = {
+                        "type": "status_changed",
+                        "conversation_id": conversation_id,
+                        "job": job.to_dict(),
+                        "previous_status": STATUS_QUEUED,
+                    }
+                    self._emit(event)
+                    return job.to_dict()
                 return self._transition(
                     conversation_id, job_id, STATUS_CANCELLED,
                     require_from={STATUS_QUEUED},
@@ -707,7 +725,9 @@ class JobQueue:
                 metadata.get("provider") == "replicate"
                 and (
                     job.status == STATUS_IN_PROGRESS
-                    or metadata.get("provider_submission_state") == "bound"
+                    or metadata.get("provider_submission_state") in {
+                        "submitting", "bound",
+                    }
                     or bool(metadata.get("provider_prediction_id"))
                 )
             )

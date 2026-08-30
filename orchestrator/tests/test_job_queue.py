@@ -235,6 +235,31 @@ class JobQueuePersistenceTests(unittest.TestCase):
         self.assertIsNone(current["started_at"])
         self.assertNotIn("provider_submission_state", current["metadata"])
 
+    def test_queued_paid_cancel_rolls_back_when_durability_fails(self):
+        q = JobQueue(sessions_root=self.root)
+        job = q.dispatch(
+            "paid-cancel", "style_trains", {},
+            metadata={"provider": "replicate"},
+        )
+        events = []
+        q.subscribe(events.append)
+
+        with mock.patch.object(q, "_persist", return_value=False):
+            with self.assertRaisesRegex(
+                OSError, "queued cancellation could not be persisted",
+            ):
+                q.request_cancel("paid-cancel", job["id"])
+
+        current = q.get_job("paid-cancel", job["id"])
+        self.assertEqual(current["status"], STATUS_QUEUED)
+        self.assertIsNone(current["completed_at"])
+        self.assertEqual(events, [])
+        persisted = json.loads(
+            (Path(self.root) / "paid-cancel" / "jobs.json").read_text()
+        )[0]
+        self.assertEqual(persisted["status"], STATUS_QUEUED)
+        self.assertIsNone(persisted["completed_at"])
+
     def test_unsafe_id_is_rejected_instead_of_colliding(self):
         """Path punctuation is never lossy-sanitized into another ID."""
         q = JobQueue(sessions_root=self.root)

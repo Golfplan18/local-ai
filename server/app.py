@@ -15,6 +15,14 @@ from pathlib import Path
 from urllib.parse import urlparse
 import requests
 
+# Every production launcher executes this file directly, so the running server
+# would otherwise exist only as ``__main__``.  Publish that same module under
+# its package identity before provider integrations can look up the Dialogue
+# lifecycle barrier; do not import a second copy of the server.
+if __name__ == "__main__":
+    sys.modules["server.app"] = sys.modules[__name__]
+
+
 def _resolve_server_workspace(environ=None, server_file=None) -> str:
     """Resolve and export the checkout root before importing runtime_paths.
 
@@ -21763,6 +21771,10 @@ def api_job_cancel(job_id):
         return json.dumps({"error": "job not found"}), 404
     except InvalidStatusTransition as exc:
         return json.dumps({"error": str(exc)}), 409
+    except OSError:
+        return json.dumps({
+            "error": "job cancellation could not be persisted",
+        }), 503
     return json.dumps({"success": True, "job": job})
 
 

@@ -947,6 +947,54 @@ class AsyncDispatchTests(unittest.TestCase):
             conversation_id.casefold(), self.queue._deleted_conversations,
         )
 
+    def test_delete_blocks_locally_failed_indeterminate_paid_submission(self):
+        conversation_id = "delete-indeterminate"
+        self._create_dialogue(conversation_id)
+        job = self.queue.dispatch(
+            conversation_id,
+            "style_trains",
+            {},
+            metadata={"provider": "replicate", "model": "trainer"},
+        )
+        self.queue.begin_submission(
+            conversation_id,
+            job["id"],
+            {
+                "provider_submission_state": "submitting",
+                "provider_conversation_id": conversation_id,
+                "provider_job_id": job["id"],
+            },
+        )
+        self.queue.mark_failed(
+            conversation_id,
+            job["id"],
+            "submission outcome is indeterminate; never resubmit",
+        )
+
+        with mock.patch.object(rep_mod, "ReplicateClient") as client_type:
+            with self.assertRaisesRegex(
+                RuntimeError, "paid submission outcome is indeterminate",
+            ):
+                self.queue.forget_conversation(conversation_id)
+
+        client_type.assert_not_called()
+        retained = self.queue.get_job(conversation_id, job["id"])
+        self.assertEqual(retained["status"], "failed")
+        self.assertEqual(
+            retained["metadata"]["provider_submission_state"], "submitting",
+        )
+        persisted = json.loads(
+            (Path(self.tmpdir.name) / conversation_id / "jobs.json")
+            .read_text(encoding="utf-8")
+        )[0]
+        self.assertEqual(persisted["status"], "failed")
+        self.assertEqual(
+            persisted["metadata"]["provider_submission_state"], "submitting",
+        )
+        self.assertNotIn(
+            conversation_id.casefold(), self.queue._deleted_conversations,
+        )
+
     def test_async_stub_when_queue_missing(self):
         with mock.patch.object(rep_mod, "_HAS_JOB_QUEUE", False):
             with mock.patch.object(rep_mod, "get_default_queue", None):
