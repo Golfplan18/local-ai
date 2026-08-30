@@ -800,16 +800,13 @@ def _append_human_queue(entry: dict):
         entry["conversation_id"] = cid
     queue_path = human_queue_path()
     os.makedirs(os.path.dirname(queue_path), exist_ok=True)
-    encoded = (json.dumps(entry, default=str) + "\n").encode("utf-8")
+    encoded = json.dumps(entry, default=str) + "\n"
     with file_lock(queue_path):
-        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        fd = os.open(queue_path, flags, 0o600)
         try:
-            os.write(fd, encoded)
-        finally:
-            os.close(fd)
+            current, mode = _read_text_no_follow(Path(queue_path))
+        except FileNotFoundError:
+            current, mode = "", 0o600
+        _rp.atomic_write_text(queue_path, current + encoded, mode=mode)
 
 
 def read_human_queue() -> list[dict]:

@@ -947,8 +947,7 @@ def _maybe_resolve_gate_entry_at(
                 current = [l for l in f if l.strip()]
             if idx < len(current) and current[idx] == lines[idx]:
                 del current[idx]
-                with open(queue_path, "w") as f:
-                    f.writelines(current)
+                _rp.atomic_write_text(queue_path, "".join(current))
         return message
     except Exception:
         # Any failure inspecting the entry falls through to the legacy

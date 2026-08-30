@@ -229,9 +229,14 @@ def add_entry(record: dict, config: Optional[dict] = None) -> PausedEntry:
 
     queue_path = _queue_path()
     os.makedirs(os.path.dirname(queue_path), exist_ok=True)
+    encoded = json.dumps(record, default=str) + "\n"
     with file_lock(queue_path):
-        with open(queue_path, "a") as f:
-            f.write(json.dumps(record, default=str) + "\n")
+        try:
+            with open(queue_path, encoding="utf-8") as f:
+                current = f.read()
+        except FileNotFoundError:
+            current = ""
+        _rp.atomic_write_text(queue_path, current + encoded)
 
     raw_index = _count_lines(queue_path) - 1
     return _record_to_paused(record, raw_index)
@@ -383,8 +388,7 @@ def remove_by_id(entry_id: str) -> bool:
                 removed = True
                 continue
             kept.append(line)
-        with open(queue_path, "w") as f:
-            f.writelines(kept)
+        _rp.atomic_write_text(queue_path, "".join(kept))
         return removed
 
 
@@ -569,8 +573,7 @@ def _update_entry(entry_id: str, transform) -> bool:
                 out.append(line)
         if not updated:
             return False
-        with open(queue_path, "w") as f:
-            f.writelines(out)
+        _rp.atomic_write_text(queue_path, "".join(out))
         return True
 
 

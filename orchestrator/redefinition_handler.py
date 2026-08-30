@@ -475,8 +475,7 @@ def _remove_queue_entry(queue_index: int):
         with open(queue_path) as f:
             lines = f.readlines()
         kept = [line for i, line in enumerate(lines) if i != queue_index]
-        with open(queue_path, "w") as f:
-            f.writelines(kept)
+        _rp.atomic_write_text(queue_path, "".join(kept))
 
 
 def _now_iso() -> str:
