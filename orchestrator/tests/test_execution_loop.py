@@ -1145,6 +1145,149 @@ class TestHandback(unittest.TestCase):
         primary.assert_called_once()
         fallback.assert_called_once()
 
+    def test_generated_handback_resolves_acceptance_and_waiver(self):
+        """A real generated handback is signed, typed, and terminally resolved.
+
+        Approve exercises the managed queue plus the real discussion chain.
+        Deny exercises the raw fallback plus the direct slash path. Neither
+        disposition may fall into PED handling or mint rerun authority.
+        """
+        import json
+        from contextlib import ExitStack
+        from unittest import mock
+
+        import oversight_actions as oa
+        import oversight_queue as oq
+        import redefinition_handler as rh
+        import resolution_chain as rc
+        import runtime_paths as rp
+        import slash_commands as sc
+        import tool_events as te
+
+        cases = (
+            ("accept", False, "accepted"),
+            ("waive", True, "waived"),
+        )
+        for disposition, force_fallback, expected_event in cases:
+            with self.subTest(disposition=disposition), \
+                    tempfile.TemporaryDirectory(
+                        prefix="er-handback-authority-",
+                    ) as tmp, ExitStack() as stack:
+                queue_path = os.path.join(tmp, "human-queue.jsonl")
+                approvals_path = os.path.join(tmp, "execution-approvals.json")
+                events_path = os.path.join(tmp, "tool-events.jsonl")
+                sessions_root = os.path.join(tmp, "sessions")
+                stack.enter_context(mock.patch.object(
+                    oq, "HUMAN_QUEUE_PATH", queue_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    oa, "HUMAN_QUEUE_PATH", queue_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    rh, "HUMAN_QUEUE_PATH", queue_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    te, "APPROVALS_PATH", approvals_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    te, "GLOBAL_SINK_DEFAULT", events_path,
+                ))
+                stack.enter_context(mock.patch.object(
+                    rp, "ORA_HOME", Path(tmp),
+                ))
+                stack.enter_context(mock.patch.object(
+                    oq, "_generate_name", return_value="Execution Review",
+                ))
+                stack.enter_context(mock.patch.object(
+                    rh, "approve_redefinition",
+                    side_effect=AssertionError("PED approval must not run"),
+                ))
+                stack.enter_context(mock.patch.object(
+                    rh, "deny_redefinition",
+                    side_effect=AssertionError("PED denial must not run"),
+                ))
+                if force_fallback:
+                    stack.enter_context(mock.patch.object(
+                        oq, "add_entry",
+                        side_effect=OSError("force raw fallback"),
+                    ))
+
+                token = te.set_turn_context(
+                    conversation_id="c9", principal_id="principal:user",
+                )
+                stack.callback(te.reset_turn_context, token)
+                te._queued_hashes.clear()
+                stack.callback(te._queued_hashes.clear)
+
+                self.assertTrue(el.push_handback(self._ref()))
+                with open(queue_path, encoding="utf-8") as stream:
+                    stored = json.loads(stream.readline())
+
+                event = stored["event"]
+                self.assertEqual(stored["kind"], "execution_gate")
+                self.assertFalse(stored["redefinition"])
+                self.assertEqual(
+                    event["event_type"], "ExecutionReviewEscalation",
+                )
+                self.assertEqual(
+                    stored["context_summary"]["kind"],
+                    "execution_review_escalation",
+                )
+                self.assertEqual(
+                    event["action"], "execution_review_handback",
+                )
+                self.assertEqual(
+                    event["args_hash"], te.normalize_args_hash(
+                        "execution_review_handback",
+                        event["handback_identity"],
+                    ),
+                )
+                self.assertTrue(te.has_live_approval_request(stored))
+                queue_text = sc.run_runtime_command("/queue")
+                self.assertIn("execution review handback", queue_text.lower())
+                self.assertNotIn("legacy_untyped", queue_text)
+
+                entry_id = stored["id"]
+                if disposition == "accept":
+                    started = rc.start_resolution(
+                        entry_id, sessions_root=sessions_root, config={},
+                    )
+                    result = rc.continue_resolution(
+                        rc.ContinuationContext(
+                            queue_id=entry_id, last_alternative="",
+                        ),
+                        [],
+                        "1",
+                        conversation_id=started["conversation_id"],
+                        principal_id="principal:user",
+                    )
+                    self.assertIn("Accepted and resolved", result)
+                else:
+                    result = sc.run_runtime_command(
+                        "/deny 0 deliberate verifier waiver",
+                        conversation_id="c9",
+                        principal_id="principal:user",
+                    )
+                    self.assertIn("Waived and rejected", result)
+                    self.assertIn("deliberate verifier waiver", result)
+
+                self.assertIn("No rerun authority was granted", result)
+                self.assertIsNone(oq.find_paused_by_id(entry_id))
+                self.assertFalse(te.has_live_approval_request(stored))
+                self.assertIsNone(te.check_and_consume_approval(
+                    "execution_review_handback",
+                    event["args_hash"],
+                    "c9",
+                ))
+                self.assertEqual(te._load_approvals()["tokens"], [])
+                with open(events_path, encoding="utf-8") as stream:
+                    terminal_events = [
+                        json.loads(line) for line in stream if line.strip()
+                    ]
+                self.assertEqual(
+                    terminal_events[-1]["gate"]["decision"], expected_event,
+                )
+
 
 # ── Portability (Windows-sim pure logic) ───────────────────────────────────────
 class TestPortability(unittest.TestCase):

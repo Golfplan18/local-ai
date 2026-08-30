@@ -816,9 +816,17 @@ def _cmd_queue(args: list[str]) -> str:
     word = "entry" if len(entries) == 1 else "entries"
     lines = [f"**Human queue:** {len(entries)} pending {word}", ""]
     for e in entries:
-        request_type = e.authority_request_type or (
-            "ped_redefinition" if e.redefinition else "legacy_untyped"
-        )
+        if (
+            e.kind == "execution_gate"
+            and e.event.get("action") == "execution_review_handback"
+        ):
+            request_type = "execution_review_handback"
+        elif e.kind in ("execution_gate", "task_gate"):
+            request_type = e.kind
+        else:
+            request_type = e.authority_request_type or (
+                "ped_redefinition" if e.redefinition else "legacy_untyped"
+            )
         kind = request_type.replace("_", " ")
         project = e.event.get("project_nexus") or "(none)"
         reasoning = (e.verdict.get("reasoning") or "").strip()

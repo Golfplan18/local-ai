@@ -64,6 +64,14 @@ APPROVALS_PATH = os.path.join(DATA_DIR, "execution-approvals.json")
 _GLOBAL_SINK_BAKED = GLOBAL_SINK_DEFAULT  # import-time values; patch anchors
 _APPROVALS_BAKED = APPROVALS_PATH
 
+# A terminal Execution Review handback uses the existing execution-gate
+# authority envelope, but it is a disposition request rather than permission
+# to run another action. Keep the identity fixed and internal so a queue
+# record cannot choose its own executable action name.
+EXECUTION_REVIEW_HANDBACK_ACTION = "execution_review_handback"
+EXECUTION_REVIEW_HANDBACK_EVENT = "ExecutionReviewEscalation"
+EXECUTION_REVIEW_HANDBACK_CONTEXT_KIND = "execution_review_escalation"
+
 
 def _approvals_path() -> str:
     """Effective approvals-store path: an explicit monkeypatch of
@@ -1402,6 +1410,114 @@ def _discard_pending_approval(nonce: str) -> None:
     _with_approvals_lock(_do)
 
 
+def _execution_review_handback_identity(record_dict: dict) -> dict:
+    """Return the immutable identity signed for one terminal handback.
+
+    The independently authenticated pending-request store later binds this
+    identity to the exact queue id, event payload, Dialogue, and Principal.
+    The display name, engagement state, and discussion link remain ordinary
+    mutable queue metadata and therefore do not enter this identity.
+    """
+
+    event = record_dict.get("event") or {}
+    context = record_dict.get("context_summary") or {}
+    return {
+        "queued_at": str(record_dict.get("queued_at") or ""),
+        "conversation_id": str(
+            record_dict.get("conversation_id")
+            or event.get("conversation_id")
+            or ""
+        ),
+        "project_nexus": str(event.get("project_nexus") or ""),
+        "note_ref": context.get("note_ref"),
+        "packet_ref": context.get("packet_ref"),
+        "abandoned_attempt_branch": context.get("abandoned_attempt_branch"),
+    }
+
+
+def prepare_execution_review_handback(record_dict: dict) -> tuple[dict, str]:
+    """Authenticate a generated Execution Review handback before delivery.
+
+    This reuses the same signed, one-use pending-request lifecycle as an
+    ordinary execution gate. It does *not* mint an approval token. The caller
+    must durably write the returned record and then bind it with
+    :func:`bind_execution_review_handback`.
+    """
+
+    prepared = dict(record_dict)
+    event = dict(prepared.get("event") or {})
+    context = dict(prepared.get("context_summary") or {})
+    if event.get("event_type") != EXECUTION_REVIEW_HANDBACK_EVENT:
+        raise ValueError("execution-review handback event type is invalid")
+    if context.get("kind") != EXECUTION_REVIEW_HANDBACK_CONTEXT_KIND:
+        raise ValueError("execution-review handback context kind is invalid")
+
+    conversation_id = str(
+        prepared.get("conversation_id")
+        or event.get("conversation_id")
+        or ""
+    )
+    if not conversation_id:
+        raise ValueError("execution-review handback has no Dialogue identity")
+    prepared["conversation_id"] = conversation_id
+    prepared["kind"] = "execution_gate"
+    prepared["redefinition"] = False
+    prepared["context_summary"] = context
+
+    principal_id = str(
+        get_turn_context().get("principal_id") or "principal:user"
+    )
+    identity = _execution_review_handback_identity(prepared)
+    args_hash = normalize_args_hash(
+        EXECUTION_REVIEW_HANDBACK_ACTION, identity,
+    )
+    nonce = _register_pending_approval(
+        EXECUTION_REVIEW_HANDBACK_ACTION,
+        args_hash,
+        conversation_id,
+        principal_id,
+    )
+    event.update({
+        "action": EXECUTION_REVIEW_HANDBACK_ACTION,
+        "args_hash": args_hash,
+        "approval_nonce": nonce,
+        "conversation_id": conversation_id,
+        "principal_id": principal_id,
+        "review_request_digest": None,
+        "review_selectors": [],
+        "handback_identity": identity,
+    })
+    prepared["event"] = event
+    return prepared, nonce
+
+
+def bind_execution_review_handback(
+    nonce: str, record_dict: dict,
+) -> bool:
+    """Bind a delivered terminal handback to its exact persisted queue row."""
+
+    event = record_dict.get("event") or {}
+    if (
+        record_dict.get("kind") != "execution_gate"
+        or event.get("event_type") != EXECUTION_REVIEW_HANDBACK_EVENT
+        or event.get("action") != EXECUTION_REVIEW_HANDBACK_ACTION
+        or event.get("approval_nonce") != nonce
+        or not (record_dict.get("id") or record_dict.get("queue_id"))
+    ):
+        return False
+    return _bind_pending_queue(
+        nonce,
+        str(record_dict.get("id") or record_dict.get("queue_id")),
+        record_dict,
+    )
+
+
+def discard_execution_review_handback(nonce: str) -> None:
+    """Discard an undelivered handback's unbound pending authority."""
+
+    _discard_pending_approval(nonce)
+
+
 def _pending_approval_matcher(record_dict: dict, *, principal_id: str):
     """The exact identity a queue record's pending approval request must have.
 
@@ -2001,6 +2117,48 @@ def resolve_gate_entry(record_dict: dict, approve: bool,
             "approval request was consumed.]"
         )
     clear_queued_hash(record_dict.get("conversation_id"), args_hash)
+
+    # A terminal Execution Review handback is carried by the existing signed
+    # execution-gate envelope, but resolving it is a disposition, not approval
+    # to execute something. Activate this branch only after the normal pending
+    # request authenticated and only for the exact fixed marker triple. In
+    # particular, never mint the ordinary one-shot rerun token below.
+    if (
+        record_dict.get("kind") == "execution_gate"
+        and event.get("event_type") == EXECUTION_REVIEW_HANDBACK_EVENT
+        and action == EXECUTION_REVIEW_HANDBACK_ACTION
+    ):
+        decision = "accepted" if approve else "waived"
+        why = (
+            "terminal Execution Review handback accepted and resolved"
+            if approve
+            else "terminal Execution Review handback deliberately rejected/waived"
+        )
+        if reason:
+            why += f": {reason}"
+        record({
+            "event": "gate",
+            "action": action,
+            "category": "execute",
+            "mutability": "reversible_write",
+            "sensitivity": "private",
+            "egress": "none",
+            "gate": {"decision": decision, "why": why},
+            "enforcement_model": "in_harness",
+        })
+        if approve:
+            return (
+                "**Accepted and resolved.** The terminal Execution Review "
+                "handback was accepted. No rerun authority was granted."
+            )
+        suffix = f" Reason: {reason}" if reason else ""
+        return (
+            "**Waived and rejected.** The terminal Execution Review handback "
+            "was deliberately rejected and its acceptance obligation was "
+            "waived for this preserved attempt. No rerun authority was "
+            f"granted.{suffix}"
+        )
+
     if approve:
         standing_scope = event.get("standing_scope")
         if standing_scope:

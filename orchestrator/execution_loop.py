@@ -1240,6 +1240,11 @@ def handback_reference(*, packet: Any, packet_path: str | None, branch_ref: str 
         note_ref = None
     return {
         "queued_at": _now_iso(),
+        # This is an existing execution-gate authority envelope, not a PED
+        # redefinition. push_handback authenticates and binds its exact row
+        # before reporting delivery success.
+        "kind": "execution_gate",
+        "redefinition": False,
         # Top-level conversation_id so the conversation_closeout stealth-purge backstop
         # (Layer 9) can scrub this entry if a conversation is later stealth-purged —
         # oversight_queue.add_entry does NOT re-derive it the way _append_human_queue does.
@@ -1280,24 +1285,65 @@ def push_handback(entry: dict) -> bool:
             return False   # stealth: no durable queue residue
     except Exception:
         pass
+    approval_nonce = None
+    delivered_id = None
     try:
         try:
-            from oversight_queue import add_entry as _add
+            import tool_events as _te
         except ImportError:  # pragma: no cover
-            from orchestrator.oversight_queue import add_entry as _add
-        _add(entry)
-        return True
-    except Exception:
+            from orchestrator import tool_events as _te
         try:
+            import oversight_queue as _oq
+        except ImportError:  # pragma: no cover
+            from orchestrator import oversight_queue as _oq
+
+        prepared, approval_nonce = _te.prepare_execution_review_handback(entry)
+        prepared = dict(prepared)
+        # Both the managed writer and the raw fallback must persist the same
+        # stable identity. add_entry recomputes this exact value; the fallback
+        # otherwise would be a legacy row with only a synthesized read-time id.
+        prepared["id"] = _oq._synthesize_id(
+            prepared, str(prepared.get("queued_at") or ""),
+        )
+        delivered_id = prepared["id"]
+
+        delivered = None
+        try:
+            delivered = _oq.add_entry(prepared).to_dict()
+        except Exception:
+            # add_entry may fail after its atomic write but before returning.
+            # Reuse that exact row if it exists; append a raw fallback only
+            # when the managed row is genuinely absent.
+            existing = _oq.find_paused_by_id(delivered_id)
+            if existing is not None:
+                delivered = existing.to_dict()
+            else:
+                try:
+                    from oversight_actions import _append_human_queue as _aq
+                except ImportError:  # pragma: no cover
+                    from orchestrator.oversight_actions import _append_human_queue as _aq
+                _aq(prepared)
+                existing = _oq.find_paused_by_id(delivered_id)
+                if existing is not None:
+                    delivered = existing.to_dict()
+
+        if delivered is None or not _te.bind_execution_review_handback(
+            approval_nonce, delivered,
+        ):
+            # Never leave an apparently actionable but unsigned card behind.
+            _oq.remove_by_id(delivered_id)
+            raise RuntimeError(
+                "Execution Review handback could not bind its approval request"
+            )
+        return True
+    except Exception as e:
+        if approval_nonce:
             try:
-                from oversight_actions import _append_human_queue as _aq
-            except ImportError:  # pragma: no cover
-                from orchestrator.oversight_actions import _append_human_queue as _aq
-            _aq(entry)
-            return True
-        except Exception as e:
-            _mark_failure(e, "execution_loop_push_handback")
-            return False
+                _te.discard_execution_review_handback(approval_nonce)
+            except Exception:
+                pass
+        _mark_failure(e, "execution_loop_push_handback")
+        return False
 
 
 def _now_iso() -> str:
