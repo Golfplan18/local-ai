@@ -35,10 +35,13 @@ Async layer
 
 Long-running predictions (video, style training) are filed with
 ``job_queue.get_default_queue()``. The dispatcher returns the queue's
-job dict immediately. A polling thread, started lazily, calls
-``replicate.predictions.get()`` until the prediction reaches a terminal
-state (``succeeded`` / ``failed`` / ``canceled``), then transitions the
-job via ``mark_complete`` or ``mark_failed``.
+job dict immediately. Before polling, the worker durably binds the provider
+prediction id to that existing Dialogue job. Startup reconciliation resumes
+only those bound predictions; an indeterminate submission without an id is
+failed without another paid submission. A polling thread calls
+``replicate.predictions.get()`` until the prediction reaches a terminal state
+(``succeeded`` / ``failed`` / ``canceled``), then transitions the job to the
+matching local terminal state.
 
 If the WP-7.6.1 module is not yet on disk when this module loads, the
 async dispatchers fall back to a synchronous no-op stub that returns a
@@ -109,8 +112,10 @@ import io
 import json
 import os
 import re
+import sys
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlsplit
@@ -141,12 +146,22 @@ except Exception:  # pragma: no cover — optional
     _HAS_REQUESTS = False
 
 try:
-    from orchestrator.job_queue import get_default_queue  # type: ignore
+    from orchestrator.job_queue import (  # type: ignore
+        InvalidStatusTransition,
+        JobNotFound,
+        JobOwnerUnavailable,
+        get_default_queue,
+    )
     _HAS_JOB_QUEUE = True
 except Exception:
     try:
         # fallback when invoked from inside the orchestrator package
-        from job_queue import get_default_queue  # type: ignore
+        from job_queue import (  # type: ignore
+            InvalidStatusTransition,
+            JobNotFound,
+            JobOwnerUnavailable,
+            get_default_queue,
+        )
         _HAS_JOB_QUEUE = True
     except Exception:
         get_default_queue = None  # type: ignore
@@ -224,6 +239,10 @@ DEFAULT_MODELS: dict[str, dict] = {
 
 # Terminal Replicate prediction states.
 _TERMINAL_STATES = {"succeeded", "failed", "canceled"}
+_ASYNC_SLOTS = {"video_generates", "style_trains"}
+_SUBMISSION_STATE_KEY = "provider_submission_state"
+_SUBMISSION_SUBMITTING = "submitting"
+_SUBMISSION_BOUND = "bound"
 
 
 # ---------------------------------------------------------------------------
@@ -833,9 +852,8 @@ def dispatch_style_trains(inputs: dict) -> dict:
 # Async-dispatch helper + polling thread
 # ---------------------------------------------------------------------------
 
-# Conversation id is set per-thread by the dispatcher layer (boot.py / the
-# capability-registry caller). We read it lazily; if it is not set we use
-# a synthetic 'default' bucket so the queue still has a home for the job.
+# Conversation id is set per-thread by the capability-registry caller. Paid
+# work must never fall back to a synthetic owner.
 _thread_local = threading.local()
 
 
@@ -847,7 +865,201 @@ def set_active_conversation(conversation_id: str) -> None:
 
 
 def _active_conversation() -> str:
-    return getattr(_thread_local, "conversation_id", "default")
+    conversation_id = getattr(_thread_local, "conversation_id", None)
+    if (not isinstance(conversation_id, str)
+            or not conversation_id.strip()
+            or conversation_id.strip() == "default"):
+        raise ReplicateError(
+            "prompt_rejected",
+            "Async Replicate work requires an explicit existing Dialogue.",
+        )
+    return conversation_id.strip()
+
+
+@contextmanager
+def _authenticated_owner_scope(
+    queue: Any,
+    conversation_id: str,
+    job_id: str | None = None,
+):
+    """Join the server's existing Delete barrier, then authenticate disk.
+
+    Explicit startup recovery runs from ``server.app`` only after startup
+    validation, while the durable queue lifecycle lock is the available
+    boundary. Ordinary requests and workers additionally hold the server's
+    established read scope whenever this queue is its real runtime sessions
+    queue.
+    """
+    server_app = sys.modules.get("server.app")
+    read_scope = getattr(server_app, "_conversation_read_scope", None)
+    server_paths = getattr(server_app, "rp", None)
+    try:
+        uses_server_queue = (
+            callable(read_scope)
+            and server_paths is not None
+            and Path(queue._root).resolve()
+            == (Path(server_paths.ORA_HOME) / "sessions").resolve()
+        )
+    except Exception:
+        uses_server_queue = False
+    if uses_server_queue:
+        with read_scope(conversation_id) as (_cid, error):
+            if error is not None:
+                raise JobOwnerUnavailable(
+                    f"Dialogue '{conversation_id}' is not live and authoritative"
+                )
+            with queue.authenticated_conversation(conversation_id, job_id):
+                yield
+        return
+    with queue.authenticated_conversation(conversation_id, job_id):
+        yield
+
+
+def _prediction_id(value: Any) -> str | None:
+    """Return one provider-safe opaque prediction id, or ``None``."""
+    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", value):
+        return None
+    return value
+
+
+def _bound_prediction(job: dict, conversation_id: str) -> tuple[str | None, str | None]:
+    """Validate the durable provider-to-Dialogue binding on one queue job."""
+    metadata = job.get("metadata")
+    if not isinstance(metadata, dict) or metadata.get("provider") != PROVIDER_ID:
+        return None, "the job is not bound to Replicate"
+    if metadata.get(_SUBMISSION_STATE_KEY) != _SUBMISSION_BOUND:
+        if metadata.get(_SUBMISSION_STATE_KEY) == _SUBMISSION_SUBMITTING:
+            return None, "the paid submission outcome is indeterminate"
+        return None, "the provider prediction identity was not durably bound"
+    prediction_id = _prediction_id(metadata.get("provider_prediction_id"))
+    if prediction_id is None:
+        return None, "the provider prediction identity is missing or malformed"
+    if metadata.get("provider_conversation_id") != conversation_id:
+        return None, "the provider binding names a different Dialogue"
+    if metadata.get("provider_job_id") != job.get("id"):
+        return None, "the provider binding names a different local job"
+    return prediction_id, None
+
+
+def cancel_bound_predictions(
+    conversation_id: str,
+    jobs: list[dict],
+) -> dict:
+    """Synchronously stop or confirm every supplied paid prediction.
+
+    This is the narrow provider callback used by the core queue's permanent
+    deletion path.  It never changes local queue state: the durable binding is
+    deliberately left available until *all* provider predictions are confirmed
+    terminal.  If the cancel response is not terminal, one immediate poll is
+    the confirmation attempt.  Anything still running or unavailable is an
+    error, so the caller retains the complete local job state for retry or
+    startup reconciliation.
+    """
+    confirmed: list[dict] = []
+    errors: list[str] = []
+    client: ReplicateClient | None = None
+
+    for job in jobs:
+        if not isinstance(job, dict):
+            errors.append("Replicate deletion received a malformed local job")
+            continue
+        job_id = str(job.get("id") or "")
+        prediction_id, binding_error = _bound_prediction(job, conversation_id)
+        if binding_error or prediction_id is None:
+            errors.append(
+                f"Replicate job {job_id or '<unknown>'} cannot be cancelled: "
+                f"{binding_error or 'the provider prediction identity is unavailable'}"
+            )
+            continue
+
+        if client is None:
+            try:
+                client = ReplicateClient()
+            except Exception as exc:
+                errors.append(
+                    f"Replicate job {job_id} cancellation is unavailable: "
+                    f"{type(exc).__name__}"
+                )
+                continue
+
+        prediction: dict | None = None
+        cancel_failure: Exception | None = None
+        try:
+            candidate = client.cancel(prediction_id)
+            if isinstance(candidate, dict):
+                prediction = candidate
+        except Exception as exc:
+            cancel_failure = exc
+
+        response_id = _prediction_id(prediction.get("id")) if prediction else None
+        status = (
+            prediction.get("status")
+            if prediction and response_id == prediction_id
+            else None
+        )
+        if status not in _TERMINAL_STATES:
+            try:
+                candidate = client.poll(prediction_id)
+                prediction = candidate if isinstance(candidate, dict) else None
+            except Exception as exc:
+                detail = type(exc).__name__
+                if cancel_failure is not None:
+                    detail = f"{type(cancel_failure).__name__}; confirmation {detail}"
+                errors.append(
+                    f"Replicate job {job_id} cancellation was not confirmed: "
+                    f"{detail}"
+                )
+                continue
+            response_id = (
+                _prediction_id(prediction.get("id")) if prediction else None
+            )
+            status = (
+                prediction.get("status")
+                if prediction and response_id == prediction_id
+                else None
+            )
+
+        if status not in _TERMINAL_STATES:
+            mismatch = (
+                " with a different prediction identity"
+                if response_id is not None and response_id != prediction_id
+                else ""
+            )
+            errors.append(
+                f"Replicate job {job_id} cancellation was not confirmed; "
+                f"provider status is {status or 'unavailable'}{mismatch}"
+            )
+            continue
+
+        confirmed.append({
+            "job_id": job_id,
+            "provider_prediction_id": prediction_id,
+            "provider_status": status,
+        })
+
+    return {"confirmed": confirmed, "errors": errors}
+
+
+def _fail_without_resubmission(
+    queue: Any,
+    conversation_id: str,
+    job_id: str,
+    reason: str,
+) -> None:
+    """Terminalize an unrecoverable submission without contacting Replicate."""
+    try:
+        queue.mark_failed(
+            conversation_id,
+            job_id,
+            f"Replicate job cannot be safely resumed because {reason}. "
+            "Automatic resubmission is disabled to prevent a duplicate paid job.",
+        )
+    except Exception as exc:
+        print(
+            f"[replicate] could not terminalize unrecoverable job {job_id}: "
+            f"{type(exc).__name__}",
+            flush=True,
+        )
 
 
 def _async_dispatch(
@@ -888,23 +1100,45 @@ def _async_dispatch(
 
     queue = get_default_queue()
     conversation_id = _active_conversation()
-    job = queue.dispatch(
-        conversation_id=conversation_id,
-        capability=slot,
-        parameters=parameters_for_queue,
-        metadata={"provider": PROVIDER_ID, "model": cfg["model"]},
-    )
-    # Kick off prediction creation + polling on a background thread so
-    # the dispatch call returns immediately. Failures during creation
-    # transition the job to ``failed`` directly.
-    t = threading.Thread(
-        target=_poll_thread,
-        args=(slot, client, cfg, payload, conversation_id, job["id"]),
-        name=f"replicate-{slot}-{job['id']}",
-        daemon=True,
-    )
-    t.start()
+    try:
+        with _authenticated_owner_scope(queue, conversation_id):
+            job = queue.dispatch(
+                conversation_id=conversation_id,
+                capability=slot,
+                parameters=parameters_for_queue,
+                metadata={"provider": PROVIDER_ID, "model": cfg["model"]},
+            )
+            # Start while the lifecycle boundary is still held. The worker
+            # re-enters that same boundary before claiming or contacting the
+            # provider, so Delete Forever either wins cleanly or waits.
+            t = threading.Thread(
+                target=_poll_thread,
+                args=(slot, client, cfg, payload, conversation_id, job["id"]),
+                name=f"replicate-{slot}-{job['id']}",
+                daemon=True,
+            )
+            t.start()
+    except JobOwnerUnavailable as exc:
+        raise ReplicateError("prompt_rejected", str(exc)) from exc
     return job
+
+
+def _cancel_orphaned_prediction(
+    client: ReplicateClient,
+    prediction_id: str | None,
+    job_id: str,
+) -> None:
+    """Best-effort stop after the authenticated local owner disappears."""
+    if prediction_id is None:
+        return
+    try:
+        client.cancel(prediction_id)
+    except Exception as exc:
+        print(
+            f"[replicate] orphan cancel failed for {job_id}: "
+            f"{type(exc).__name__}",
+            flush=True,
+        )
 
 
 def _poll_thread(
@@ -914,67 +1148,270 @@ def _poll_thread(
     payload: dict,
     conversation_id: str,
     job_id: str,
+    prediction_id: str | None = None,
 ) -> None:
-    """Background polling for a Replicate prediction tied to a
-    queue job. Transitions the job to terminal status when the
-    prediction reaches ``succeeded`` / ``failed`` / ``canceled``."""
+    """Submit once or resume one durably bound Replicate prediction."""
     queue = get_default_queue()
+    bound_prediction_id = _prediction_id(prediction_id)
     try:
-        version = cfg.get("version") or client.resolve_version(cfg["model"])
-        pred = client.create(version, payload)
-        queue.mark_in_progress(conversation_id, job_id)
-        # Long polling — async slots are minutes-scale.
+        if prediction_id is not None and bound_prediction_id is None:
+            _fail_without_resubmission(
+                queue, conversation_id, job_id,
+                "the persisted provider prediction identity is malformed",
+            )
+            return
+
+        pred: dict | None = None
+        if bound_prediction_id is None:
+            try:
+                with _authenticated_owner_scope(queue, conversation_id, job_id):
+                    queue.begin_submission(
+                        conversation_id,
+                        job_id,
+                        {
+                            _SUBMISSION_STATE_KEY: _SUBMISSION_SUBMITTING,
+                            "provider_conversation_id": conversation_id,
+                            "provider_job_id": job_id,
+                        },
+                    )
+                    # The durable in-progress/submitting transition above is
+                    # deliberately before even the provider version lookup.
+                    version = cfg.get("version") or client.resolve_version(
+                        cfg["model"]
+                    )
+                    queue.update_metadata(
+                        conversation_id,
+                        job_id,
+                        {"provider_version": version},
+                        require_persisted=True,
+                    )
+                    try:
+                        pred = client.create(version, payload)
+                    except Exception as exc:
+                        _fail_without_resubmission(
+                            queue,
+                            conversation_id,
+                            job_id,
+                            "the provider submission response did not establish a "
+                            f"prediction identity ({type(exc).__name__})",
+                        )
+                        return
+                    bound_prediction_id = _prediction_id(pred.get("id"))
+                    if bound_prediction_id is None:
+                        _fail_without_resubmission(
+                            queue,
+                            conversation_id,
+                            job_id,
+                            "the provider accepted a submission without returning a "
+                            "usable prediction identity",
+                        )
+                        return
+                    try:
+                        queue.update_metadata(
+                            conversation_id,
+                            job_id,
+                            {
+                                _SUBMISSION_STATE_KEY: _SUBMISSION_BOUND,
+                                "provider_prediction_id": bound_prediction_id,
+                            },
+                            require_persisted=True,
+                        )
+                    except Exception:
+                        _cancel_orphaned_prediction(
+                            client, bound_prediction_id, job_id,
+                        )
+                        _fail_without_resubmission(
+                            queue,
+                            conversation_id,
+                            job_id,
+                            "the returned provider prediction identity could not be "
+                            "durably bound",
+                        )
+                        return
+            except InvalidStatusTransition:
+                # A queued cancellation won the atomic race. No provider
+                # contact has happened, including version resolution.
+                return
+            except JobOwnerUnavailable:
+                return
+
+        # Long polling — async slots are minutes-scale. Every provider call
+        # and terminal write re-authenticates the same surviving Dialogue/job.
         deadline = time.time() + 60 * 60  # 1h hard cap.
-        while pred.get("status") not in _TERMINAL_STATES:
-            if time.time() > deadline:
-                queue.mark_failed(
-                    conversation_id, job_id,
-                    "Replicate prediction exceeded 1h hard cap.",
+        cancel_attempted = False
+        while True:
+            try:
+                with _authenticated_owner_scope(queue, conversation_id, job_id):
+                    snap = queue.get_job(conversation_id, job_id)
+                    persisted_id, binding_error = _bound_prediction(
+                        snap, conversation_id,
+                    )
+                    if binding_error or persisted_id != bound_prediction_id:
+                        _fail_without_resubmission(
+                            queue,
+                            conversation_id,
+                            job_id,
+                            binding_error
+                            or "the provider prediction binding changed",
+                        )
+                        return
+                    if snap.get("status") != "in_progress":
+                        return
+                    if snap.get("cancel_requested") and not cancel_attempted:
+                        cancel_attempted = True
+                        try:
+                            cancel_result = client.cancel(bound_prediction_id)
+                            if isinstance(cancel_result, dict):
+                                pred = cancel_result
+                        except Exception as exc:
+                            print(
+                                f"[replicate] cancel request failed for {job_id}: "
+                                f"{type(exc).__name__}; awaiting provider terminal state",
+                                flush=True,
+                            )
+                    if pred is None or pred.get("status") not in _TERMINAL_STATES:
+                        if time.time() > deadline:
+                            print(
+                                f"[replicate] polling window ended for {job_id}; "
+                                "the bound prediction remains active for a later "
+                                "reconciliation",
+                                flush=True,
+                            )
+                            return
+                        pred = client.poll(bound_prediction_id)
+                    if pred.get("status") == "succeeded":
+                        try:
+                            result_ref = _materialize_async_result(
+                                slot, pred, queue, conversation_id, job_id,
+                            )
+                        except Exception as exc:
+                            print(
+                                f"[replicate] completed prediction "
+                                f"{bound_prediction_id} could not be materialized "
+                                f"for {job_id}: {type(exc).__name__}; the bound "
+                                "job remains active",
+                                flush=True,
+                            )
+                            return
+                        queue.mark_complete(conversation_id, job_id, result_ref)
+                        return
+                    if pred.get("status") == "canceled":
+                        queue.cancel_job(conversation_id, job_id)
+                        return
+                    if pred.get("status") == "failed":
+                        queue.mark_failed(
+                            conversation_id, job_id,
+                            f"Replicate prediction failed: "
+                            f"{_safe_error_detail(pred.get('error'))}",
+                        )
+                        return
+            except JobOwnerUnavailable:
+                # Successful Delete Forever quiescence has already received a
+                # synchronous provider acknowledgement before dropping this
+                # queue binding.  Avoid a second best-effort cancel in that
+                # case; an owner that vanished without queue quiescence still
+                # retains the job and uses the existing orphan fallback.
+                try:
+                    queue.get_job(conversation_id, job_id)
+                except JobNotFound:
+                    return
+                except Exception:
+                    pass
+                _cancel_orphaned_prediction(client, bound_prediction_id, job_id)
+                return
+            except Exception as exc:
+                print(
+                    f"[replicate] polling paused for {job_id}: "
+                    f"{type(exc).__name__}; the bound job remains active",
+                    flush=True,
                 )
                 return
-            # Honor cancellation requests from WP-7.6.3.
+            time.sleep(2.0)
+    except ReplicateError as exc:
+        if bound_prediction_id is None:
             try:
-                snap = queue.get_job(conversation_id, job_id)
-                if snap.get("cancel_requested"):
-                    try:
-                        client.cancel(pred["id"])
-                    except Exception:
-                        pass
-                    queue.cancel_job(conversation_id, job_id)
-                    return
+                queue.mark_failed(
+                    conversation_id, job_id, _safe_error_detail(exc),
+                )
             except Exception:
                 pass
-            time.sleep(2.0)
-            pred = client.poll(pred["id"])
-        if pred.get("status") == "succeeded":
-            # Re-check the queue before writing an artifact so a forgotten
-            # conversation cannot be recreated by a late provider result.
-            queue.get_job(conversation_id, job_id)
-            result_ref = _materialize_async_result(
-                slot, pred, queue, conversation_id, job_id,
-            )
-            queue.mark_complete(conversation_id, job_id, result_ref)
         else:
-            queue.mark_failed(
-                conversation_id, job_id,
-                f"Replicate prediction {pred.get('status')}: "
-                f"{_safe_error_detail(pred.get('error'))}",
+            print(
+                f"[replicate] bound job {job_id} remains active after "
+                f"{type(exc).__name__}",
+                flush=True,
             )
-    except ReplicateError as exc:
-        try:
-            queue.mark_failed(
-                conversation_id, job_id, _safe_error_detail(exc),
-            )
-        except Exception:
-            pass
     except Exception as exc:  # pragma: no cover — defensive
-        try:
-            queue.mark_failed(
-                conversation_id, job_id,
-                f"Unexpected provider failure: {type(exc).__name__}",
+        if bound_prediction_id is None:
+            try:
+                queue.mark_failed(
+                    conversation_id, job_id,
+                    f"Unexpected provider failure: {type(exc).__name__}",
+                )
+            except Exception:
+                pass
+        else:
+            print(
+                f"[replicate] bound job {job_id} remains active after "
+                f"{type(exc).__name__}",
+                flush=True,
             )
-        except Exception:
-            pass
+
+
+def reconcile_unfinished_jobs() -> list[threading.Thread]:
+    """Resume every persisted, unfinished Replicate job with a valid binding.
+
+    Jobs whose paid submission was interrupted before a prediction id became
+    durable are failed locally without contacting the provider. Returned
+    threads make the focused recovery tests deterministic; startup callers can
+    ignore the list.
+    """
+    if not _HAS_JOB_QUEUE or get_default_queue is None:
+        return []
+    queue = get_default_queue()
+    threads: list[threading.Thread] = []
+    for conversation_id, jobs in queue.list_all_active_across_conversations().items():
+        for job in jobs:
+            metadata = job.get("metadata")
+            if not isinstance(metadata, dict) or metadata.get("provider") != PROVIDER_ID:
+                continue
+            slot = job.get("capability")
+            if slot not in _ASYNC_SLOTS:
+                continue
+            try:
+                with _authenticated_owner_scope(
+                    queue,
+                    conversation_id, job["id"],
+                ):
+                    prediction_id, binding_error = _bound_prediction(
+                        job, conversation_id,
+                    )
+                    if binding_error or prediction_id is None:
+                        _fail_without_resubmission(
+                            queue,
+                            conversation_id,
+                            job["id"],
+                            binding_error
+                            or "the provider prediction identity is unavailable",
+                        )
+                        continue
+            except JobOwnerUnavailable as exc:
+                print(
+                    f"[replicate] refusing recovery for unauthenticated job "
+                    f"{job.get('id')}: {exc}",
+                    flush=True,
+                )
+                continue
+            client = ReplicateClient()
+            thread = threading.Thread(
+                target=_poll_thread,
+                args=(slot, client, {}, {}, conversation_id, job["id"], prediction_id),
+                name=f"replicate-resume-{slot}-{job['id']}",
+                daemon=True,
+            )
+            thread.start()
+            threads.append(thread)
+    return threads
 
 
 # ---------------------------------------------------------------------------

@@ -223,10 +223,14 @@ try:
     # Package-qualified import keeps every caller on the same singleton.
     # Importing the same file as both ``job_queue`` and
     # ``orchestrator.job_queue`` creates two independent in-memory queues.
-    from orchestrator.job_queue import get_default_queue as _get_job_queue
+    from orchestrator.job_queue import (
+        get_default_queue as _get_job_queue,
+        start_default_queue_recovery as _start_job_queue_recovery,
+    )
     _HAS_JOB_QUEUE = True
 except Exception as _e:  # pragma: no cover — defensive
     _get_job_queue = None
+    _start_job_queue_recovery = None
     _HAS_JOB_QUEUE = False
     print(f"[server] job_queue unavailable: {_e}")
 
@@ -14856,10 +14860,30 @@ def _quiesce_conversation_workers(conversation_id: str) -> dict:
             errors.append(f"{label}: {exc}")
             print(f"[conversation-lifecycle] worker cleanup {label}: {exc}", flush=True)
 
+    # Paid provider work is a hard pre-purge barrier, not optional cleanup.
+    # Keep its durable jobs.json binding until Replicate cancellation or a
+    # terminal provider result has been confirmed.  Run it before every
+    # best-effort worker cleanup so a failed stop leaves the Dialogue intact
+    # and retryable rather than partially dismantled.
+    if not _HAS_JOB_QUEUE or _get_job_queue is None:
+        raise RuntimeError(
+            "job queue unavailable; paid-job quiescence cannot be confirmed"
+        )
+    try:
+        cleaned["job_queue"] = _get_job_queue().forget_conversation(
+            conversation_id
+        )
+    except Exception as exc:
+        print(
+            f"[conversation-lifecycle] paid-job quiescence failed: {exc}",
+            flush=True,
+        )
+        raise RuntimeError(
+            "paid-job quiescence could not be confirmed"
+        ) from exc
+
     if _HAS_TRANSCRIPTION and _get_transcription_manager is not None:
         run("transcriptions", lambda: _get_transcription_manager().forget_conversation(conversation_id))
-    if _HAS_JOB_QUEUE and _get_job_queue is not None:
-        run("job_queue", lambda: _get_job_queue().forget_conversation(conversation_id))
     plugin_result = _video_plugin.run_lifecycle("quiesce", conversation_id)
     cleaned["feature_plugins"] = plugin_result.get("results", {})
     errors.extend(plugin_result.get("errors", []))
@@ -14995,7 +15019,17 @@ def _delete_conversation_runtime(conversation_id: str) -> dict:
     # consults the server lifecycle state. Do not hold the server lock while
     # joining it; the tombstone plus the drained request barrier above already
     # prevents any new writer from being created in this interval.
-    workers = _quiesce_conversation_workers(conversation_id)
+    try:
+        workers = _quiesce_conversation_workers(conversation_id)
+    except Exception:
+        # Nothing has been purged yet.  Re-open the server lifecycle identity
+        # so the visible failure can be retried after queue/provider recovery.
+        with lifecycle_lock:
+            with _conversation_lifecycle_guard:
+                _deleted_conversations.discard(
+                    _conversation_storage_identity(conversation_id)
+                )
+        raise
 
     with lifecycle_lock:
         try:
@@ -22279,6 +22313,9 @@ if __name__ == "__main__":
         raise SystemExit(2)
     if "PORT" in os.environ:
         print(f"[startup] honoring PORT={port}", flush=True)
+
+    if _start_job_queue_recovery is not None:
+        _start_job_queue_recovery()
 
     # Expand the active-project pointer before any worker threads or HTTP
     # requests can race it.  The normal getter is intentionally read-only;
