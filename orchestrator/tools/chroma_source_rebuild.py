@@ -1425,12 +1425,10 @@ def _strict_json(path: Path, label: str) -> dict[str, Any]:
 
 
 def _sorted_id_sha256(ids: Iterable[str]) -> str:
-    """Hash sorted row ids with the same JSON-lines encoding as ``_audit``."""
+    """Hash sorted raw UTF-8 row ids, each followed by one newline."""
     digest = hashlib.sha256()
     for row_id in sorted(ids):
-        digest.update(json.dumps(
-            row_id, ensure_ascii=False, separators=(",", ":"),
-        ).encode("utf-8"))
+        digest.update(row_id.encode("utf-8"))
         digest.update(b"\n")
     return digest.hexdigest()
 
