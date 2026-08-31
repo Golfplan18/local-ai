@@ -525,127 +525,135 @@ def _private_frontmatter_text(
     *,
     require_unique_tags: bool = False,
 ) -> str:
-    """Return text with its one controlled Private tag reconciled."""
+    """Return text with its one controlled Private tag reconciled.
+
+    Flow-sequence node marks delimit the complete semantic value, including a
+    closing bracket on a later line.  Block-sequence end marks can extend into
+    following root-map trivia, so their mutation seam stops at the final
+    scalar item instead.  Every nonprivacy field and the Markdown body remain
+    byte-for-byte intact.
+    """
     opening_end, close = _frontmatter_bounds(text)
-
     front = text[opening_end:close]
-    lines = front.splitlines()
-    legacy_line_indexes: dict[str, int] = {}
-    if require_unique_tags:
-        entries = _frontmatter_mapping_entries(text)
-        try:
-            from yaml.nodes import ScalarNode  # type: ignore
-        except Exception as exc:
-            raise ValueError("YAML scalar authority is unavailable") from exc
-        for key in ("tag", "tag_private"):
-            values = entries.get(key, [])
-            if len(values) > 1:
-                raise ValueError(f"legacy {key} field is duplicated")
-            if not values:
-                continue
-            node = values[0]
-            if (not isinstance(node, ScalarNode)
-                    or node.start_mark.line != node.end_mark.line):
-                raise ValueError(f"legacy {key} field is not a scalar")
-            legacy_line_indexes[key] = node.start_mark.line
+    entries = _frontmatter_mapping_entries(text)
+    try:
+        import yaml  # type: ignore
+        from yaml.nodes import ScalarNode, SequenceNode  # type: ignore
+    except Exception as exc:
+        raise ValueError("YAML tag authority is unavailable") from exc
 
-    # Exact retag already authenticated these optional legacy claims. Rewrite
-    # their semantic root-map lines before changing the size of the tags block
-    # so quoted keys and valid root indentation cannot leave a stale claim.
-    for key, line_index in legacy_line_indexes.items():
-        if line_index >= len(lines) or ":" not in lines[line_index]:
-            raise ValueError(f"legacy {key} field has no writable scalar seam")
-        prefix = lines[line_index].split(":", 1)[0] + ":"
-        if key == "tag":
-            value = "private" if private else ""
-        else:
-            value = "true" if private else "false"
-        lines[line_index] = f"{prefix} {value}"
-
-    tag_indexes = [
-        idx for idx, line in enumerate(lines)
-        if re.match(r"^\s*tags\s*:", line)
-    ]
-    if require_unique_tags and len(tag_indexes) != 1:
+    tag_nodes = entries.get("tags", [])
+    if len(tag_nodes) > 1:
         raise ValueError(
-            f"expected one canonical tags field, found {len(tag_indexes)}"
+            f"expected one canonical tags field, found {len(tag_nodes)}"
         )
-    tag_idx = tag_indexes[0] if tag_indexes else None
-    tags: list[str] = []
-    start = end = len(lines)
-    indent = ""
-    if tag_idx is not None:
-        start = tag_idx
-        match = re.match(r"^(\s*)tags\s*:\s*(.*?)\s*$", lines[tag_idx])
-        assert match is not None
-        indent, inline = match.groups()
-        if inline:
-            try:
-                import yaml  # type: ignore
-                parsed = yaml.safe_load(inline)
-                if isinstance(parsed, list):
-                    tags = [str(item) for item in parsed if str(item).strip()]
-                elif parsed not in (None, ""):
-                    tags = [str(parsed)]
-            except Exception:
-                tags = [
-                    part.strip(" '\"")
-                    for part in inline.strip("[]").split(",")
-                    if part.strip()
-                ]
-        end = tag_idx + 1
-        while end < len(lines):
-            item = re.match(rf"^{re.escape(indent)}\s+-\s+(.+?)\s*$", lines[end])
-            if not item:
-                break
-            value = item.group(1).strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
-                value = value[1:-1]
-            if value:
-                tags.append(value)
-            end += 1
-    else:
-        # Keep core properties together: insert before the first date field,
-        # otherwise append at the end of frontmatter.
-        start = next(
-            (
-                idx for idx, line in enumerate(lines)
-                if re.match(r"^date (created|modified)\s*:", line)
-            ),
-            len(lines),
-        )
-        end = start
+    if require_unique_tags and not tag_nodes:
+        raise ValueError("expected one canonical tags field, found 0")
 
-    deduped: list[str] = []
-    for value in tags:
-        if value.strip().casefold() != "private" and value not in deduped:
-            deduped.append(value)
-    if private:
-        deduped.append("private")
-    replacement = [f"{indent}tags:"]
-    replacement.extend(f"{indent}  - {value}" for value in deduped)
-    new_lines = lines[:start] + replacement + lines[end:]
-    # Recovered pending chunks also carry legacy scalar privacy fields. Exact
-    # retag used the semantic root-map line coordinates above; the fallback
-    # loop is retained only for the older broad retag path.
-    if not require_unique_tags:
-        for idx, line in enumerate(new_lines):
-            match = re.match(r"^([ \t]*tag[ \t]*:)[^\n]*$", line)
-            if match:
-                new_lines[idx] = (
-                    f"{match.group(1)} {('private' if private else '')}"
-                )
-            private_match = re.match(
-                r"^([ \t]*tag_private[ \t]*:)[^\n]*$", line,
-            )
-            if private_match:
-                new_lines[idx] = (
-                    f"{private_match.group(1)} "
-                    f"{'true' if private else 'false'}"
-                )
-    new_front = "\n".join(new_lines)
-    line_ending = "\r\n" if text[:opening_end].endswith("\r\n") else "\n"
-    return text[:opening_end] + new_front + line_ending + text[close:]
+    line_ending = "\r\n" if "\r\n" in front else "\n"
+    boundary_line_ending = (
+        "\r\n" if front.endswith("\r\n")
+        else "\n" if front.endswith("\n")
+        else ""
+    )
+    edits: list[tuple[int, int, str]] = []
+    tags: list[str] = []
+    if tag_nodes:
+        tag_node = tag_nodes[0]
+        tag_edit_end = tag_node.end_mark.index
+        if isinstance(tag_node, SequenceNode):
+            for item in tag_node.value:
+                if not isinstance(item, ScalarNode):
+                    raise ValueError("tags field contains a non-scalar item")
+                tags.append(str(item.value))
+            flow_style = bool(tag_node.flow_style)
+            if not flow_style and tag_node.value:
+                tag_edit_end = tag_node.value[-1].end_mark.index
+        elif isinstance(tag_node, ScalarNode) and tag_node.tag.endswith(":null"):
+            flow_style = True
+        else:
+            raise ValueError("tags field is not a list")
+
+        tags = [
+            value for value in tags
+            if value.strip().casefold() != "private"
+        ]
+        if private:
+            tags.append("private")
+        rendered = yaml.safe_dump(
+            tags,
+            default_flow_style=flow_style,
+            allow_unicode=True,
+            width=10_000,
+        ).rstrip("\n")
+        indent = " " * tag_node.start_mark.column
+        rendered = rendered.replace("\n", line_ending + indent)
+        if tag_edit_end == len(front):
+            rendered += boundary_line_ending
+        if tag_node.start_mark.index == tag_node.end_mark.index:
+            if (tag_node.start_mark.index == 0
+                    or front[tag_node.start_mark.index - 1] not in " \t"):
+                rendered = " " + rendered
+            if front[tag_node.end_mark.index:][:1] == "#":
+                rendered += " "
+        edits.append((
+            tag_node.start_mark.index,
+            tag_edit_end,
+            rendered,
+        ))
+    else:
+        # Broad legacy propagation still supports a missing tags field.  Add
+        # the schema-required list at the end of the root mapping.
+        rendered = (
+            f"tags:{line_ending}  - private{line_ending}"
+            if private else f"tags: []{line_ending}"
+        )
+        edits.append((len(front), len(front), rendered))
+
+    # Rewrite only existing root-map legacy scalars.  Node spans keep quoted
+    # keys, comments, and neighboring fields outside the mutation seam.
+    for key in ("tag", "tag_private"):
+        values = entries.get(key, [])
+        if len(values) > 1:
+            raise ValueError(f"legacy {key} field is duplicated")
+        if not values:
+            continue
+        node = values[0]
+        if (not isinstance(node, ScalarNode)
+                or node.start_mark.line != node.end_mark.line):
+            raise ValueError(f"legacy {key} field is not a scalar")
+        replacement = (
+            ("private" if private else '""')
+            if key == "tag"
+            else ("true" if private else "false")
+        )
+        edit_end = node.end_mark.index
+        if node.start_mark.index == edit_end:
+            while edit_end < len(front) and front[edit_end] in " \t":
+                edit_end += 1
+            if (node.start_mark.index == 0
+                    or front[node.start_mark.index - 1] not in " \t"):
+                replacement = " " + replacement
+            if front[edit_end:][:1] == "#":
+                replacement += " "
+        edits.append((node.start_mark.index, edit_end, replacement))
+
+    new_front = front
+    for start, end, replacement in sorted(edits, reverse=True):
+        if start < 0 or end < start or end > len(front):
+            raise ValueError("YAML frontmatter has an invalid rewrite seam")
+        new_front = new_front[:start] + replacement + new_front[end:]
+    candidate = text[:opening_end] + new_front + text[close:]
+
+    # A candidate is never handed to the atomic writer until the complete
+    # mapping parses and its controlled/legacy privacy claims agree.
+    candidate_entries = _frontmatter_mapping_entries(candidate)
+    _require_markdown_privacy(
+        candidate,
+        "private" if private else "standard",
+        entries=candidate_entries,
+    )
+    return candidate
 
 
 def _set_private_frontmatter_tag(path: Path, private: bool) -> bool:
@@ -654,6 +662,12 @@ def _set_private_frontmatter_tag(path: Path, private: bool) -> bool:
         raise ValueError(f"refusing non-regular chunk file {path}")
     text = path.read_text(encoding="utf-8")
     new_text = _private_frontmatter_text(text, private)
+    entries = _frontmatter_mapping_entries(new_text)
+    _require_markdown_privacy(
+        new_text,
+        "private" if private else "standard",
+        entries=entries,
+    )
     if new_text == text:
         return False
     _atomic_write_text(path, new_text)
@@ -2198,6 +2212,24 @@ def _set_exact_turn_privacy_file(
         )
     if count != 1:
         raise ValueError("owned privacy artifact has no unique privacy seam")
+    if privacy_seam == "marker":
+        _require_chunk_markdown_authority(
+            replacement,
+            conversation_id=conversation_id,
+            chunk_id=chunk_id,
+            turn_privacy=turn_privacy,
+        )
+    else:
+        completed_owner = _runtime_derivative_markdown_authority(replacement)
+        if (
+            completed_owner[0] != turn_privacy
+            or not _same_conversation(completed_owner[1], conversation_id)
+            or completed_owner[2] != chunk_id
+            or completed_owner[3] != turn_index
+        ):
+            raise ValueError(
+                "completed runtime derivative owner/privacy tuple changed"
+            )
     if replacement == text:
         return False
     _atomic_write_text(path, replacement)
