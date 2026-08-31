@@ -2507,7 +2507,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                              execution_context="interactive",
                              extra_context=None, trace_dir=None,
                              config_name=None, conversation_tag="",
-                             turn_state=None):
+                             turn_state=None, raw_user_input=None):
     """Resume pipeline from Step 2 onward, optionally enriched with clarification answers.
 
     ``extra_context`` (WP-3.3): an optional dict of extra keys to merge into the
@@ -2524,7 +2524,10 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
     ``config_name`` (install Chunk 2c): selects a named configuration from
     config/configurations/ for the analysis stages. None falls through to
     the legacy execution_context path.
+
+    ``raw_user_input`` retains hold identity across cleanup and clarification.
     """
+    _raw_request = raw_user_input if isinstance(raw_user_input, str) else user_input
     # If clarification was provided, enrich the cleaned prompt and — if the
     # pause was at Stage 2 or Stage 3 of the pre-routing pipeline — re-run
     # the routing pipeline so the user's answer can resolve the disambiguation
@@ -2634,14 +2637,15 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         _override = (extra_context or {}).get("risk_override")
         _r = _rgate.assign_tier(
             _enriched, _conv_id, mode_text=context_pkg.get("mode_text"),
-            is_trivial_text=(gear <= 2), override=_override, surface="chat")
+            is_trivial_text=(gear <= 2), override=_override, surface="chat",
+            raw_input=_raw_request)
         _tier = _rgate.tier_max(_r["risk_tier"],
                                 step1.get("risk_tier") or "")
         context_pkg["risk_tier"] = _tier
         # Hold FIRST (evaluate_hold never raises + fails closed) so no
         # exception in a later step can leak an irreversible task past it.
         _hold_reply, _ = _rgate.evaluate_hold(
-            _tier, conversation_id=_conv_id, prompt=_enriched, surface="chat",
+            _tier, conversation_id=_conv_id, prompt=_raw_request, surface="chat",
             mode_id=context_pkg.get("mode_name", ""),
             output_target=(extra_context or {}).get("output_target", ""),
             config_name=config_name or "", stealth=(conversation_tag == "stealth"),
@@ -2661,7 +2665,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             invoker=_make_server_criteria_invoker(config, config_name))
         if _crit and _crit.startswith("HOLD:"):
             _hr, _ = _rgate.evaluate_hold(
-                "irreversible", conversation_id=_conv_id, prompt=_enriched,
+                "irreversible", conversation_id=_conv_id, prompt=_raw_request,
                 surface="chat", mode_id=context_pkg.get("mode_name", ""),
                 config_name=config_name or "",
                 stealth=(conversation_tag == "stealth"), description=_crit[5:])
@@ -3292,6 +3296,12 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             raw_user_input=raw_user_input,
         )
         return
+    # Exact request identity stays separate from cleaned executor input.
+    _raw_request = (
+        raw_user_input
+        if isinstance(raw_user_input, str)
+        else user_input
+    )
     execution_context = (extra_context or {}).get("execution_context", "interactive")
     manual_mode_selection = (manual_mode_selection or "").strip()
     manual_lens_selection = (manual_lens_selection or "").strip()
@@ -3366,11 +3376,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             from orchestrator import pipeline_trace as _pt
             trace_dir = _pt.start_trace(
                 conversation_id=panel_id,
-                raw_input=(
-                    raw_user_input
-                    if isinstance(raw_user_input, str)
-                    else user_input
-                ),
+                raw_input=_raw_request,
                 ambiguity_mode="assume",
                 stealth=(_conv_tag == "stealth"),
                 conversation_tag=_conv_tag,
@@ -3774,6 +3780,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                     config_name=paused_authority["config_name"],
                     conversation_tag=paused_authority["conversation_tag"],
                     turn_state=turn_state,
+                    raw_user_input=pending.get("raw_user_input"),
                 )
         finally:
             if trace_dir:
@@ -3815,11 +3822,14 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                     _picker_ts_srv = _rgate_picker.now_ts()
                     _picker_tier = _rgate_picker.assign_tier(
                         _picker_command, panel_id, surface="framework",
+                        override=(extra_context or {}).get("risk_override"),
+                        raw_input=_raw_request,
                     )["risk_tier"]
                     _picker_tier_srv = _picker_tier
                     _picker_hold, _ = _rgate_picker.evaluate_hold(
                         _picker_tier_srv, conversation_id=panel_id,
-                        prompt=_picker_command, surface="framework",
+                        prompt=_raw_request, surface="framework",
+                        mode_id=framework_selected,
                         stealth=(_conv_tag == "stealth"),
                         description=_picker_command,
                     )
@@ -3957,13 +3967,17 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             try:
                 import risk_gate as _rgate_fw
                 _fw_ts_srv = _rgate_fw.now_ts()
-                _fr = _rgate_fw.assign_tier(user_input, panel_id,
-                                            surface="framework")
+                _fr = _rgate_fw.assign_tier(
+                    user_input, panel_id, surface="framework",
+                    override=(extra_context or {}).get("risk_override"),
+                    raw_input=_raw_request,
+                )
                 _fw_tier_srv = _fr["risk_tier"]
                 _fhold, _ = _rgate_fw.evaluate_hold(
                     _fw_tier_srv, conversation_id=panel_id,
-                    prompt=user_input, surface="framework",
-                    stealth=(_conv_tag == "stealth"), description=user_input)
+                    prompt=_raw_request, surface="framework",
+                    stealth=(_conv_tag == "stealth"),
+                    description=user_input)
                 if _fhold is not None:
                     turn_state["kind"] = "risk_hold"
                     yield _sse("response", text=_fhold)
@@ -4252,6 +4266,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "config": config,
             "history": history,
             "user_input": user_input,
+            "raw_user_input": _raw_request,
             "images": images,
             "extra_context": extra_context,
             **_capture_clarification_authority(
@@ -4298,7 +4313,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                                   risk_override=(extra_context or {}).get("risk_override"),
                                   extra_context=extra_context,
                                   config_name=config_name,
-                                  turn_state=turn_state)
+                                  turn_state=turn_state,
+                                  raw_user_input=_raw_request)
         return
 
     # --- Phase 9: pre-routing pipeline question gate ---
@@ -4327,6 +4343,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "config": config,
             "history": history,
             "user_input": user_input,
+            "raw_user_input": _raw_request,
             "images": images,
             "extra_context": extra_context,
             **_capture_clarification_authority(
@@ -4372,6 +4389,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "config": config,
             "history": history,
             "user_input": user_input,
+            "raw_user_input": _raw_request,
             "images": images,
             "extra_context": extra_context,
             **_capture_clarification_authority(
@@ -4405,7 +4423,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                                             trace_dir=trace_dir,
                                             config_name=config_name,
                                             conversation_tag=conversation_tag,
-                                            turn_state=turn_state)
+                                            turn_state=turn_state,
+                                            raw_user_input=_raw_request)
     finally:
         # 2026-05-28: aggregate per-turn token usage into cost-summary.json.
         # Runs even when the SSE consumer disconnects mid-stream (GeneratorExit)
@@ -4454,7 +4473,7 @@ def _set_visual_error_outcome(context, reason):
 
 def _direct_stream(user_input, history, images=None, panel_id="main",
                    conversation_tag="", risk_override=None, extra_context=None,
-                   config_name=None, turn_state=None):
+                   config_name=None, turn_state=None, raw_user_input=None):
     """Lifecycle-scoped wrapper for every legacy direct-model invocation.
 
     ``_direct_stream`` is called both from the pipeline fallback and directly
@@ -4504,6 +4523,7 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
                 extra_context=direct_context,
                 config_name=config_name,
                 turn_state=turn_state,
+                raw_user_input=raw_user_input,
             )
             _copy_visual_outcome_context(direct_context, extra_context)
     finally:
@@ -4541,7 +4561,8 @@ def _direct_system_prompt(config, style_context=None):
 
 def _direct_stream_impl(user_input, history, images=None, panel_id="main",
                         conversation_tag="", risk_override=None,
-                        extra_context=None, config_name=None, turn_state=None):
+                        extra_context=None, config_name=None, turn_state=None,
+                        raw_user_input=None):
     """Generator: legacy single-model agentic loop with SSE tool events.
     Routes all tool calls through the unified dispatcher.
 
@@ -4565,6 +4586,12 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
         turn_state.get("trace_dir")
         if isinstance(turn_state, dict)
         else None
+    )
+    # Capture before the inline /risk prefix below is stripped.
+    _raw_request = (
+        raw_user_input
+        if isinstance(raw_user_input, str)
+        else user_input
     )
     direct_context = extra_context if isinstance(extra_context, dict) else {}
     config   = load_config()
@@ -4649,12 +4676,16 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
         if _ovr_ds is not None:
             user_input = _clean_ds
             messages[-1]["content"] = user_input
-        _eff_override = risk_override or _ovr_ds
-        _r_ds = _rgate_ds.assign_tier(user_input, panel_id,
-                                      is_trivial_text=True, override=_eff_override,
-                                      surface="direct")
+        _eff_override = (
+            risk_override or direct_context.get("risk_override") or _ovr_ds
+        )
+        _r_ds = _rgate_ds.assign_tier(
+            user_input, panel_id, is_trivial_text=True,
+            override=_eff_override, surface="direct",
+            raw_input=_raw_request,
+        )
         _hold_ds, _ = _rgate_ds.evaluate_hold(
-            _r_ds["risk_tier"], conversation_id=panel_id, prompt=user_input,
+            _r_ds["risk_tier"], conversation_id=panel_id, prompt=_raw_request,
             surface="direct", stealth=(_ds_tag == "stealth"),
             description=user_input)
         if _hold_ds is not None:
@@ -4882,7 +4913,8 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
 
 def _traced_direct_entry_stream(user_input, history, images=None,
                                 panel_id="main", conversation_tag="",
-                                extra_context=None, config_name=None):
+                                extra_context=None, config_name=None,
+                                raw_user_input=None):
     """Trace the real explicit server direct-entry path, fail-open."""
     turn_state = {
         "trace_dir": None, "kind": "direct-entry", "status": None,
@@ -4919,6 +4951,7 @@ def _traced_direct_entry_stream(user_input, history, images=None,
             extra_context=extra_context,
             config_name=config_name,
             turn_state=turn_state,
+            raw_user_input=raw_user_input,
         )
     except BaseException:
         turn_state["status"] = "error"
@@ -5004,6 +5037,7 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                     panel_id=panel_id, conversation_tag=turn_tag,
                     extra_context=extra_context,
                     config_name=config_name,
+                    raw_user_input=raw_user_input,
                 )
     finally:
         boot_context.reset_turn_trace_context(trace_token)
@@ -17549,7 +17583,10 @@ def clarification_respond():
                                                   trace_dir=_resume_trace_dir,
                                                   config_name=paused_authority["config_name"],
                                                   conversation_tag=_resume_tag,
-                                                  turn_state=turn_state):
+                                                  turn_state=turn_state,
+                                                  raw_user_input=pending.get(
+                                                      "raw_user_input",
+                                                  )):
                 yield chunk
                 try:
                     d = json.loads(chunk[6:])
@@ -17707,7 +17744,10 @@ def clarification_skip():
                                                   trace_dir=_skip_trace_dir,
                                                   config_name=paused_authority["config_name"],
                                                   conversation_tag=_skip_tag,
-                                                  turn_state=turn_state):
+                                                  turn_state=turn_state,
+                                                  raw_user_input=pending.get(
+                                                      "raw_user_input",
+                                                  )):
                 yield chunk
                 try:
                     d = json.loads(chunk[6:])
