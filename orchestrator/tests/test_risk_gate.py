@@ -158,9 +158,22 @@ class TestRiskPrefix(unittest.TestCase):
 
 class TestFingerprint(unittest.TestCase):
     def test_same_task_same_fp(self):
-        a = rg.task_fingerprint(conversation_id="c1", prompt="Deploy the site")
-        b = rg.task_fingerprint(conversation_id="c1", prompt="deploy the  site ")
-        self.assertEqual(a, b)  # whitespace + case normalized
+        raw = "Deploy  the site "
+        a = rg.task_fingerprint(conversation_id="c1", prompt=raw)
+        b = rg.task_fingerprint(conversation_id="c1", prompt=raw)
+        case_changed = rg.task_fingerprint(
+            conversation_id="c1", prompt="deploy  the site ",
+        )
+        whitespace_changed = rg.task_fingerprint(
+            conversation_id="c1", prompt="Deploy the site ",
+        )
+        wrapper_changed = rg.task_fingerprint(
+            conversation_id="c1", prompt=f"/direct {raw}",
+        )
+        self.assertEqual(a, b)  # byte-identical raw requests match
+        self.assertNotEqual(a, case_changed)
+        self.assertNotEqual(a, whitespace_changed)
+        self.assertNotEqual(a, wrapper_changed)
 
     def test_different_target_differs(self):
         a = rg.task_fingerprint(conversation_id="c1", prompt="save it",

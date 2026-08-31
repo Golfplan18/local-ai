@@ -3,9 +3,9 @@
 Two decisions on two clocks (spec §6):
 
   * BEFORE the run — a conservative, user-overridable ``risk_tier``
-    (light | standard | high-risk | irreversible). Deterministic: a
-    turn-head pattern table over the raw input (Stage A) plus an optional
-    ``## RISK TIER`` mode heading (Stage B). No model call.
+    (light | standard | high-risk | irreversible). The byte-exact and
+    cleaned/enriched requests are classified independently; the higher tier
+    wins before the optional mode floor is applied. No model call.
   * AFTER the run — ``route_observed`` signals folded from the Phase 1
     tool-event log (what the turn mutated / read), recorded for the Phase 4
     lane router. Post-hoc routing is permitted only in reversible tiers;
@@ -18,8 +18,7 @@ on Phase 1's ``tool_events`` for the approval-token store and the max-fold
 ordering helpers (no parallel machinery).
 
 PROVISIONAL tuning surfaces (flagged, not empirically calibrated): the
-Stage-A pattern table, the default tier, the fingerprint normalization, and
-the task-token TTL.
+Stage-A pattern table, the default tier, and the task-token TTL.
 """
 from __future__ import annotations
 
@@ -399,12 +398,11 @@ def task_fingerprint(*, conversation_id: str | None, prompt: str,
     """Structured identity of a task for the approval token. Binds more than
     conversation_id + prompt so the SAME task re-admits once while a
     materially different task (different target / mode / attachment) does not
-    inherit the token. Prompt is whitespace-normalized + lowercased so
-    trivial re-typing still matches; structural fields are exact."""
-    norm_prompt = re.sub(r"\s+", " ", (prompt or "").strip().lower())
+    inherit the token. The raw prompt and structural fields are exact: case,
+    whitespace, and wrappers remain identity-bearing."""
     payload = {
         "c": conversation_id or "",
-        "p": norm_prompt,
+        "p": prompt or "",
         "s": surface or "",
         "m": mode_id or "",
         "o": output_target or "",
@@ -733,14 +731,29 @@ def handle_risk_command(user_input: str, conversation_id: str | None) -> str | N
 def assign_tier(cleaned_input: str, conversation_id: str | None, *,
                 mode_text: str | None = None, is_trivial_text: bool = False,
                 override: str | None = None, record: bool = True,
-                surface: str = "") -> dict:
-    """Classify + (optionally) record the turn's tier. Merges the sticky
-    floor. Returns the classify_tier dict augmented with the resolved
-    tier. Never raises."""
+                surface: str = "", raw_input: str | None = None) -> dict:
+    """Classify exact raw and cleaned forms independently and enforce the
+    higher tier. Omitting ``raw_input`` retains single-form behavior."""
     sticky = get_sticky(conversation_id)
-    result = classify_tier(cleaned_input, mode_text=mode_text,
-                           sticky_floor=sticky, is_trivial_text=is_trivial_text,
-                           explicit_override=override)
+    result = classify_tier(
+        cleaned_input,
+        mode_text=mode_text,
+        sticky_floor=sticky,
+        is_trivial_text=is_trivial_text,
+        explicit_override=override,
+    )
+    if raw_input is not None:
+        raw_result = classify_tier(
+            raw_input,
+            mode_text=mode_text,
+            sticky_floor=sticky,
+            is_trivial_text=is_trivial_text,
+            explicit_override=override,
+        )
+        if _TIER_RANK.get(raw_result.get("risk_tier"), -1) > _TIER_RANK.get(
+            result.get("risk_tier"), -1,
+        ):
+            result = raw_result
     result["surface"] = surface
     if record:
         try:

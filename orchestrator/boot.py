@@ -12239,6 +12239,12 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             framework_prepared=framework_prepared,
             raw_user_input=raw_user_input,
         )
+    # Exact request identity stays separate from cleaned executor input.
+    _raw_request = (
+        raw_user_input
+        if isinstance(raw_user_input, str)
+        else user_input
+    )
     config = load_routing_config()
     framework_style_context = dict(extra_context or {})
     if style_id is not None:
@@ -12260,11 +12266,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     if PIPELINE_TRACE_AVAILABLE:
         trace_dir = pipeline_trace.start_trace(
             conversation_id=conversation_id,
-            raw_input=(
-                raw_user_input
-                if isinstance(raw_user_input, str)
-                else user_input
-            ),
+            raw_input=_raw_request,
             ambiguity_mode=ambiguity_mode,
             style_id=style_id,
             style_register=style_register,
@@ -12295,7 +12297,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     # / `/risk auto` sets the per-conversation sticky and short-circuits; a
     # "1"/"2" reply to a prior irreversible-tier hold approves/cancels it;
     # an inline `/risk <tier> <task>` override is lifted off the input.
-    _risk_override = None
+    _risk_override = (extra_context or {}).get("risk_override")
     try:
         import risk_gate as _rgate
         _sticky_reply = _rgate.handle_risk_command(user_input, conversation_id)
@@ -12311,7 +12313,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             if _tg_reply is not None:
                 turn_state["kind"] = "risk_hold"
                 return _tg_reply
-        user_input, _risk_override = _rgate.strip_risk_prefix(user_input)
+        user_input, _inline_risk_override = _rgate.strip_risk_prefix(user_input)
+        if _inline_risk_override is not None:
+            _risk_override = _inline_risk_override
     except Exception as _rge:
         print(f"[risk-gate] turn-head skipped: {_rge}")
 
@@ -12487,12 +12491,14 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             _fw_tier, _fw_ts = None, None
             try:
                 _fw_ts = _rgate.now_ts()
-                _fr = _rgate.assign_tier(user_input, conversation_id,
-                                         surface="framework")
+                _fr = _rgate.assign_tier(
+                    user_input, conversation_id, surface="framework",
+                    override=_risk_override, raw_input=_raw_request,
+                )
                 _fw_tier = _fr["risk_tier"]
                 _fhold, _ = _rgate.evaluate_hold(
                     _fw_tier, conversation_id=conversation_id,
-                    prompt=user_input, surface="framework",
+                    prompt=_raw_request, surface="framework",
                     description=user_input)
                 if _fhold is not None:
                     turn_state["kind"] = "risk_hold"
@@ -12662,11 +12668,12 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     try:
         _route_turn_ts = _rgate.now_ts()
         context_pkg["_route_turn_ts"] = _route_turn_ts
+        _enriched_request = context_pkg.get("cleaned_prompt", user_input)
         _risk = _rgate.assign_tier(
-            context_pkg.get("raw_prompt", user_input), conversation_id,
+            _enriched_request, conversation_id,
             mode_text=context_pkg.get("mode_text"),
             is_trivial_text=(gear <= 2), override=_risk_override,
-            surface="terminal")
+            surface="terminal", raw_input=_raw_request)
         _tier = _risk["risk_tier"]
         context_pkg["risk_tier"] = _tier
         # The hold is evaluated FIRST (before any other fallible step) and
@@ -12674,7 +12681,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         # irreversible task can never slip past it via an exception below.
         _hold_reply, _fp = _rgate.evaluate_hold(
             _tier, conversation_id=conversation_id,
-            prompt=context_pkg.get("raw_prompt", user_input), surface="terminal",
+            prompt=_raw_request, surface="terminal",
             mode_id=context_pkg.get("mode_name", ""), output_target=output_target,
             config_name=config_name or "", stealth=stealth,
             description=context_pkg.get("raw_prompt", user_input))
@@ -12689,12 +12696,12 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             from orchestrator import tool_events as _te_tier
         _te_tier.update_turn_risk_tier(_tier)
         _crit = _rgate.apply_criteria(
-            context_pkg, context_pkg.get("cleaned_prompt", user_input), _tier,
+            context_pkg, _enriched_request, _tier,
             invoker=_make_criteria_invoker(config, config_name))
         if _crit and _crit.startswith("HOLD:"):
             _hr, _ = _rgate.evaluate_hold(
                 "irreversible", conversation_id=conversation_id,
-                prompt=context_pkg.get("raw_prompt", user_input),
+                prompt=_raw_request,
                 surface="terminal", mode_id=context_pkg.get("mode_name", ""),
                 output_target=output_target, config_name=config_name or "",
                 stealth=stealth, description=_crit[5:])
