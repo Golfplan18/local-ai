@@ -133,6 +133,7 @@ def assert_target_embedder_available(
                 provider="openrouter",
                 model_name=model,
                 base_url=base_url,
+                dim=target_dim,
                 timeout=45,
                 attempts=1,
             )[0]
@@ -315,6 +316,7 @@ def reembed_collection(
                 model_name=target_model,
                 url=ollama_url,
                 base_url=target_base_url,
+                dim=target_dim,
             )
             for vec in sub_embeddings:
                 if len(vec) != target_dim:
