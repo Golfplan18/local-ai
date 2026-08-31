@@ -21,6 +21,7 @@ collections.
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 import urllib.error
@@ -349,8 +350,19 @@ def _openrouter_embed_batch(
     base_url: str = _DEFAULT_OPENROUTER_URL,
     timeout: float = 120.0,
     attempts: int = 3,
+    dim: int | None = None,
 ) -> list[list[float]]:
     """Call OpenRouter's embeddings endpoint for one batch."""
+    if dim is None:
+        model_key = model.strip().lower() if isinstance(model, str) else ""
+        dim = (
+            EMBEDDING_DIM
+            if model_key == EMBEDDING_MODEL.strip().lower()
+            else KNOWN_EMBEDDING_DIMS.get(model_key)
+        )
+    if isinstance(dim, bool) or not isinstance(dim, int) or dim < 1:
+        raise RuntimeError(f"OpenRouter dimension is not configured for {model!r}")
+
     key = _openrouter_api_key()
     if not key:
         raise RuntimeError(
@@ -382,16 +394,42 @@ def _openrouter_embed_batch(
             rows = data.get("data")
             if not isinstance(rows, list):
                 raise RuntimeError("OpenRouter returned no embedding data")
-            rows = sorted(rows, key=lambda r: int(r.get("index", 0)))
-            embeddings = [r.get("embedding") for r in rows]
-            if len(embeddings) != len(texts):
-                raise RuntimeError(
-                    f"OpenRouter returned {len(embeddings)} embeddings "
-                    f"for {len(texts)} inputs"
-                )
-            if not all(isinstance(v, list) for v in embeddings):
-                raise RuntimeError("OpenRouter returned malformed embeddings")
-            return embeddings
+            ordered: list[list[float] | None] = [None] * len(texts)
+            for position, row in enumerate(rows):
+                if not isinstance(row, dict):
+                    raise RuntimeError(f"OpenRouter row {position} is not an object")
+                if "index" not in row:
+                    raise RuntimeError(f"OpenRouter row {position} has no index")
+                index = row["index"]
+                if type(index) is not int:
+                    raise RuntimeError(f"OpenRouter row {position} index is not an int")
+                if index < 0 or index >= len(texts):
+                    raise RuntimeError(f"OpenRouter index {index} is out of range")
+                if ordered[index] is not None:
+                    raise RuntimeError(f"OpenRouter index {index} is duplicated")
+                vector = row.get("embedding")
+                if not isinstance(vector, list):
+                    raise RuntimeError(f"OpenRouter vector {index} is not a list")
+                if len(vector) != dim:
+                    raise RuntimeError(
+                        f"OpenRouter returned vector dim {len(vector)}, "
+                        f"expected {dim} for {model}"
+                    )
+                if any(
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(value)
+                    for value in vector
+                ):
+                    raise RuntimeError(
+                        f"OpenRouter embedding at index {index} contains "
+                        "a non-numeric or non-finite component"
+                    )
+                ordered[index] = vector
+            missing = [index for index, vector in enumerate(ordered) if vector is None]
+            if missing:
+                raise RuntimeError(f"OpenRouter response is missing indices {missing}")
+            return [vector for vector in ordered if vector is not None]
         except urllib.error.HTTPError as exc:
             try:
                 body = exc.read().decode("utf-8", errors="replace")[:500]
@@ -459,6 +497,7 @@ def embed_texts(
     base_url: str = EMBEDDING_BASE_URL,
     timeout: float = 120.0,
     attempts: int = 3,
+    dim: int | None = None,
 ) -> list[list[float]]:
     """Embed a batch of texts with the selected provider."""
     clean_texts = [str(t or "") for t in texts]
@@ -469,6 +508,7 @@ def embed_texts(
             base_url=base_url,
             timeout=timeout,
             attempts=attempts,
+            dim=dim,
         )
     return _ollama_embed_batch(
         clean_texts,
@@ -508,6 +548,7 @@ def _make_openrouter_embedding_function(
                 model_name=self.model_name,
                 base_url=self.base_url,
                 timeout=self.timeout,
+                dim=self.dim,
             )
             if self.dim:
                 for vec in vectors:

@@ -193,17 +193,20 @@ class TestOpenRouterRuntimeCallers(unittest.TestCase):
         from orchestrator import embedding, reranker
 
         embedding_reply = json.dumps({
-            "data": [{"index": 0, "embedding": [0.25, 0.75]}],
+            "data": [
+                {"index": 1, "embedding": [0.75, 0.25]},
+                {"index": 0, "embedding": [0.25, 0.75]},
+            ],
         }).encode()
         with mock.patch.dict(os.environ, {"OPENROUTER_API_KEY": "secret"}), \
              mock.patch.object(
                  embedding.network_policy, "openrouter_request_bytes",
                  return_value=(embedding_reply, mock.sentinel.destination),
-             ) as embedding_fetch:
+            ) as embedding_fetch:
             vectors = embedding._openrouter_embed_batch(
-                ["hello"], model="vendor/embed", attempts=1,
+                ["hello", "world"], model="vendor/embed", attempts=1, dim=2,
             )
-        self.assertEqual(vectors, [[0.25, 0.75]])
+        self.assertEqual(vectors, [[0.25, 0.75], [0.75, 0.25]])
         self.assertEqual(
             embedding_fetch.call_args.args[0],
             "https://openrouter.ai/api/v1/embeddings",
@@ -232,6 +235,66 @@ class TestOpenRouterRuntimeCallers(unittest.TestCase):
             "https://openrouter.ai/api/v1/rerank",
         )
 
+    def test_embedding_refuses_invalid_response_indices(self):
+        from orchestrator import embedding
+
+        def row(index):
+            return {"index": index, "embedding": [0.25, 0.75]}
+
+        valid = row(1)
+        cases = {
+            "row-not-object": [row(0), []],
+            "index-absent": [{"embedding": [0.25, 0.75]}, valid],
+            "bool-index": [row(False), valid],
+            "string-index": [row("0"), valid],
+            "float-index": [row(0.0), valid],
+            "negative-index": [row(-1), valid],
+            "duplicate-index": [row(0), row(0)],
+            "missing-index": [row(0)],
+            "out-of-range-index": [row(0), row(2)],
+        }
+        for name, rows in cases.items():
+            with self.subTest(name=name), \
+                 mock.patch.dict(os.environ, {"OPENROUTER_API_KEY": "secret"}), \
+                 mock.patch.object(
+                     embedding.network_policy, "openrouter_request_bytes",
+                     return_value=(
+                         json.dumps({"data": rows}).encode(),
+                         mock.sentinel.destination,
+                     ),
+                 ), self.assertRaises(RuntimeError):
+                embedding._openrouter_embed_batch(
+                    ["hello", "world"], model="vendor/embed", attempts=1, dim=2,
+                )
+
+    def test_embedding_refuses_unsafe_vectors_before_upsert(self):
+        from orchestrator import embedding
+
+        cases = {
+            "not-list": "unsafe",
+            "bool-component": [True, 0.75],
+            "string-component": ["0.25", 0.75],
+            "null-component": [None, 0.75],
+            "nan-component": [float("nan"), 0.75],
+            "infinite-component": [float("inf"), 0.75],
+            "wrong-dimension": [0.25],
+        }
+        for name, vector in cases.items():
+            upsert = mock.Mock()
+            reply = json.dumps({
+                "data": [{"index": 0, "embedding": vector}],
+            }).encode()
+            with self.subTest(name=name), \
+                 mock.patch.dict(os.environ, {"OPENROUTER_API_KEY": "secret"}), \
+                 mock.patch.object(
+                     embedding.network_policy, "openrouter_request_bytes",
+                     return_value=(reply, mock.sentinel.destination),
+                 ), self.assertRaises(RuntimeError):
+                upsert(embeddings=embedding._openrouter_embed_batch(
+                    ["hello"], model="vendor/embed", attempts=1, dim=2,
+                ))
+            upsert.assert_not_called()
+
     def test_embedding_refuses_nonofficial_base_before_transport(self):
         from orchestrator import embedding
 
@@ -243,7 +306,7 @@ class TestOpenRouterRuntimeCallers(unittest.TestCase):
             ), self.assertRaisesRegex(RuntimeError, "trusted origin"):
             embedding._openrouter_embed_batch(
                 ["hello"], model="vendor/embed",
-                base_url="https://evil.example/api/v1", attempts=1,
+                base_url="https://evil.example/api/v1", attempts=1, dim=2,
             )
         opener.open.assert_not_called()
 
