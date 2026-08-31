@@ -219,14 +219,15 @@ class _MSIComposer:
 class _PromotionCollection:
     def __init__(
         self, name, metadata, rows=None, *,
-        fail_upsert=False, corrupt_documents=False, corrupt_embeddings=False,
-        embedding_ulp_drift=0,
+        fail_upsert=False, corrupt_documents=False, corrupt_metadatas=False,
+        corrupt_embeddings=False, embedding_ulp_drift=0,
     ):
         self.name = name
         self.metadata = dict(metadata)
         self.rows = dict(rows or {})
         self.fail_upsert = fail_upsert
         self.corrupt_documents = corrupt_documents
+        self.corrupt_metadatas = corrupt_metadatas
         self.corrupt_embeddings = corrupt_embeddings
         self.embedding_ulp_drift = embedding_ulp_drift
 
@@ -245,6 +246,9 @@ class _PromotionCollection:
                 result["documents"][0] += "\ncorrupted"
         if "metadatas" in include:
             result["metadatas"] = [self.rows[row_id][1] for row_id in selected]
+            if self.corrupt_metadatas and result["metadatas"]:
+                result["metadatas"][0] = dict(result["metadatas"][0])
+                result["metadatas"][0]["synthetic_corruption"] = True
         if "embeddings" in include:
             result["embeddings"] = [self.rows[row_id][2] for row_id in selected]
             if self.corrupt_embeddings and result["embeddings"]:
@@ -301,12 +305,13 @@ class _PromotionClient:
     def __init__(
         self, collections, *,
         fail_created_upsert=False, corrupt_created_documents=False,
-        corrupt_created_embeddings=False,
+        corrupt_created_metadatas=False, corrupt_created_embeddings=False,
         created_embedding_ulp_drift=0,
     ):
         self.collections = {collection.name: collection for collection in collections}
         self.fail_created_upsert = fail_created_upsert
         self.corrupt_created_documents = corrupt_created_documents
+        self.corrupt_created_metadatas = corrupt_created_metadatas
         self.corrupt_created_embeddings = corrupt_created_embeddings
         self.created_embedding_ulp_drift = created_embedding_ulp_drift
         self.created = []
@@ -325,6 +330,7 @@ class _PromotionClient:
             name, metadata,
             fail_upsert=self.fail_created_upsert,
             corrupt_documents=self.corrupt_created_documents,
+            corrupt_metadatas=self.corrupt_created_metadatas,
             corrupt_embeddings=self.corrupt_created_embeddings,
             embedding_ulp_drift=self.created_embedding_ulp_drift,
         )
@@ -335,6 +341,49 @@ class _PromotionClient:
     def delete_collection(self, *, name):
         self.deleted.append(name)
         del self.collections[name]
+
+
+class _ProtectedCopyClient(_PromotionClient):
+    def __init__(self, collections, **kwargs):
+        super().__init__(collections, **kwargs)
+        self.get_collection_names = []
+        self.create_embedding_functions = []
+
+    def get_collection(self, *, name):
+        self.get_collection_names.append(name)
+        return self.collections[name]
+
+    def create_collection(self, *, name, metadata, embedding_function):
+        if name in self.collections:
+            raise AssertionError("test attempted to overwrite a collection")
+        self.create_embedding_functions.append(embedding_function)
+        collection = _PromotionCollection(
+            name, metadata,
+            fail_upsert=self.fail_created_upsert,
+            corrupt_documents=self.corrupt_created_documents,
+            corrupt_metadatas=self.corrupt_created_metadatas,
+            corrupt_embeddings=self.corrupt_created_embeddings,
+            embedding_ulp_drift=self.created_embedding_ulp_drift,
+        )
+        self.collections[name] = collection
+        self.created.append(name)
+        return collection
+
+
+class _DriftingPromotionCollection(_PromotionCollection):
+    def __init__(self, name, metadata, rows):
+        super().__init__(name, metadata, rows)
+        self.payload_reads = 0
+
+    def get(self, *, ids=None, include=None):
+        result = super().get(ids=ids, include=include)
+        if include and all(
+            key in include for key in ("documents", "metadatas", "embeddings")
+        ):
+            self.payload_reads += 1
+            if self.payload_reads >= 2 and result.get("documents"):
+                result["documents"][0] += "\nsynthetic source drift"
+        return result
 
 
 class CopiedEmbeddingComparisonTests(unittest.TestCase):
@@ -387,6 +436,350 @@ class CopiedEmbeddingComparisonTests(unittest.TestCase):
                 rebuild._compare_copied_embeddings(
                     source, target, self.profile, 1,
                 )
+
+
+class ProtectedInactiveCopyTests(unittest.TestCase):
+    source_name = "conversations_current"
+    target_name = "conversations_protected_inactive"
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.chroma = self.root / "chroma"
+        self.chroma.mkdir()
+        self.authority_plan = self.root / "protected-authority.json"
+        self.collection_metadata = {
+            "hnsw:space": "cosine",
+            "ora:logical_collection": "conversations",
+            "ora:embedding_profile": "openrouter:qwen/test-embedding",
+            "ora:embedding_dimension": 3,
+            "unchanged_profile_value": "preserve-me",
+        }
+        self.rows = {
+            "row-empty-assistant": self._row(
+                "row-empty-assistant", "private", [0.0, 0.0, 1.0],
+                user="A user message", assistant="",
+            ),
+            "row-empty-user": self._row(
+                "row-empty-user", "", [1.0, 0.0, 0.0],
+                user="", assistant="An assistant message",
+            ),
+            "row-private": self._row(
+                "row-private", "private", [0.0, 1.0, 0.0],
+            ),
+            "row-propagated": self._row(
+                "row-propagated", "private", [0.5, 0.5, 0.0],
+            ),
+            "row-standard": self._row(
+                "row-standard", "", [0.5, 0.0, 0.5],
+            ),
+        }
+        self.private_ids = ["row-empty-assistant", "row-private"]
+        self.standard_ids = [
+            "row-empty-user", "row-propagated", "row-standard",
+        ]
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    @staticmethod
+    def _row(row_id, tag, vector, *, user="Question", assistant="Answer"):
+        document = (
+            f"## Context\n\nContext {row_id}\n\n## Exchange\n\n"
+            f"**User:**\n\n{user}\n\n**Assistant:**\n\n{assistant}"
+        )
+        metadata = {
+            "tag": tag,
+            "tag_private": tag == "private",
+            "conversation_id": f"conversation-{row_id}",
+            "project_ids": "project-one, project-two",
+            "source_path": f"recovery/{row_id}.md",
+            "embedding_text_sha256": hashlib.sha256(
+                f"orientation-{row_id}".encode("utf-8")
+            ).hexdigest(),
+        }
+        return document, metadata, vector
+
+    @staticmethod
+    def _id_digest(ids):
+        digest = hashlib.sha256()
+        for row_id in sorted(ids):
+            digest.update(json.dumps(
+                row_id, ensure_ascii=False, separators=(",", ":"),
+            ).encode("utf-8"))
+            digest.update(b"\n")
+        return digest.hexdigest()
+
+    def _plan_value(self):
+        return {
+            "source_physical_collection": self.source_name,
+            "target_physical_collection": self.target_name,
+            "private": {
+                "ids": list(self.private_ids),
+                "expected_count": len(self.private_ids),
+                "expected_id_sha256": self._id_digest(self.private_ids),
+            },
+            "standard": {
+                "ids": list(self.standard_ids),
+                "expected_count": len(self.standard_ids),
+                "expected_id_sha256": self._id_digest(self.standard_ids),
+            },
+        }
+
+    def _write_plan(self, value=None):
+        self.authority_plan.write_text(
+            json.dumps(value or self._plan_value()), encoding="utf-8",
+        )
+
+    def _source(self, *, drifting=False):
+        collection_type = (
+            _DriftingPromotionCollection if drifting else _PromotionCollection
+        )
+        return collection_type(
+            self.source_name, self.collection_metadata, self.rows,
+        )
+
+    @staticmethod
+    def _snapshot(collection):
+        return {
+            row_id: (document, dict(metadata), list(vector))
+            for row_id, (document, metadata, vector) in collection.rows.items()
+        }
+
+    def test_protected_inactive_copy_preserves_payloads_and_reclassifies_only_privacy(self):
+        self._write_plan()
+        source = self._source()
+        source_before = self._snapshot(source)
+        client = _ProtectedCopyClient(
+            [source], created_embedding_ulp_drift=1,
+        )
+        factory_calls = []
+        with (
+            mock.patch.object(
+                rebuild, "_embedding_function",
+                side_effect=AssertionError("protected copy reached embedder"),
+            ) as embedder,
+            mock.patch.object(
+                rebuild, "_chroma_client",
+                side_effect=AssertionError("protected copy bypassed bound client"),
+            ) as ambient_client,
+            mock.patch.object(
+                rebuild, "build_conversation_replay_plan",
+                side_effect=AssertionError("protected copy reached replay"),
+            ) as replay,
+            mock.patch(
+                "socket.create_connection",
+                side_effect=AssertionError("protected copy reached network"),
+            ) as network,
+        ):
+            report = rebuild.protected_conversation_inactive_copy(
+                chromadb_path=self.chroma,
+                authority_plan_path=self.authority_plan,
+                batch_size=2,
+                client_factory=lambda path: factory_calls.append(path) or client,
+            )
+
+        self.assertEqual(source.rows, source_before)
+        target = client.collections[self.target_name]
+        self.assertEqual(set(target.rows), set(source.rows))
+        authority = {
+            **{row_id: "private" for row_id in self.private_ids},
+            **{row_id: "standard" for row_id in self.standard_ids},
+        }
+        for row_id, (source_document, source_metadata, source_vector) in source.rows.items():
+            target_document, target_metadata, target_vector = target.rows[row_id]
+            self.assertEqual(target_document, source_document)
+            self.assertEqual(target_vector, source_vector)
+            self.assertEqual(
+                {
+                    key: value for key, value in target_metadata.items()
+                    if key not in {"turn_privacy", "tag", "tag_private"}
+                },
+                {
+                    key: value for key, value in source_metadata.items()
+                    if key not in {"turn_privacy", "tag", "tag_private"}
+                },
+            )
+            expected = authority[row_id]
+            self.assertEqual(target_metadata["turn_privacy"], expected)
+            self.assertEqual(
+                target_metadata["tag"], "private" if expected == "private" else "",
+            )
+            self.assertIs(
+                target_metadata["tag_private"], expected == "private",
+            )
+        self.assertEqual(
+            target.rows["row-empty-user"][0], source.rows["row-empty-user"][0],
+        )
+        self.assertEqual(
+            target.rows["row-empty-assistant"][0],
+            source.rows["row-empty-assistant"][0],
+        )
+        self.assertEqual(report["status"], "inactive_copy_complete")
+        self.assertFalse(report["promoted"])
+        self.assertTrue(report["source_retained"])
+        self.assertGreater(report["copy_validation"]["drifted_rows"], 0)
+        self.assertGreater(report["copy_validation"]["drifted_components"], 0)
+        self.assertEqual(report["copy_validation"]["max_float32_ulp"], 1)
+        self.assertEqual(
+            report["validation"]["privacy_transitions"]["private_to_standard"],
+            1,
+        )
+        self.assertEqual(factory_calls, [str(self.chroma.absolute())])
+        self.assertEqual(
+            client.get_collection_names,
+            [self.source_name, self.target_name, self.source_name],
+        )
+        self.assertEqual(client.create_embedding_functions, [None])
+        embedder.assert_not_called()
+        ambient_client.assert_not_called()
+        replay.assert_not_called()
+        network.assert_not_called()
+
+    def test_protected_inactive_copy_refuses_unbound_conflicting_or_non_source_ids(self):
+        cases = []
+        missing = self._plan_value()
+        del missing["private"]
+        cases.append(("missing authority", missing))
+
+        unknown = self._plan_value()
+        unknown["unreviewed"] = []
+        cases.append(("unknown authority", unknown))
+
+        count_drift = self._plan_value()
+        count_drift["private"]["expected_count"] += 1
+        cases.append(("count drift", count_drift))
+
+        digest_drift = self._plan_value()
+        digest_drift["standard"]["expected_id_sha256"] = "0" * 64
+        cases.append(("digest drift", digest_drift))
+
+        conflict = self._plan_value()
+        conflict["standard"]["ids"].append("row-private")
+        conflict["standard"]["expected_count"] += 1
+        conflict["standard"]["expected_id_sha256"] = self._id_digest(
+            conflict["standard"]["ids"]
+        )
+        cases.append(("conflicting authority", conflict))
+
+        missing_source_id = self._plan_value()
+        missing_source_id["standard"]["ids"].remove("row-standard")
+        missing_source_id["standard"]["expected_count"] -= 1
+        missing_source_id["standard"]["expected_id_sha256"] = self._id_digest(
+            missing_source_id["standard"]["ids"]
+        )
+        cases.append(("missing source id", missing_source_id))
+
+        recovery_only = self._plan_value()
+        recovery_only["standard"]["ids"].append("row-recovery-only")
+        recovery_only["standard"]["expected_count"] += 1
+        recovery_only["standard"]["expected_id_sha256"] = self._id_digest(
+            recovery_only["standard"]["ids"]
+        )
+        cases.append(("recovery-only id", recovery_only))
+
+        for label, plan in cases:
+            with self.subTest(label=label):
+                self._write_plan(plan)
+                source = self._source()
+                source_before = self._snapshot(source)
+                client = _ProtectedCopyClient([source])
+                with self.assertRaises(rebuild.RebuildError):
+                    rebuild.protected_conversation_inactive_copy(
+                        chromadb_path=self.chroma,
+                        authority_plan_path=self.authority_plan,
+                        client_factory=lambda _path: client,
+                    )
+                self.assertEqual(source.rows, source_before)
+                self.assertEqual(client.created, [])
+                self.assertEqual(client.deleted, [])
+                self.assertNotIn(self.target_name, client.collections)
+
+        self._write_plan()
+        source = self._source()
+        colliding_target = _PromotionCollection(
+            self.target_name, self.collection_metadata, {},
+        )
+        collision_client = _ProtectedCopyClient([source, colliding_target])
+        with self.assertRaisesRegex(rebuild.RebuildError, "already exists"):
+            rebuild.protected_conversation_inactive_copy(
+                chromadb_path=self.chroma,
+                authority_plan_path=self.authority_plan,
+                client_factory=lambda _path: collision_client,
+            )
+        self.assertEqual(collision_client.created, [])
+        self.assertEqual(collision_client.deleted, [])
+        self.assertIs(
+            collision_client.collections[self.target_name], colliding_target,
+        )
+
+        conflicting_source = self._source()
+        conflicting_source.rows["row-standard"][1]["tag_private"] = True
+        conflicting_client = _ProtectedCopyClient([conflicting_source])
+        with self.assertRaisesRegex(rebuild.RebuildError, "source privacy metadata"):
+            rebuild.protected_conversation_inactive_copy(
+                chromadb_path=self.chroma,
+                authority_plan_path=self.authority_plan,
+                client_factory=lambda _path: conflicting_client,
+            )
+        self.assertEqual(conflicting_client.created, [])
+        self.assertEqual(conflicting_client.deleted, [])
+
+    def test_protected_inactive_copy_refuses_drift_and_removes_only_created_target(self):
+        self._write_plan()
+        corruptions = (
+            {"corrupt_created_documents": True},
+            {"corrupt_created_metadatas": True},
+            {"corrupt_created_embeddings": True},
+        )
+        for options in corruptions:
+            with self.subTest(options=options):
+                source = self._source()
+                source_before = self._snapshot(source)
+                client = _ProtectedCopyClient([source], **options)
+                with self.assertRaises(rebuild.RebuildError):
+                    rebuild.protected_conversation_inactive_copy(
+                        chromadb_path=self.chroma,
+                        authority_plan_path=self.authority_plan,
+                        batch_size=2,
+                        client_factory=lambda _path: client,
+                    )
+                self.assertEqual(source.rows, source_before)
+                self.assertNotIn(self.target_name, client.collections)
+                self.assertEqual(client.created, [self.target_name])
+                self.assertEqual(client.deleted, [self.target_name])
+
+        source = self._source()
+        source_before = self._snapshot(source)
+        client = _ProtectedCopyClient(
+            [source], created_embedding_ulp_drift=2,
+        )
+        with self.assertRaisesRegex(rebuild.RebuildError, "one float32 ULP"):
+            rebuild.protected_conversation_inactive_copy(
+                chromadb_path=self.chroma,
+                authority_plan_path=self.authority_plan,
+                batch_size=2,
+                client_factory=lambda _path: client,
+            )
+        self.assertEqual(source.rows, source_before)
+        self.assertNotIn(self.target_name, client.collections)
+        self.assertEqual(client.created, [self.target_name])
+        self.assertEqual(client.deleted, [self.target_name])
+
+        source = self._source(drifting=True)
+        source_before = self._snapshot(source)
+        client = _ProtectedCopyClient([source])
+        with self.assertRaisesRegex(rebuild.RebuildError, "source drifted"):
+            rebuild.protected_conversation_inactive_copy(
+                chromadb_path=self.chroma,
+                authority_plan_path=self.authority_plan,
+                batch_size=10,
+                client_factory=lambda _path: client,
+            )
+        self.assertEqual(source.rows, source_before)
+        self.assertNotIn(self.target_name, client.collections)
+        self.assertEqual(client.created, [self.target_name])
+        self.assertEqual(client.deleted, [self.target_name])
 
 
 class ConversationSourceRebuildTests(unittest.TestCase):

@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
-"""Source-driven Chroma rebuilds into an explicit, inactive store.
+"""Protected Chroma copying, source replay, promotion, and rollback tools.
 
-The live Chroma directory is a derived cache.  This module rebuilds logical
-collections from their durable sources without reading the old Chroma store or
-mutating those sources.  Implemented phases are:
+Implemented phases are:
 
+* ``protected-inactive-copy`` — metadata-only conversation repair from one
+  operator-supplied, count/digest-bound per-row privacy authority plan.  This
+  phase reads an existing Chroma collection, copies its stored vectors into a
+  fresh same-store target, and does not embed, checkpoint/resume, alter runtime
+  configuration, or activate the target;
 * ``conversations`` — historical rows from the authoritative cleaned-pair
   archive plus manifest-owned live/legacy chunk Markdown;
 * ``knowledge`` — vault Engrams, Resources, the Ora mental-model library, and
   the MSI News mirror with its special metadata/body filter and HCP layout;
 * ``msi-news-articles`` — MSI's canonical published articles composed through
-  the project-owned news indexer (the sibling Columns tree is not in scope).
+  the project-owned news indexer (the sibling Columns tree is not in scope);
+* ``promote-conversations`` and ``rollback-conversations`` — explicit mapping
+  changes over validated conversation collections while Ora is stopped.
 
-All phases require an explicit inactive target, use deterministic ids and
-atomic checkpoints for resume, and validate their complete source plans before
-opening Chroma.  Source-derived phases batch ``embedding.embed_texts`` and pass
-explicit 4,096-dimensional vectors to Chroma; ``--dry-run`` cannot call an
-embedding API.
+The three source-replay phases rebuild logical collections from durable sources
+without reading the old Chroma store or mutating those sources.  They require
+an explicit inactive target, use deterministic ids and atomic checkpoints for
+resume, and validate their complete source plans before opening Chroma.  They
+batch ``embedding.embed_texts`` and pass explicit vectors to Chroma;
+``--dry-run`` cannot call an embedding API.
 """
 
 from __future__ import annotations
@@ -1403,6 +1409,7 @@ def execute_conversation_replay(
 
 _PROMOTION_TAGS = ("", "private")
 _SHA256_RE = re.compile(r"\A[0-9a-f]{64}\Z")
+_PROTECTED_PRIVACY_FIELDS = frozenset({"turn_privacy", "tag", "tag_private"})
 
 
 def _strict_json(path: Path, label: str) -> dict[str, Any]:
@@ -1415,6 +1422,107 @@ def _strict_json(path: Path, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise RebuildError(f"{label} must be a JSON object: {path}")
     return value
+
+
+def _sorted_id_sha256(ids: Iterable[str]) -> str:
+    """Hash sorted row ids with the same JSON-lines encoding as ``_audit``."""
+    digest = hashlib.sha256()
+    for row_id in sorted(ids):
+        digest.update(json.dumps(
+            row_id, ensure_ascii=False, separators=(",", ":"),
+        ).encode("utf-8"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def _protected_authority_plan(
+    path: str | Path,
+) -> tuple[str, str, dict[str, str], dict[str, dict[str, Any]], str]:
+    """Load one exact, non-persistent owner authority for an inactive copy."""
+    plan = _strict_json(_absolute(path), "protected-copy authority plan")
+    required = {
+        "source_physical_collection", "target_physical_collection",
+        "private", "standard",
+    }
+    if set(plan) != required:
+        raise RebuildError(
+            "protected-copy authority plan has missing or unknown fields"
+        )
+    source_name, target_name = (
+        plan["source_physical_collection"], plan["target_physical_collection"],
+    )
+    if (
+        not isinstance(source_name, str) or not _SAFE_ID_RE.fullmatch(source_name)
+        or not isinstance(target_name, str) or not _SAFE_ID_RE.fullmatch(target_name)
+        or source_name == target_name
+    ):
+        raise RebuildError(
+            "protected-copy authority plan requires distinct safe collection names"
+        )
+
+    authority: dict[str, str] = {}
+    bindings: dict[str, dict[str, Any]] = {}
+    label_sets: dict[str, set[str]] = {}
+    for label in ("private", "standard"):
+        entry = plan[label]
+        if not isinstance(entry, dict) or set(entry) != {
+            "ids", "expected_count", "expected_id_sha256",
+        }:
+            raise RebuildError(
+                f"protected-copy {label} authority has missing or unknown fields"
+            )
+        ids = entry["ids"]
+        expected_count = entry["expected_count"]
+        expected_digest = entry["expected_id_sha256"]
+        if (
+            not isinstance(ids, list)
+            or any(
+                not isinstance(row_id, str) or not _SAFE_ID_RE.fullmatch(row_id)
+                for row_id in ids
+            )
+            or len(ids) != len(set(ids))
+        ):
+            raise RebuildError(
+                f"protected-copy {label} authority ids are invalid or duplicated"
+            )
+        if (
+            isinstance(expected_count, bool) or not isinstance(expected_count, int)
+            or expected_count < 0
+            or not isinstance(expected_digest, str)
+            or not _SHA256_RE.fullmatch(expected_digest)
+        ):
+            raise RebuildError(
+                f"protected-copy {label} count/digest binding is invalid"
+            )
+        actual_digest = _sorted_id_sha256(ids)
+        if len(ids) != expected_count or actual_digest != expected_digest:
+            raise RebuildError(
+                f"protected-copy {label} authority count/digest drifted"
+            )
+        label_sets[label] = set(ids)
+        bindings[label] = {
+            "count": expected_count, "id_sha256": expected_digest,
+        }
+
+    overlap = label_sets["private"].intersection(label_sets["standard"])
+    if overlap:
+        raise RebuildError("protected-copy authority assigns conflicting privacy")
+    for row_id in label_sets["private"]:
+        authority[row_id] = "private"
+    for row_id in label_sets["standard"]:
+        authority[row_id] = "standard"
+    if not authority:
+        raise RebuildError("protected-copy authority is empty")
+    plan_fingerprint = hashlib.sha256(json.dumps(
+        {
+            "source_physical_collection": source_name,
+            "target_physical_collection": target_name,
+            "private": bindings["private"],
+            "standard": bindings["standard"],
+        },
+        ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    return source_name, target_name, authority, bindings, plan_fingerprint
 
 
 def _replay_evidence(inactive: Path, active: Path) -> dict[str, Any]:
@@ -1871,6 +1979,394 @@ def _embedding_function(_profile: dict[str, Any]) -> Any:
 def _chroma_client(path: str) -> Any:
     import chromadb
     return chromadb.PersistentClient(path=path)
+
+
+def _protected_collection_profile(
+    collection: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    metadata = getattr(collection, "metadata", None)
+    if not isinstance(metadata, dict):
+        raise RebuildError("protected-copy source profile metadata is invalid")
+    profile_id = metadata.get("ora:embedding_profile")
+    try:
+        dimension = int(metadata.get("ora:embedding_dimension"))
+    except (TypeError, ValueError) as exc:
+        raise RebuildError("protected-copy source profile metadata is invalid") from exc
+    if (
+        not isinstance(profile_id, str) or ":" not in profile_id
+        or dimension < 1
+    ):
+        raise RebuildError("protected-copy source profile metadata is invalid")
+    provider, model = profile_id.split(":", 1)
+    if not provider or not model:
+        raise RebuildError("protected-copy source profile metadata is invalid")
+    profile = {
+        "provider": provider, "model": model, "dimension": dimension,
+    }
+    _collection_profile(collection, profile)
+    return profile, dict(metadata)
+
+
+def _protected_collection_identity(collection: Any) -> tuple[str, str | int]:
+    collection_id = getattr(collection, "id", None)
+    if collection_id is not None and str(collection_id):
+        return "id", str(collection_id)
+    return "object", id(collection)
+
+
+def _protected_digest_update(
+    digest: Any, payload: Any, *, row_id: str, label: str,
+) -> None:
+    try:
+        encoded = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise RebuildError(
+            f"protected-copy {label} is not serializable for {row_id!r}"
+        ) from exc
+    digest.update(encoded + b"\n")
+
+
+def _protected_collection_audit(
+    collection: Any,
+    profile: dict[str, Any],
+    batch_size: int,
+    authority: dict[str, str],
+    *,
+    source_metadata: bool,
+    copy_to: Any | None = None,
+) -> dict[str, Any]:
+    """Audit an exact protected-copy side and optionally copy repaired rows."""
+    if batch_size < 1:
+        raise RebuildError("protected-copy requires a positive batch")
+    collection_metadata = _collection_profile(collection, profile)
+    all_ids = _collection_ids(collection)
+    if set(all_ids) != set(authority):
+        raise RebuildError(
+            "protected-copy authority and collection id coverage differ"
+        )
+    digests = {
+        key: hashlib.sha256()
+        for key in (
+            "documents", "metadatas", "repaired_metadatas",
+            "nonprivacy_metadatas", "embeddings",
+        )
+    }
+    source_privacy = {"standard": 0, "private": 0}
+    authority_privacy = {"standard": 0, "private": 0}
+    transitions = {
+        "standard_to_standard": 0, "standard_to_private": 0,
+        "private_to_standard": 0, "private_to_private": 0,
+        "metadata_rows_updated": 0,
+    }
+    for start in range(0, len(all_ids), batch_size):
+        requested = all_ids[start:start + batch_size]
+        result = collection.get(
+            ids=requested, include=["documents", "metadatas", "embeddings"],
+        )
+        values: dict[str, list[Any]] = {}
+        for key in ("ids", "documents", "metadatas", "embeddings"):
+            value = result.get(key) if isinstance(result, dict) else None
+            value = value.tolist() if hasattr(value, "tolist") else value
+            if not isinstance(value, list) or len(value) != len(requested):
+                raise RebuildError(
+                    "protected-copy collection returned a misaligned batch"
+                )
+            values[key] = value
+        rows = dict(zip(values["ids"], zip(
+            values["documents"], values["metadatas"], values["embeddings"],
+        )))
+        if len(rows) != len(requested) or set(rows) != set(requested):
+            raise RebuildError(
+                "protected-copy collection returned incorrect batch ids"
+            )
+
+        documents: list[str] = []
+        repaired_metadatas: list[dict[str, Any]] = []
+        embeddings: list[list[float]] = []
+        for row_id in requested:
+            document, metadata, vector = rows[row_id]
+            vector = vector.tolist() if hasattr(vector, "tolist") else vector
+            if not isinstance(vector, (list, tuple)):
+                raise RebuildError(f"invalid protected-copy vector for {row_id!r}")
+            try:
+                converted = [float(value) for value in vector]
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise RebuildError(
+                    f"invalid protected-copy vector for {row_id!r}"
+                ) from exc
+            if (
+                not isinstance(document, str) or not isinstance(metadata, dict)
+                or len(converted) != int(profile["dimension"])
+                or not all(math.isfinite(value) for value in converted)
+            ):
+                raise RebuildError(
+                    f"invalid protected-copy payload/vector for {row_id!r}"
+                )
+            orientation_hash = metadata.get("embedding_text_sha256")
+            if (
+                not isinstance(orientation_hash, str)
+                or not _SHA256_RE.fullmatch(orientation_hash)
+                or not all(part in document for part in (
+                    "## Context", "## Exchange", "**User:**", "**Assistant:**",
+                ))
+            ):
+                raise RebuildError(
+                    f"protected-copy source content is invalid for {row_id!r}"
+                )
+
+            authority_value = authority[row_id]
+            expected_privacy = {
+                "turn_privacy": authority_value,
+                "tag": "private" if authority_value == "private" else "",
+                "tag_private": authority_value == "private",
+            }
+            if source_metadata:
+                current_tag = metadata.get("tag")
+                current_private = metadata.get("tag_private")
+                if (
+                    current_tag not in _PROMOTION_TAGS
+                    or not isinstance(current_private, bool)
+                    or current_private != (current_tag == "private")
+                ):
+                    raise RebuildError(
+                        f"protected-copy source privacy metadata conflicts for {row_id!r}"
+                    )
+                current_authority = (
+                    "private" if current_tag == "private" else "standard"
+                )
+                if (
+                    "turn_privacy" in metadata
+                    and metadata["turn_privacy"] != current_authority
+                ):
+                    raise RebuildError(
+                        f"protected-copy source privacy metadata conflicts for {row_id!r}"
+                    )
+                source_privacy[current_authority] += 1
+                transitions[
+                    f"{current_authority}_to_{authority_value}"
+                ] += 1
+                if any(
+                    field not in metadata or metadata[field] != value
+                    for field, value in expected_privacy.items()
+                ):
+                    transitions["metadata_rows_updated"] += 1
+            elif any(
+                field not in metadata or metadata[field] != value
+                for field, value in expected_privacy.items()
+            ):
+                raise RebuildError(
+                    f"protected-copy target privacy metadata differs for {row_id!r}"
+                )
+            authority_privacy[authority_value] += 1
+
+            repaired = dict(metadata)
+            repaired.update(expected_privacy)
+            nonprivacy = {
+                key: value for key, value in metadata.items()
+                if key not in _PROTECTED_PRIVACY_FIELDS
+            }
+            payloads = {
+                "documents": [row_id, document],
+                "metadatas": [row_id, metadata],
+                "repaired_metadatas": [row_id, repaired],
+                "nonprivacy_metadatas": [row_id, nonprivacy],
+                "embeddings": [row_id, [value.hex() for value in converted]],
+            }
+            for key, payload in payloads.items():
+                _protected_digest_update(
+                    digests[key], payload, row_id=row_id, label=key,
+                )
+            documents.append(document)
+            repaired_metadatas.append(repaired)
+            embeddings.append(converted)
+        if copy_to is not None:
+            copy_to.upsert(
+                ids=requested, documents=documents,
+                metadatas=repaired_metadatas, embeddings=embeddings,
+            )
+
+    try:
+        collection_metadata_sha256 = hashlib.sha256(json.dumps(
+            collection_metadata, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+    except (TypeError, ValueError) as exc:
+        raise RebuildError(
+            "protected-copy collection profile metadata is not serializable"
+        ) from exc
+    return {
+        "count": len(all_ids),
+        "id_sha256": _sorted_id_sha256(all_ids),
+        "document_sha256": digests["documents"].hexdigest(),
+        "metadata_sha256": digests["metadatas"].hexdigest(),
+        "repaired_metadata_sha256": digests["repaired_metadatas"].hexdigest(),
+        "nonprivacy_metadata_sha256": digests[
+            "nonprivacy_metadatas"
+        ].hexdigest(),
+        "embedding_sha256": digests["embeddings"].hexdigest(),
+        "collection_metadata_sha256": collection_metadata_sha256,
+        "dimension": int(profile["dimension"]),
+        "profile": f"{profile['provider']}:{profile['model']}",
+        "source_privacy_counts": source_privacy,
+        "authority_privacy_counts": authority_privacy,
+        "privacy_transitions": transitions,
+    }
+
+
+def protected_conversation_inactive_copy(
+    *,
+    chromadb_path: str | Path,
+    authority_plan_path: str | Path,
+    batch_size: int = 128,
+    client_factory: Callable[[str], Any] | None = None,
+) -> dict[str, Any]:
+    """Build one metadata-only inactive copy under exact owner authority."""
+    if batch_size < 1:
+        raise RebuildError("protected-copy requires a positive batch")
+    root = _absolute(chromadb_path)
+    if root.is_symlink() or not root.is_dir():
+        raise RebuildError("protected-copy Chroma root is missing or unsafe")
+    source_name, target_name, authority, bindings, fingerprint = (
+        _protected_authority_plan(authority_plan_path)
+    )
+    client = (client_factory or _chroma_client)(str(root))
+    names = _collection_names(client)
+    if source_name not in names:
+        raise RebuildError("protected-copy source collection is missing")
+    if target_name in names:
+        raise RebuildError("protected-copy target collection already exists")
+    source = client.get_collection(name=source_name)
+    source_identity = _protected_collection_identity(source)
+    profile, collection_metadata = _protected_collection_profile(source)
+    before = _protected_collection_audit(
+        source, profile, batch_size, authority, source_metadata=True,
+    )
+    if (
+        before["authority_privacy_counts"]["private"]
+        != bindings["private"]["count"]
+        or before["authority_privacy_counts"]["standard"]
+        != bindings["standard"]["count"]
+    ):
+        raise RebuildError("protected-copy authority counts and source differ")
+    latest_names = _collection_names(client)
+    if source_name not in latest_names or target_name in latest_names:
+        raise RebuildError("protected-copy source/target identity drifted")
+
+    created = False
+    target_identity: tuple[str, str | int] | None = None
+    try:
+        target = client.create_collection(
+            name=target_name,
+            metadata=dict(collection_metadata),
+            embedding_function=None,
+        )
+        created = True
+        target_identity = _protected_collection_identity(target)
+        copied_from = _protected_collection_audit(
+            source, profile, batch_size, authority,
+            source_metadata=True, copy_to=target,
+        )
+        if copied_from != before:
+            raise RebuildError("protected-copy source drifted during copy")
+        target_read = client.get_collection(name=target_name)
+        if _protected_collection_identity(target_read) != target_identity:
+            raise RebuildError("protected-copy target identity drifted")
+        target_audit = _protected_collection_audit(
+            target_read, profile, batch_size, authority, source_metadata=False,
+        )
+        final_source = client.get_collection(name=source_name)
+        if _protected_collection_identity(final_source) != source_identity:
+            raise RebuildError("protected-copy source identity drifted")
+        after = _protected_collection_audit(
+            final_source, profile, batch_size, authority, source_metadata=True,
+        )
+        if after != before:
+            raise RebuildError("protected-copy source drifted after copy")
+        expected_target = {
+            "count": before["count"],
+            "id_sha256": before["id_sha256"],
+            "document_sha256": before["document_sha256"],
+            "metadata_sha256": before["repaired_metadata_sha256"],
+            "nonprivacy_metadata_sha256": before[
+                "nonprivacy_metadata_sha256"
+            ],
+            "collection_metadata_sha256": before[
+                "collection_metadata_sha256"
+            ],
+            "dimension": before["dimension"],
+            "profile": before["profile"],
+            "authority_privacy_counts": before["authority_privacy_counts"],
+        }
+        actual_target = {
+            key: target_audit[key] for key in expected_target
+        }
+        if actual_target != expected_target:
+            raise RebuildError(
+                "protected-copy target content/vector/metadata drifted"
+            )
+        copy_validation = _compare_copied_embeddings(
+            source, target_read, profile, batch_size,
+        )
+        final_names = _collection_names(client)
+        if source_name not in final_names or target_name not in final_names:
+            raise RebuildError("protected-copy source/target identity drifted")
+    except BaseException as failure:
+        if created:
+            try:
+                current_target = (
+                    client.get_collection(name=target_name)
+                    if target_name in _collection_names(client) else None
+                )
+            except Exception as cleanup_error:
+                raise RebuildError(
+                    "protected-copy failed and its target identity could not be checked"
+                ) from cleanup_error
+            if current_target is not None:
+                if _protected_collection_identity(current_target) != target_identity:
+                    raise RebuildError(
+                        "protected-copy failed after target identity changed; "
+                        "the unowned target was not removed"
+                    ) from failure
+                try:
+                    client.delete_collection(name=target_name)
+                except Exception as cleanup_error:
+                    raise RebuildError(
+                        "protected-copy failed and its incomplete target could not be removed"
+                    ) from cleanup_error
+        raise
+
+    return {
+        "status": "inactive_copy_complete",
+        "chromadb_path": str(root),
+        "source_physical_collection": source_name,
+        "inactive_physical_collection": target_name,
+        "authority_plan_fingerprint": fingerprint,
+        "authority": bindings,
+        "validation": {
+            "count": before["count"],
+            "id_sha256": before["id_sha256"],
+            "document_sha256": before["document_sha256"],
+            "source_metadata_sha256": before["metadata_sha256"],
+            "target_metadata_sha256": target_audit["metadata_sha256"],
+            "nonprivacy_metadata_sha256": before[
+                "nonprivacy_metadata_sha256"
+            ],
+            "embedding_sha256": before["embedding_sha256"],
+            "collection_metadata_sha256": before[
+                "collection_metadata_sha256"
+            ],
+            "privacy_transitions": before["privacy_transitions"],
+        },
+        "copy_validation": copy_validation,
+        "source_retained": True,
+        "promoted": False,
+        "recovery": {
+            "source_physical_collection": source_name,
+            "delete_only_inactive_physical_collection": target_name,
+        },
+    }
 
 
 def promote_conversation_replay(
@@ -3274,17 +3770,56 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="phase", required=True)
 
-    promote = subparsers.add_parser("promote-conversations")
+    protected = subparsers.add_parser(
+        "protected-inactive-copy",
+        help=(
+            "copy stored conversation rows into a fresh inactive collection "
+            "and rewrite only authorized privacy metadata"
+        ),
+        description=(
+            "Copy an existing conversation collection into a fresh same-store "
+            "inactive target under an exact privacy authority plan. The phase "
+            "uses stored vectors and does not embed, replay sources, alter "
+            "runtime configuration, or activate the target."
+        ),
+    )
+    protected.add_argument("--chroma-path", required=True)
+    protected.add_argument("--authority-plan", required=True)
+    protected.add_argument("--batch-size", type=int, default=128)
+
+    promote = subparsers.add_parser(
+        "promote-conversations",
+        help="copy a validated replay into the active store and change its mapping",
+        description=(
+            "Copy a validated inactive conversation replay into a fresh active-store "
+            "collection, verify it, and change the configured mapping while Ora is stopped."
+        ),
+    )
     promote.add_argument("--inactive-chromadb-path", required=True)
     promote.add_argument("--target-physical-collection", required=True)
     promote.add_argument("--expected-current-physical", required=True)
     promote.add_argument("--batch-size", type=int, default=128)
 
-    rollback = subparsers.add_parser("rollback-conversations")
+    rollback = subparsers.add_parser(
+        "rollback-conversations",
+        help="restore the mapping to a retained conversation collection",
+        description=(
+            "Restore the configured conversation mapping to a retained compatible "
+            "collection while Ora is stopped."
+        ),
+    )
     rollback.add_argument("--restore-physical-collection", required=True)
     rollback.add_argument("--expected-current-physical", required=True)
 
-    conversations = subparsers.add_parser("conversations")
+    conversations = subparsers.add_parser(
+        "conversations",
+        help="replay authoritative conversation sources into an inactive Chroma store",
+        description=(
+            "Validate authoritative conversation sources, then rebuild them with "
+            "deterministic ids, explicit vectors, and resumable atomic checkpoints "
+            "in an explicit inactive Chroma store."
+        ),
+    )
     conversations.add_argument(
         "--historical-archive", default=str(rp.historical_archive_dir())
     )
@@ -3305,7 +3840,15 @@ def _parser() -> argparse.ArgumentParser:
     conversations.add_argument("--resume", action="store_true")
     conversations.add_argument("--dry-run", action="store_true")
 
-    knowledge = subparsers.add_parser("knowledge")
+    knowledge = subparsers.add_parser(
+        "knowledge",
+        help="replay authoritative knowledge sources into an inactive Chroma store",
+        description=(
+            "Validate the configured knowledge sources, then rebuild them with "
+            "deterministic ids, explicit vectors, and resumable atomic checkpoints "
+            "in an explicit inactive Chroma store."
+        ),
+    )
     knowledge.add_argument(
         "--engrams-root", default=str(rp.vault_dir() / "Engrams")
     )
@@ -3328,7 +3871,15 @@ def _parser() -> argparse.ArgumentParser:
     knowledge.add_argument("--resume", action="store_true")
     knowledge.add_argument("--dry-run", action="store_true")
 
-    msi = subparsers.add_parser("msi-news-articles")
+    msi = subparsers.add_parser(
+        "msi-news-articles",
+        help="replay canonical MSI articles into an inactive Chroma store",
+        description=(
+            "Validate canonical MSI article sources through the project-owned "
+            "composer, then rebuild them with deterministic ids, explicit vectors, "
+            "and resumable atomic checkpoints in an explicit inactive Chroma store."
+        ),
+    )
     msi.add_argument(
         "--articles-root",
         default=str(
@@ -3354,7 +3905,13 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if args.phase == "promote-conversations":
+    if args.phase == "protected-inactive-copy":
+        report = protected_conversation_inactive_copy(
+            chromadb_path=args.chroma_path,
+            authority_plan_path=args.authority_plan,
+            batch_size=args.batch_size,
+        )
+    elif args.phase == "promote-conversations":
         report = promote_conversation_replay(
             inactive_chromadb_path=args.inactive_chromadb_path,
             target_physical_collection=args.target_physical_collection,
