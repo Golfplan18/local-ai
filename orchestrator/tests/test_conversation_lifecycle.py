@@ -30,6 +30,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import yaml
+
 from orchestrator import conversation_closeout as closeout
 from orchestrator import conversation_memory as memory
 from orchestrator import runtime_paths
@@ -558,12 +560,26 @@ class TestConversationMetadataPropagation(unittest.TestCase):
             envelope = _write_envelope(sessions, "target", tag="")
             chunk_one = conversations / "chunk-one.md"
             chunk_two = conversations / "chunk-two.md"
+            block_tail_marker = "# keep block-list separator bytes\n"
             chunk_one.write_text(
-                "---\nnexus:\ntype: chat\ntags:\n  - atomic\n---\n\nFirst body.\n",
+                "---\n"
+                "nexus:\n"
+                "type: chat\n"
+                "tags:\n"
+                "  - atomic\n"
+                '  - "block: [kept], # literal"\n'
+                f"{block_tail_marker}"
+                "\n"
+                'retained_root: "field: [kept], # literal" # trailing comment\n'
+                "---\n\nFirst body.\n",
                 encoding="utf-8",
             )
             chunk_two.write_text(
-                "---\nnexus:\ntype: chat\ntags:\n---\n\nSecond body.\n",
+                "---\n"
+                "nexus:\n"
+                "type: chat\n"
+                'tags: [resource, "inline: [kept], # literal"]\n'
+                "---\n\nSecond body.\n",
                 encoding="utf-8",
             )
             collection = self._collection((chunk_one, chunk_two))
@@ -610,13 +626,54 @@ class TestConversationMetadataPropagation(unittest.TestCase):
             managed_transcript.write_text(
                 "---\n"
                 "type: transcript\n"
-                "tags:\n  - incubating\n"
+                "tags: [\n"
+                "  incubating,\n"
+                '  "multiline: [kept], # literal"\n'
+                "  ]\n"
                 "artifact_kind: conversation_transcript\n"
                 "managed_by: ora\n"
                 "source_file: target\n"
                 "---\n\nSensitive transcript.\n",
                 encoding="utf-8",
             )
+            empty_transcript = vault_root / "Transcript — Empty Tags.md"
+            empty_transcript.write_text(
+                "---\n"
+                "type: transcript\n"
+                "tags: []\n"
+                "artifact_kind: conversation_transcript\n"
+                "managed_by: ora\n"
+                "source_file: target\n"
+                "---\n\nEmpty-list transcript.\n",
+                encoding="utf-8",
+            )
+
+            expected_tags = {
+                chunk_one: ["atomic", "block: [kept], # literal"],
+                chunk_two: ["resource", "inline: [kept], # literal"],
+                managed_transcript: [
+                    "incubating", "multiline: [kept], # literal",
+                ],
+                empty_transcript: [],
+            }
+
+            def parse_artifact(path: Path) -> tuple[dict, str]:
+                artifact = path.read_text(encoding="utf-8")
+                opening_end, close = closeout._frontmatter_bounds(artifact)
+                metadata = yaml.safe_load(artifact[opening_end:close])
+                self.assertIsInstance(metadata, dict)
+                return metadata, artifact[close:]
+
+            def preserved_block_tail(path: Path) -> str:
+                artifact = path.read_text(encoding="utf-8")
+                _opening_end, close = closeout._frontmatter_bounds(artifact)
+                start = artifact.index(block_tail_marker)
+                return artifact[start:close]
+
+            original_bodies = {
+                path: parse_artifact(path)[1] for path in expected_tags
+            }
+            original_block_tail = preserved_block_tail(chunk_one)
             explicit_note = vault_root / "Explicit Source Note.md"
             explicit_note.write_text(
                 "---\ntype: resource\ntags:\nsource_file: target\n---\n\nKeep.\n",
@@ -638,7 +695,10 @@ class TestConversationMetadataPropagation(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with mock.patch.object(runtime_paths, "DATA_DIR_STR", str(data)):
+            with (
+                mock.patch.object(runtime_paths, "DATA_DIR_STR", str(data)),
+                mock.patch.object(daily_note._rp, "DATA_DIR_STR", str(data)),
+            ):
                 result = closeout.update_conversation_privacy_tag(
                     "target", "private", sessions_root=sessions,
                     conversations_dir=conversations, conversations_raw=raw,
@@ -654,7 +714,13 @@ class TestConversationMetadataPropagation(unittest.TestCase):
             self.assertEqual(result["visual_emission_entries"], 1)
             self.assertEqual(_read_jsonl(visual_emissions)[0]["tag"], "private")
             self.assertEqual(_read_jsonl(visual_emissions)[1]["tag"], "")
-            self.assertIn("  - private\n", managed_transcript.read_text())
+            for path, unrelated_tags in expected_tags.items():
+                metadata, body = parse_artifact(path)
+                self.assertEqual(metadata["tags"], unrelated_tags + ["private"])
+                self.assertEqual(body, original_bodies[path])
+            self.assertEqual(
+                preserved_block_tail(chunk_one), original_block_tail,
+            )
             self.assertNotIn("  - private\n", explicit_note.read_text())
             self.assertNotIn("Sensitive title", daily_path.read_text())
             self.assertEqual(result["daily_notes"]["summaries_removed"], 1)
@@ -671,7 +737,6 @@ class TestConversationMetadataPropagation(unittest.TestCase):
             self.assertEqual(collection.rows["other-1"]["metadata"]["tag"], "private")
             self.assertIn("  - atomic\n", chunk_one.read_text(encoding="utf-8"))
             self.assertIn("  - private\n", chunk_one.read_text(encoding="utf-8"))
-            self.assertIn("  - private\n", chunk_two.read_text(encoding="utf-8"))
             self.assertEqual(_read_jsonl(manifest)[0]["tag"], "private")
             self.assertEqual(_read_jsonl(manifest)[0]["untouched"], 1)
             self.assertEqual(_read_jsonl(manifest)[1]["tag"], "")
@@ -688,7 +753,10 @@ class TestConversationMetadataPropagation(unittest.TestCase):
 
             # The reverse mutation removes only the controlled private tag;
             # unrelated frontmatter tags and content remain.
-            with mock.patch.object(runtime_paths, "DATA_DIR_STR", str(data)):
+            with (
+                mock.patch.object(runtime_paths, "DATA_DIR_STR", str(data)),
+                mock.patch.object(daily_note._rp, "DATA_DIR_STR", str(data)),
+            ):
                 reverse = closeout.update_conversation_privacy_tag(
                     "target", "", sessions_root=sessions,
                     conversations_dir=conversations, conversations_raw=raw,
@@ -697,10 +765,17 @@ class TestConversationMetadataPropagation(unittest.TestCase):
                     vault_root=vault_root,
                 )
             self.assertEqual(reverse["previous_tag"], "private")
+            self.assertEqual(reverse["errors"], [])
             self.assertNotIn("  - private\n", chunk_one.read_text(encoding="utf-8"))
             self.assertIn("  - atomic\n", chunk_one.read_text(encoding="utf-8"))
+            for path, unrelated_tags in expected_tags.items():
+                metadata, body = parse_artifact(path)
+                self.assertEqual(metadata["tags"], unrelated_tags)
+                self.assertEqual(body, original_bodies[path])
+            self.assertEqual(
+                preserved_block_tail(chunk_one), original_block_tail,
+            )
             self.assertFalse(collection.rows["target-1"]["metadata"]["tag_private"])
-            self.assertNotIn("  - private\n", managed_transcript.read_text())
             self.assertIn("tag: \n", raw_audit.read_text())
             self.assertIn("tag_private: false\n", raw_audit.read_text())
 

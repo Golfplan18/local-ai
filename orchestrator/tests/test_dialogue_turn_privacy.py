@@ -11,6 +11,7 @@ from types import ModuleType, SimpleNamespace
 from unittest import mock
 
 import pytest
+import yaml
 
 from orchestrator import conversation_closeout as closeout
 from orchestrator import conversation_memory as memory
@@ -1561,6 +1562,7 @@ def test_exact_retag_updates_only_owned_exchange_and_keeps_composer(tmp_path):
     rows = {}
     manifest = []
     chunk_paths = {}
+    block_tail_marker = "# keep block-list separator bytes\n"
     for turn in (1, 2):
         chunk_id = f"chunk-{turn}"
         path = chunks / f"2026-08-29_10-0{turn - 1}_{chunk_id}.md"
@@ -1573,6 +1575,16 @@ def test_exact_retag_updates_only_owned_exchange_and_keeps_composer(tmp_path):
             markdown, conversation_id="mixed", chunk_id=chunk_id,
         )
         if turn == 1:
+            owned_markdown = owned_markdown.replace(
+                "tags:\n",
+                "tags:\n"
+                "  - atomic\n"
+                '  - "chunk: [kept], # literal"\n'
+                f"{block_tail_marker}"
+                "\n"
+                'retained_root: "field: [kept], # literal" # trailing comment\n',
+                1,
+            )
             owned_markdown = owned_markdown.replace(
                 "\n---", "\ntag: \ntag_private: false\n---", 1,
             )
@@ -1605,12 +1617,40 @@ def test_exact_retag_updates_only_owned_exchange_and_keeps_composer(tmp_path):
         '"source_chunk_id": "chunk-1"\n'
         "source_turn_index: 1\n"
         'turn_privacy: "standard"\n'
-        "tags:\n"
-        "  - atomic\n"
+        'tags: [atomic, "derivative: [kept], # literal"]\n'
         "---\n"
         "Derived body.\n",
         encoding="utf-8",
     )
+
+    def parse_artifact(path: Path) -> tuple[dict, str]:
+        artifact = path.read_text(encoding="utf-8")
+        opening_end, close = closeout._frontmatter_bounds(artifact)
+        metadata = yaml.safe_load(artifact[opening_end:close])
+        assert isinstance(metadata, dict)
+        return metadata, artifact[close:]
+
+    def preserved_block_tail(path: Path) -> str:
+        artifact = path.read_text(encoding="utf-8")
+        opening_end, close = closeout._frontmatter_bounds(artifact)
+        front = artifact[opening_end:close]
+        start = front.index(block_tail_marker)
+        end = front.index("tag: ", start)
+        return front[start:end]
+
+    expected_chunk_tags = ["atomic", "chunk: [kept], # literal"]
+    expected_derivative_tags = [
+        "atomic", "derivative: [kept], # literal",
+    ]
+    original_chunk_body = parse_artifact(chunk_paths["chunk-1"])[1]
+    standard_chunk_privacy_marker = '<!-- ora-turn-privacy: "standard" -->'
+    private_chunk_privacy_marker = '<!-- ora-turn-privacy: "private" -->'
+    assert original_chunk_body.count(standard_chunk_privacy_marker) == 1
+    expected_private_chunk_body = original_chunk_body.replace(
+        standard_chunk_privacy_marker, private_chunk_privacy_marker, 1,
+    )
+    original_block_tail = preserved_block_tail(chunk_paths["chunk-1"])
+    original_derivative_body = parse_artifact(quoted_derivative)[1]
 
     daily_dir = vault / "Daily Notes"
     daily_dir.mkdir()
@@ -1627,7 +1667,10 @@ def test_exact_retag_updates_only_owned_exchange_and_keeps_composer(tmp_path):
     )
     conversations = _FakeCollection(rows)
     knowledge = _FakeCollection({})
-    with mock.patch.object(closeout._rp, "DATA_DIR_STR", str(data_dir)):
+    with (
+        mock.patch.object(closeout._rp, "DATA_DIR_STR", str(data_dir)),
+        mock.patch.object(daily_note._rp, "DATA_DIR_STR", str(data_dir)),
+    ):
         result = closeout.update_conversation_turn_privacy(
             "mixed", 1, "private", sessions_root=sessions,
             conversations_dir=chunks, collection=conversations,
@@ -1644,7 +1687,9 @@ def test_exact_retag_updates_only_owned_exchange_and_keeps_composer(tmp_path):
     quoted_text = quoted_derivative.read_text(encoding="utf-8")
     assert '"source_chunk_id": "chunk-1"' in quoted_text
     assert 'turn_privacy: "private"' in quoted_text
-    assert "\n  - private\n" in quoted_text
+    derivative_metadata, derivative_body = parse_artifact(quoted_derivative)
+    assert derivative_metadata["tags"] == expected_derivative_tags + ["private"]
+    assert derivative_body == original_derivative_body
     envelope = memory.load_conversation_json("mixed", sessions_root=sessions)
     assert envelope["tag"] == "private"
     assert envelope["project_ids"] == ["ora"]
@@ -1662,6 +1707,12 @@ def test_exact_retag_updates_only_owned_exchange_and_keeps_composer(tmp_path):
     retagged_chunk = chunk_paths["chunk-1"].read_text(encoding="utf-8")
     assert "\ntag: private\n" in retagged_chunk
     assert "\ntag_private: true\n" in retagged_chunk
+    chunk_metadata, chunk_body = parse_artifact(chunk_paths["chunk-1"])
+    assert chunk_metadata["tags"] == expected_chunk_tags + ["private"]
+    assert chunk_metadata["tag"] == "private"
+    assert chunk_metadata["tag_private"] is True
+    assert preserved_block_tail(chunk_paths["chunk-1"]) == original_block_tail
+    assert chunk_body == expected_private_chunk_body
     raw_text = raw_path.read_text(encoding="utf-8")
     assert "pair 001 | 2026-08-29 10:00:00 | privacy: private" in raw_text
     assert "pair 002 | 2026-08-29 10:01:00 | privacy: standard" in raw_text
@@ -1670,6 +1721,83 @@ def test_exact_retag_updates_only_owned_exchange_and_keeps_composer(tmp_path):
     assert "**u1**" not in daily_text
     assert "Keep this unrelated line." in daily_text
     assert result["daily_notes"]["summaries_refreshed"] == 1
+
+    with (
+        mock.patch.object(closeout._rp, "DATA_DIR_STR", str(data_dir)),
+        mock.patch.object(daily_note._rp, "DATA_DIR_STR", str(data_dir)),
+    ):
+        reverse = closeout.update_conversation_turn_privacy(
+            "mixed", 1, "standard", sessions_root=sessions,
+            conversations_dir=chunks, collection=conversations,
+            knowledge_collection=knowledge, vault_root=vault,
+            chromadb_path=tmp_path / "chroma",
+        )
+    assert reverse["errors"] == []
+    assert reverse["envelope_updated"] is True
+    assert reverse["propagation_complete"] is True
+    assert reverse["reconciliation_required"] is False
+    envelope = memory.load_conversation_json("mixed", sessions_root=sessions)
+    assert envelope["tag"] == "private"
+    assert [m["turn_privacy"] for m in envelope["messages"]] == [
+        "standard", "standard", "standard", "standard",
+    ]
+    assert conversations.rows["chunk-1"]["turn_privacy"] == "standard"
+    assert conversations.rows["chunk-2"]["turn_privacy"] == "standard"
+    chunk_metadata, chunk_body = parse_artifact(chunk_paths["chunk-1"])
+    assert chunk_metadata["tags"] == expected_chunk_tags
+    assert chunk_metadata["tag"] == ""
+    assert chunk_metadata["tag_private"] is False
+    assert preserved_block_tail(chunk_paths["chunk-1"]) == original_block_tail
+    assert chunk_body == original_chunk_body
+    assert 'ora-turn-privacy: "standard"' in (
+        chunk_paths["chunk-1"]
+    ).read_text(encoding="utf-8")
+    derivative_metadata, derivative_body = parse_artifact(quoted_derivative)
+    assert derivative_metadata["tags"] == expected_derivative_tags
+    assert derivative_metadata["turn_privacy"] == "standard"
+    assert derivative_body == original_derivative_body
+    raw_text = raw_path.read_text(encoding="utf-8")
+    assert "pair 001 | 2026-08-29 10:00:00 | privacy: standard" in raw_text
+    assert "pair 002 | 2026-08-29 10:01:00 | privacy: standard" in raw_text
+
+    # Even if a future formatter produces a malformed completed candidate,
+    # exact retag refuses it before atomic replacement and reports incomplete
+    # tightening instead of committing the canonical envelope.
+    chunk_before = chunk_paths["chunk-1"].read_bytes()
+    derivative_before = quoted_derivative.read_bytes()
+
+    def malformed_candidate(source: str, *_args, **_kwargs) -> str:
+        opening_end, close = closeout._frontmatter_bounds(source)
+        return source[:opening_end] + "tags: [unterminated\n" + source[close:]
+
+    with (
+        mock.patch.object(closeout._rp, "DATA_DIR_STR", str(data_dir)),
+        mock.patch.object(daily_note._rp, "DATA_DIR_STR", str(data_dir)),
+        mock.patch.object(
+            closeout, "_private_frontmatter_text",
+            side_effect=malformed_candidate,
+        ),
+    ):
+        refused = closeout.update_conversation_turn_privacy(
+            "mixed", 1, "private", sessions_root=sessions,
+            conversations_dir=chunks, collection=conversations,
+            knowledge_collection=knowledge, vault_root=vault,
+            chromadb_path=tmp_path / "chroma",
+        )
+    assert refused["envelope_updated"] is False
+    assert refused["propagation_complete"] is False
+    assert refused["reconciliation_required"] is False
+    assert any(
+        "turn privacy chunk" in error
+        and "YAML frontmatter is malformed" in error
+        for error in refused["errors"]
+    )
+    assert chunk_paths["chunk-1"].read_bytes() == chunk_before
+    assert quoted_derivative.read_bytes() == derivative_before
+    envelope = memory.load_conversation_json("mixed", sessions_root=sessions)
+    assert [m["turn_privacy"] for m in envelope["messages"]] == [
+        "standard", "standard", "standard", "standard",
+    ]
 
 
 def test_exact_retag_requires_full_derivative_owner_tuple(tmp_path):
