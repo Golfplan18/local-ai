@@ -504,9 +504,7 @@ class ProtectedInactiveCopyTests(unittest.TestCase):
     def _id_digest(ids):
         digest = hashlib.sha256()
         for row_id in sorted(ids):
-            digest.update(json.dumps(
-                row_id, ensure_ascii=False, separators=(",", ":"),
-            ).encode("utf-8"))
+            digest.update(row_id.encode("utf-8"))
             digest.update(b"\n")
         return digest.hexdigest()
 
@@ -545,6 +543,32 @@ class ProtectedInactiveCopyTests(unittest.TestCase):
             row_id: (document, dict(metadata), list(vector))
             for row_id, (document, metadata, vector) in collection.rows.items()
         }
+
+    def test_protected_inactive_copy_digest_uses_sorted_raw_row_ids(self):
+        expected_digest = (
+            "99e233ef6bb447a043348d036f22a6df"
+            "5266c1c4e1ab1992baa5049480825d0f"
+        )
+        plan = self._plan_value()
+        plan["private"] = {
+            "ids": ["row_z", "row-a", "row.m"],
+            "expected_count": 3,
+            "expected_id_sha256": expected_digest,
+        }
+        self._write_plan(plan)
+
+        _source, _target, authority, bindings, _fingerprint = (
+            rebuild._protected_authority_plan(self.authority_plan)
+        )
+
+        self.assertEqual(
+            bindings["private"],
+            {"count": 3, "id_sha256": expected_digest},
+        )
+        self.assertEqual(
+            {row_id for row_id, privacy in authority.items() if privacy == "private"},
+            {"row-a", "row.m", "row_z"},
+        )
 
     def test_protected_inactive_copy_preserves_payloads_and_reclassifies_only_privacy(self):
         self._write_plan()
