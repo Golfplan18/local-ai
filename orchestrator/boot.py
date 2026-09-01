@@ -14818,6 +14818,56 @@ class FrameworkExecutionFailure(RuntimeError):
         self.candidate = candidate
 
 
+# A failing final quality gate must never destroy an ordinary user's work.
+# `f-quality-gate.md` — the contract the gate model itself reads — has always
+# said an exhausted FAIL or a BROKEN gate SHIPS the current candidate, and the
+# FRAMEWORK-ONLY TERMINAL RELEASE OVERRIDE injected for strict framework runs
+# exists precisely to disapply that shipping rule for MSI. Ordinary turns had
+# drifted into the framework's fail-closed behaviour and replaced the user's
+# deliverable with a stub. They now ship the candidate with the verdict stated.
+# Strict framework execution is unaffected: `_framework_execution_fail` raises
+# before either gear reaches this code.
+_GATE_WARNING_HEADING = "> **Independent final review flagged this result.**"
+
+# A warning prepended to JSON, YAML frontmatter, or a fenced block would corrupt
+# an exact output contract the gate itself inspected without the prefix. When the
+# candidate opens with one of these, the verdict travels in `execution_review`
+# and the trace instead, and the bytes are handed over untouched.
+_STRUCTURED_OPENERS = ("{", "[", "---", "```", "<?xml", "<!DOCTYPE", "<html")
+
+
+def _gate_flagged_deliverable(deliverable: str, verdict_label: str) -> str:
+    """Return the candidate unchanged, with the gate's verdict stated when it fits.
+
+    The deliverable is never replaced or truncated. Content whose first
+    characters carry structural meaning is returned byte-identical.
+    """
+    body = deliverable or ""
+    if not body.strip():
+        return body
+    if body.lstrip().startswith(_STRUCTURED_OPENERS):
+        return body
+    return (
+        f"{_GATE_WARNING_HEADING}\n>\n"
+        f"> The final quality gate concluded `{verdict_label}`, so this result "
+        "was not confirmed by that check. It is given to you in full; treat its "
+        "claims as unverified and worth a second look.\n\n"
+        f"{body}"
+    )
+
+
+def _gate_review_status(status: str | None, context_pkg: dict) -> str | None:
+    """Keep the recorded status truthful about what actually happened.
+
+    Strict framework execution really does withhold, and `milestone_executor`
+    reads `"withheld" in status` as one of its release guards, so that vocabulary
+    is preserved there. An ordinary turn ships, and must not claim otherwise.
+    """
+    if status is None or _framework_execution_is_strict(context_pkg):
+        return status
+    return status.replace("-withheld", "-shipped-with-warning")
+
+
 def _framework_execution_is_strict(context_pkg: dict) -> bool:
     return bool(
         isinstance(context_pkg, dict)
@@ -15744,7 +15794,7 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
     context_pkg["execution_review"] = {
         "verdict": gate_verdict_label,
         "scope": "text_review",
-        "status": review_status,
+        "status": _gate_review_status(review_status, context_pkg),
     }
     _record("step6_5-quality-gate", gate_call_ok,
             f"verdict={gate_verdict_label} redo={gate_redo_fired} "
@@ -15777,14 +15827,11 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
     # fall back to the full text only when the draft section can't be isolated,
     # so this is never worse than the prior behaviour.
     deliverable = revised_analysis
-    if not release_deliverable:
-        deliverable = (
-            "## Deliverable withheld\n\n"
-            "The current candidate was not released because independent final "
-            f"review concluded `{gate_verdict_label}`. The candidate and review "
-            "record remain available for a corrected retry."
-        )
-    elif CLAIM_VERIFICATION_AVAILABLE:
+    # The extraction runs for a flagged candidate exactly as it does for an
+    # accepted one. It is what strips the reviser's bookkeeping sections, so
+    # skipping it on the flagged path would replace losing the user's work with
+    # showing them the pipeline's private notes.
+    if CLAIM_VERIFICATION_AVAILABLE:
         try:
             _draft_body = extract_revised_draft_section(revised_analysis or "")
         except Exception:
@@ -15796,6 +15843,10 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         else:
             contingencies_fired.append(
                 "step8_5-gear3-draft-extract-missing-using-full-envelope")
+    if not release_deliverable:
+        deliverable = _gate_flagged_deliverable(deliverable, gate_verdict_label)
+        _record("step6_5-gate-flagged-shipped", True,
+                f"verdict={gate_verdict_label} candidate returned in full")
     # Step 8.5 deliverable scrub (shared with gear 4). Default-ON: start.sh
     # exports ORA_DELIVERABLE_SCRUB=1 (since 2026-06-05); set
     # ORA_DELIVERABLE_SCRUB=0 to disable for debugging. A no-op on a clean
@@ -17538,7 +17589,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     context_pkg["execution_review"] = {
         "verdict": gate_verdict_label,
         "scope": "text_review",
-        "status": review_status,
+        "status": _gate_review_status(review_status, context_pkg),
     }
 
     if gate_broken:
@@ -17567,12 +17618,9 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     # Final pollution sweep before handing back to the user-facing layer.
     formatted = _strip_dispatch_noise(formatted)
     if not release_deliverable:
-        formatted = (
-            "## Deliverable withheld\n\n"
-            "The current candidate was not released because independent final "
-            f"review concluded `{gate_verdict_label}`. The candidate and review "
-            "record remain available for the governed continuation route."
-        )
+        formatted = _gate_flagged_deliverable(formatted, gate_verdict_label)
+        _record("step8_6-gate-flagged-shipped", True,
+                f"verdict={gate_verdict_label} candidate returned in full")
 
     # Gear 4 branches never own the visual. This marker makes the terminal
     # hook discard any accidental branch/formatter envelope and synthesize or
