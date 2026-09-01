@@ -207,6 +207,7 @@ class TestLibraryBrowser(unittest.TestCase):
         )
         self.assertTrue(provider["complete"])
         row = provider["rows"][0]
+        self.assertIsNone(row["relationships"]["updated_at"])
         self.assertEqual(row["editability"], {
             "available": True,
             "editable": False,
@@ -631,6 +632,9 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(
                 dialogue_provider["rows"][0]["relationships"]["state"],
                 "incomplete",
+            )
+            self.assertIsNone(
+                dialogue_provider["rows"][0]["relationships"]["updated_at"],
             )
             self.assertIn(
                 "envelopes were skipped",

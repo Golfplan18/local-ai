@@ -13828,7 +13828,7 @@ def _library_dialogue_provider() -> dict:
                 "state": (
                     "incomplete" if relationships_incomplete else "fresh"
                 ),
-                "updated_at": item.get("last_activity_at"),
+                "updated_at": None,
                 "reason": relationship_reason,
                 "summaries": [
                     {
