@@ -111,6 +111,9 @@
   let activeProjectSelectionSequence = 0;
 
   let lastSnapshot = { pinned: [], errored: [], pending: [], unread: [], active: [] };
+  let lastServerSnapshot = lastSnapshot;
+  let conversationsEtag = '';
+  let pollHandle = null;
   let activeConvId = null;
   let browserOverlay = null;
   let browserSearch = null;
@@ -124,6 +127,13 @@
   let browserEngramsToggle = null;
   let browserTagsInput = null;
   let browserShowArchivedToggle = null;
+  let browserProject = null;
+  let browserDateFrom = null;
+  let browserDateTo = null;
+  let browserPrivacy = null;
+  let browserLifecycle = null;
+  let browserRelationship = null;
+  let browserLocalRestriction = null;
   let browserRelevanceSlider = null;
   let browserRelevanceValue = null;
   let browserResizeObserver = null;
@@ -139,6 +149,8 @@
   let browserFetchTimer = null;
   let browserFilterTimer = null;
   let browserReturnFocus = null;
+  let browserAbortController = null;
+  let browserRequestSequence = 0;
   let creationOverlay = null;
   let creationTitle = null;
   let creationDescription = null;
@@ -160,8 +172,12 @@
   const lifecycleBusyIds = new Set();
 
   const setExpanded = (on) => {
+    const changed = isExpanded() !== !!on;
     sidebar.classList.toggle('expanded', !!on);
     document.body.classList.toggle('sidebar-expanded', !!on);
+    if (!changed) return;
+    if (on) startSidebarPolling(true);
+    else stopSidebarPolling();
   };
 
   if (resizeHandle) {
@@ -243,6 +259,7 @@
   };
 
   const render = (data) => {
+    lastServerSnapshot = data || lastServerSnapshot;
     data = filterDialogueSnapshot(data);
     lastSnapshot = data;
 
@@ -444,8 +461,15 @@
       // Fetch the active universe, then apply the project rule locally. A
       // server-scoped response cannot include the currently displayed
       // Stealth Dialogue after the user switches to a different project.
-      const r = await fetch('/api/conversations?project_id=');
+      const headers = conversationsEtag ? { 'If-None-Match': conversationsEtag } : {};
+      const r = await fetch('/api/conversations?project_id=', { headers });
+      if (r.status === 304) {
+        return;
+      }
       if (!r.ok) return;
+      if (r.headers && typeof r.headers.get === 'function') {
+        conversationsEtag = r.headers.get('ETag') || conversationsEtag;
+      }
       const data = await r.json();
       render(data);
     } catch (e) {
@@ -761,6 +785,7 @@
       }
       renderProjects();
       if (activeProjectId !== previousProjectId) {
+        render(lastServerSnapshot);
         document.dispatchEvent(new CustomEvent('ora:active-project-changed', {
           detail: { nexus: activeProjectId },
         }));
@@ -828,6 +853,7 @@
       && pendingActiveProjectSelection.sequence > selection.sequence
     );
     if (succeeded && !superseded) {
+      const previousProjectId = activeProjectId;
       activeProjectId = confirmedId;
       persistActiveProjectId(activeProjectId);
       if (projectNameEl) {
@@ -836,6 +862,7 @@
           : projectDisplayName(activeProjectId);
       }
       closeProjectMenu();
+      if (activeProjectId !== previousProjectId) render(lastServerSnapshot);
       fetchList();      // refetch the sidebar filtered to this project
       renderProjects(); // refresh the active highlight
       document.dispatchEvent(new CustomEvent('ora:active-project-changed', {
@@ -1494,6 +1521,56 @@
             </button>
           </div>
           <div class="conversation-browser-filters">
+            <label class="conversation-browser-tags">Project
+              <select class="conversation-browser-project" aria-label="Filter by project">
+                <option value="commons">Commons</option>
+              </select>
+            </label>
+            <label class="conversation-browser-tags">From
+              <input class="conversation-browser-date-from" type="date"
+                     aria-label="Filter from date (inclusive)" />
+            </label>
+            <label class="conversation-browser-tags">To
+              <input class="conversation-browser-date-to" type="date"
+                     aria-label="Filter through date (inclusive)" />
+            </label>
+            <label class="conversation-browser-tags">Privacy
+              <select class="conversation-browser-privacy" aria-label="Filter by privacy">
+                <option value="">All privacy</option>
+                <option value="standard">Standard</option>
+                <option value="contains_private">Contains Private</option>
+                <option value="stealth">Stealth</option>
+              </select>
+            </label>
+            <label class="conversation-browser-tags">Lifecycle
+              <select class="conversation-browser-lifecycle" aria-label="Filter by lifecycle">
+                <option value="">All lifecycle states</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="indexed_archive">Indexed archive</option>
+                <option value="knowledge">Knowledge</option>
+              </select>
+            </label>
+            <label class="conversation-browser-tags">Relationship
+              <select class="conversation-browser-relationship" aria-label="Filter by relationship">
+                <option value="">All relationships</option>
+                <option value="parent">Parent</option>
+                <option value="direct-child">Direct child</option>
+                <option value="sibling">Sibling</option>
+                <option value="contributor">Contributor</option>
+                <option value="direct-related">Directly related</option>
+                <option value="shared-project">Shared project</option>
+                <option value="none">No recorded relationship</option>
+              </select>
+            </label>
+            <label class="conversation-browser-tags">Local
+              <select class="conversation-browser-local-restriction"
+                      aria-label="Filter by local restriction">
+                <option value="">Any local restriction</option>
+                <option value="restricted">Restricted locally</option>
+                <option value="unrestricted">Unrestricted locally</option>
+              </select>
+            </label>
             <label class="conversation-browser-tags"
                    title="Comma-separated tags; all selected tags must match">
               <span class="conversation-browser-tags-label">Tags</span>
@@ -1535,6 +1612,13 @@
     browserEngramsToggle = browserOverlay.querySelector('.conversation-browser-filter-engrams');
     browserTagsInput = browserOverlay.querySelector('.conversation-browser-tags-input');
     browserShowArchivedToggle = browserOverlay.querySelector('.conversation-browser-filter-archived');
+    browserProject = browserOverlay.querySelector('.conversation-browser-project');
+    browserDateFrom = browserOverlay.querySelector('.conversation-browser-date-from');
+    browserDateTo = browserOverlay.querySelector('.conversation-browser-date-to');
+    browserPrivacy = browserOverlay.querySelector('.conversation-browser-privacy');
+    browserLifecycle = browserOverlay.querySelector('.conversation-browser-lifecycle');
+    browserRelationship = browserOverlay.querySelector('.conversation-browser-relationship');
+    browserLocalRestriction = browserOverlay.querySelector('.conversation-browser-local-restriction');
     browserRelevanceSlider = browserOverlay.querySelector('.conversation-browser-relevance-slider');
     browserRelevanceValue = browserOverlay.querySelector('.conversation-browser-relevance-value');
     browserRows = browserOverlay.querySelector('.conversation-browser-rows');
@@ -1556,6 +1640,10 @@
     if (browserSort) {
       browserSort.addEventListener('change', () => fetchBrowser(browserSearch.value));
     }
+    [browserProject, browserDateFrom, browserDateTo, browserPrivacy,
+      browserLifecycle, browserRelationship, browserLocalRestriction].forEach((control) => {
+      if (control) control.addEventListener('change', scheduleBrowserFilterRefresh);
+    });
     [browserConversationsToggle, browserEngramsToggle, browserShowArchivedToggle].forEach((toggle) => {
       if (!toggle) return;
       toggle.addEventListener('change', scheduleBrowserFilterRefresh);
@@ -1586,6 +1674,7 @@
         fetchBrowser(browserSearch.value);
       }
     });
+    refreshBrowserProjectOptions();
     return browserOverlay;
   };
 
@@ -1645,6 +1734,15 @@
     if (tags) params.set('tags', tags);
     params.set('show_archived', browserShowArchived ? '1' : '0');
     params.set('min_relevance', String(browserMinRelevance || 0));
+    params.set('project_id', (browserProject && browserProject.value) || 'commons');
+    if (browserDateFrom && browserDateFrom.value) params.set('date_from', browserDateFrom.value);
+    if (browserDateTo && browserDateTo.value) params.set('date_to', browserDateTo.value);
+    if (browserPrivacy && browserPrivacy.value) params.set('privacy', browserPrivacy.value);
+    if (browserLifecycle && browserLifecycle.value) params.set('lifecycle', browserLifecycle.value);
+    if (browserRelationship && browserRelationship.value) params.set('relationship', browserRelationship.value);
+    if (browserLocalRestriction && browserLocalRestriction.value) {
+      params.set('local_restriction', browserLocalRestriction.value);
+    }
     if (browserSort && browserSort.value) params.set('sort', browserSort.value);
   };
 
@@ -1751,6 +1849,9 @@
     // focus to the body.
     const focusBefore = document.activeElement;
     if (browserOverlay) browserOverlay.classList.remove('is-open');
+    if (browserAbortController) browserAbortController.abort();
+    browserAbortController = null;
+    browserRequestSequence += 1;
     stopBrowserPositioning();
     if (!wasOpen) return;
     const focusTarget = browserReturnFocus && browserReturnFocus.isConnected
@@ -1763,8 +1864,23 @@
     }
   };
 
+  const beginBrowserRequest = () => {
+    if (browserAbortController) browserAbortController.abort();
+    browserAbortController = new AbortController();
+    return {
+      controller: browserAbortController,
+      sequence: ++browserRequestSequence,
+    };
+  };
+
+  const browserRequestIsCurrent = (requestState) => (
+    requestState.sequence === browserRequestSequence
+      && requestState.controller === browserAbortController
+  );
+
   const fetchBrowser = async (query) => {
     ensureBrowser();
+    const requestState = beginBrowserRequest();
     browserStatus.textContent = 'Loading...';
     try {
       const params = new URLSearchParams();
@@ -1772,9 +1888,11 @@
       applyBrowserRequestFilters(params);
       params.set('limit', '200');
       const requestUrl = '/api/conversations/browser?' + params.toString();
-      const r = await fetch(requestUrl);
+      const r = await fetch(requestUrl, { signal: requestState.controller.signal });
+      if (!browserRequestIsCurrent(requestState)) return;
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
+      if (!browserRequestIsCurrent(requestState)) return;
       browserLastData = data;
       browserRowsCache = data.rows || [];
       const retainedLiveIds = new Set(browserRowsCache
@@ -1786,8 +1904,11 @@
       renderBrowserRows(browserRowsCache, data.query || '');
       updateBrowserStatus();
     } catch (e) {
+      if (!browserRequestIsCurrent(requestState) || e.name === 'AbortError') return;
       browserStatus.textContent = 'Search failed: ' + (e.message || e);
       browserRows.innerHTML = '';
+    } finally {
+      if (browserRequestIsCurrent(requestState)) browserAbortController = null;
     }
   };
 
@@ -1795,45 +1916,87 @@
     (browserRowsCache || []).filter(row => !browserDismissedIds.has(row.conversation_id))
   );
 
-  const browserVisibleCounts = (rows) => {
-    const counts = { live: 0, archive: 0, engram: 0 };
-    (rows || []).forEach((row) => {
-      const kind = row.source_kind || 'live';
-      if (counts[kind] !== undefined) counts[kind] += 1;
-    });
-    return counts;
-  };
-
   const updateBrowserStatus = () => {
     if (!browserStatus) return;
+    renderBrowserFacets();
     const visible = browserVisibleRows();
-    const counts = browserVisibleCounts(visible);
+    const counts = (browserLastData && browserLastData.source_counts) || {};
     const parts = [];
     if (counts.live) parts.push(`${counts.live} live`);
     if (counts.archive) parts.push(`${counts.archive} archived`);
     if (counts.engram) parts.push(`${counts.engram} engram${counts.engram === 1 ? '' : 's'}`);
     const removed = Math.max(0, (browserRowsCache || []).length - visible.length);
-    const total = browserLastData && browserLastData.total;
+    const total = Number(browserLastData && browserLastData.total) || 0;
+    const localUnavailable = !!(
+      browserLocalRestriction && browserLocalRestriction.value
+      && browserLastData && browserLastData.facets
+      && browserLastData.facets.local_restriction
+      && browserLastData.facets.local_restriction.available === false
+    );
     if (visible.length) {
-      const shown = total && total !== visible.length
+      const shown = total !== visible.length
         ? `${visible.length} shown of ${total}`
         : `${visible.length}`;
+      const resultCount = total !== visible.length ? total : visible.length;
       const floor = browserMinRelevance > 0 ? `, ≥${browserMinRelevance} relevance` : '';
-      browserStatus.textContent = `${shown} result${visible.length === 1 ? '' : 's'}`
+      browserStatus.textContent = `${shown} result${resultCount === 1 ? '' : 's'}`
         + `${parts.length ? ` (${parts.join(', ')})` : ''}`
         + floor
-        + `${removed ? `, ${removed} removed` : ''}`;
+        + `${removed ? `, ${removed} removed` : ''}`
+        + `${localUnavailable ? ', local restriction unavailable' : ''}`;
     } else {
       browserStatus.textContent = removed
         ? `No visible results, ${removed} removed`
-        : 'No matching enabled Dialogues or engrams';
+        : localUnavailable
+          ? 'Local restriction metadata is unavailable'
+          : 'No matching enabled Dialogues or engrams';
     }
   };
+
+  function renderBrowserFacets() {
+    const facets = (browserLastData && browserLastData.facets) || {};
+    [
+      [browserProject, facets.projects],
+      [browserPrivacy, facets.privacy],
+      [browserLifecycle, facets.lifecycle],
+      [browserRelationship, facets.relationships],
+      [browserLocalRestriction, facets.local_restriction],
+    ].forEach(([control, facet]) => {
+      if (!control || !facet || !facet.counts) return;
+      Array.from(control.options).forEach((option) => {
+        if (!option.value) return;
+        if (!option.dataset.facetLabel) option.dataset.facetLabel = option.textContent;
+        option.textContent = `${option.dataset.facetLabel} (${Number(facet.counts[option.value]) || 0})`;
+      });
+      control.dataset.available = facet.available === false ? 'false' : 'true';
+      control.title = facet.available === false ? 'Metadata unavailable' : '';
+    });
+    if (browserDateFrom && facets.dates) browserDateFrom.min = facets.dates.min || '';
+    if (browserDateTo && facets.dates) browserDateTo.max = facets.dates.max || '';
+  }
+
+  function refreshBrowserProjectOptions() {
+    if (!browserProject) return;
+    const previous = browserProject.value || 'commons';
+    browserProject.innerHTML = '<option value="commons">Commons</option>';
+    projectsCache
+      .filter(project => canonicalProjectRecordId(project) !== 'commons')
+      .forEach(project => {
+        const option = document.createElement('option');
+        option.value = canonicalProjectRecordId(project);
+        option.textContent = project.name || project.nexus || option.value;
+        browserProject.appendChild(option);
+      });
+    browserProject.value = Array.from(browserProject.options)
+      .some(option => option.value === previous) ? previous : 'commons';
+  }
 
   function refreshBrowserBulkProjects() {
     if (!browserBulkProject) return;
     const previous = browserBulkProject.value;
     const render = () => {
+      refreshBrowserProjectOptions();
+      renderBrowserFacets();
       browserBulkProject.innerHTML = '';
       projectsCache
         .filter(project => canonicalProjectRecordId(project) !== 'commons')
@@ -2025,20 +2188,26 @@
 
   const fetchRelated = async (conversationId) => {
     if (!conversationId) return;
+    const requestState = beginBrowserRequest();
     browserStatus.textContent = 'Loading related Dialogues...';
     try {
       const params = new URLSearchParams();
       applyBrowserRequestFilters(params);
       const requestUrl = `/api/conversation/${encodeURIComponent(conversationId)}/related?${params.toString()}`;
-      const r = await fetch(requestUrl);
+      const r = await fetch(requestUrl, { signal: requestState.controller.signal });
+      if (!browserRequestIsCurrent(requestState)) return;
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
+      if (!browserRequestIsCurrent(requestState)) return;
       browserLastData = data;
       browserRowsCache = data.rows || [];
       renderBrowserRows(browserRowsCache, '');
       updateBrowserStatus();
     } catch (e) {
+      if (!browserRequestIsCurrent(requestState) || e.name === 'AbortError') return;
       browserStatus.textContent = 'Related lookup failed: ' + (e.message || e);
+    } finally {
+      if (browserRequestIsCurrent(requestState)) browserAbortController = null;
     }
   };
 
@@ -2057,7 +2226,6 @@
         matched_turn_index: row.matched_turn_index,
       },
     }));
-    fetchList();
     positionBrowser();
   };
 
@@ -2160,7 +2328,7 @@
         close.title = label;
       }
     }
-    fetchList();
+    if (detail.source !== 'conversation-envelope') fetchList();
   });
 
   // Backlog 3E — pin-in-place button at the top of the expanded panel.
@@ -2459,19 +2627,28 @@
   fetchOutputStyle();
 
   // ── Polling ─────────────────────────────────────────────────────────
-  let pollHandle = window.setInterval(refreshProjectScopedList, REFRESH_INTERVAL_MS);
+  function stopSidebarPolling() {
+    if (!pollHandle) return;
+    window.clearInterval(pollHandle);
+    pollHandle = null;
+  }
+
+  function startSidebarPolling(refreshNow) {
+    if (!isExpanded() || document.visibilityState !== 'visible') {
+      stopSidebarPolling();
+      return;
+    }
+    if (refreshNow) refreshProjectScopedList();
+    if (!pollHandle) {
+      pollHandle = window.setInterval(refreshProjectScopedList, REFRESH_INTERVAL_MS);
+    }
+  }
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      refreshProjectScopedList();
-      if (!pollHandle) {
-        pollHandle = window.setInterval(refreshProjectScopedList, REFRESH_INTERVAL_MS);
-      }
+      startSidebarPolling(true);
     } else {
-      if (pollHandle) {
-        window.clearInterval(pollHandle);
-        pollHandle = null;
-      }
+      stopSidebarPolling();
     }
   });
   window.addEventListener('storage', (event) => {

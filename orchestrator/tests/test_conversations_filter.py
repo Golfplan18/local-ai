@@ -13,6 +13,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Direct unittest execution does not load pytest's conftest.py. Set this before
@@ -39,9 +40,15 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         self.root = pathlib.Path(self._tmp.name)
         self._orig_root = cm._DEFAULT_SESSIONS_ROOT
         self._orig_pointer_dir = pm.POINTER_DIR
+        self._orig_vault_projects_dir = pm.DEFAULT_VAULT_PROJECTS_DIR
         self._orig_active_pointer = (ap.DATA_DIR, ap.ACTIVE_PROJECT_POINTER)
         cm._DEFAULT_SESSIONS_ROOT = self.root
         pm.POINTER_DIR = self.root / "projects"
+        # Folder allocation checks the portable length of the configured
+        # vault root but this suite never writes a vault project folder. Keep
+        # that lexical root short even under evidence_runner's deep scratch
+        # HOME so the fixture tests project behavior rather than path depth.
+        pm.DEFAULT_VAULT_PROJECTS_DIR = pathlib.Path(self.root.anchor) / "OraTestProjects"
         ap.DATA_DIR = self.root / "data"
         ap.ACTIVE_PROJECT_POINTER = ap.DATA_DIR / "active-project.json"
         cm.save_turn_spatial_state("c-general", "u", "a", sessions_root=self.root)
@@ -50,8 +57,10 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         self.client = server.app.test_client()
 
     def tearDown(self):
+        cm._parsed_envelope_cache.clear()
         cm._DEFAULT_SESSIONS_ROOT = self._orig_root
         pm.POINTER_DIR = self._orig_pointer_dir
+        pm.DEFAULT_VAULT_PROJECTS_DIR = self._orig_vault_projects_dir
         ap.DATA_DIR, ap.ACTIVE_PROJECT_POINTER = self._orig_active_pointer
         self._tmp.cleanup()
 
@@ -183,6 +192,48 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         posted = self.client.post("/api/projects/book", json={"status": "inactive"})
         self.assertEqual(posted.status_code, 200)
         self.assertEqual(ap.get_active_project(), "commons")
+
+    def test_parsed_inventory_reuses_unchanged_envelopes_and_reparses_one_change(self):
+        cm._parsed_envelope_cache.clear()
+        real_loads = cm.json.loads
+        with patch.object(cm.json, "loads", wraps=real_loads) as loads:
+            list(cm.iter_conversations(sessions_root=self.root))
+            first_parse_count = loads.call_count
+            self.assertEqual(first_parse_count, 3)
+
+            list(cm.iter_conversations(sessions_root=self.root))
+            self.assertEqual(loads.call_count, first_parse_count)
+
+            path = self.root / "c-book" / "conversation.json"
+            changed = real_loads(path.read_text(encoding="utf-8"))
+            changed["description"] = "stat key changed"
+            path.write_text(json.dumps(changed), encoding="utf-8")
+            list(cm.iter_conversations(sessions_root=self.root))
+            self.assertEqual(loads.call_count, first_parse_count + 1)
+
+    def test_conversation_sidebar_etag_returns_304_until_inventory_changes(self):
+        first = self.client.get("/api/conversations?project_id=")
+        self.assertEqual(first.status_code, 200)
+        etag = first.headers.get("ETag")
+        self.assertTrue(etag)
+
+        unchanged = self.client.get(
+            "/api/conversations?project_id=",
+            headers={"If-None-Match": etag},
+        )
+        self.assertEqual(unchanged.status_code, 304)
+        self.assertEqual(unchanged.data, b"")
+
+        path = self.root / "c-law" / "conversation.json"
+        changed = json.loads(path.read_text(encoding="utf-8"))
+        changed["display_name"] = "Changed"
+        path.write_text(json.dumps(changed), encoding="utf-8")
+        refreshed = self.client.get(
+            "/api/conversations?project_id=",
+            headers={"If-None-Match": etag},
+        )
+        self.assertEqual(refreshed.status_code, 200)
+        self.assertNotEqual(refreshed.headers.get("ETag"), etag)
 
 
 if __name__ == "__main__":

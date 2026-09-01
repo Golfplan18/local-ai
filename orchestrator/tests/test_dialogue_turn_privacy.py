@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import sys
 import threading
 from contextlib import contextmanager
 from datetime import datetime
@@ -403,20 +404,39 @@ def test_fork_summary_and_library_search_use_effective_history(tmp_path):
 def test_archived_related_uses_supported_filter_contract():
     from server import app as server_app
 
+    candidates = [
+        {
+            "conversation_id": f"archive:related-{index}",
+            "source_conversation_id": f"related-{index}",
+            "source_kind": "archive",
+            "turn_privacy": "standard",
+            "title": f"Related {index}",
+            "score": 100.0 - index,
+            "_archive_privacies": ["standard"],
+        }
+        for index in range(2)
+    ]
     with (
         mock.patch.object(
             server_app, "_valid_existing_conversation_id", return_value=True,
         ),
         mock.patch.object(
-            server_app, "_browser_archive_related_rows", return_value=[],
+            server_app, "_browser_archive_related_rows", return_value=candidates,
         ) as related_rows,
     ):
         response = server_app.app.test_client().get(
-            "/api/conversation/archive:source/related?target_tag=private",
+            "/api/conversation/archive:source/related?target_tag=stealth"
+            "&privacy=contains_private&limit=1",
         )
 
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True))["rows"] == []
+    payload = json.loads(response.get_data(as_text=True))
+    assert payload["rows"] == []
+    assert payload["total"] == 0
+    assert payload["source_counts"] == {
+        "live": 0, "archive": 0, "engram": 0,
+    }
+    assert payload["facets"]["lifecycle"]["counts"]["indexed_archive"] == 0
     related_rows.assert_called_once_with(
         "archive:source",
         required_tags=[],
@@ -501,6 +521,7 @@ def test_library_search_filters_exact_authority_before_every_score(
         },
         2: {
             "conversation_id": "mixed", "turn_privacy": "standard",
+            "project_ids": "law, book",
             "conversation_title": BombText("private-derived title"),
             "chroma:document": (
                 "## Context\n\nprivate-derived title\n\n## Exchange\n\n"
@@ -524,7 +545,13 @@ def test_library_search_filters_exact_authority_before_every_score(
 
         def execute(self, sql, params=()):
             statements.append((sql, tuple(params)))
-            if "FROM embedding_fulltext_search" in sql:
+            if "source_meta.key IN" in sql:
+                self.result = [
+                    ("mixed", "turn_privacy", "standard", None, None, None),
+                    ("mixed", "turn_privacy", "private", None, None, None),
+                    ("mixed", "project_ids", "law, book", None, None, None),
+                ]
+            elif "FROM embedding_fulltext_search" in sql:
                 self.result = [
                     (1, "private-row", metadata[1]["chroma:document"], 0.1),
                     (3, "unknown-row", metadata[3]["chroma:document"], 0.2),
@@ -567,6 +594,32 @@ def test_library_search_filters_exact_authority_before_every_score(
     assert [row["turn_privacy"] for row in fuzzy] == ["standard"]
     assert exact[0]["title"] == "public needleword"
     assert "private-derived title" not in exact[0]["snippet"]
+    matched_snippet = exact[0]["snippet"]
+    enriched = server_app._browser_enrich_archive_rows(exact)
+    contract_row = server_app._browser_contract_row(enriched[0])
+    assert contract_row["privacy"]["state"] == "contains_private"
+    assert contract_row["project_ids"] == ["law", "book"]
+    assert contract_row["turn_privacy"] == "standard"
+    assert contract_row["title"] == "public needleword"
+    assert contract_row["snippet"] == matched_snippet
+
+    engram = server_app._browser_row_from_chroma_hit(
+        logical_collection="knowledge",
+        embedding_id="engram-row",
+        document="# Public Engram\nneedleword",
+        metadata={
+            "type": "resource",
+            "path": "/vault/public-engram.md",
+            "nexus": "law, book",
+        },
+        query="needleword",
+        score=90.0,
+        target_tag="",
+    )
+    assert engram is not None
+    assert server_app._browser_contract_row(engram)["project_ids"] == [
+        "law", "book",
+    ]
     scored_sql = [sql for sql, _params in statements if "embedding_fulltext_search" in sql]
     assert scored_sql
     assert all("turn_authority" in sql and "turn_privacy" in sql for sql in scored_sql)
@@ -730,6 +783,15 @@ def test_library_search_filters_exact_authority_before_every_score(
             "has_unknown_turn_privacy": False,
             "tag": "",
         },
+        {
+            "conversation_id": "stealth-only",
+            "parent_conversation_id": "mixed-live",
+            "title": "stealth-only title",
+            "description": "stealth-only description",
+            "contains_private": False,
+            "has_unknown_turn_privacy": False,
+            "tag": "stealth",
+        },
     ]
     effective = {
         "mixed-live": [
@@ -749,6 +811,10 @@ def test_library_search_filters_exact_authority_before_every_score(
         "standard-child": [
             {"role": "user", "content": "standard child title", "turn_privacy": "standard"},
             {"role": "assistant", "content": "standard child answer", "turn_privacy": "standard"},
+        ],
+        "stealth-only": [
+            {"role": "user", "content": "stealth-only title", "turn_privacy": "stealth"},
+            {"role": "assistant", "content": "stealth-only answer", "turn_privacy": "stealth"},
         ],
     }
     envelopes = {
@@ -783,6 +849,20 @@ def test_library_search_filters_exact_authority_before_every_score(
             related_response = server_app.app.test_client().get(
                 "/api/conversation/mixed-live/related?engrams=false"
             )
+        candidate_search = server_app._browser_live_rows
+        with mock.patch.object(
+            server_app, "_browser_live_rows", wraps=candidate_search,
+        ) as candidate_rows:
+            client = server_app.app.test_client()
+            exact_standard = client.get(
+                "/api/conversations/browser?engrams=false&privacy=standard",
+            ).get_json()["rows"]
+            exact_private = client.get(
+                "/api/conversations/browser?engrams=false&privacy=contains_private",
+            ).get_json()["rows"]
+            exact_stealth = client.get(
+                "/api/conversations/browser?engrams=false&privacy=stealth",
+            ).get_json()["rows"]
     assert [row["conversation_id"] for row in standard_rows] == [
         "mixed-live", "standard-child",
     ]
@@ -803,6 +883,18 @@ def test_library_search_filters_exact_authority_before_every_score(
     assert related_rows[0]["description"] == ""
     assert related_rows[0]["contains_private"] is True
     assert "private-derived" not in json.dumps(related_rows)
+    assert [
+        call.kwargs["target_tag"] for call in candidate_rows.call_args_list
+    ] == ["", "private", "stealth"]
+    assert {row["conversation_id"] for row in exact_standard} == {
+        "standard-child",
+    }
+    assert {row["conversation_id"] for row in exact_private} == {
+        "mixed-live", "private-only",
+    }
+    assert {row["conversation_id"] for row in exact_stealth} == {
+        "stealth-only",
+    }
 
     private_candidate = {
         "source_kind": "archive",
@@ -817,6 +909,69 @@ def test_library_search_filters_exact_authority_before_every_score(
         assert not server_app._browser_creation_row_allowed(
             private_candidate, "",
         )
+
+    cache_id = "cached-stealth-delete"
+    cache_root = tmp_path / "cache-sessions"
+    envelope_path = cache_root / cache_id / "conversation.json"
+    envelope_path.parent.mkdir(parents=True)
+    envelope_path.write_text(json.dumps({
+        "conversation_id": cache_id,
+        "tag": "stealth",
+        "project_ids": [],
+        "messages": [],
+    }), encoding="utf-8")
+    top_level_memory = __import__("conversation_memory")
+    assert top_level_memory is not memory
+    alias_modules = {
+        id(module): module
+        for name in (
+            "conversation_memory", "orchestrator.conversation_memory",
+        )
+        if (module := sys.modules.get(name)) is not None
+    }
+    assert len(alias_modules) == 2
+    for module in alias_modules.values():
+        monkeypatch.setattr(module, "_DEFAULT_SESSIONS_ROOT", cache_root)
+        assert module.load_conversation_json(
+            cache_id, sessions_root=cache_root,
+        )["tag"] == "stealth"
+        assert str(envelope_path) in module._parsed_envelope_cache
+
+    def delete_cached_envelope(conversation_id, **_kwargs):
+        assert conversation_id == cache_id
+        envelope_path.unlink()
+        envelope_path.parent.rmdir()
+        return {
+            "conversation_id": cache_id,
+            "action": "delete_forever",
+            "deleted": {"session_dir": True},
+            "retained": {"explicit_vault_exports": True},
+            "errors": [],
+        }
+
+    monkeypatch.setattr(server_app, "_deleted_conversations", set())
+    with (
+        mock.patch.object(
+            server_app, "_quiesce_conversation_workers",
+            return_value={"cleaned": {}, "errors": []},
+        ),
+        mock.patch.object(
+            closeout, "delete_conversation_forever",
+            side_effect=delete_cached_envelope,
+        ),
+        mock.patch.object(server_app, "SIDEBAR_WINDOW_AVAILABLE", False),
+        mock.patch.object(
+            server_app, "_video_plugin",
+            SimpleNamespace(
+                run_lifecycle=mock.Mock(return_value={"results": {}, "errors": []})
+            ),
+        ),
+    ):
+        purge_result = server_app._delete_conversation_runtime(cache_id)
+    assert purge_result["errors"] == []
+    assert not envelope_path.exists()
+    for module in alias_modules.values():
+        assert str(envelope_path) not in module._parsed_envelope_cache
 
 
 def test_library_knowledge_paths_authenticate_owner_before_every_score(

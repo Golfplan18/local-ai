@@ -145,9 +145,9 @@
     }
 
     if (sidebar) {
-      if (state.sidebarExpanded) {
-        sidebar.classList.add('expanded');
-        document.body.classList.add('sidebar-expanded');
+      if (state.sidebarExpanded && window.OraSidebar
+          && typeof window.OraSidebar.setExpanded === 'function') {
+        window.OraSidebar.setExpanded(true);
       }
       if (state.sidebarLocked) sidebar.classList.add('locked');
     }
