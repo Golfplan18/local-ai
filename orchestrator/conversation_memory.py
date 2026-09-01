@@ -120,6 +120,70 @@ except ImportError:  # pragma: no cover - package-qualified import context
 _conv_locks_guard = threading.Lock()
 _conv_locks: dict[str, threading.Lock] = defaultdict(threading.Lock)
 
+# Parsing every Dialogue envelope is the expensive part of sidebar and
+# Library inventory reads.  Keep one process-local snapshot per envelope,
+# keyed by the file identity and nanosecond stat fields that change on an
+# atomic replace.  Callers always receive a deep copy so their normalisation
+# or rendering work cannot mutate the shared snapshot.  This is deliberately
+# not durable: restart, external replacement, and deletion all fall back to
+# the canonical conversation.json files.
+_parsed_envelope_cache_lock = threading.RLock()
+_parsed_envelope_cache: dict[str, tuple[tuple[int, int, int, int], dict[str, Any]]] = {}
+
+
+def _envelope_stat_key(path: Path) -> tuple[int, int, int, int]:
+    stat = path.stat()
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+
+
+def _read_parsed_envelope_snapshot(path: Path) -> dict[str, Any] | None:
+    """Return a copy of one stat-keyed parsed envelope, or ``None``."""
+    cache_key = str(path)
+    try:
+        stat_key = _envelope_stat_key(path)
+    except OSError:
+        with _parsed_envelope_cache_lock:
+            _parsed_envelope_cache.pop(cache_key, None)
+        return None
+    with _parsed_envelope_cache_lock:
+        cached = _parsed_envelope_cache.get(cache_key)
+        if cached is not None and cached[0] == stat_key:
+            return copy.deepcopy(cached[1])
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    try:
+        final_key = _envelope_stat_key(path)
+    except OSError:
+        return None
+    # An atomic replace during the read invalidates the snapshot. Re-read once
+    # through the same helper; the new stat key prevents recursion from
+    # returning the just-read stale bytes.
+    if final_key != stat_key:
+        return _read_parsed_envelope_snapshot(path)
+    with _parsed_envelope_cache_lock:
+        _parsed_envelope_cache[cache_key] = (final_key, copy.deepcopy(parsed))
+    return parsed
+
+
+def _remember_parsed_envelope(path: Path, data: dict[str, Any]) -> None:
+    """Refresh the process snapshot after an Ora-owned atomic write."""
+    try:
+        stat_key = _envelope_stat_key(path)
+    except OSError:
+        return
+    with _parsed_envelope_cache_lock:
+        _parsed_envelope_cache[str(path)] = (stat_key, copy.deepcopy(data))
+
+
+def _evict_parsed_envelope(path: Path) -> bool:
+    """Forget one deleted envelope without disturbing other snapshots."""
+    with _parsed_envelope_cache_lock:
+        return _parsed_envelope_cache.pop(str(path), None) is not None
+
 
 def _conversation_write_lock(conversation_id: str) -> threading.Lock:
     """Return the per-conversation Lock, creating it on first access."""
@@ -611,6 +675,7 @@ def _atomic_write_envelope(path: Path, data: dict[str, Any]) -> bool:
             path,
             json.dumps(data, indent=2, ensure_ascii=False),
         )
+        _remember_parsed_envelope(path, data)
         return True
     except OSError:
         return False
@@ -636,10 +701,7 @@ def _read_normalized_envelope(
         return None
     if not path.exists():
         return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
+    data = _read_parsed_envelope_snapshot(path)
     if not isinstance(data, dict):
         return None
     if require_messages and not isinstance(data.get("messages"), list):
@@ -662,10 +724,7 @@ def _read_normalized_envelope(
     with _conversation_write_lock(conversation_id):
         try:
             with _rp.locked_file(path):
-                try:
-                    current = json.loads(path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    return data
+                current = _read_parsed_envelope_snapshot(path)
                 if not isinstance(current, dict):
                     return data
                 if require_messages and not isinstance(current.get("messages"), list):
@@ -709,10 +768,7 @@ def _mutate_conversation_envelope(
     with _conversation_write_lock(conversation_id):
         try:
             with _rp.locked_file(path):
-                try:
-                    data = json.loads(path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    return None
+                data = _read_parsed_envelope_snapshot(path)
                 if not isinstance(data, dict):
                     return None
                 data["project_ids"] = normalize_project_ids(data.get("project_ids"))
@@ -772,10 +828,7 @@ def _read_history_envelope(
             continue
         if not path.exists():
             continue
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return None
+        data = _read_parsed_envelope_snapshot(path)
         return data if isinstance(data, dict) else None
     return None
 
@@ -2069,6 +2122,7 @@ def iter_conversations(
     sessions_root: Path | None = None,
     *,
     include_closed: bool = False,
+    include_content: bool = False,
 ) -> list[dict[str, Any]]:
     """Enumerate conversations under ``sessions_root`` and return summary
     dicts.
@@ -2164,7 +2218,7 @@ def iter_conversations(
         inherited_message_count = max(
             0, len(messages) - local_message_count,
         )
-        summaries.append({
+        summary = {
             "conversation_id": entry.name,
             "tag": tag,
             "composer_privacy_known": tag in CONVERSATION_TAGS,
@@ -2200,7 +2254,15 @@ def iter_conversations(
                 if isinstance(data.get("description"), str) else ""
             ),
             "contributors": copy.deepcopy(data.get("contributors") or []),
-        })
+        }
+        if include_content:
+            # The Library already paid to parse and resolve this Dialogue.
+            # Carry private, process-local values to that caller so it does
+            # not reopen every envelope in a second N+1 pass.  Default list
+            # callers never receive these fields in their JSON responses.
+            summary["_envelope"] = copy.deepcopy(data)
+            summary["_effective_messages"] = copy.deepcopy(messages)
+        summaries.append(summary)
     return summaries
 
 

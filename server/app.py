@@ -10415,13 +10415,22 @@ def conversations_list():
     pending.sort(key=lambda r: (r.get("last_activity_at") or ""), reverse=True)
     errored.sort(key=lambda r: (r.get("last_activity_at") or ""), reverse=True)
 
-    return json.dumps({
+    payload = {
         "pinned":  pinned,
         "errored": errored,
         "pending": pending,
         "unread":  unread,
         "active":  active,
-    })
+    }
+    body = json.dumps(payload)
+    etag = hashlib.sha256(body.encode("utf-8")).hexdigest()
+    if request.if_none_match.contains(etag):
+        response = Response(status=304)
+    else:
+        response = Response(body, mimetype="application/json")
+    response.set_etag(etag)
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 _LOW_VALUE_BROWSER_SNIPPET_PATTERNS = (
@@ -11216,6 +11225,8 @@ def _browser_row_from_chroma_hit(
             "source_kind": "archive",
             "tag": metadata.get("tag") or "",
             "turn_privacy": metadata.get("turn_privacy"),
+            "project_ids": metadata.get("project_ids"),
+            "nexus": metadata.get("nexus"),
             "tags": row_tags,
             "title": title,
             "snippet": snippet,
@@ -11266,6 +11277,8 @@ def _browser_row_from_chroma_hit(
             "artifact_kind": metadata.get("artifact_kind") or "",
             "managed_by": metadata.get("managed_by") or "",
             "turn_privacy": metadata.get("turn_privacy"),
+            "project_ids": metadata.get("project_ids"),
+            "nexus": metadata.get("nexus"),
             "source_file": metadata.get("source_file") or "",
             "source_chunk_id": metadata.get("source_chunk_id") or "",
             "source_turn_index": metadata.get("source_turn_index"),
@@ -11301,7 +11314,7 @@ def _browser_chroma_exact_rows(
     query: str,
     *,
     logical_collection: str,
-    limit: int,
+    limit: int | None,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
     target_tag: str = "",
@@ -11368,6 +11381,14 @@ def _browser_chroma_exact_rows(
         seen_row_ids: set[int] = set()
         for fts_query, boost in fts_queries:
             try:
+                limit_sql = "LIMIT ?" if limit is not None else ""
+                params: tuple = (
+                    physical,
+                    *privacy_params,
+                    fts_query,
+                )
+                if limit is not None:
+                    params = (*params, max(limit, 20))
                 matches = cur.execute(
                     f"""
                     SELECT embedding_fulltext_search.rowid,
@@ -11383,14 +11404,9 @@ def _browser_chroma_exact_rows(
                       {privacy_clause}
                       AND embedding_fulltext_search.string_value MATCH ?
                     ORDER BY rank
-                    LIMIT ?
+                    {limit_sql}
                     """,
-                    (
-                        physical,
-                        *privacy_params,
-                        fts_query,
-                        max(limit, 20),
-                    ),
+                    params,
                 ).fetchall()
             except Exception:
                 continue
@@ -11438,7 +11454,8 @@ def _browser_chroma_exact_rows(
         con.close()
     except Exception as exc:
         print(f"[conversation-browser] exact {logical_collection} search failed: {exc}", file=sys.stderr)
-    return sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)[:limit]
+    rows = sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)
+    return rows if limit is None else rows[:limit]
 
 
 def _browser_fuzzy_fts_query(query: str) -> str:
@@ -11470,7 +11487,7 @@ def _browser_chroma_fuzzy_rows(
     query: str,
     *,
     logical_collection: str,
-    limit: int,
+    limit: int | None,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
     target_tag: str = "",
@@ -11524,6 +11541,14 @@ def _browser_chroma_fuzzy_rows(
                 "VALUES (?)",
                 ((path,) for path in sorted(admitted_knowledge_paths)),
             )
+        limit_sql = "LIMIT ?" if limit is not None else ""
+        params: tuple = (
+            physical,
+            *privacy_params,
+            fts_query,
+        )
+        if limit is not None:
+            params = (*params, max(limit * 4, 80))
         matches = cur.execute(
             f"""
             SELECT embedding_fulltext_search.rowid,
@@ -11539,14 +11564,9 @@ def _browser_chroma_fuzzy_rows(
               {privacy_clause}
               AND embedding_fulltext_search.string_value MATCH ?
             ORDER BY rank
-            LIMIT ?
+            {limit_sql}
             """,
-            (
-                physical,
-                *privacy_params,
-                fts_query,
-                max(limit * 4, 80),
-            ),
+            params,
         ).fetchall()
         for row_id, embedding_id, fts_text, rank in matches:
             meta = _browser_metadata_for_row(cur, row_id)
@@ -11593,12 +11613,13 @@ def _browser_chroma_fuzzy_rows(
         con.close()
     except Exception as exc:
         print(f"[conversation-browser] fuzzy {logical_collection} search failed: {exc}", file=sys.stderr)
-    return _browser_sort_rows(list(out.values()), "relevance")[:limit]
+    rows = _browser_sort_rows(list(out.values()), "relevance")
+    return rows if limit is None else rows[:limit]
 
 
 def _browser_vault_markdown_rows(
     query: str,
-    limit: int = 40,
+    limit: int | None = 40,
     *,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
@@ -11711,6 +11732,8 @@ def _browser_vault_markdown_rows(
                     "artifact_kind": owner_metadata.get("artifact_kind") or "",
                     "managed_by": owner_metadata.get("managed_by") or "",
                     "turn_privacy": owner_metadata.get("turn_privacy"),
+                    "project_ids": owner_metadata.get("project_ids"),
+                    "nexus": owner_metadata.get("nexus"),
                     "source_file": owner_metadata.get("source_file") or "",
                     "source_chunk_id": owner_metadata.get("source_chunk_id") or "",
                     "source_turn_index": owner_metadata.get("source_turn_index"),
@@ -11727,14 +11750,15 @@ def _browser_vault_markdown_rows(
                 })
     except Exception as exc:
         print(f"[conversation-browser] vault markdown fallback failed: {exc}", file=sys.stderr)
-    return _browser_sort_rows(rows, "relevance")[:limit]
+    rows = _browser_sort_rows(rows, "relevance")
+    return rows if limit is None else rows[:limit]
 
 
 def _browser_chroma_semantic_rows(
     query: str,
     *,
     logical_collection: str,
-    limit: int,
+    limit: int | None,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
     target_tag: str = "",
@@ -11769,12 +11793,16 @@ def _browser_chroma_semantic_rows(
             admitted_knowledge_paths = set(
                 search_scopes[0].get("path", {}).get("$in", [])
             )
-        n_results = min(max(limit, 5), count)
+        n_results = count if limit is None else min(max(limit, 5), count)
         if logical_collection == "knowledge":
             # Each scope is authority-safe before distance computation.  Keep
             # the existing overfetch within each eligible owner lane, then
             # deduplicate the returned note rows below.
-            n_results = min(max(limit * 4, 80), count)
+            n_results = (
+                count
+                if limit is None
+                else min(max(limit * 4, 80), count)
+            )
         for scope in search_scopes:
             query_kwargs = {
                 "query_texts": [query],
@@ -11828,11 +11856,12 @@ def _browser_chroma_semantic_rows(
                     _browser_merge_best(out, candidate)
     except Exception as exc:
         print(f"[conversation-browser] semantic {logical_collection} search failed: {exc}", file=sys.stderr)
-    return sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)[:limit]
+    rows = sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)
+    return rows if limit is None else rows[:limit]
 
 
 def _browser_latest_archive_rows(
-    limit: int,
+    limit: int | None,
     *,
     target_tag: str = "",
 ) -> list[dict]:
@@ -11846,6 +11875,10 @@ def _browser_latest_archive_rows(
         import sqlite3
         con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
         cur = con.cursor()
+        limit_sql = "LIMIT ?" if limit is not None else ""
+        params: tuple = (physical, *allowed)
+        if limit is not None:
+            params = (*params, max(limit, 1))
         matches = cur.execute(
             f"""
             SELECT cid.string_value AS source_id,
@@ -11874,9 +11907,9 @@ def _browser_latest_archive_rows(
               AND cid.string_value != ''
             GROUP BY cid.string_value
             ORDER BY last_seen DESC
-            LIMIT ?
+            {limit_sql}
             """,
-            (physical, *allowed, max(limit, 1)),
+            params,
         ).fetchall()
         for source_id, last_seen, sample_row_id, _pair_seen in matches:
             meta = _browser_metadata_for_row(cur, sample_row_id)
@@ -11900,6 +11933,109 @@ def _browser_latest_archive_rows(
     return rows
 
 
+def _browser_enrich_archive_rows(rows: list[dict]) -> list[dict]:
+    """Attach source-wide indexed authority without changing matched text."""
+    sources = {
+        str(row.get("source_conversation_id") or "").strip()
+        for row in rows
+        if row.get("source_kind") == "archive"
+        and row.get("_archive_privacies") is None
+        and str(row.get("source_conversation_id") or "").strip()
+    }
+    if not sources:
+        return rows
+
+    summaries = {
+        source_id: {"privacies": set(), "project_values": []}
+        for source_id in sources
+    }
+    for row in rows:
+        source_id = str(row.get("source_conversation_id") or "").strip()
+        summary = summaries.get(source_id)
+        if summary is None:
+            continue
+        privacy = str(row.get("turn_privacy") or "").strip().lower()
+        if privacy in {"standard", "private", "stealth"}:
+            summary["privacies"].add(privacy)
+        summary["project_values"].extend([
+            row.get("project_ids"), row.get("nexus"),
+        ])
+
+    con = None
+    try:
+        import sqlite3
+        con = sqlite3.connect(os.path.join(
+            _browser_chromadb_path(), "chroma.sqlite3",
+        ))
+        cur = con.cursor()
+        physical = _browser_physical_collection("conversations")
+        source_list = sorted(sources)
+        for offset in range(0, len(source_list), 400):
+            batch = source_list[offset:offset + 400]
+            placeholders = ",".join("?" for _source_id in batch)
+            metadata_rows = cur.execute(
+                f"""
+                SELECT cid.string_value,
+                       source_meta.key,
+                       source_meta.string_value,
+                       source_meta.int_value,
+                       source_meta.float_value,
+                       source_meta.bool_value
+                FROM embeddings
+                JOIN segments ON segments.id = embeddings.segment_id
+                JOIN collections ON collections.id = segments.collection
+                JOIN embedding_metadata cid
+                  ON cid.id = embeddings.id AND cid.key = 'conversation_id'
+                JOIN embedding_metadata source_meta
+                  ON source_meta.id = embeddings.id
+                 AND source_meta.key IN ('turn_privacy', 'project_ids', 'nexus')
+                WHERE collections.name = ?
+                  AND cid.string_value IN ({placeholders})
+                """,
+                (physical, *batch),
+            ).fetchall()
+            for source_id, key, string_v, int_v, float_v, bool_v in metadata_rows:
+                summary = summaries.get(str(source_id))
+                if summary is None:
+                    continue
+                value = next(
+                    (candidate for candidate in (
+                        string_v, int_v, float_v, bool_v,
+                    ) if candidate is not None),
+                    None,
+                )
+                if key == "turn_privacy":
+                    privacy = str(value or "").strip().lower()
+                    if privacy in {"standard", "private", "stealth"}:
+                        summary["privacies"].add(privacy)
+                elif value not in (None, ""):
+                    summary["project_values"].append(value)
+    except Exception as exc:
+        print(
+            f"[conversation-browser] archive metadata summary failed: {exc}",
+            file=sys.stderr,
+        )
+        return rows
+    finally:
+        if con is not None:
+            con.close()
+
+    enriched: list[dict] = []
+    for row in rows:
+        source_id = str(row.get("source_conversation_id") or "").strip()
+        summary = summaries.get(source_id)
+        if row.get("source_kind") != "archive" or summary is None:
+            enriched.append(row)
+            continue
+        item = dict(row)
+        item["_archive_privacies"] = sorted(summary["privacies"])
+        item["project_ids"] = _browser_row_project_ids({
+            "project_ids": summary["project_values"],
+        })
+        enriched.append(item)
+    return enriched
+
+
 def _browser_source_counts(rows: list[dict]) -> dict:
     counts = {"live": 0, "archive": 0, "engram": 0}
     for row in rows:
@@ -11907,6 +12043,242 @@ def _browser_source_counts(rows: list[dict]) -> dict:
         if kind in counts:
             counts[kind] += 1
     return counts
+
+
+_BROWSER_FILTER_OPTIONS = {
+    "privacy": ("standard", "contains_private", "stealth"),
+    "lifecycle": ("active", "inactive", "indexed_archive", "knowledge"),
+    "relationship": (
+        "parent", "direct-child", "sibling", "contributor",
+        "direct-related", "shared-project", "none",
+    ),
+    "local_restriction": ("restricted", "unrestricted"),
+}
+_BROWSER_FILTER_ECHO_FIELDS = (
+    "project_id", "date_from", "date_to", "privacy",
+    "lifecycle", "relationship", "local_restriction",
+)
+
+
+def _browser_filter_value(name: str) -> str:
+    value = str(request.args.get(name) or "").strip().lower()
+    if not value:
+        return ""
+    if value not in _BROWSER_FILTER_OPTIONS[name]:
+        raise ValueError(f"invalid {name} filter")
+    return value
+
+
+def _browser_iso_date(value: str | None, field: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date().isoformat()
+    except ValueError as exc:
+        raise ValueError(f"{field} must be YYYY-MM-DD") from exc
+
+
+def _browser_request_filters(*, default_sort: str) -> dict:
+    """Parse the one shared server-side Library/Related filter contract."""
+    sort_mode = (request.args.get("sort") or default_sort).strip().lower()
+    if sort_mode not in {"relevance", "recency"}:
+        sort_mode = default_sort
+    filter_values = {
+        name: _browser_filter_value(name)
+        for name in _BROWSER_FILTER_OPTIONS
+    }
+    target_tag = (request.args.get("target_tag") or "").strip().lower()
+    if target_tag not in _VALID_CONVERSATION_TAGS:
+        raise ValueError("invalid browser target tag")
+    target_tag = {
+        "standard": "",
+        "contains_private": "private",
+        "stealth": "stealth",
+    }.get(filter_values["privacy"], target_tag)
+    project_id = (request.args.get("project_id") or "commons").strip()
+    if not project_id or project_id.lower() == "general":
+        project_id = "commons"
+    date_from = _browser_iso_date(request.args.get("date_from"), "date_from")
+    date_to = _browser_iso_date(request.args.get("date_to"), "date_to")
+    if date_from and date_to and date_from > date_to:
+        raise ValueError("date_from must not be after date_to")
+    try:
+        limit = int(request.args.get("limit") or 100)
+    except (TypeError, ValueError):
+        limit = 100
+    return {
+        "target_tag": target_tag,
+        "sort": sort_mode,
+        "include_conversations": _browser_parse_bool(
+            request.args.get("conversations", request.args.get("include_conversations")),
+            True,
+        ),
+        "include_engrams": _browser_parse_bool(
+            request.args.get("engrams", request.args.get("include_engrams")),
+            True,
+        ),
+        "required_tags": _browser_parse_requested_tags(request.args.getlist("tags")),
+        "show_archived": _browser_parse_bool(request.args.get("show_archived"), False),
+        "min_relevance": _browser_parse_min_relevance(request.args.get("min_relevance")),
+        "project_id": project_id,
+        "date_from": date_from,
+        "date_to": date_to,
+        "limit": max(1, min(limit, 500)),
+        **filter_values,
+    }
+
+
+def _browser_filter_echo(filters: dict) -> dict:
+    return {name: filters[name] for name in _BROWSER_FILTER_ECHO_FIELDS}
+
+
+def _browser_contract_row(row: dict) -> dict:
+    """Attach explicit, non-invented Library metadata to one eligible row."""
+    item = dict(row)
+    source_kind = item.get("source_kind") or "live"
+    tags = set(_browser_normalize_tags(item.get("tags") or item.get("tag")))
+    exact_turn_privacy = str(item.get("turn_privacy") or "").strip().lower()
+    archive_privacies = set(_browser_normalize_tags(
+        item.pop("_archive_privacies", []),
+    ))
+    if item.get("tag") == "stealth" or exact_turn_privacy == "stealth":
+        privacy_category = "stealth"
+    elif (
+        item.get("contains_private")
+        or exact_turn_privacy == "private"
+        or (
+            source_kind != "live"
+            and (
+                item.get("tag") == "private"
+                or "private" in tags
+                or "private" in archive_privacies
+            )
+        )
+    ):
+        privacy_category = "contains_private"
+    else:
+        privacy_category = "standard"
+
+    if source_kind == "live":
+        lifecycle_state = "inactive" if item.get("closed") else "active"
+    elif source_kind == "archive":
+        lifecycle_state = "indexed_archive"
+    else:
+        lifecycle_state = "knowledge"
+
+    relationship_kinds = list(dict.fromkeys(
+        value for value in (item.pop("_relationship_kinds", []) or [])
+        if value in _BROWSER_FILTER_OPTIONS["relationship"] and value != "none"
+    ))
+    relationship_available = bool(item.pop(
+        "_relationship_available", source_kind == "live",
+    ))
+    item["project_ids"] = _browser_row_project_ids(item)
+    item["privacy"] = {
+        "state": privacy_category,
+        "contains_private": privacy_category == "contains_private",
+    }
+    item["provenance"] = {
+        "kind": source_kind,
+        "id": item.get("source_conversation_id") or item.get("conversation_id"),
+    }
+    item["lifecycle"] = {"state": lifecycle_state}
+    item["relationship"] = {
+        "available": relationship_available,
+        "kinds": relationship_kinds,
+    }
+    return item
+
+
+def _browser_row_project_ids(row: dict) -> list[str]:
+    return [
+        value for value in _browser_normalize_tags([
+            row.get("project_ids"), row.get("nexus"),
+        ])
+        if value not in {"commons", "general"}
+    ]
+
+
+def _browser_contract_filter_rows(rows: list[dict], filters: dict) -> list[dict]:
+    out: list[dict] = []
+    for raw in rows:
+        row = _browser_contract_row(raw)
+        project_ids = _browser_row_project_ids(row)
+        if filters["project_id"] != "commons" and filters["project_id"] not in project_ids:
+            continue
+        activity = str(row.get("last_activity_at") or row.get("date") or "")[:10]
+        if filters["date_from"] and (not activity or activity < filters["date_from"]):
+            continue
+        if filters["date_to"] and (not activity or activity > filters["date_to"]):
+            continue
+        if filters["privacy"] and row["privacy"]["state"] != filters["privacy"]:
+            continue
+        if filters["lifecycle"] and row["lifecycle"]["state"] != filters["lifecycle"]:
+            continue
+        if filters["relationship"]:
+            if not row["relationship"]["available"]:
+                continue
+            kinds = row["relationship"]["kinds"]
+            if filters["relationship"] == "none":
+                if kinds:
+                    continue
+            elif filters["relationship"] not in kinds:
+                continue
+        # Missing local-restriction authority is not equivalent to either
+        # restricted or unrestricted. A concrete filter therefore truthfully
+        # returns no rows and the facet reports the unavailable universe.
+        if filters["local_restriction"]:
+            continue
+        out.append(row)
+    return out
+
+
+def _browser_facets(rows: list[dict]) -> dict:
+    projects: dict[str, int] = {"commons": len(rows)}
+    privacy = {value: 0 for value in _BROWSER_FILTER_OPTIONS["privacy"]}
+    lifecycle = {value: 0 for value in _BROWSER_FILTER_OPTIONS["lifecycle"]}
+    relationships = {value: 0 for value in _BROWSER_FILTER_OPTIONS["relationship"]}
+    relationship_unavailable = 0
+    dates: list[str] = []
+    for row in rows:
+        row_projects = _browser_row_project_ids(row)
+        for project_id in row_projects:
+            projects[project_id] = projects.get(project_id, 0) + 1
+        privacy[row["privacy"]["state"]] += 1
+        lifecycle[row["lifecycle"]["state"]] += 1
+        kinds = row["relationship"]["kinds"]
+        if row["relationship"]["available"]:
+            if kinds:
+                for kind in kinds:
+                    relationships[kind] = relationships.get(kind, 0) + 1
+            else:
+                relationships["none"] += 1
+        else:
+            relationship_unavailable += 1
+        activity = str(row.get("last_activity_at") or row.get("date") or "")[:10]
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", activity):
+            dates.append(activity)
+    return {
+        "projects": {"available": True, "counts": projects},
+        "dates": {
+            "available": bool(dates),
+            "min": min(dates) if dates else None,
+            "max": max(dates) if dates else None,
+        },
+        "privacy": {"available": True, "counts": privacy},
+        "lifecycle": {"available": True, "counts": lifecycle},
+        "relationships": {
+            "available": any(row["relationship"]["available"] for row in rows),
+            "counts": relationships,
+            "unavailable": relationship_unavailable,
+        },
+        "local_restriction": {
+            "available": False,
+            "counts": {"restricted": 0, "unrestricted": 0},
+            "unavailable": len(rows),
+        },
+    }
 
 
 _conversation_discovery_lock = threading.RLock()
@@ -12070,6 +12442,8 @@ def _browser_row_for_creation_ref(
         "result_type": envelope.get("result_type") or f"{kind}_conversation",
         "tag": envelope.get("tag") or "",
         "tags": _browser_normalize_tags(envelope.get("tag")),
+        "project_ids": _browser_row_project_ids(envelope),
+        "nexus": envelope.get("nexus"),
         "title": title,
         "snippet": _conversation_search_snippet(searchable, "").get("snippet") or "",
         "score": 1000.0,
@@ -12295,17 +12669,42 @@ def _browser_live_rows(
         raise RuntimeError(f"conversation browser import failed: {e}") from e
 
     try:
-        summaries = iter_conversations(include_closed=True)
+        summaries = iter_conversations(include_closed=True, include_content=True)
     except Exception as e:
         raise RuntimeError(f"conversation list failed: {e}") from e
 
+    children_by_parent: dict[str, set[str]] = {}
+    incoming_contributor_refs: set[str] = set()
+    project_counts: dict[str, int] = {}
+    for summary in summaries:
+        summary_id = summary.get("conversation_id")
+        parent_id = summary.get("parent_conversation_id")
+        if isinstance(summary_id, str) and isinstance(parent_id, str) and parent_id:
+            children_by_parent.setdefault(parent_id, set()).add(summary_id)
+        for contributor in summary.get("contributors") or []:
+            if (isinstance(contributor, dict)
+                    and contributor.get("kind") == "conversation"
+                    and isinstance(contributor.get("ref"), str)):
+                incoming_contributor_refs.add(contributor["ref"])
+        for project_id in summary.get("project_ids") or []:
+            if isinstance(project_id, str) and project_id:
+                project_counts[project_id] = project_counts.get(project_id, 0) + 1
+
     rows: list[dict] = []
-    for row in summaries:
+    for summary in summaries:
+        row = dict(summary)
         cid = row.get("conversation_id")
         if not cid:
             continue
-        data = load_conversation_json(cid) or {}
-        effective_messages = resolve_effective_conversation_history(cid)
+        data = row.pop("_envelope", None)
+        effective_messages = row.pop("_effective_messages", None)
+        # Test doubles and legacy external callers may supply only summary
+        # rows. The real inventory carries both values from the same parsed
+        # snapshot, so production avoids the former whole-corpus N+1 reopen.
+        if not isinstance(data, dict):
+            data = load_conversation_json(cid) or {}
+        if not isinstance(effective_messages, list):
+            effective_messages = resolve_effective_conversation_history(cid)
         data = dict(data)
         data["messages"] = (
             effective_messages
@@ -12320,7 +12719,12 @@ def _browser_live_rows(
             # browse identity or snippet and therefore do not exist in this
             # lane. Mixed Dialogues continue below with their eligible pair.
             continue
-        match = _conversation_search_snippet(searchable, query)
+        # Empty Library browse needs structural identity and recency only.
+        # Do not run the three body-cleaning regex passes over every message.
+        match = (
+            _conversation_search_snippet(searchable, query)
+            if query else {"score": 1.0, "snippet": "", "matched_message_index": None}
+        )
         if query and match.get("score", 0) <= 0:
             continue
         # Only structural Dialogue metadata crosses from the summary. Fields
@@ -12386,6 +12790,25 @@ def _browser_live_rows(
             "score": (float(match.get("score", 0)) + (25.0 if query else 1.0)),
             "search_relevance": _browser_match_score(query, title, snippet) if query else None,
         })
+        relationship_kinds: list[str] = []
+        parent_id = row.get("parent_conversation_id")
+        if parent_id:
+            relationship_kinds.append("direct-child")
+            if len(children_by_parent.get(parent_id, set())) > 1:
+                relationship_kinds.append("sibling")
+        if cid in children_by_parent:
+            relationship_kinds.append("parent")
+        if row.get("contributors"):
+            relationship_kinds.append("contributor")
+        if cid in incoming_contributor_refs:
+            relationship_kinds.append("direct-related")
+        if any(
+            project_counts.get(project_id, 0) > 1
+            for project_id in row.get("project_ids") or []
+        ):
+            relationship_kinds.append("shared-project")
+        out["_relationship_available"] = True
+        out["_relationship_kinds"] = relationship_kinds
         rows.append(out)
     return rows
 
@@ -12587,11 +13010,18 @@ def _browser_archive_envelope(
                 "turn_privacy": turn_privacy,
             })
 
+    source_authority = _browser_enrich_archive_rows([{
+        "source_kind": "archive",
+        "source_conversation_id": source_id,
+        "project_ids": [meta.get("project_ids") for meta in chunks],
+        "nexus": [meta.get("nexus") for meta in chunks],
+    }])[0]
     return {
         "conversation_id": conversation_id,
         "source_conversation_id": source_id,
         "display_name": title,
         "tag": _browser_strictest_privacy_tag(*privacy_sources),
+        "project_ids": _browser_row_project_ids(source_authority),
         "privacy_summary": (
             "unknown" if any(
                 message.get("turn_privacy") is None
@@ -12621,8 +13051,8 @@ def _browser_engram_envelope(
     if not source_id:
         return None
     path = _browser_resolve_path(source_id)
+    owner_metadata = _browser_read_frontmatter_metadata(path)
     if target_tag is not None:
-        owner_metadata = _browser_read_frontmatter_metadata(path)
         if not _browser_knowledge_metadata_allowed(
             owner_metadata, target_tag,
         ):
@@ -12657,6 +13087,8 @@ def _browser_engram_envelope(
         "source_conversation_id": source_id,
         "display_name": title,
         "tag": "",
+        "project_ids": _browser_row_project_ids(owner_metadata or {}),
+        "nexus": (owner_metadata or {}).get("nexus"),
         "created": None,
         "last_activity_at": None,
         "archived_source": True,
@@ -13082,7 +13514,7 @@ def build_contributor_context(
 
 def _browser_archive_related_rows(
     conversation_id: str,
-    limit: int = 100,
+    limit: int | None = None,
     *,
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
@@ -13136,6 +13568,10 @@ def _browser_archive_related_rows(
             import sqlite3
             con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
             cur = con.cursor()
+            limit_sql = "LIMIT ?" if limit is not None else ""
+            query_params = tuple(params)
+            if limit is not None:
+                query_params = (*query_params, max(limit * 4, 40))
             matches = cur.execute(
                 f"""
                 SELECT embeddings.id, embeddings.embedding_id
@@ -13160,9 +13596,9 @@ def _browser_archive_related_rows(
                   AND turn_authority.string_value IN ({privacy_placeholders})
                   AND ({' OR '.join(clauses)})
                 ORDER BY COALESCE(stamp.string_value, '') DESC
-                LIMIT ?
+                {limit_sql}
                 """,
-                (*params, max(limit * 4, 40)),
+                query_params,
             ).fetchall()
             for row_id, embedding_id in matches:
                 meta = _browser_metadata_for_row(cur, row_id)
@@ -13196,7 +13632,7 @@ def _browser_archive_related_rows(
         except Exception as exc:
             print(f"[conversation-browser] archive related lookup failed: {exc}", file=sys.stderr)
 
-    if len(rows_by_id) < limit:
+    if limit is None or len(rows_by_id) < limit:
         safe_pair = _browser_safe_conversation_pair(
             chunks[0].get("chroma:document") or "",
         )
@@ -13205,7 +13641,11 @@ def _browser_archive_related_rows(
             for row in _browser_chroma_semantic_rows(
                 title,
                 logical_collection="conversations",
-                limit=max(20, limit - len(rows_by_id)),
+                limit=(
+                    None
+                    if limit is None
+                    else max(20, limit - len(rows_by_id))
+                ),
                 required_tags=required_tags,
                 show_archived=show_archived,
                 target_tag=target_tag,
@@ -13215,12 +13655,13 @@ def _browser_archive_related_rows(
                 row["relation"] = row.get("relation") or "semantic"
                 _browser_merge_best(rows_by_id, row)
 
-    return _browser_sort_rows(list(rows_by_id.values()), "relevance")[:limit]
+    rows = _browser_sort_rows(list(rows_by_id.values()), "relevance")
+    return rows if limit is None else rows[:limit]
 
 
 def _browser_engram_related_rows(
     conversation_id: str,
-    limit: int = 100,
+    limit: int | None = None,
     *,
     include_conversations: bool = True,
     include_engrams: bool = True,
@@ -13242,11 +13683,12 @@ def _browser_engram_related_rows(
     query = heading.group(1).strip() if heading else envelope.get("display_name") or str(content or "")[:240]
 
     rows_by_id: dict[str, dict] = {}
+    candidate_limit = None if limit is None else max(20, limit // 2)
     if include_engrams:
         for row in _browser_chroma_exact_rows(
             query,
             logical_collection="knowledge",
-            limit=max(20, limit // 2),
+            limit=candidate_limit,
             required_tags=required_tags,
             show_archived=show_archived,
             target_tag=target_tag,
@@ -13258,7 +13700,7 @@ def _browser_engram_related_rows(
         for row in _browser_chroma_semantic_rows(
             query,
             logical_collection="knowledge",
-            limit=max(20, limit // 2),
+            limit=candidate_limit,
             required_tags=required_tags,
             show_archived=show_archived,
             target_tag=target_tag,
@@ -13271,14 +13713,15 @@ def _browser_engram_related_rows(
         for row in _browser_chroma_semantic_rows(
             query,
             logical_collection="conversations",
-            limit=max(20, limit // 2),
+            limit=candidate_limit,
             required_tags=required_tags,
             show_archived=show_archived,
             target_tag=target_tag,
         ):
             row["relation"] = row.get("relation") or "conversation"
             _browser_merge_best(rows_by_id, row)
-    return _browser_sort_rows(list(rows_by_id.values()), "relevance")[:limit]
+    rows = _browser_sort_rows(list(rows_by_id.values()), "relevance")
+    return rows if limit is None else rows[:limit]
 
 
 @app.route("/api/conversations/browser", methods=["GET"])
@@ -13288,9 +13731,6 @@ def conversations_browser():
     purpose = (request.args.get("purpose") or "browse").strip().lower()
     if purpose not in {"browse", "creation"}:
         return _json_response({"error": "invalid browser purpose"}, status=400)
-    target_tag = (request.args.get("target_tag") or "").strip().lower()
-    if target_tag not in _VALID_CONVERSATION_TAGS:
-        return _json_response({"error": "invalid browser target tag"}, status=400)
     if purpose == "creation" and (
         len(query) < 20
         or len(re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]+", query)) < 3
@@ -13298,25 +13738,20 @@ def conversations_browser():
         return _json_response({
             "error": "creation discovery requires a concrete description",
         }, status=400)
-    sort_mode = (request.args.get("sort") or ("relevance" if query else "recency")).strip().lower()
-    if sort_mode not in {"relevance", "recency"}:
-        sort_mode = "relevance" if query else "recency"
-    include_conversations = _browser_parse_bool(
-        request.args.get("conversations", request.args.get("include_conversations")),
-        True,
-    )
-    include_engrams = _browser_parse_bool(
-        request.args.get("engrams", request.args.get("include_engrams")),
-        True,
-    )
-    required_tags = _browser_parse_requested_tags(request.args.getlist("tags"))
-    show_archived = _browser_parse_bool(request.args.get("show_archived"), False)
-    min_relevance = _browser_parse_min_relevance(request.args.get("min_relevance"))
     try:
-        limit = int(request.args.get("limit") or 100)
-    except (TypeError, ValueError):
-        limit = 100
-    limit = max(1, min(limit, 500))
+        filters = _browser_request_filters(
+            default_sort="relevance" if query else "recency",
+        )
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    target_tag = filters["target_tag"]
+    sort_mode = filters["sort"]
+    include_conversations = filters["include_conversations"]
+    include_engrams = filters["include_engrams"]
+    required_tags = filters["required_tags"]
+    show_archived = filters["show_archived"]
+    min_relevance = filters["min_relevance"]
+    limit = filters["limit"]
 
     live_rows: list[dict] = []
     if include_conversations:
@@ -13333,11 +13768,11 @@ def conversations_browser():
     archive_rows: list[dict] = []
     engram_rows: list[dict] = []
     if query:
-        if include_conversations:
+        if include_conversations and show_archived:
             archive_rows.extend(_browser_chroma_exact_rows(
                 query,
                 logical_collection="conversations",
-                limit=120,
+                limit=None,
                 required_tags=required_tags,
                 show_archived=show_archived,
                 target_tag=target_tag,
@@ -13345,7 +13780,7 @@ def conversations_browser():
             archive_rows.extend(_browser_chroma_fuzzy_rows(
                 query,
                 logical_collection="conversations",
-                limit=80,
+                limit=None,
                 required_tags=required_tags,
                 show_archived=show_archived,
                 target_tag=target_tag,
@@ -13354,7 +13789,7 @@ def conversations_browser():
             engram_rows.extend(_browser_chroma_exact_rows(
                 query,
                 logical_collection="knowledge",
-                limit=80,
+                limit=None,
                 required_tags=required_tags,
                 show_archived=show_archived,
                 target_tag=target_tag,
@@ -13362,19 +13797,33 @@ def conversations_browser():
             engram_rows.extend(_browser_chroma_fuzzy_rows(
                 query,
                 logical_collection="knowledge",
-                limit=80,
+                limit=None,
                 required_tags=required_tags,
                 show_archived=show_archived,
                 target_tag=target_tag,
             ))
             engram_rows.extend(_browser_vault_markdown_rows(
                 query,
-                limit=40,
+                limit=None,
                 required_tags=required_tags,
                 show_archived=show_archived,
                 target_tag=target_tag,
             ))
-        local_rows = archive_rows + engram_rows
+        archive_rows = _browser_enrich_archive_rows(archive_rows)
+        local_rows_by_id: dict[str, dict] = {}
+        for row in archive_rows + engram_rows:
+            _browser_merge_best(local_rows_by_id, row)
+        local_rows = _browser_filter_rows(
+            list(local_rows_by_id.values()),
+            include_conversations=include_conversations,
+            include_engrams=include_engrams,
+            target_tag=target_tag,
+            min_relevance=min_relevance,
+            has_query=True,
+            required_tags=required_tags,
+            show_archived=show_archived,
+        )
+        local_rows = _browser_contract_filter_rows(local_rows, filters)
         local_best = max(
             (
                 float(row.get("search_relevance") if row.get("search_relevance") is not None else row.get("score") or 0)
@@ -13383,11 +13832,11 @@ def conversations_browser():
             default=0.0,
         )
         if len(local_rows) < 30 or local_best < 90.0:
-            if include_conversations:
+            if include_conversations and show_archived:
                 archive_rows.extend(_browser_chroma_semantic_rows(
                     query,
                     logical_collection="conversations",
-                    limit=80,
+                    limit=None,
                     required_tags=required_tags,
                     show_archived=show_archived,
                     target_tag=target_tag,
@@ -13396,17 +13845,18 @@ def conversations_browser():
                 engram_rows.extend(_browser_chroma_semantic_rows(
                     query,
                     logical_collection="knowledge",
-                    limit=60,
+                    limit=None,
                     required_tags=required_tags,
                     show_archived=show_archived,
                     target_tag=target_tag,
                 ))
     else:
-        if include_conversations:
+        if include_conversations and show_archived:
             archive_rows.extend(_browser_latest_archive_rows(
-                limit=limit, target_tag=target_tag,
+                limit=None, target_tag=target_tag,
             ))
 
+    archive_rows = _browser_enrich_archive_rows(archive_rows)
     for row in archive_rows + engram_rows:
         if row.get("source_conversation_id") in live_ids:
             continue
@@ -13422,7 +13872,6 @@ def conversations_browser():
         required_tags=required_tags,
         show_archived=show_archived,
     )
-    rows = _browser_sort_rows(rows, sort_mode)
     if purpose == "creation":
         rows = [
             row for row in rows
@@ -13440,6 +13889,9 @@ def conversations_browser():
                     "error": "requested contributor no longer resolves",
                 }, status=409)
             rows.insert(0, included)
+    rows = _browser_enrich_archive_rows(rows)
+    rows = _browser_contract_filter_rows(rows, filters)
+    rows = _browser_sort_rows(rows, sort_mode)
     visible_rows = rows[:limit]
     payload = {
         "query": query,
@@ -13451,9 +13903,11 @@ def conversations_browser():
         "tags": required_tags,
         "show_archived": show_archived,
         "min_relevance": min_relevance,
+        "filters": _browser_filter_echo(filters),
         "rows": visible_rows,
         "total": len(rows),
         "source_counts": _browser_source_counts(rows),
+        "facets": _browser_facets(rows),
     }
     if purpose == "creation":
         payload["review_token"] = _register_conversation_discovery(
@@ -13903,23 +14357,64 @@ def conversations_related(conversation_id):
     conversation_id = (conversation_id or "").strip()
     if not _valid_existing_conversation_id(conversation_id):
         return _json_response({"error": "invalid conversation_id"}, status=400)
-    target_tag = (request.args.get("target_tag") or "").strip().lower()
-    if target_tag not in _VALID_CONVERSATION_TAGS:
-        return _json_response({"error": "invalid browser target tag"}, status=400)
-    include_conversations = _browser_parse_bool(
-        request.args.get("conversations", request.args.get("include_conversations")),
-        True,
-    )
-    include_engrams = _browser_parse_bool(
-        request.args.get("engrams", request.args.get("include_engrams")),
-        True,
-    )
-    required_tags = _browser_parse_requested_tags(request.args.getlist("tags"))
-    show_archived = _browser_parse_bool(request.args.get("show_archived"), False)
-    min_relevance = _browser_parse_min_relevance(request.args.get("min_relevance"))
-    sort_mode = (request.args.get("sort") or "relevance").strip().lower()
-    if sort_mode not in {"relevance", "recency"}:
-        sort_mode = "relevance"
+    try:
+        filters = _browser_request_filters(default_sort="relevance")
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    target_tag = filters["target_tag"]
+    include_conversations = filters["include_conversations"]
+    include_engrams = filters["include_engrams"]
+    required_tags = filters["required_tags"]
+    show_archived = filters["show_archived"]
+    min_relevance = filters["min_relevance"]
+    sort_mode = filters["sort"]
+    limit = filters["limit"]
+
+    def payload_for(rows: list[dict]):
+        rows = _browser_enrich_archive_rows(rows)
+        if not show_archived:
+            rows = [
+                row for row in rows
+                if (row.get("source_kind") or "live") != "archive"
+                and not (
+                    row.get("source_kind") == "engram"
+                    and "archived" in _browser_row_tags(row)
+                )
+            ]
+        rows = _browser_contract_filter_rows(rows, filters)
+        if sort_mode == "relevance" and any(row.get("relation") for row in rows):
+            relation_rank = {
+                "self": 0,
+                "parent": 1,
+                "direct-child": 2,
+                "sibling": 3,
+                "contributor": 4,
+                "direct-related": 5,
+                "shared-project": 6,
+            }
+            rows = sorted(
+                rows,
+                key=lambda row: (
+                    relation_rank.get(row.get("relation"), 99),
+                    -(float(row.get("score") or 0)),
+                    row.get("conversation_id") or "",
+                ),
+            )
+        else:
+            rows = _browser_sort_rows(rows, sort_mode)
+        total = len(rows)
+        source_counts = _browser_source_counts(rows)
+        facets = _browser_facets(rows)
+        return _json_response({
+            "conversation_id": conversation_id,
+            "tags": required_tags,
+            "show_archived": show_archived,
+            "filters": _browser_filter_echo(filters),
+            "rows": rows[:limit],
+            "total": total,
+            "source_counts": source_counts,
+            "facets": facets,
+        })
     if conversation_id.startswith("archive:"):
         rows = _browser_archive_related_rows(
             conversation_id,
@@ -13937,13 +14432,7 @@ def conversations_related(conversation_id):
             required_tags=required_tags,
             show_archived=show_archived,
         )
-        rows = _browser_sort_rows(rows, sort_mode)
-        return _json_response({
-            "conversation_id": conversation_id,
-            "tags": required_tags,
-            "show_archived": show_archived,
-            "rows": rows,
-        })
+        return payload_for(rows)
     if conversation_id.startswith("engram:"):
         rows = _browser_engram_related_rows(
             conversation_id,
@@ -13963,22 +14452,9 @@ def conversations_related(conversation_id):
             required_tags=required_tags,
             show_archived=show_archived,
         )
-        rows = _browser_sort_rows(rows, sort_mode)
-        return _json_response({
-            "conversation_id": conversation_id,
-            "tags": required_tags,
-            "show_archived": show_archived,
-            "rows": rows,
-        })
-    if not include_conversations:
-        return _json_response({
-            "conversation_id": conversation_id,
-            "tags": required_tags,
-            "show_archived": show_archived,
-            "rows": [],
-        })
+        return payload_for(rows)
     try:
-        from conversation_memory import iter_conversations, load_conversation_json
+        from conversation_memory import iter_conversations
     except Exception as e:
         return _json_response({"error": f"conversation related import failed: {e}"}, status=500)
     rows = iter_conversations(include_closed=True)
@@ -13992,37 +14468,84 @@ def conversations_related(conversation_id):
         if row.get("conversation_id")
     }
     parent_id = current.get("parent_conversation_id")
-    related: list[dict] = []
+    related_by_id: dict[str, dict] = {}
 
-    def add(row: dict | None, relation: str) -> None:
-        if not row:
-            return
-        safe_row = safe_by_id.get(row.get("conversation_id"))
-        if safe_row is None:
+    def add_safe(safe_row: dict | None, relation: str) -> None:
+        if not safe_row or not safe_row.get("conversation_id"):
             return
         # Use the same effective-history, exact-exchange view as Library
         # search. Dialogue-wide titles, descriptions, and snippets may have
         # been derived from a stricter turn; the safe row replaces them while
         # retaining the non-content ``contains-private`` discovery signal.
-        item = dict(safe_row)
-        item["relation"] = relation
-        related.append(item)
+        identity = str(safe_row["conversation_id"])
+        item = related_by_id.get(identity)
+        if item is None:
+            item = dict(safe_row)
+            item["relation"] = relation
+            item["_relationship_available"] = True
+            item["_relationship_kinds"] = [] if relation == "self" else [relation]
+            related_by_id[identity] = item
+        elif relation != "self" and relation not in item["_relationship_kinds"]:
+            item["_relationship_kinds"].append(relation)
 
-    add(current, "self")
+    def add_summary(row: dict | None, relation: str) -> None:
+        if row:
+            add_safe(safe_by_id.get(row.get("conversation_id")), relation)
+
+    def explicit_contributor_row(contributor: dict) -> dict | None:
+        if contributor.get("kind") == "conversation":
+            ref = contributor.get("ref")
+            if not isinstance(ref, str):
+                return None
+            if ref in safe_by_id:
+                return safe_by_id[ref]
+            if ref.startswith("archive:") and include_conversations and show_archived:
+                return _browser_row_for_creation_ref(ref, target_tag=target_tag)
+            if ref.startswith("engram:") and include_engrams:
+                return _browser_row_for_creation_ref(ref, target_tag=target_tag)
+            return None
+        path = contributor.get("path")
+        if contributor.get("kind") == "atomic_note" and include_engrams and isinstance(path, str):
+            return _browser_row_for_creation_ref(
+                _browser_encode_source_id("engram", path),
+                target_tag=target_tag,
+            )
+        return None
+
+    add_summary(current, "self")
     if parent_id:
-        add(by_id.get(parent_id), "parent")
+        add_summary(by_id.get(parent_id), "parent")
     for row in rows:
         cid = row.get("conversation_id")
         if cid == conversation_id:
             continue
         if row.get("parent_conversation_id") == conversation_id:
-            add(row, "fork")
+            add_summary(row, "direct-child")
         elif parent_id and row.get("parent_conversation_id") == parent_id:
-            add(row, "sibling")
+            add_summary(row, "sibling")
+        if any(
+            isinstance(contributor, dict)
+            and contributor.get("kind") == "conversation"
+            and contributor.get("ref") == conversation_id
+            for contributor in row.get("contributors") or []
+        ):
+            add_summary(row, "direct-related")
+
+    for contributor in current.get("contributors") or []:
+        if isinstance(contributor, dict):
+            add_safe(explicit_contributor_row(contributor), "contributor")
+
+    current_projects = set(_browser_row_project_ids(current))
+    if current_projects:
+        for row in rows:
+            if row.get("conversation_id") == conversation_id:
+                continue
+            if current_projects.intersection(_browser_row_project_ids(row)):
+                add_summary(row, "shared-project")
 
     related = _browser_filter_rows(
-        related,
-        include_conversations=True,
+        list(related_by_id.values()),
+        include_conversations=include_conversations,
         include_engrams=include_engrams,
         target_tag=target_tag,
         min_relevance=0.0,
@@ -14030,13 +14553,7 @@ def conversations_related(conversation_id):
         required_tags=required_tags,
         show_archived=show_archived,
     )
-    related.sort(key=lambda r: (r.get("relation") != "self", r.get("last_activity_at") or ""), reverse=False)
-    return _json_response({
-        "conversation_id": conversation_id,
-        "tags": required_tags,
-        "show_archived": show_archived,
-        "rows": related,
-    })
+    return payload_for(related)
 
 
 @app.route("/api/conversation/<conversation_id>", methods=["GET"])
@@ -14972,6 +15489,32 @@ def _clear_conversation_runtime_state(conversation_id: str) -> dict:
         _conversation_creation_tags.pop(identity, None)
         _unreadable_conversations.discard(identity)
         _closed_conversations.discard(identity)
+
+    # server/app.py historically imports this module both as
+    # ``conversation_memory`` and ``orchestrator.conversation_memory``. If
+    # both identities are loaded they own distinct process-local caches, so
+    # evict the deleted live/retained paths from each one explicitly.
+    seen_caches: set[int] = set()
+    storage_ids = (
+        (conversation_id,)
+        if conversation_id.casefold() == conversation_id
+        else (conversation_id, conversation_id.casefold())
+    )
+    for module_name in (
+        "conversation_memory", "orchestrator.conversation_memory",
+    ):
+        module = sys.modules.get(module_name)
+        cache = getattr(module, "_parsed_envelope_cache", None)
+        evict = getattr(module, "_evict_parsed_envelope", None)
+        root = getattr(module, "_DEFAULT_SESSIONS_ROOT", None)
+        if (not isinstance(cache, dict) or not callable(evict) or root is None
+                or id(cache) in seen_caches):
+            continue
+        seen_caches.add(id(cache))
+        sessions_root = Path(root)
+        for container in (sessions_root, sessions_root / "archived"):
+            for storage_id in storage_ids:
+                evict(container / storage_id / "conversation.json")
 
     if SIDEBAR_WINDOW_AVAILABLE:
         try:

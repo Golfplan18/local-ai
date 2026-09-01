@@ -11,7 +11,7 @@ var fs = require('fs');
 var path = require('path');
 var vm = require('vm');
 
-var COMPILER_TEST_NODE_MODULES = path.resolve(
+var COMPILER_TEST_NODE_MODULES = process.env.COMPILER_TEST_NODE_MODULES || path.resolve(
   __dirname, '..', 'ora-visual-compiler', 'tests', 'node_modules'
 );
 var JSDOM_PATH = path.join(COMPILER_TEST_NODE_MODULES, 'jsdom');
@@ -19,7 +19,7 @@ var jsdom;
 try {
   jsdom = require(JSDOM_PATH);
 } catch (e) {
-  console.error('error: jsdom not available at ' + JSDOM_PATH);
+  console.error('error: jsdom not available at ' + JSDOM_PATH + ': ' + e.message);
   process.exit(2);
 }
 
@@ -53,6 +53,8 @@ var forkRequests = 0;
 var browserRequests = 0;
 var browserRequestUrls = [];
 var relatedRequestUrls = [];
+var queuedBrowserResponses = [];
+var sidebarListRequests = 0;
 var envelopeRequests = 0;
 var projectWrites = [];
 var bulkFailIds = new Set();
@@ -61,6 +63,7 @@ var envelopes = {
   'named-live': {
     conversation_id: 'named-live',
     display_name: 'Saved Dialogue Name',
+    tag: '',
     project_ids: ['existing-project'],
     messages: [
       { role: 'user', content: 'This text must not replace the saved name.' },
@@ -78,24 +81,44 @@ var envelopes = {
   'empty-live': {
     conversation_id: 'empty-live',
     display_name: 'Empty Dialogue',
+    tag: '',
     messages: [],
   },
   'engram:claim': {
     conversation_id: 'engram:claim',
     display_name: 'Atomic Claim Title',
+    tag: '',
     archived_source: true,
     result_type: 'engram',
     messages: [{ role: 'assistant', content: '# Atomic Claim Title\nBody' }],
   },
 };
 
-function response(ok, payload, status) {
-  return Promise.resolve({
+function responseObject(ok, payload, status, headerValues) {
+  var values = headerValues || {};
+  return {
     ok: ok,
     status: status || (ok ? 200 : 404),
+    headers: {
+      get: function (name) { return values[name] || values[String(name).toLowerCase()] || null; },
+    },
     json: function () { return Promise.resolve(payload || {}); },
     arrayBuffer: function () { return Promise.resolve(new ArrayBuffer(0)); },
-  });
+  };
+}
+
+function response(ok, payload, status, headerValues) {
+  return Promise.resolve(responseObject(ok, payload, status, headerValues));
+}
+
+function deferredResponse() {
+  var resolve;
+  var item = {
+    promise: new Promise(function (done) { resolve = done; }),
+    options: null,
+    resolve: function (payload) { resolve(responseObject(true, payload)); },
+  };
+  return item;
 }
 
 w.fetch = function (url, opts) {
@@ -103,6 +126,11 @@ w.fetch = function (url, opts) {
   if (decoded.indexOf('/api/conversations/browser?') === 0) {
     browserRequests += 1;
     browserRequestUrls.push(decoded);
+    if (queuedBrowserResponses.length) {
+      var queued = queuedBrowserResponses.shift();
+      queued.options = opts || {};
+      return queued.promise;
+    }
     return response(true, {
       rows: [
         {
@@ -131,7 +159,30 @@ w.fetch = function (url, opts) {
           project_ids: [],
         },
       ],
-      total: 4,
+      total: 15,
+      source_counts: { live: 10, archive: 3, engram: 2 },
+      facets: {
+        projects: { available: true, counts: { commons: 3, 'project-a': 12 } },
+        dates: { available: true, min: '2026-01-01', max: '2026-08-31' },
+        privacy: {
+          available: true,
+          counts: { standard: 12, contains_private: 2, stealth: 1 },
+        },
+        lifecycle: {
+          available: true,
+          counts: { active: 10, inactive: 2, indexed_archive: 3, knowledge: 0 },
+        },
+        relationships: {
+          available: true,
+          counts: { parent: 2, 'direct-child': 3, sibling: 1, contributor: 0,
+            'direct-related': 0, 'shared-project': 5, none: 4 },
+        },
+        local_restriction: {
+          available: false,
+          counts: { restricted: 0, unrestricted: 0 },
+          unavailable: 15,
+        },
+      },
     });
   }
   if (decoded === '/api/projects/meta?status=active') {
@@ -165,10 +216,24 @@ w.fetch = function (url, opts) {
         title: 'Saved Dialogue Name',
       }],
       total: 1,
+      source_counts: { live: 1, archive: 0, engram: 0 },
+      facets: { local_restriction: { available: false, counts: {
+        restricted: 0, unrestricted: 0,
+      } } },
     });
   }
   if (decoded.indexOf('/api/conversations?') === 0) {
-    return response(true, { pinned: [], errored: [], pending: [], unread: [], active: [] });
+    sidebarListRequests += 1;
+    if (opts && opts.headers && opts.headers['If-None-Match'] === '"sidebar-v1"') {
+      return response(false, {}, 304);
+    }
+    return response(true, {
+      pinned: [],
+      errored: [],
+      pending: [],
+      unread: [],
+      active: [{ conversation_id: 'sidebar-stable', title: 'Stable row', tag: '' }],
+    }, 200, { ETag: '"sidebar-v1"' });
   }
   if (/\/api\/conversation\/[^/]+\/fork$/.test(decoded)) {
     forkRequests += 1;
@@ -186,8 +251,11 @@ w.fetch = function (url, opts) {
 
 w.alert = function () {};
 w.ResizeObserver = function () { this.observe = function () {}; this.disconnect = function () {}; };
-w.setInterval = function () { return 0; };
-w.clearInterval = function () {};
+var intervalCalls = 0;
+var intervalClears = 0;
+var nextIntervalHandle = 1;
+w.setInterval = function () { intervalCalls += 1; return nextIntervalHandle++; };
+w.clearInterval = function () { intervalClears += 1; };
 w.OraSettingsPanel = {
   open: function (options) { settingsTabs.push(options && options.tab); },
 };
@@ -206,6 +274,7 @@ function loadScript(rel) {
 }
 
 loadScript('js/sidebar.js');
+loadScript('js/v3-state.js');
 loadScript('js/v3-conversation.js');
 w.document.dispatchEvent(new w.Event('DOMContentLoaded', { bubbles: true }));
 
@@ -238,6 +307,40 @@ async function run() {
   w.document.querySelector('.project-manager-close').click();
   await flush();
 
+  var listBeforeExpansion = sidebarListRequests;
+  var intervalsBeforeExpansion = intervalCalls;
+  record('collapsed sidebar has no polling interval', intervalsBeforeExpansion === 0,
+    'intervals=' + intervalsBeforeExpansion);
+  w.OraSidebar.setExpanded(true);
+  await flush();
+  await flush();
+  record('expanding refreshes once and starts polling',
+    sidebarListRequests === listBeforeExpansion + 1
+      && intervalCalls === intervalsBeforeExpansion + 1,
+    'refreshes=' + (sidebarListRequests - listBeforeExpansion)
+      + ', intervals=' + (intervalCalls - intervalsBeforeExpansion));
+  var rowBeforeUnchangedPoll = w.document.querySelector(
+    '[data-group="active"] .sidebar-row[data-conversation-id="sidebar-stable"]'
+  );
+  w.OraSidebar.setExpanded(false);
+  record('collapsing stops sidebar polling', intervalClears === 1,
+    'clears=' + intervalClears);
+
+  var listBeforeRestore = sidebarListRequests;
+  var intervalsBeforeRestore = intervalCalls;
+  w.OraState.apply({ sidebarExpanded: true });
+  await flush();
+  await flush();
+  record('restored expansion keeps polling without rebuilding unchanged rows',
+    sidebarListRequests === listBeforeRestore + 1
+      && intervalCalls === intervalsBeforeRestore + 1
+      && w.document.querySelector(
+        '[data-group="active"] .sidebar-row[data-conversation-id="sidebar-stable"]'
+      ) === rowBeforeUnchangedPoll,
+    'refreshes=' + (sidebarListRequests - listBeforeRestore)
+      + ', intervals=' + (intervalCalls - intervalsBeforeRestore));
+  w.OraSidebar.setExpanded(false);
+
   record('Fork starts disabled', fork.disabled === true);
 
   await w.OraConversation.load('named-live');
@@ -245,7 +348,8 @@ async function run() {
   record('stored display_name wins over first user text',
     title.textContent === 'Saved Dialogue Name', title.textContent);
   record('live Dialogue keeps rename affordance',
-    title.classList.contains('is-clickable') && title.title === 'Click to rename');
+    title.classList.contains('is-clickable')
+      && title.title === 'Saved Dialogue Name\n(click to rename)');
   record('Dialogue with a turn enables Fork', fork.disabled === false);
 
   await w.OraConversation.load('empty-live');
@@ -259,7 +363,7 @@ async function run() {
   record('engram display_name replaces encoded id',
     title.textContent === 'Atomic Claim Title', title.textContent);
   record('engram has no rename affordance',
-    !title.classList.contains('is-clickable') && !title.hasAttribute('title'));
+    !title.classList.contains('is-clickable') && title.title === 'Atomic Claim Title');
   title.click();
   record('clicking engram title does not create rename input',
     title.querySelector('input') === null);
@@ -280,6 +384,10 @@ async function run() {
     !!w.document.querySelector('.conversation-browser-row .conversation-browser-title'));
   record('Library row omits snippet element',
     w.document.querySelector('.conversation-browser-snippet') === null);
+  record('Library status renders authoritative server totals and source counts',
+    w.document.querySelector('.conversation-browser-status').textContent
+      .indexOf('4 shown of 15 results (10 live, 3 archived, 2 engrams)') !== -1,
+    w.document.querySelector('.conversation-browser-status').textContent);
 
   var library = w.document.querySelector('.conversation-browser-overlay');
   var search = w.document.querySelector('.conversation-browser-search');
@@ -296,14 +404,53 @@ async function run() {
     search.getAttribute('aria-label') === 'Search Dialogues');
   var tagsInput = w.document.querySelector('.conversation-browser-tags-input');
   var archivedToggle = w.document.querySelector('.conversation-browser-filter-archived');
+  var projectFilter = w.document.querySelector('.conversation-browser-project');
+  var dateFrom = w.document.querySelector('.conversation-browser-date-from');
+  var dateTo = w.document.querySelector('.conversation-browser-date-to');
+  var privacyFilter = w.document.querySelector('.conversation-browser-privacy');
+  var lifecycleFilter = w.document.querySelector('.conversation-browser-lifecycle');
+  var relationshipFilter = w.document.querySelector('.conversation-browser-relationship');
+  var localRestrictionFilter = w.document.querySelector('.conversation-browser-local-restriction');
   record('Library tag filter communicates ALL-selected narrowing',
     tagsInput.getAttribute('aria-label') === 'Filter by tags (all selected tags must match)');
   record('Library archived toggle is labelled and opt-in',
     archivedToggle.checked === false &&
     archivedToggle.closest('label').textContent.indexOf('Show archived') !== -1);
+  record('Library exposes server-backed browse controls including Commons',
+    Array.from(projectFilter.options).some(function (option) { return option.value === 'commons'; })
+      && dateFrom.getAttribute('aria-label') === 'Filter from date (inclusive)'
+      && dateTo.getAttribute('aria-label') === 'Filter through date (inclusive)'
+      && privacyFilter && lifecycleFilter && relationshipFilter && localRestrictionFilter);
+  record('Library renders authoritative facet counts and unavailable metadata',
+    privacyFilter.options[1].textContent === 'Standard (12)'
+      && localRestrictionFilter.dataset.available === 'false'
+      && localRestrictionFilter.title === 'Metadata unavailable');
   var initialBrowserParams = new w.URL(browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
   record('Library defaults to hiding archived engrams',
-    initialBrowserParams.get('show_archived') === '0' && !initialBrowserParams.has('tags'));
+    initialBrowserParams.get('show_archived') === '0'
+      && !initialBrowserParams.has('tags')
+      && initialBrowserParams.get('project_id') === 'commons');
+
+  projectFilter.value = 'project-a';
+  dateFrom.value = '2026-08-01';
+  dateTo.value = '2026-08-31';
+  privacyFilter.value = 'contains_private';
+  lifecycleFilter.value = 'inactive';
+  relationshipFilter.value = 'direct-child';
+  localRestrictionFilter.value = 'unrestricted';
+  relationshipFilter.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  var filteredParams = new w.URL(
+    browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
+  record('Library sends project, inclusive dates, privacy, lifecycle, relationship, and local filters',
+    filteredParams.get('project_id') === 'project-a'
+      && filteredParams.get('date_from') === '2026-08-01'
+      && filteredParams.get('date_to') === '2026-08-31'
+      && filteredParams.get('privacy') === 'contains_private'
+      && filteredParams.get('lifecycle') === 'inactive'
+      && filteredParams.get('relationship') === 'direct-child'
+      && filteredParams.get('local_restriction') === 'unrestricted');
 
   tagsInput.value = ' Atomic, framework/instruction, atomic ';
   tagsInput.dispatchEvent(new w.Event('change', { bubbles: true }));
@@ -406,11 +553,58 @@ async function run() {
       && w.document.querySelector('.conversation-browser-status').textContent.indexOf('1 failed') !== -1);
 
   var requestsBeforeTitleOpen = envelopeRequests;
+  var listRequestsBeforeTitleOpen = sidebarListRequests;
   titleButton.click();
   await flush();
   record('Library title control opens its row',
     envelopeRequests > requestsBeforeTitleOpen,
     'requests=' + envelopeRequests);
+  record('opening a Library row does not rebuild the full sidebar list',
+    sidebarListRequests === listRequestsBeforeTitleOpen,
+    'sidebar requests=' + sidebarListRequests);
+
+  var older = deferredResponse();
+  var newer = deferredResponse();
+  queuedBrowserResponses.push(older, newer);
+  search.value = 'older';
+  w.document.querySelector('.conversation-browser-search-btn').click();
+  search.value = 'newer';
+  w.document.querySelector('.conversation-browser-search-btn').click();
+  record('newer Library request aborts the older request',
+    !!(older.options && older.options.signal && older.options.signal.aborted));
+  newer.resolve({
+    query: 'newer',
+    rows: [{ conversation_id: 'newer-row', source_kind: 'live', title: 'Newer Row' }],
+    total: 7,
+    source_counts: { live: 7, archive: 0, engram: 0 },
+    facets: {
+      privacy: { available: true, counts: {
+        standard: 6, contains_private: 1, stealth: 0,
+      } },
+      local_restriction: { available: false, counts: {
+        restricted: 0, unrestricted: 0,
+      } },
+    },
+  });
+  await flush();
+  await flush();
+  older.resolve({
+    query: 'older',
+    rows: [{ conversation_id: 'older-row', source_kind: 'live', title: 'Older Row' }],
+    total: 99,
+    source_counts: { live: 99, archive: 0, engram: 0 },
+    facets: { privacy: { available: true, counts: {
+      standard: 88, contains_private: 11, stealth: 0,
+    } } },
+  });
+  await flush();
+  await flush();
+  record('late older Library response cannot overwrite newer rows, status, or facets',
+    w.document.querySelector('.conversation-browser-title').textContent === 'Newer Row'
+      && w.document.querySelector('.conversation-browser-status').textContent
+        .indexOf('1 shown of 7 results (7 live)') !== -1
+      && privacyFilter.options[1].textContent === 'Standard (6)',
+    w.document.querySelector('.conversation-browser-status').textContent);
 
   var browseButton = initialBrowseButton;
   var escapeTargets = [
@@ -420,6 +614,13 @@ async function run() {
     ['Close button', '.conversation-browser-close'],
     ['Dialogue filter', '.conversation-browser-filter-conversations'],
     ['Engram filter', '.conversation-browser-filter-engrams'],
+    ['project filter', '.conversation-browser-project'],
+    ['from-date filter', '.conversation-browser-date-from'],
+    ['through-date filter', '.conversation-browser-date-to'],
+    ['privacy filter', '.conversation-browser-privacy'],
+    ['lifecycle filter', '.conversation-browser-lifecycle'],
+    ['relationship filter', '.conversation-browser-relationship'],
+    ['local restriction filter', '.conversation-browser-local-restriction'],
     ['tag filter', '.conversation-browser-tags-input'],
     ['show archived filter', '.conversation-browser-filter-archived'],
     ['relevance slider', '.conversation-browser-relevance-slider'],
