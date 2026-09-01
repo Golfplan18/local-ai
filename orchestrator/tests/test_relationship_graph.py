@@ -16,15 +16,21 @@ The load-bearing behaviors under test:
     and converges (including migrating pre-resolution claim-keyed rows).
 """
 
+import hashlib
 import os
 import shutil
+import sqlite3
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 import yaml
 
-from orchestrator.tools.relationship_graph import RelationshipGraph
+from orchestrator.tools.relationship_graph import (
+    RelationshipGraph,
+    read_relationship_snapshot,
+)
 from orchestrator.tools.relationship_discovery import (
     discover_relationships,
     update_note_relationships,
@@ -88,6 +94,200 @@ class RelationshipGraphTestBase(unittest.TestCase):
     def all_rows(self):
         return set(self.graph.conn.execute(
             "SELECT source, target, type, confidence FROM relationships"))
+
+
+class TestReadOnlyRelationshipSnapshot(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="relgraph-snapshot-test-")
+        self.vault = os.path.join(self.tmp, "vault")
+        os.makedirs(self.vault)
+        write_note(self.vault, "NoteA.md")
+        self.db_path = os.path.join(self.tmp, "snapshot.db")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _database(self, *, updated_at: str, complete: str = "1"):
+        connection = sqlite3.connect(self.db_path)
+        connection.executescript("""
+            CREATE TABLE relationships (
+                id INTEGER PRIMARY KEY,
+                source TEXT NOT NULL,
+                target TEXT NOT NULL,
+                type TEXT NOT NULL,
+                confidence TEXT NOT NULL
+            );
+            CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT);
+            INSERT INTO relationships (source, target, type, confidence)
+            VALUES ('NoteA', 'NoteB', 'supports', 'high');
+        """)
+        connection.executemany(
+            "INSERT INTO metadata (key, value) VALUES (?, ?)",
+            [("last_update_at", updated_at),
+             ("last_update_complete", complete),
+             ("vault_markdown_inventory_sha256",
+              hashlib.sha256(b"NoteA.md\0").hexdigest())],
+        )
+        connection.commit()
+        connection.close()
+
+    def test_reads_typed_fresh_snapshot_without_mutating_database(self):
+        updated_at = (
+            datetime.now(timezone.utc) + timedelta(seconds=2)
+        ).isoformat(timespec="microseconds")
+        self._database(updated_at=updated_at)
+        before = os.stat(self.db_path)
+        before_names = set(os.listdir(self.tmp))
+        real_connect = sqlite3.connect
+
+        with mock.patch(
+            "orchestrator.tools.relationship_graph.sqlite3.connect",
+            wraps=real_connect,
+        ) as connect:
+            snapshot = read_relationship_snapshot(
+                {"NoteA", "NoteB"}, db_path=self.db_path,
+                vault_path=self.vault,
+            )
+
+        after = os.stat(self.db_path)
+        self.assertEqual(snapshot["state"], "fresh")
+        self.assertEqual(snapshot["items"]["NoteA"]["summaries"], [{
+            "type": "supports", "direction": "outgoing",
+            "confidence": "high", "count": 1,
+        }])
+        self.assertEqual(snapshot["items"]["NoteB"]["summaries"], [{
+            "type": "is-supported-by", "direction": "incoming",
+            "confidence": "high", "count": 1,
+            "original_type": "supports",
+        }])
+        uri = connect.call_args.args[0]
+        self.assertIn("mode=ro", uri)
+        self.assertTrue(connect.call_args.kwargs["uri"])
+        self.assertEqual((after.st_size, after.st_mtime_ns),
+                         (before.st_size, before.st_mtime_ns))
+        self.assertEqual(set(os.listdir(self.tmp)), before_names)
+
+    def test_reports_stale_when_markdown_is_newer(self):
+        self._database(updated_at="2020-01-01T00:00:00+00:00")
+
+        snapshot = read_relationship_snapshot(
+            {"NoteA"}, db_path=self.db_path, vault_path=self.vault,
+        )
+
+        self.assertEqual(snapshot["state"], "stale")
+        self.assertIn("changed after", snapshot["reason"])
+
+    def test_reports_incomplete_without_complete_update_evidence(self):
+        self._database(
+            updated_at=datetime.now(timezone.utc).isoformat(), complete="0",
+        )
+
+        snapshot = read_relationship_snapshot(
+            {"NoteA"}, db_path=self.db_path, vault_path=self.vault,
+        )
+
+        self.assertEqual(snapshot["state"], "incomplete")
+        self.assertIn("not proven complete", snapshot["reason"])
+
+    def test_missing_database_is_unavailable_and_not_created(self):
+        db_path = os.path.join(self.tmp, "missing", "graph.db")
+
+        snapshot = read_relationship_snapshot(
+            {"NoteA"}, db_path=db_path, vault_path=self.vault,
+        )
+
+        self.assertEqual(snapshot["state"], "unavailable")
+        self.assertFalse(os.path.exists(os.path.dirname(db_path)))
+
+    def test_full_sync_uses_start_watermark_and_direct_mutators_invalidate_it(self):
+        graph = RelationshipGraph(
+            db_path=os.path.join(self.tmp, "writer.db"), vault_path=self.vault,
+        )
+        self.addCleanup(graph.close)
+        scan_started_at = []
+        original_scan = graph._scan_vault_relationships
+
+        def observe_scan(errors):
+            scan_started_at.append(datetime.now(timezone.utc))
+            return original_scan(errors)
+
+        with mock.patch.object(
+            graph, "_scan_vault_relationships", side_effect=observe_scan,
+        ):
+            result = graph.sync_from_vault()
+
+        self.assertEqual(result["errors"], [])
+        metadata = dict(graph.conn.execute("SELECT key, value FROM metadata"))
+        watermark = datetime.fromisoformat(metadata["last_update_at"])
+        self.assertLessEqual(watermark, scan_started_at[0])
+        self.assertEqual(metadata["last_update_complete"], "1")
+        snapshot = read_relationship_snapshot(
+            {"NoteA"}, db_path=graph.db_path, vault_path=self.vault,
+        )
+        self.assertEqual(snapshot["state"], "fresh")
+
+        note_a = os.path.join(self.vault, "NoteA.md")
+        renamed_note = os.path.join(self.vault, "RenamedNoteA.md")
+        note_mtime = os.stat(note_a).st_mtime_ns
+        os.rename(note_a, renamed_note)
+        self.assertEqual(os.stat(renamed_note).st_mtime_ns, note_mtime)
+        snapshot = read_relationship_snapshot(
+            {"NoteA"}, db_path=graph.db_path, vault_path=self.vault,
+        )
+        self.assertEqual(snapshot["state"], "stale")
+        self.assertIn("inventory changed", snapshot["reason"])
+
+        graph.add_relationships("DirectSource", [{
+            "type": "supports", "target": "NoteA", "confidence": "high",
+        }])
+        metadata = dict(graph.conn.execute("SELECT key, value FROM metadata"))
+        self.assertEqual(metadata["last_update_complete"], "0")
+        self.assertEqual(metadata["last_update_at"], watermark.isoformat(
+            timespec="microseconds"
+        ))
+
+        graph.sync_from_vault()
+        metadata = dict(graph.conn.execute("SELECT key, value FROM metadata"))
+        self.assertEqual(metadata["last_update_complete"], "1")
+
+        graph.remove_orphans([])
+        metadata = dict(graph.conn.execute("SELECT key, value FROM metadata"))
+        self.assertEqual(metadata["last_update_complete"], "0")
+
+    def test_vault_traversal_errors_make_sync_and_snapshot_incomplete(self):
+        def denied_walk(path, *, onerror=None):
+            if onerror is not None:
+                onerror(PermissionError(13, "denied", str(path)))
+            return iter(())
+
+        graph = RelationshipGraph(
+            db_path=os.path.join(self.tmp, "writer.db"), vault_path=self.vault,
+        )
+        self.addCleanup(graph.close)
+        with mock.patch(
+            "orchestrator.tools.relationship_graph.os.walk",
+            side_effect=denied_walk,
+        ):
+            result = graph.sync_from_vault()
+
+        self.assertTrue(result["errors"])
+        metadata = dict(graph.conn.execute("SELECT key, value FROM metadata"))
+        self.assertEqual(metadata["last_update_complete"], "0")
+
+        updated_at = (
+            datetime.now(timezone.utc) + timedelta(seconds=2)
+        ).isoformat(timespec="microseconds")
+        self._database(updated_at=updated_at)
+        with mock.patch(
+            "orchestrator.tools.relationship_graph.os.walk",
+            side_effect=denied_walk,
+        ):
+            snapshot = read_relationship_snapshot(
+                {"NoteA"}, db_path=self.db_path, vault_path=self.vault,
+            )
+
+        self.assertEqual(snapshot["state"], "incomplete")
+        self.assertIn("directories could not be inspected", snapshot["reason"])
 
 
 class TestBuildFromVault(RelationshipGraphTestBase):

@@ -2123,6 +2123,8 @@ def iter_conversations(
     *,
     include_closed: bool = False,
     include_content: bool = False,
+    persist_heal: bool = True,
+    skipped_authority: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Enumerate conversations under ``sessions_root`` and return summary
     dicts.
@@ -2140,8 +2142,12 @@ def iter_conversations(
         }
 
     Conversations whose conversation.json is missing or unreadable are
-    skipped silently (this is a list-for-display helper, not a strict
-    audit). Returned in arbitrary order; callers sort/group as needed.
+    skipped silently by default (this is a list-for-display helper, not a
+    strict audit).  A caller that must make a completeness claim can supply
+    ``skipped_authority`` and receive the identities of skipped Dialogue
+    directories without changing the safe rows returned.  The retained
+    ``archived`` container is not itself a Dialogue.  Returned in arbitrary
+    order; callers sort/group as needed.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
     if not root.exists() or not root.is_dir():
@@ -2157,9 +2163,11 @@ def iter_conversations(
             entry.name,
             root,
             require_messages=False,
-            persist_heal=True,
+            persist_heal=persist_heal,
         )
         if data is None:
+            if skipped_authority is not None and entry.name != "archived":
+                skipped_authority.append(entry.name)
             continue
         is_closed = data.get("closed") is True
         if is_closed and not include_closed:

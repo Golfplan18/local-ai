@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _REPO not in sys.path:
@@ -853,6 +854,145 @@ class ProjectMetaTests(unittest.TestCase):
         idx = pm.list_project_files("Big", vault_projects_dir=proj_dir, max_files=3)
         self.assertEqual(len(idx["files"]), 3)
         self.assertTrue(idx["truncated"])
+
+    def test_list_project_files_pages_past_500(self):
+        proj_dir = self.d / "vp"
+        folder = pm.ensure_project_folder("Large", vault_projects_dir=proj_dir)
+        for index in range(503):
+            path = folder / f"f{index:03d}.md"
+            path.write_text("x", encoding="utf-8")
+            os.utime(path, ns=(1_700_000_000_000_000_000,) * 2)
+
+        first = pm.list_project_files(
+            "Large", vault_projects_dir=proj_dir, max_files=500,
+        )
+        second = pm.list_project_files(
+            "Large", vault_projects_dir=proj_dir, max_files=500, offset=500,
+        )
+        complete = pm.list_project_files(
+            "Large", vault_projects_dir=proj_dir, max_files=None,
+        )
+
+        first_paths = [item["rel_path"] for item in first["files"]]
+        second_paths = [item["rel_path"] for item in second["files"]]
+        self.assertEqual(first["total"], 503)
+        self.assertEqual(first["next_offset"], 500)
+        self.assertTrue(first["truncated"])
+        self.assertEqual(second["total"], 503)
+        self.assertIsNone(second["next_offset"])
+        self.assertFalse(second["truncated"])
+        self.assertEqual(len(second_paths), 3)
+        self.assertEqual(first_paths + second_paths, [
+            f"f{index:03d}.md" for index in range(503)
+        ])
+        self.assertEqual(
+            [item["rel_path"] for item in complete["files"]],
+            first_paths + second_paths,
+        )
+        self.assertEqual(complete["total"], 503)
+        self.assertIsNone(complete["limit"])
+        self.assertIsNone(complete["next_offset"])
+        self.assertFalse(complete["truncated"])
+
+        pointers = self.d / "pointers"
+        pm.create_project("Alpha", pointer_dir=pointers)
+        alpha_entry = mock.Mock()
+        alpha_entry.name = "alpha.json"
+
+        class PartialPointerScan:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def __iter__(self):
+                yield alpha_entry
+                raise OSError("pointer directory iteration failed")
+
+        skipped: list[str] = []
+        with mock.patch.object(
+            pm.os, "scandir", return_value=PartialPointerScan(),
+        ):
+            partial_projects = pm.list_project_meta(
+                pointer_dir=pointers, skipped_authority=skipped,
+            )
+        self.assertEqual(
+            [item["nexus"] for item in partial_projects],
+            ["commons", "alpha"],
+        )
+        self.assertEqual(skipped, [str(pointers)])
+
+        missing_skipped: list[str] = []
+        sparse = pm.list_project_meta(
+            pointer_dir=self.d / "missing",
+            skipped_authority=missing_skipped,
+        )
+        self.assertEqual([item["nexus"] for item in sparse], ["commons"])
+        self.assertEqual(missing_skipped, [])
+
+        partial_folder = pm.ensure_project_folder(
+            "Partial", vault_projects_dir=proj_dir,
+        )
+        draft = partial_folder / "draft.md"
+        draft.write_text("safe", encoding="utf-8")
+        unreadable = partial_folder / "unreadable.md"
+        unreadable.write_text("hidden", encoding="utf-8")
+        notes = partial_folder / "notes"
+        notes.mkdir()
+        idea = notes / "ideas.md"
+        idea.write_text("safe", encoding="utf-8")
+
+        class FakeEntry:
+            def __init__(self, path, *, stat_fails=False):
+                self._path = path
+                self.name = path.name
+                self._stat_fails = stat_fails
+
+            def stat(self, *, follow_symlinks=True):
+                if self._stat_fails:
+                    raise OSError("file stat failed")
+                return self._path.stat(follow_symlinks=follow_symlinks)
+
+        class FakeScan:
+            def __init__(self, entries, *, iteration_fails=False):
+                self._entries = entries
+                self._iteration_fails = iteration_fails
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def __iter__(self):
+                yield from self._entries
+                if self._iteration_fails:
+                    raise OSError("directory iteration failed")
+
+        def partial_scandir(path):
+            path = pathlib.Path(path)
+            if path == partial_folder:
+                return FakeScan([
+                    FakeEntry(partial_folder / ".DS_Store", stat_fails=True),
+                    FakeEntry(draft),
+                    FakeEntry(unreadable, stat_fails=True),
+                    FakeEntry(notes),
+                ])
+            if path == notes:
+                return FakeScan([FakeEntry(idea)], iteration_fails=True)
+            raise AssertionError(f"unexpected scan of {path}")
+
+        with mock.patch.object(pm.os, "scandir", side_effect=partial_scandir):
+            partial_files = pm.list_project_files(
+                "Partial", vault_projects_dir=proj_dir,
+            )
+        self.assertFalse(partial_files["complete"])
+        self.assertEqual(
+            {item["name"] for item in partial_files["files"]},
+            {"draft.md", "ideas.md"},
+        )
+        self.assertIn("files or folders", partial_files["reason"])
 
 
 class ProjectPriorityOrderTests(unittest.TestCase):

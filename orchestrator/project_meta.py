@@ -34,6 +34,7 @@ import json
 import hashlib
 import os
 import re
+import stat
 import sys
 import threading
 import unicodedata
@@ -476,27 +477,66 @@ def read_project_meta(nexus: str, pointer_dir: Path | None = None) -> dict[str, 
     return _normalize_meta(nexus, data)
 
 
-def list_project_meta(pointer_dir: Path | None = None) -> list[dict[str, Any]]:
+def list_project_meta(
+    pointer_dir: Path | None = None,
+    *,
+    skipped_authority: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """All projects: Commons first, then real projects by recency.
 
     Reserved ``commons.json`` / ``general.json`` files are ignored.  They can
     only be stale pre-reservation collisions and must never produce a second
-    default row or shadow the synthetic Commons project.
+    default row or shadow the synthetic Commons project.  Default callers keep
+    the display-oriented behavior of omitting malformed or unreadable pointer
+    files; callers that make an inventory completeness claim can supply
+    ``skipped_authority`` to receive those skipped filenames (or the pointer
+    directory when enumeration itself fails) while preserving every safely
+    parsed project row.  A missing optional pointer directory remains an empty
+    project store rather than an authority failure.
     """
     pdir = pointer_dir or POINTER_DIR
     out: list[dict[str, Any]] = []
-    if pdir.is_dir():
-        for pf in pdir.glob("*.json"):
-            nexus = pf.stem
-            try:
-                validate_existing_nexus_source(nexus)
-            except NexusValidationError:
-                continue
-            if canonicalize_project_nexus(nexus) == DEFAULT_NEXUS:
-                continue
-            meta = read_project_meta(nexus, pointer_dir)
-            if meta:
-                out.append(meta)
+    try:
+        scan = os.scandir(pdir)
+    except FileNotFoundError:
+        scan = None
+    except OSError:
+        scan = None
+        if skipped_authority is not None:
+            skipped_authority.append(str(pdir))
+    if scan is not None:
+        try:
+            with scan:
+                entries = iter(scan)
+                while True:
+                    try:
+                        entry = next(entries)
+                    except StopIteration:
+                        break
+                    except OSError:
+                        if skipped_authority is not None:
+                            skipped_authority.append(str(pdir))
+                        break
+                    if not Path(entry.name).match("*.json"):
+                        continue
+                    pf = pdir / entry.name
+                    nexus = pf.stem
+                    try:
+                        validate_existing_nexus_source(nexus)
+                    except NexusValidationError:
+                        if skipped_authority is not None:
+                            skipped_authority.append(pf.name)
+                        continue
+                    if canonicalize_project_nexus(nexus) == DEFAULT_NEXUS:
+                        continue
+                    meta = read_project_meta(nexus, pointer_dir)
+                    if meta:
+                        out.append(meta)
+                    elif skipped_authority is not None:
+                        skipped_authority.append(pf.name)
+        except OSError:
+            if skipped_authority is not None:
+                skipped_authority.append(str(pdir))
     out.sort(key=_priority_sort_key)
     return [default_project_meta()] + out
 
@@ -966,23 +1006,98 @@ def ensure_project_folder(name: str, vault_projects_dir: Path | None = None) -> 
 _FILE_INDEX_SKIP = {".git", ".obsidian", ".trash", "node_modules", "__pycache__", ".DS_Store"}
 
 
+def _enumerate_project_file_rows(
+    base: Path, *, recursive: bool,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Enumerate safe file rows while reporting every scan/stat failure."""
+    collected: list[dict[str, Any]] = []
+    complete = True
+    pending = [base]
+    while pending:
+        directory = pending.pop()
+        try:
+            scan = os.scandir(directory)
+        except OSError:
+            complete = False
+            continue
+        try:
+            with scan:
+                entries = iter(scan)
+                while True:
+                    try:
+                        entry = next(entries)
+                    except StopIteration:
+                        break
+                    except OSError:
+                        complete = False
+                        break
+
+                    if entry.name in _FILE_INDEX_SKIP:
+                        continue
+                    path = directory / entry.name
+                    try:
+                        entry_stat = entry.stat(follow_symlinks=False)
+                        is_symlink = stat.S_ISLNK(entry_stat.st_mode)
+                        if is_symlink:
+                            entry_stat = entry.stat(follow_symlinks=True)
+                    except OSError:
+                        complete = False
+                        continue
+
+                    if stat.S_ISDIR(entry_stat.st_mode):
+                        if recursive and not is_symlink:
+                            pending.append(path)
+                        continue
+                    if not stat.S_ISREG(entry_stat.st_mode):
+                        continue
+
+                    rel = path.relative_to(base)
+                    collected.append({
+                        "name": path.name,
+                        "rel_path": str(rel),
+                        "abs_path": str(path),
+                        "size": entry_stat.st_size,
+                        "mtime": datetime.fromtimestamp(
+                            entry_stat.st_mtime
+                        ).isoformat(timespec="seconds"),
+                        "_mtime_ns": entry_stat.st_mtime_ns,
+                    })
+        except OSError:
+            complete = False
+    return collected, complete
+
+
 def list_project_files(
     name: str | None,
     *,
     vault_projects_dir: Path | None = None,
-    max_files: int = 500,
+    max_files: int | None = 500,
+    offset: int = 0,
 ) -> dict[str, Any]:
     """Index a project's vault output folder or Commons' vault-root output.
 
     The file-management line is "out of Ora" (Q2 LOCKED): this is a read-only
     clickable index — the modal links each entry to Obsidian / Finder; there is
     no native CRUD. Returns ``exists: False`` when the folder is absent (e.g.
-    cloud-ora has no vault). Files are newest-first; ``truncated`` flags a cap
-    hit. A ``None`` name selects the vault root and indexes only its direct
+    cloud-ora has no vault). Files are newest-first with a path tie-break;
+    ``offset`` and an integer ``max_files`` page the complete inventory, while
+    ``max_files=None`` returns the remaining inventory from one in-memory
+    enumeration. ``total`` and ``truncated`` describe the complete inventory.
+    A ``None`` name selects the vault root and indexes only its direct
     files: Commons output is saved directly there, while recursively walking
     the root would incorrectly absorb every real project's files and the rest
-    of the vault. Never raises.
+    of the vault. Storage enumeration failures are reflected by ``complete``;
+    invalid pagination arguments still raise ``ValueError``.
     """
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise ValueError("offset must be a non-negative integer")
+    if max_files is not None and (
+        isinstance(max_files, bool)
+        or not isinstance(max_files, int)
+        or max_files < 1
+    ):
+        raise ValueError("max_files must be a positive integer")
+
     projects_base = Path(vault_projects_dir or _default_vault_projects_dir())
     is_vault_root = name is None
     base = (
@@ -990,44 +1105,56 @@ def list_project_files(
         if is_vault_root
         else project_folder_path(name, projects_base)
     )
-    if not base.is_dir():
+    try:
+        base_stat = base.stat()
+    except OSError:
+        base_stat = None
+    if base_stat is None or not stat.S_ISDIR(base_stat.st_mode):
         return {
             "exists": False,
             "folder": str(base),
             "files": [],
             "truncated": False,
             "is_vault_root": is_vault_root,
+            "complete": False,
+            "reason": "project folder is unavailable",
+            "total": 0,
+            "offset": offset,
+            "limit": max_files,
+            "next_offset": None,
         }
-    collected: list[dict[str, Any]] = []
-    try:
-        paths = base.iterdir() if is_vault_root else base.rglob("*")
-        for p in paths:
-            rel = p.relative_to(base)
-            if any(part in _FILE_INDEX_SKIP for part in rel.parts):
-                continue
-            if not p.is_file():
-                continue
-            try:
-                st = p.stat()
-            except OSError:
-                continue
-            collected.append({
-                "name": p.name,
-                "rel_path": str(rel),
-                "abs_path": str(p),
-                "size": st.st_size,
-                "mtime": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
-            })
-    except OSError:
-        pass
-    collected.sort(key=lambda f: f.get("mtime") or "", reverse=True)
-    truncated = len(collected) > max_files
+    collected, complete = _enumerate_project_file_rows(
+        base, recursive=not is_vault_root,
+    )
+    collected.sort(key=lambda f: (-f["_mtime_ns"], f["rel_path"]))
+    total = len(collected)
+    page = (
+        collected[offset:]
+        if max_files is None
+        else collected[offset:offset + max_files]
+    )
+    for item in page:
+        item.pop("_mtime_ns", None)
+    next_offset = None
+    if max_files is not None:
+        next_offset = offset + len(page)
+        if next_offset >= total:
+            next_offset = None
     return {
         "exists": True,
         "folder": str(base),
-        "files": collected[:max_files],
-        "truncated": truncated,
+        "files": page,
+        "truncated": next_offset is not None,
         "is_vault_root": is_vault_root,
+        "complete": complete,
+        "reason": (
+            None if complete else
+            "one or more project files or folders could not be read"
+        ),
+        "total": total,
+        "offset": offset,
+        "limit": max_files,
+        "next_offset": next_offset,
     }
 
 
