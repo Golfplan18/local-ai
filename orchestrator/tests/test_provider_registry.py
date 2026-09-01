@@ -72,6 +72,75 @@ class TestRegistryIntegrity(unittest.TestCase):
             self.assertTrue(kr.endswith("-api-key"))
 
 
+class TestExtensionProviderRegistration(unittest.TestCase):
+    @staticmethod
+    def _provider(provider_id, username):
+        return {
+            "id": provider_id,
+            "label": provider_id.replace("_", " ").title(),
+            "category": "metadata",
+            "keyring_username": username,
+            "signup_url": f"https://example.invalid/{provider_id}/signup",
+            "console_url": f"https://example.invalid/{provider_id}/keys",
+        }
+
+    def test_owner_batch_is_atomic_and_collision_checked(self):
+        owners = ("extension_atomic", "extension_collision")
+        providers_before = list(registry.PROVIDERS)
+        by_id_before = dict(registry._BY_ID)
+
+        def restore_registry():
+            registry.PROVIDERS[:] = providers_before
+            registry._BY_ID.clear()
+            registry._BY_ID.update(by_id_before)
+
+        self.addCleanup(restore_registry)
+
+        with self.assertRaisesRegex(ValueError, "provider id collision"):
+            registry.register_provider_batch(owners[0], (
+                self._provider("extension_partial", "extension-partial-api-key"),
+                self._provider("openai", "extension-openai-api-key"),
+            ))
+        self.assertIsNone(registry.by_id("extension_partial"))
+
+        declarations = (
+            self._provider("extension_alpha", "extension-alpha-api-key"),
+            self._provider("extension_beta", "extension-beta-api-key"),
+        )
+        validated = registry.register_provider_batch(
+            owners[0], declarations, commit=False,
+        )
+        self.assertEqual(validated, ("extension_alpha", "extension_beta"))
+        self.assertIsNone(registry.by_id("extension_alpha"))
+        self.assertIsNone(registry.by_id("extension_beta"))
+
+        registered = registry.register_provider_batch(owners[0], declarations)
+        self.assertEqual(registered, ("extension_alpha", "extension_beta"))
+        self.assertEqual(
+            registry.credential_username_for_owner(
+                owners[0], "extension_alpha"
+            ),
+            "extension-alpha-api-key",
+        )
+
+        with self.assertRaisesRegex(ValueError, "provider id collision"):
+            registry.register_provider_batch(owners[1], (
+                self._provider("extension_gamma", "extension-gamma-api-key"),
+                self._provider("extension_alpha", "extension-new-api-key"),
+            ))
+        self.assertIsNone(registry.by_id("extension_gamma"))
+
+        with self.assertRaisesRegex(ValueError, "keyring username collision"):
+            registry.register_provider_batch(owners[1], (
+                self._provider("extension_delta", "extension-beta-api-key"),
+            ))
+        self.assertIsNone(registry.by_id("extension_delta"))
+        self.assertEqual(
+            registry.provider_ids()[-2:],
+            ["extension_alpha", "extension_beta"],
+        )
+
+
 class TestKeyFormatValidation(unittest.TestCase):
     def test_good_prefix(self):
         ok, _ = registry.validate_key_format("anthropic", "sk-ant-abc123def456ghi")
@@ -118,9 +187,7 @@ class TestUserSettingsIntegration(unittest.TestCase):
         self.kp.stop()
 
     def test_maps_derive_from_registry(self):
-        self.assertEqual(self.us.PROVIDER_LABELS, registry.labels_map())
-        self.assertEqual(self.us.PROVIDER_KEYRING_USERNAME,
-                         registry.keyring_username_map())
+        self.assertEqual(self.us.provider_ids(), registry.provider_ids())
 
     def test_status_rows_enriched(self):
         self.fake.set_password("ora", "openrouter-api-key", "sk-or-xyz")

@@ -818,7 +818,7 @@ def settings_get():
         "settings": settings,
         "api_keys": api_keys,
         "provider_groups": groups,
-        "providers": list(_user_settings.PROVIDER_LABELS.keys()),
+        "providers": _user_settings.provider_ids(),
     })
 
 
@@ -5062,7 +5062,7 @@ def _index_v3_response():
     source = Path(WORKSPACE, "server", "index-v3.html").read_text(encoding="utf-8")
     source = source.replace(
         "<!-- ORA_FEATURE_PLUGIN_ASSETS -->",
-        _video_plugin.asset_tags(),
+        _feature_plugins.asset_tags(),
     )
     return Response(source, mimetype="text/html")
 
@@ -15442,7 +15442,7 @@ def _quiesce_conversation_workers(conversation_id: str) -> dict:
 
     if _HAS_TRANSCRIPTION and _get_transcription_manager is not None:
         run("transcriptions", lambda: _get_transcription_manager().forget_conversation(conversation_id))
-    plugin_result = _video_plugin.run_lifecycle("quiesce", conversation_id)
+    plugin_result = _feature_plugins.run_lifecycle("quiesce", conversation_id)
     cleaned["feature_plugins"] = plugin_result.get("results", {})
     errors.extend(plugin_result.get("errors", []))
     run("documents", lambda: __import__(
@@ -15467,7 +15467,7 @@ def _release_conversation_runtime_memory(conversation_id: str) -> dict:
         run("transcriptions", lambda: _get_transcription_manager().release_finished(conversation_id))
     if _HAS_JOB_QUEUE and _get_job_queue is not None:
         run("job_queue", lambda: _get_job_queue().release_cached(conversation_id))
-    plugin_result = _video_plugin.run_lifecycle("release", conversation_id)
+    plugin_result = _feature_plugins.run_lifecycle("release", conversation_id)
     released["feature_plugins"] = plugin_result.get("results", {})
     errors.extend(plugin_result.get("errors", []))
     return {"released": released, "errors": errors}
@@ -15522,7 +15522,7 @@ def _clear_conversation_runtime_state(conversation_id: str) -> dict:
         except Exception as exc:
             errors.append(f"sidebar_window: {exc}")
 
-    plugin_result = _video_plugin.run_lifecycle("clear", conversation_id)
+    plugin_result = _feature_plugins.run_lifecycle("clear", conversation_id)
     counts["feature_plugins"] = plugin_result.get("results", {})
     errors.extend(plugin_result.get("errors", []))
 
@@ -16768,10 +16768,6 @@ def serve_static(filename):
         return "Forbidden", 403
     return send_from_directory(os.path.join(WORKSPACE, "server", "static"), filename)
 
-
-def serve_video_plugin_asset(filename):
-    root = _video_plugin.static_root()
-    return send_from_directory(str(root), filename, conditional=True)
 
 # ── V3 theme library API ──────────────────────────────────────────────────
 # Folder-per-theme structure used by /v3 — each theme is a directory under
@@ -19192,7 +19188,10 @@ def _try_keychain_replicate_token():
     """Return the Replicate API token from the keychain, or '' on failure."""
     try:
         import keyring
-        from orchestrator import provider_registry as _providers
+        try:
+            import provider_registry as _providers
+        except ImportError:  # pragma: no cover - package import fallback
+            from orchestrator import provider_registry as _providers
         entry = _providers.by_id("replicate") or {}
         username = entry.get("keyring_username")
         if not username:
@@ -22831,7 +22830,7 @@ def _protected_media_reference_delete(*, conversation_id, entry_id, entry,
         raise
 
 
-def _feature_plugin_context(plugin_root: Path):
+def _feature_plugin_context(plugin_id: str, plugin_root: Path):
     """Build the documented core boundary received by one feature plugin."""
     from orchestrator import tool_events
     from server.feature_plugins import FeaturePluginContext
@@ -22844,6 +22843,11 @@ def _feature_plugin_context(plugin_root: Path):
             return default if value is None else value
         except Exception:
             return default
+
+    def get_credential(name: str) -> str | None:
+        if not _HAS_USER_SETTINGS or _user_settings is None:
+            raise RuntimeError("settings module unavailable")
+        return _user_settings.feature_credential(plugin_id, name)
 
     return FeaturePluginContext(
         ora_home=Path(rp.ORA_HOME),
@@ -22865,22 +22869,21 @@ def _feature_plugin_context(plugin_root: Path):
         record_tool_event=tool_events.record,
         tool_manifest_axes=tool_events.manifest_axes,
         load_async_capability_registry=_load_async_capability_registry,
+        has_credential=lambda name: bool(get_credential(name)),
+        get_credential=get_credential,
     )
 
 
-from server.feature_plugins import configured_video_plugin_root, load_video_plugin
+from server.feature_plugins import (
+    configured_feature_plugin_sources,
+    load_feature_plugins,
+)
 
-_video_plugin = load_video_plugin(
+_feature_plugins = load_feature_plugins(
     app,
     _feature_plugin_context,
-    plugin_root=configured_video_plugin_root(WORKSPACE),
+    sources=configured_feature_plugin_sources(WORKSPACE),
 )
-if _video_plugin.descriptor is not None:
-    app.add_url_rule(
-        "/plugins/video/<path:filename>",
-        endpoint="serve_video_plugin_asset",
-        view_func=serve_video_plugin_asset,
-    )
 
 
 if __name__ == "__main__":

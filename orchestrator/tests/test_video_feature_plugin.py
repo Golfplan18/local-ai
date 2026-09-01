@@ -18,14 +18,166 @@ sys.path.insert(0, str(ROOT))
 
 from flask import Flask  # noqa: E402
 from server import app as server  # noqa: E402
-from server.feature_plugins import load_video_plugin  # noqa: E402
+from server.feature_plugins import (  # noqa: E402
+    FeaturePlugin,
+    FeaturePluginSource,
+    PluginRoute,
+    load_feature_plugins,
+)
 from plugins.video.backend import media_library  # noqa: E402
 
 
 class PluginLoaderTests(unittest.TestCase):
+    def test_plural_host_preserves_video_and_loads_non_video_proof_in_isolation(self):
+        import provider_registry
+        from plugins import video
+        from orchestrator.tests.fixtures.feature_plugins import settings_probe
+
+        fixture_root = (
+            ROOT / "orchestrator" / "tests" / "fixtures"
+            / "feature_plugins" / "settings_probe"
+        )
+        fresh_app = Flask("plural-feature-host-test")
+        sources = (
+            FeaturePluginSource(
+                "missing",
+                "orchestrator.tests.fixtures.feature_plugins.missing",
+                fixture_root.parent / "missing",
+            ),
+            FeaturePluginSource("video", "plugins.video", ROOT / "plugins" / "video"),
+            FeaturePluginSource(
+                "broken",
+                "orchestrator.tests.fixtures.feature_plugins.broken",
+                fixture_root,
+            ),
+            FeaturePluginSource(
+                "settings_probe",
+                "orchestrator.tests.fixtures.feature_plugins.settings_probe",
+                fixture_root,
+            ),
+        )
+        providers_before = list(provider_registry.PROVIDERS)
+        by_id_before = dict(provider_registry._BY_ID)
+        subscriptions = mock.Mock()
+        with (
+            mock.patch(
+                "plugins.video.routes.media_capture.get_default_manager",
+                return_value=subscriptions,
+            ),
+            mock.patch(
+                "plugins.video.routes.render.get_default_manager",
+                return_value=subscriptions,
+            ),
+        ):
+            production_video = video.register(
+                server._feature_plugin_context(
+                    "video", ROOT / "plugins" / "video"
+                )
+            )
+
+        try:
+            with mock.patch.object(
+                video, "register", return_value=production_video,
+            ):
+                loaded = load_feature_plugins(
+                    fresh_app,
+                    server._feature_plugin_context,
+                    sources=sources,
+                )
+            self.assertEqual(
+                list(loaded.descriptors), ["video", "settings_probe"]
+            )
+
+            proof_video = loaded.descriptors["video"]
+            self.assertEqual(proof_video.plugin_id, production_video.plugin_id)
+            self.assertEqual(proof_video.static_root, production_video.static_root)
+            self.assertEqual(proof_video.scripts, production_video.scripts)
+            self.assertEqual(proof_video.styles, production_video.styles)
+            self.assertEqual(proof_video.routes, production_video.routes)
+            self.assertIs(proof_video.on_release, production_video.on_release)
+            self.assertIs(proof_video.on_quiesce, production_video.on_quiesce)
+            self.assertIs(proof_video.on_clear, production_video.on_clear)
+
+            endpoints = {rule.endpoint for rule in fresh_app.url_map.iter_rules()}
+            self.assertIn("plugin_video_capture_start", endpoints)
+            self.assertIn("serve_video_plugin_asset", endpoints)
+            self.assertIn("serve_settings_probe_plugin_asset", endpoints)
+            self.assertEqual(
+                fresh_app.test_client().get(
+                    "/plugins/settings_probe/settings-probe.js"
+                ).status_code,
+                200,
+            )
+            self.assertIn(
+                '<script src="/plugins/video/video-plugin.js" defer></script>',
+                loaded.asset_tags(),
+            )
+            self.assertIn(
+                '<script src="/plugins/settings_probe/settings-probe.js" defer></script>',
+                loaded.asset_tags(),
+            )
+            probe_asset = (fixture_root / "static" / "settings-probe.js").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("OraSettingsSections.register", probe_asset)
+            self.assertEqual(
+                provider_registry.credential_username_for_owner(
+                    "settings_probe", "settings_probe"
+                ),
+                "settings-probe-api-key",
+            )
+
+            invalid_app = Flask("feature-host-invalid-later-rule")
+            rules_before = tuple(invalid_app.url_map.iter_rules())
+            views_before = dict(invalid_app.view_functions)
+            collision_provider = dict(
+                loaded.descriptors["settings_probe"].providers[0]
+            )
+            collision_provider.update({
+                "id": "collision_probe",
+                "label": "Collision probe",
+                "keyring_username": "collision-probe-api-key",
+            })
+            collision_descriptor = FeaturePlugin(
+                plugin_id="collision_probe",
+                static_root=fixture_root / "static",
+                scripts=("settings-probe.js",),
+                routes=(
+                    PluginRoute(
+                        "/collision-probe", "first", lambda: "first",
+                    ),
+                    PluginRoute(
+                        "/collision-probe/<unknown:value>",
+                        "invalid_second",
+                        lambda: "second",
+                    ),
+                ),
+                providers=(collision_provider,),
+            )
+            with mock.patch.object(
+                settings_probe, "register", return_value=collision_descriptor,
+            ):
+                skipped = load_feature_plugins(
+                    invalid_app,
+                    lambda _plugin_id, _root: mock.sentinel.context,
+                    sources=(FeaturePluginSource(
+                        "collision_probe",
+                        "orchestrator.tests.fixtures.feature_plugins.settings_probe",
+                        fixture_root,
+                    ),),
+                )
+            self.assertEqual(skipped.descriptors, {})
+            self.assertEqual(skipped.asset_tags(), "")
+            self.assertIsNone(provider_registry.by_id("collision_probe"))
+            self.assertEqual(tuple(invalid_app.url_map.iter_rules()), rules_before)
+            self.assertEqual(invalid_app.view_functions, views_before)
+        finally:
+            provider_registry.PROVIDERS[:] = providers_before
+            provider_registry._BY_ID.clear()
+            provider_registry._BY_ID.update(by_id_before)
+
     def test_video_routes_and_assets_are_registered_only_by_the_plugin(self):
-        plugin = server._video_plugin.descriptor
-        self.assertIsNotNone(plugin)
+        plugin = server._feature_plugins.descriptors["video"]
         endpoints = {
             rule.endpoint for rule in server.app.url_map.iter_rules()
             if rule.endpoint.startswith("plugin_video_")
@@ -46,7 +198,7 @@ class PluginLoaderTests(unittest.TestCase):
         from plugins import video
 
         plugin_root = ROOT / "plugins" / "video"
-        context = server._feature_plugin_context(plugin_root)
+        context = server._feature_plugin_context("video", plugin_root)
         with mock.patch(
             "orchestrator.integrations.replicate.reconcile_unfinished_jobs",
         ) as reconcile:
@@ -62,12 +214,16 @@ class PluginLoaderTests(unittest.TestCase):
         app = Flask("plugin-absent-recovery-test")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            loaded = load_video_plugin(
+            loaded = load_feature_plugins(
                 app,
-                lambda _root: self.fail("missing video must build no context"),
-                plugin_root=root / "not-installed",
+                lambda _plugin_id, _root: self.fail(
+                    "missing video must build no context"
+                ),
+                sources=(FeaturePluginSource(
+                    "video", "plugins.video", root / "not-installed",
+                ),),
             )
-            self.assertIsNone(loaded.descriptor)
+            self.assertEqual(loaded.descriptors, {})
 
             conversation_id = "style-restart"
             dialogue_dir = root / "sessions" / conversation_id
@@ -235,7 +391,7 @@ class PluginLoaderTests(unittest.TestCase):
         self.addCleanup(clear_test_tombstone)
 
         with (
-            mock.patch.object(server, "_video_plugin", recorder),
+            mock.patch.object(server, "_feature_plugins", recorder),
             mock.patch.object(server, "_HAS_TRANSCRIPTION", False),
             mock.patch.object(server, "_HAS_JOB_QUEUE", False),
             mock.patch.object(
@@ -271,10 +427,14 @@ class PluginLoaderTests(unittest.TestCase):
         app = Flask("plugin-absent-test")
         with tempfile.TemporaryDirectory() as tmp:
             missing = Path(tmp) / "not-installed"
-            loaded = load_video_plugin(
+            loaded = load_feature_plugins(
                 app,
-                lambda _root: self.fail("context must not be built without a plugin"),
-                plugin_root=missing,
+                lambda _plugin_id, _root: self.fail(
+                    "context must not be built without a plugin"
+                ),
+                sources=(FeaturePluginSource(
+                    "video", "plugins.video", missing,
+                ),),
             )
             env = os.environ.copy()
             env["ORA_FEATURE_PLUGINS_DIR"] = tmp
@@ -292,7 +452,7 @@ class PluginLoaderTests(unittest.TestCase):
             absent_boot = subprocess.run(
                 [sys.executable, "-c", """
 from server import app as server
-assert server._video_plugin.descriptor is None
+assert server._feature_plugins.descriptors == {}
 rules = {rule.rule for rule in server.app.url_map.iter_rules()}
 assert '/plugins/video/<path:filename>' not in rules
 assert server.app.test_client().get('/plugins/video/video-plugin.js').status_code == 404
@@ -303,7 +463,7 @@ assert server.app.test_client().get('/plugins/video/video-plugin.js').status_cod
                 text=True,
                 check=False,
             )
-        self.assertIsNone(loaded.descriptor)
+        self.assertEqual(loaded.descriptors, {})
         self.assertEqual(loaded.asset_tags(), "")
         self.assertEqual(
             absent_boot.returncode,
@@ -324,7 +484,7 @@ class LifecycleDelegationTests(unittest.TestCase):
     def test_close_uses_release_not_quiesce(self):
         recorder = self._Recorder()
         with (
-            mock.patch.object(server, "_video_plugin", recorder),
+            mock.patch.object(server, "_feature_plugins", recorder),
             mock.patch.object(server, "_HAS_TRANSCRIPTION", False),
             mock.patch.object(server, "_HAS_JOB_QUEUE", False),
         ):
@@ -337,7 +497,7 @@ class LifecycleDelegationTests(unittest.TestCase):
         queue = mock.Mock()
         queue.forget_conversation.return_value = 0
         with (
-            mock.patch.object(server, "_video_plugin", recorder),
+            mock.patch.object(server, "_feature_plugins", recorder),
             mock.patch.object(server, "_HAS_TRANSCRIPTION", False),
             mock.patch.object(server, "_HAS_JOB_QUEUE", True),
             mock.patch.object(server, "_get_job_queue", return_value=queue),

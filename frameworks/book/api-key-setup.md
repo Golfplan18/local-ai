@@ -16,6 +16,12 @@ Most people should set keys directly in **Settings → External APIs** — that 
 
 The live provider catalogue, signup and console URLs, key prefixes, and activation metadata live in one place in code — `orchestrator/provider_registry.py`. Settings reads that registry at runtime. This framework summarizes it for the conversational path but is not itself code-generated, so when details disagree the live Settings row and registry are authoritative.
 
+The catalogue below covers Ora's built-in providers. A loaded trusted first-party
+feature may add its own provider row at startup without a built-in catalogue edit;
+use that live Settings row for its console and activation details. The feature can
+read only the named credential in its own accepted declaration, while Settings
+continues to return presence rather than the value.
+
 Ora runs with no external keys when local models are configured, and the installer can complete with no keys. Keys are optional add-ons. **OpenRouter** is the practical gateway to commercial and hosted open-weight models (one key, hundreds of models), so recommend it early, but do not describe it as a hard install prerequisite. Free OpenRouter models are rate-limited and sometimes unavailable; paid models require credits/payment.
 
 ## HOW KEYS ARE USED
