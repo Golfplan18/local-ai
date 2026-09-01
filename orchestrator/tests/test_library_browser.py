@@ -333,7 +333,8 @@ class TestLibraryBrowser(unittest.TestCase):
                     CREATE TABLE embeddings (
                         id INTEGER PRIMARY KEY,
                         segment_id TEXT NOT NULL,
-                        embedding_id TEXT NOT NULL
+                        embedding_id TEXT NOT NULL,
+                        UNIQUE (segment_id, embedding_id)
                     );
                     CREATE TABLE embedding_metadata (
                         id INTEGER NOT NULL,
@@ -486,6 +487,7 @@ class TestLibraryBrowser(unittest.TestCase):
             statements = []
             selected_embedding_ids = []
             compact_payloads = []
+            compact_query_plan = []
             streamed_cursors = []
 
             class StreamingCursor:
@@ -520,8 +522,14 @@ class TestLibraryBrowser(unittest.TestCase):
                     self._connection = connection
 
                 def execute(self, sql, parameters=()):
-                    cursor = self._connection.execute(sql, parameters)
                     normalized = " ".join(sql.split())
+                    if "FROM json_each(" in normalized:
+                        compact_query_plan.extend(
+                            self._connection.execute(
+                                f"EXPLAIN QUERY PLAN {sql}", parameters,
+                            ).fetchall()
+                        )
+                    cursor = self._connection.execute(sql, parameters)
                     if "FROM json_each(" in normalized:
                         return StreamingCursor(cursor, "compact")
                     if (
@@ -673,6 +681,21 @@ class TestLibraryBrowser(unittest.TestCase):
                     "embedding_metadata_array",
                 )
             ))
+            self.assertIn("CROSS JOIN embeddings AS embedding", compact_query)
+            plan_details = [str(row[3]) for row in compact_query_plan]
+            candidate_plan_rows = [
+                index for index, detail in enumerate(plan_details)
+                if "SCAN candidate VIRTUAL TABLE" in detail
+            ]
+            embedding_plan_rows = [
+                index for index, detail in enumerate(plan_details)
+                if "SEARCH embedding USING INTEGER PRIMARY KEY" in detail
+            ]
+            self.assertEqual(len(candidate_plan_rows), 1, plan_details)
+            self.assertEqual(len(embedding_plan_rows), 1, plan_details)
+            self.assertLess(
+                candidate_plan_rows[0], embedding_plan_rows[0], plan_details,
+            )
             self.assertNotIn("chroma:document", compact_query)
             self.assertNotIn("compact_scalar", compact_query)
             self.assertNotIn("compact_array", compact_query)
