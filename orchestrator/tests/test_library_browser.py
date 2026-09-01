@@ -299,9 +299,11 @@ class TestLibraryBrowser(unittest.TestCase):
             other_database_path = root / "other-database-engram.md"
             vector_only_path = root / "vector-only-engram.md"
             non_engram_path = root / "indexed-chat.md"
+            blocked_path = root / "blocked-engram.md"
+            private_path = root / "private-engram.md"
             for path in (
                 engram_path, vector_path, other_database_path, vector_only_path,
-                non_engram_path,
+                non_engram_path, blocked_path, private_path,
             ):
                 path.write_text(f"# {path.stem}\n", encoding="utf-8")
             physical_collection = "knowledge-physical"
@@ -334,6 +336,14 @@ class TestLibraryBrowser(unittest.TestCase):
                         embedding_id TEXT NOT NULL
                     );
                     CREATE TABLE embedding_metadata (
+                        id INTEGER NOT NULL,
+                        key TEXT NOT NULL,
+                        string_value TEXT,
+                        int_value INTEGER,
+                        float_value REAL,
+                        bool_value INTEGER
+                    );
+                    CREATE TABLE embedding_metadata_array (
                         id INTEGER NOT NULL,
                         key TEXT NOT NULL,
                         string_value TEXT,
@@ -381,6 +391,12 @@ class TestLibraryBrowser(unittest.TestCase):
                         (3, "segment-other-metadata", "chunk-other-database"),
                         (4, "segment-vector-only", "chunk-vector-only"),
                         (5, "segment-metadata", "chunk-non-engram"),
+                        (6, "segment-metadata", "chunk-2"),
+                        (7, "segment-metadata", "chunk-blocked-engram"),
+                        (8, "segment-metadata", "chunk-blocked-sibling"),
+                        (9, "segment-metadata", "chunk-private-engram"),
+                        (10, "segment-metadata", "chunk"),
+                        (11, "segment-metadata", " chunk "),
                     ],
                 )
                 for row_id, path, title, item_type in (
@@ -389,6 +405,12 @@ class TestLibraryBrowser(unittest.TestCase):
                     (3, other_database_path, "Other Database Fake", "engram"),
                     (4, vector_only_path, "Vector Only Fake", "engram"),
                     (5, non_engram_path, "Indexed Chat", "chat"),
+                    (6, engram_path, "Indexed Engram", "engram"),
+                    (7, blocked_path, "Blocked Engram", "engram"),
+                    (8, blocked_path, "Blocked sibling", "chat"),
+                    (9, private_path, "Private Engram", "engram"),
+                    (10, engram_path, "Whitespace duplicate A", "chat"),
+                    (11, engram_path, "Whitespace duplicate B", "chat"),
                 ):
                     fixture.executemany(
                         "INSERT INTO embedding_metadata"
@@ -396,11 +418,49 @@ class TestLibraryBrowser(unittest.TestCase):
                         [
                             (row_id, "nexus", "ora"),
                             (row_id, "path", str(path)),
-                            (row_id, "tags", '["alpha"]'),
                             (row_id, "title", title),
                             (row_id, "type", item_type),
                         ],
                     )
+                fixture.execute(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    (1, "chroma:document", "not-materialized-" + ("x" * 100_000)),
+                )
+                fixture.execute(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    (8, " artifact_kind ", "conversation_runtime_derivative"),
+                )
+                fixture.execute(
+                    "UPDATE embedding_metadata SET key = ?, string_value = ? "
+                    "WHERE id = ? AND key = 'path'",
+                    ("\tpath\n", f"\t\u2003{blocked_path}\u2029\n", 8),
+                )
+                fixture.execute(
+                    "UPDATE embedding_metadata SET key = ? "
+                    "WHERE id = ? AND key = 'type'",
+                    ("\ttype\n", 7),
+                )
+                fixture.execute(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    (6, "tags", '["legacy"]'),
+                )
+                fixture.execute(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, bool_value) VALUES (?, ?, ?)",
+                    (9, "tag_private", 1),
+                )
+                fixture.executemany(
+                    "INSERT INTO embedding_metadata_array"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    [
+                        (1, "tags", "alpha"),
+                        (6, "tags", "beta"),
+                        (6, " project_ids ", "project-x"),
+                    ],
+                )
                 fixture.commit()
             finally:
                 fixture.close()
@@ -410,10 +470,12 @@ class TestLibraryBrowser(unittest.TestCase):
             connect_calls = []
             statements = []
             selected_embedding_ids = []
+            compact_payloads = []
 
             def capture_inventory_row(_cursor, row):
-                if len(row) > 3 and row[3] is not None:
-                    selected_embedding_ids.append(row[3])
+                if len(row) == 9:
+                    selected_embedding_ids.append(row[1])
+                    compact_payloads.extend((row[3] or "", row[4] or ""))
                 return row
 
             def read_only_connect(database, *args, **kwargs):
@@ -444,14 +506,18 @@ class TestLibraryBrowser(unittest.TestCase):
                 engrams = server._library_engram_provider()
                 vector_only = server._library_engram_provider()
 
-            self.assertTrue(engrams["complete"])
-            self.assertIsNone(engrams["reason"])
+            self.assertFalse(engrams["complete"])
+            self.assertIn("unstable identities", engrams["reason"])
             self.assertEqual(len(engrams["rows"]), 1)
             engram = engrams["rows"][0]
             self.assertEqual(engram["identity"], str(engram_path.resolve()))
             self.assertEqual(engram["title"], "Indexed Engram")
-            self.assertEqual(engram["metadata"]["tags"], ["alpha"])
-            self.assertEqual(engram["metadata"]["project_ids"], ["ora"])
+            self.assertEqual(
+                engram["metadata"]["tags"], ["alpha", "legacy", "beta"],
+            )
+            self.assertEqual(
+                engram["metadata"]["project_ids"], ["ora", "project-x"],
+            )
             self.assertEqual(engram["metadata"]["item_type"], "engram")
             self.assertTrue(engram["preview"]["available"])
             self.assertEqual(engram["provenance"]["details"], {
@@ -468,15 +534,41 @@ class TestLibraryBrowser(unittest.TestCase):
             admitted_paths.assert_called_once()
             admitted_metadata, admitted_target = admitted_paths.call_args.args
             self.assertEqual(admitted_target, "")
-            self.assertEqual(admitted_metadata, [{
-                "nexus": "ora",
-                "path": str(engram_path),
-                "tags": '["alpha"]',
-                "title": "Indexed Engram",
-                "type": "engram",
-            }])
-            self.assertEqual(set(selected_embedding_ids), {"chunk-1"})
+            admitted_by_id = {
+                (str(row["path"]).strip(), row["type"], row.get("title")): row
+                for row in admitted_metadata
+            }
+            self.assertIn(
+                (str(engram_path), "engram", "Indexed Engram"),
+                admitted_by_id,
+            )
+            self.assertIn(
+                (str(blocked_path), "chat", "Blocked sibling"),
+                admitted_by_id,
+            )
+            self.assertEqual(
+                admitted_by_id[
+                    (str(blocked_path), "chat", "Blocked sibling")
+                ]["artifact_kind"],
+                "conversation_runtime_derivative",
+            )
+            self.assertNotIn(
+                str(blocked_path.resolve()),
+                [row["identity"] for row in engrams["rows"]],
+            )
+            self.assertNotIn(
+                str(private_path.resolve()),
+                [row["identity"] for row in engrams["rows"]],
+            )
+            self.assertEqual(set(selected_embedding_ids), {
+                "chunk-1", "chunk-2", "chunk-blocked-engram",
+                "chunk-blocked-sibling", "chunk-private-engram",
+                "chunk", " chunk ",
+            })
             self.assertNotIn("chunk-non-engram", selected_embedding_ids)
+            self.assertFalse(any(
+                "not-materialized" in payload for payload in compact_payloads
+            ))
 
             expected_connect = (
                 f"file:{db_path}?mode=ro", (), {"uri": True},
@@ -489,15 +581,27 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(normalized_statements[0], "PRAGMA query_only=ON")
             self.assertEqual(normalized_statements[1], "BEGIN")
             self.assertEqual(normalized_statements[-1], "COMMIT")
-            inventory_queries = [
+            authority_queries = [
                 sql for sql in normalized_statements if sql.startswith("SELECT ")
             ]
-            self.assertEqual(len(inventory_queries), 2)
-            for table in (
-                "databases", "collections", "segments", "embeddings",
-                "embedding_metadata",
-            ):
-                self.assertTrue(all(table in query for query in inventory_queries))
+            compact_queries = [
+                sql for sql in normalized_statements if sql.startswith("WITH ")
+            ]
+            self.assertEqual(len(authority_queries), 2)
+            self.assertEqual(len(compact_queries), 1)
+            self.assertTrue(all(
+                all(table in query for table in (
+                    "databases", "collections", "segments",
+                ))
+                for query in authority_queries
+            ))
+            self.assertTrue(all(
+                table in compact_queries[0] for table in (
+                    "embeddings", "embedding_metadata",
+                    "embedding_metadata_array",
+                )
+            ))
+            self.assertNotIn("chroma:document", compact_queries[0])
             self.assertEqual(
                 hashlib.sha256(db_path.read_bytes()).hexdigest(), fixture_hash,
             )
