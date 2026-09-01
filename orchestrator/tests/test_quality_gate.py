@@ -219,23 +219,27 @@ class TestGear3QualityGate(unittest.TestCase):
         self.assertTrue(h.saw_qgfix("reviser"))        # reviser got the fixes
         self.assertIn("QGFIX", result)                 # reviewed redo ships
 
-    def test_fail_after_reinspection_withholds_corrected_candidate(self):
+    def test_fail_after_reinspection_ships_corrected_candidate_with_warning(self):
         h = _Harness(["VERDICT: FAIL", "VERDICT: FAIL"])
         with _patched(h):
             result = boot.run_gear3(_ctx(), {}, config_name=None)
         self.assertEqual(h.count("quality-gate"), 2)
         self.assertTrue(h.saw_qgfix("reviser"))
-        self.assertIn("Deliverable withheld", result)
-        self.assertNotIn("QGFIX", result)
+        self.assertNotIn("Deliverable withheld", result)
+        self.assertIn("QGFIX", result)                 # the user keeps the work
+        self.assertIn("Independent final review flagged", result)
+        self.assertIn("FAIL", result)
 
-    def test_broken_withholds_without_content_redo(self):
+    def test_broken_ships_candidate_without_content_redo(self):
         h = _Harness(["Cannot reach a verdict.\nVERDICT: BROKEN"])
         with _patched(h):
             result = boot.run_gear3(_ctx(), {}, config_name=None)
         self.assertEqual(h.count("quality-gate"), 1)
         self.assertFalse(h.saw_qgfix("reviser"))
         self.assertNotIn("QGFIX", result)
-        self.assertIn("Deliverable withheld", result)
+        self.assertNotIn("Deliverable withheld", result)
+        self.assertIn("ORIG", result)                  # the candidate survives
+        self.assertIn("Independent final review flagged", result)
 
 class TestGear3VerdictThreadForPacket(unittest.TestCase):
     """The packet label describes the inspected identity and release state."""
@@ -255,16 +259,16 @@ class TestGear3VerdictThreadForPacket(unittest.TestCase):
         self.assertEqual(er["status"], "passed-after-correction-reinspection")
         self.assertEqual(er["scope"], "text_review")
 
-    def test_failed_reinspection_records_withheld_status(self):
+    def test_failed_reinspection_records_shipped_status(self):
         ctx = _ctx()
         h = _Harness(["VERDICT: FAIL", "VERDICT: FAIL"])
         with _patched(h):
             result = boot.run_gear3(ctx, {}, config_name=None)
-        self.assertIn("Deliverable withheld", result)
+        self.assertIn("QGFIX", result)
         self.assertEqual(ctx["execution_review"]["verdict"], "FAIL")
         self.assertEqual(
             ctx["execution_review"]["status"],
-            "failed-after-final-reinspection-withheld",
+            "failed-after-final-reinspection-shipped-with-warning",
         )
 
     def test_pass_records_pass_verdict(self):
@@ -283,7 +287,7 @@ class TestGear3VerdictThreadForPacket(unittest.TestCase):
             boot.run_gear3(ctx, {}, config_name=None)
         er = ctx.get("execution_review")
         self.assertEqual(er["verdict"], "BROKEN")
-        self.assertEqual(er["status"], "review-unavailable-withheld")
+        self.assertEqual(er["status"], "review-unavailable-shipped-with-warning")
 
 
 # ─────────────────────────── Gear 4 behavior ────────────────────────────────
@@ -332,16 +336,18 @@ class TestGear4QualityGate(unittest.TestCase):
 
     def test_one_redo_per_problem_type_bound(self):
         # Gate FAILs ANALYSIS every pass: the analysis redo fires once, then the
-        # gate is consulted again, sees the redo is spent, and withholds.
+        # gate is consulted again, sees the redo is spent, and ships the
+        # candidate with the verdict stated rather than destroying it.
         h = _Harness(["PROBLEM: ANALYSIS\nVERDICT: FAIL"])  # repeats
         result = self._run(h)
         self.assertEqual(h.count("consolidator-quality-redo"), 1)  # bounded
         self.assertEqual(h.count("formatter-after-reconsolidate"), 1)
         self.assertEqual(h.count("quality-gate"), 2)               # not 3+
-        self.assertIn("Deliverable withheld", result)
+        self.assertNotIn("Deliverable withheld", result)
+        self.assertIn("Independent final review flagged", result)
         self.assertEqual(
             self.ctx["execution_review"]["status"],
-            "failed-after-final-reinspection-withheld",
+            "failed-after-final-reinspection-shipped-with-warning",
         )
 
     def test_both_problem_types_each_redo_once(self):
@@ -355,17 +361,19 @@ class TestGear4QualityGate(unittest.TestCase):
         self.assertEqual(h.count("formatter-quality-redo"), 1)
         self.assertEqual(h.count("quality-gate"), 3)
 
-    def test_broken_withholds_without_content_redo(self):
+    def test_broken_ships_candidate_without_content_redo(self):
         h = _Harness(["Corpus missing.\nVERDICT: BROKEN"])
         result = self._run(h)
         self.assertEqual(h.count("quality-gate"), 1)
         self.assertEqual(h.count("formatter-quality-redo"), 0)
         self.assertEqual(h.count("consolidator-quality-redo"), 0)
-        self.assertIn("Deliverable withheld", result)
-        self.assertNotIn("<<formatter:ORIG>>", result)
+        self.assertNotIn("Deliverable withheld", result)
+        self.assertIn("ORIG", result)
+        self.assertIn("Independent final review flagged", result)
+        self.assertIn("<<formatter:ORIG>>", result)   # the formatter output survives
         self.assertEqual(
             self.ctx["execution_review"]["status"],
-            "review-unavailable-withheld",
+            "review-unavailable-shipped-with-warning",
         )
 
 
@@ -407,3 +415,57 @@ class TestGateWiredAndDocumented(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ───────────── the two properties the release change depends on ─────────────
+
+
+class TestStrictFrameworkStillFailsClosed(unittest.TestCase):
+    """MSI's protection is untouched. A strict framework run must never ship a
+    candidate the gate refused — it raises before reaching the user-facing
+    release code, which is why ordinary turns can safely ship theirs."""
+
+    def test_gear3_failed_gate_raises(self):
+        ctx = _ctx()
+        ctx["framework_execution"] = True
+        h = _Harness(["VERDICT: FAIL", "VERDICT: FAIL"])
+        with _patched(h):
+            with self.assertRaises(boot.FrameworkExecutionFailure):
+                boot.run_gear3(ctx, {}, config_name=None)
+
+    def test_gear4_broken_gate_raises(self):
+        ctx = _ctx()
+        ctx["framework_execution"] = True
+        h = _Harness(["Corpus missing.\nVERDICT: BROKEN"])
+        with _patched(h):
+            with self.assertRaises(boot.FrameworkExecutionFailure):
+                boot.run_gear4(ctx, {}, execution_context="interactive",
+                               config_name=None)
+
+
+class TestFlaggedDeliverablePreservesContent(unittest.TestCase):
+    """The candidate is never replaced, and content whose opening characters
+    carry structural meaning is handed back byte-identical — the gate inspected
+    it without a prefix, and a prefix would break the output contract."""
+
+    def test_json_returned_unchanged(self):
+        body = '{"answer": 42}'
+        self.assertEqual(boot._gate_flagged_deliverable(body, "FAIL"), body)
+
+    def test_frontmatter_returned_unchanged(self):
+        body = "---\ntitle: x\n---\n\nbody text"
+        self.assertEqual(boot._gate_flagged_deliverable(body, "BROKEN"), body)
+
+    def test_fenced_block_returned_unchanged(self):
+        body = "```python\nprint(1)\n```"
+        self.assertEqual(boot._gate_flagged_deliverable(body, "FAIL"), body)
+
+    def test_prose_keeps_its_whole_body_and_names_the_verdict(self):
+        body = "The analysis follows in full."
+        out = boot._gate_flagged_deliverable(body, "FAIL")
+        self.assertIn(body, out)
+        self.assertIn("FAIL", out)
+        self.assertIn("Independent final review flagged", out)
+
+    def test_empty_candidate_is_not_decorated(self):
+        self.assertEqual(boot._gate_flagged_deliverable("", "FAIL"), "")

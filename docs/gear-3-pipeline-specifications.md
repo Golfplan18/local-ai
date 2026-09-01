@@ -55,14 +55,18 @@ Gear 3 has no consolidator and no formatter. On release it surfaces only the `##
 
 The domain-general correction policy permits at most three attempts, requires progress evidence, and stops when the same defect reaches the repeated-defect limit. The local quality gate returns `PASS`, `FAIL`, or `BROKEN`; it does not issue repository or external authority.
 
-A Step 6 verifier FAIL may cause another revision only when policy permits it. BROKEN means inspection infrastructure was unavailable; it is not a quality pass. At Step 6.5, a substantive FAIL may trigger one bounded producer correction. The corrected candidate receives a new digest and must pass a fresh independent inspection. Release requires all of the following:
+A Step 6 verifier FAIL may cause another revision only when policy permits it. BROKEN means inspection infrastructure was unavailable; it is not a quality pass. At Step 6.5, a substantive FAIL may trigger one bounded producer correction. The corrected candidate receives a new digest and must pass a fresh independent inspection. A clean release requires all of the following:
 
 - final observation is PASS;
 - the review call is not BROKEN;
 - the exact candidate identity matches the reviewed revised-draft body; and
 - no pipeline integrity fault occurred.
 
-If any condition is absent, Ora returns a typed “Deliverable withheld” result. Attempt exhaustion never converts failure to acceptance.
+If any condition is absent, what happens next depends on which kind of run this is, and the two are deliberately different.
+
+On an ordinary user turn the deliverable is never withheld. Ora returns the whole candidate with the gate's verdict stated above it, so the user learns the result was not confirmed without losing the work. The candidate is not replaced, truncated, or summarized, and a candidate whose opening characters carry structural meaning is returned byte-identical with the verdict recorded only in the run's own state. Attempt exhaustion still never converts failure to acceptance: the verdict travels with the deliverable and `execution_review` records that it shipped flagged.
+
+Under strict framework execution — milestone and publication runs such as MSI — release remains fail-closed. Any absent condition raises before the user-facing release path is reached, and the milestone boundary independently requires a `PASS` verdict, so a candidate the gate refused is never published.
 
 Gear 3 is an Inquiry analysis path. It does not execute or review standalone Programming; Programming uses its separate repository executor and fresh four-outcome reviewer.
 
@@ -70,7 +74,7 @@ Gear 3 is an Inquiry analysis path. It does not execute or review standalone Pro
 
 If neither Gear 3 endpoint resolves, Ora refuses with exact configuration-chain diagnostics. If exactly one of depth or breadth resolves, Ora may run an observable analyst-only fallback with retry and trace it as `gear3-single-model-analyst-only-fallback`. That result has not passed the sequential adversarial contract and must not be represented as equivalent to a full Gear 3 run.
 
-Provider, evaluator, reviser, verifier, evidence, and extraction failures are recorded in step health and contingency evidence. A broken final quality gate always withholds.
+Provider, evaluator, reviser, verifier, evidence, and extraction failures are recorded in step health and contingency evidence. A broken final quality gate withholds under strict framework execution and ships flagged on an ordinary turn.
 
 ## Required evidence
 
