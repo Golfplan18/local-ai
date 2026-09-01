@@ -14176,7 +14176,7 @@ def _library_engram_provider(query: str = "") -> dict:
                              IN ('tags', 'project_ids')
                    ) AS array_metadata
             FROM json_each(?) AS candidate
-            JOIN embeddings AS embedding
+            CROSS JOIN embeddings AS embedding
               ON embedding.id = CAST(candidate.value AS INTEGER)
             WHERE embedding.segment_id = ?
             """,
