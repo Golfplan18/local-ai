@@ -298,8 +298,10 @@ class TestLibraryBrowser(unittest.TestCase):
             vector_path = root / "vector-engram.md"
             other_database_path = root / "other-database-engram.md"
             vector_only_path = root / "vector-only-engram.md"
+            non_engram_path = root / "indexed-chat.md"
             for path in (
                 engram_path, vector_path, other_database_path, vector_only_path,
+                non_engram_path,
             ):
                 path.write_text(f"# {path.stem}\n", encoding="utf-8")
             physical_collection = "knowledge-physical"
@@ -378,13 +380,15 @@ class TestLibraryBrowser(unittest.TestCase):
                         (2, "segment-vector", "chunk-vector"),
                         (3, "segment-other-metadata", "chunk-other-database"),
                         (4, "segment-vector-only", "chunk-vector-only"),
+                        (5, "segment-metadata", "chunk-non-engram"),
                     ],
                 )
-                for row_id, path, title in (
-                    (1, engram_path, "Indexed Engram"),
-                    (2, vector_path, "Vector Fake"),
-                    (3, other_database_path, "Other Database Fake"),
-                    (4, vector_only_path, "Vector Only Fake"),
+                for row_id, path, title, item_type in (
+                    (1, engram_path, "Indexed Engram", "engram"),
+                    (2, vector_path, "Vector Fake", "engram"),
+                    (3, other_database_path, "Other Database Fake", "engram"),
+                    (4, vector_only_path, "Vector Only Fake", "engram"),
+                    (5, non_engram_path, "Indexed Chat", "chat"),
                 ):
                     fixture.executemany(
                         "INSERT INTO embedding_metadata"
@@ -394,7 +398,7 @@ class TestLibraryBrowser(unittest.TestCase):
                             (row_id, "path", str(path)),
                             (row_id, "tags", '["alpha"]'),
                             (row_id, "title", title),
-                            (row_id, "type", "engram"),
+                            (row_id, "type", item_type),
                         ],
                     )
                 fixture.commit()
@@ -405,11 +409,18 @@ class TestLibraryBrowser(unittest.TestCase):
             fixture_entries = sorted(path.name for path in chroma_dir.iterdir())
             connect_calls = []
             statements = []
+            selected_embedding_ids = []
+
+            def capture_inventory_row(_cursor, row):
+                if len(row) > 3 and row[3] is not None:
+                    selected_embedding_ids.append(row[3])
+                return row
 
             def read_only_connect(database, *args, **kwargs):
                 connect_calls.append((database, args, kwargs))
                 connection = real_connect(database, *args, **kwargs)
                 connection.set_trace_callback(statements.append)
+                connection.row_factory = capture_inventory_row
                 return connection
 
             with (
@@ -464,6 +475,8 @@ class TestLibraryBrowser(unittest.TestCase):
                 "title": "Indexed Engram",
                 "type": "engram",
             }])
+            self.assertEqual(set(selected_embedding_ids), {"chunk-1"})
+            self.assertNotIn("chunk-non-engram", selected_embedding_ids)
 
             expected_connect = (
                 f"file:{db_path}?mode=ro", (), {"uri": True},
