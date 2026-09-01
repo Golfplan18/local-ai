@@ -281,6 +281,7 @@ class TestLibraryBrowser(unittest.TestCase):
 
     def test_engram_and_file_providers_take_one_complete_inventory_read(self):
         import hashlib
+        import inspect
         import sqlite3
         import tempfile
         from pathlib import Path
@@ -301,9 +302,12 @@ class TestLibraryBrowser(unittest.TestCase):
             non_engram_path = root / "indexed-chat.md"
             blocked_path = root / "blocked-engram.md"
             private_path = root / "private-engram.md"
+            blank_key_path = root / "blank-key-engram.md"
+            duplicate_key_path = root / "duplicate-key-engram.md"
             for path in (
                 engram_path, vector_path, other_database_path, vector_only_path,
-                non_engram_path, blocked_path, private_path,
+                non_engram_path, blocked_path, private_path, blank_key_path,
+                duplicate_key_path,
             ):
                 path.write_text(f"# {path.stem}\n", encoding="utf-8")
             physical_collection = "knowledge-physical"
@@ -402,6 +406,8 @@ class TestLibraryBrowser(unittest.TestCase):
                         (9, "segment-metadata", "chunk-private-engram"),
                         (10, "segment-metadata", "chunk"),
                         (11, "segment-metadata", " chunk "),
+                        (12, "segment-metadata", "chunk-blank-key"),
+                        (13, "segment-metadata", "chunk-duplicate-key"),
                     ],
                 )
                 for row_id, path, title, item_type in (
@@ -416,6 +422,8 @@ class TestLibraryBrowser(unittest.TestCase):
                     (9, private_path, "Private Engram", "engram"),
                     (10, engram_path, "Whitespace duplicate A", "chat"),
                     (11, engram_path, "Whitespace duplicate B", "chat"),
+                    (12, blank_key_path, "Blank key Engram", "engram"),
+                    (13, duplicate_key_path, "Duplicate key Engram", "engram"),
                 ):
                     fixture.executemany(
                         "INSERT INTO embedding_metadata"
@@ -427,10 +435,21 @@ class TestLibraryBrowser(unittest.TestCase):
                             (row_id, "type", item_type),
                         ],
                     )
+                document_sentinel = "not-materialized-" + ("x" * 100_000)
                 fixture.execute(
                     "INSERT INTO embedding_metadata"
                     "(id, key, string_value) VALUES (?, ?, ?)",
-                    (1, "chroma:document", "not-materialized-" + ("x" * 100_000)),
+                    (1, "chroma:document", document_sentinel),
+                )
+                fixture.execute(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    (12, " \t ", "unsafe blank key"),
+                )
+                fixture.execute(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    (13, " title ", "unsafe duplicate title"),
                 )
                 fixture.execute(
                     "INSERT INTO embedding_metadata"
@@ -486,8 +505,9 @@ class TestLibraryBrowser(unittest.TestCase):
             connect_calls = []
             statements = []
             selected_embedding_ids = []
-            compact_payloads = []
-            compact_query_plan = []
+            flat_rows = []
+            flat_queries = []
+            flat_query_plan = []
             streamed_cursors = []
 
             class StreamingCursor:
@@ -504,9 +524,9 @@ class TestLibraryBrowser(unittest.TestCase):
 
                 def __next__(self):
                     row = next(self._cursor)
-                    if self._label == "compact":
-                        selected_embedding_ids.append(row[1])
-                        compact_payloads.extend((row[2] or "", row[3] or ""))
+                    if self._label == "flat":
+                        selected_embedding_ids.append(row[2])
+                        flat_rows.append(row)
                     return row
 
                 def fetchall(self):
@@ -524,14 +544,15 @@ class TestLibraryBrowser(unittest.TestCase):
                 def execute(self, sql, parameters=()):
                     normalized = " ".join(sql.split())
                     if "FROM json_each(" in normalized:
-                        compact_query_plan.extend(
+                        flat_queries.append(normalized)
+                        flat_query_plan.extend(
                             self._connection.execute(
                                 f"EXPLAIN QUERY PLAN {sql}", parameters,
                             ).fetchall()
                         )
                     cursor = self._connection.execute(sql, parameters)
                     if "FROM json_each(" in normalized:
-                        return StreamingCursor(cursor, "compact")
+                        return StreamingCursor(cursor, "flat")
                     if (
                         "FROM embeddings AS embedding" in normalized
                         and "IN ('path', 'type')" in normalized
@@ -629,16 +650,44 @@ class TestLibraryBrowser(unittest.TestCase):
                 str(private_path.resolve()),
                 [row["identity"] for row in engrams["rows"]],
             )
+            self.assertNotIn(
+                str(blank_key_path.resolve()),
+                [row["identity"] for row in engrams["rows"]],
+            )
+            self.assertNotIn(
+                str(duplicate_key_path.resolve()),
+                [row["identity"] for row in engrams["rows"]],
+            )
             self.assertEqual(set(selected_embedding_ids), {
                 "chunk-1", "chunk-2", "chunk-blocked-engram",
                 "chunk-blocked-sibling", "chunk-private-engram",
-                "chunk", " chunk ",
+                "chunk", " chunk ", "chunk-blank-key",
+                "chunk-duplicate-key",
             })
             self.assertNotIn("chunk-non-engram", selected_embedding_ids)
+            self.assertEqual({row[0] for row in flat_rows}, {"scalar", "array"})
+            self.assertTrue(all(len(row) == 8 for row in flat_rows))
+            self.assertIn("", [
+                row[3] for row in flat_rows
+                if row[0] == "scalar" and row[1] == 12
+            ])
+            self.assertEqual(sum(
+                row[0] == "scalar" and row[1] == 13 and row[3] == "title"
+                for row in flat_rows
+            ), 2)
+            document_rows = [
+                row for row in flat_rows
+                if row[0] == "scalar" and row[3] == "chroma:document"
+            ]
+            self.assertEqual(len(document_rows), 1)
+            self.assertTrue(all(value is None for value in document_rows[0][4:]))
             self.assertFalse(any(
-                "not-materialized" in payload for payload in compact_payloads
+                document_sentinel in value
+                for row in flat_rows
+                for value in row[4:]
+                if isinstance(value, str)
             ))
-            self.assertEqual(streamed_cursors, ["identity", "compact"])
+            self.assertEqual(streamed_cursors, ["identity", "flat"])
 
             expected_connect = (
                 f"file:{db_path}?mode=ro", (), {"uri": True},
@@ -664,6 +713,7 @@ class TestLibraryBrowser(unittest.TestCase):
             ]
             self.assertEqual(len(first_reads), 3)
             self.assertEqual(len(second_reads), 1)
+            self.assertEqual(len(flat_queries), 1)
             self.assertTrue(all(
                 all(table in query for table in (
                     "databases", "collections", "segments",
@@ -671,18 +721,27 @@ class TestLibraryBrowser(unittest.TestCase):
                 for query in (first_reads[0], second_reads[0])
             ))
             identity_query = first_reads[1]
-            compact_query = first_reads[2]
+            flat_query = flat_queries[0]
             self.assertIn("FROM embeddings AS embedding", identity_query)
             self.assertIn("IN ('path', 'type')", identity_query)
             self.assertNotIn("embedding_metadata_array", identity_query)
             self.assertTrue(all(
-                table in compact_query for table in (
+                table in flat_query for table in (
                     "json_each", "embeddings", "embedding_metadata",
                     "embedding_metadata_array",
                 )
             ))
-            self.assertIn("CROSS JOIN embeddings AS embedding", compact_query)
-            plan_details = [str(row[3]) for row in compact_query_plan]
+            self.assertIn("UNION ALL", flat_query)
+            self.assertEqual(
+                flat_query.count("FROM json_each(?) AS candidate"), 2,
+            )
+            self.assertEqual(
+                flat_query.count("CROSS JOIN embeddings AS embedding"), 2,
+            )
+            self.assertEqual(
+                flat_query.count("WHERE embedding.segment_id = ?"), 2,
+            )
+            plan_details = [str(row[3]) for row in flat_query_plan]
             candidate_plan_rows = [
                 index for index, detail in enumerate(plan_details)
                 if "SCAN candidate VIRTUAL TABLE" in detail
@@ -691,17 +750,24 @@ class TestLibraryBrowser(unittest.TestCase):
                 index for index, detail in enumerate(plan_details)
                 if "SEARCH embedding USING INTEGER PRIMARY KEY" in detail
             ]
-            self.assertEqual(len(candidate_plan_rows), 1, plan_details)
-            self.assertEqual(len(embedding_plan_rows), 1, plan_details)
-            self.assertLess(
-                candidate_plan_rows[0], embedding_plan_rows[0], plan_details,
+            self.assertEqual(len(candidate_plan_rows), 2, plan_details)
+            self.assertEqual(len(embedding_plan_rows), 2, plan_details)
+            for candidate_plan_row, embedding_plan_row in zip(
+                candidate_plan_rows, embedding_plan_rows,
+            ):
+                self.assertLess(
+                    candidate_plan_row, embedding_plan_row, plan_details,
+                )
+            self.assertIn("chroma:document", [row[3] for row in flat_rows])
+            self.assertNotIn("json_object", flat_query)
+            self.assertNotIn("json_group_array", flat_query)
+            self.assertNotIn(" OVER ", flat_query)
+            self.assertNotIn(" GROUP BY ", flat_query)
+            self.assertNotIn(" ORDER BY ", flat_query)
+            self.assertNotIn(
+                "json.loads",
+                inspect.getsource(server._library_engram_provider),
             )
-            self.assertNotIn("chroma:document", compact_query)
-            self.assertNotIn("compact_scalar", compact_query)
-            self.assertNotIn("compact_array", compact_query)
-            self.assertNotIn(" OVER ", compact_query)
-            self.assertNotIn(" GROUP BY ", compact_query)
-            self.assertNotIn(" ORDER BY ", compact_query)
             self.assertEqual(
                 hashlib.sha256(db_path.read_bytes()).hexdigest(), fixture_hash,
             )
