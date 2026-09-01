@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime
-from typing import Any, Iterable, Mapping
+import logging
+from typing import Any, Callable, Iterable, Mapping
 
 
 SOURCES = ("dialogues", "engrams", "files")
@@ -34,6 +35,7 @@ METADATA_FIELDS = (
     "content_type",
     "item_type",
 )
+_LOG = logging.getLogger(__name__)
 
 
 class LibraryBrowserError(ValueError):
@@ -228,7 +230,7 @@ def normalize_row(source: str, row: Mapping[str, Any]) -> dict[str, Any]:
         if field in metadata and metadata[field] is not None:
             unavailable.discard(field)
 
-    return {
+    normalized = {
         "id": item_id,
         "source": source,
         "title": title,
@@ -239,6 +241,12 @@ def normalize_row(source: str, row: Mapping[str, Any]) -> dict[str, Any]:
         "preview": _normalize_preview(row.get("preview")),
         "editability": _normalize_editability(row.get("editability")),
     }
+    relationship_identity = str(
+        row.get("_relationship_identity") or ""
+    ).strip()
+    if relationship_identity:
+        normalized["_relationship_identity"] = relationship_identity
+    return normalized
 
 
 def _timestamp(value: Any) -> float | None:
@@ -304,6 +312,7 @@ def build_browser_response(
     query: str = "",
     offset: int = 0,
     limit: int = 100,
+    relationship_resolver: Callable[[set[str]], Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Aggregate complete provider universes, then page the normalized rows.
 
@@ -389,9 +398,58 @@ def build_browser_response(
     next_offset = offset + len(page)
     if next_offset >= len(normalized):
         next_offset = None
+
+    graph_rows = [
+        row for row in normalized if row.get("_relationship_identity")
+    ]
+    if relationship_resolver is not None and graph_rows:
+        page_identities = {
+            row["_relationship_identity"]
+            for row in page
+            if row.get("_relationship_identity")
+        }
+        try:
+            resolved = relationship_resolver(page_identities)
+            snapshot = dict(resolved) if isinstance(resolved, Mapping) else {}
+            common = _normalize_relationships({
+                "state": snapshot.get("state"),
+                "updated_at": snapshot.get("updated_at"),
+                "reason": snapshot.get("reason"),
+                "summaries": [],
+            })
+            items = (
+                snapshot.get("items")
+                if isinstance(snapshot.get("items"), Mapping) else {}
+            )
+        except Exception:
+            _LOG.warning("Library relationship resolution failed", exc_info=True)
+            common = _normalize_relationships({
+                "state": "unavailable",
+                "reason": "relationship snapshot is unavailable",
+                "summaries": [],
+            })
+            items = {}
+
+        for row in graph_rows:
+            row["relationships"] = dict(common, summaries=[])
+        for row in page:
+            identity = row.get("_relationship_identity")
+            if not identity:
+                continue
+            item = items.get(identity)
+            summaries = item.get("summaries") if isinstance(item, Mapping) else []
+            row["relationships"] = _normalize_relationships({
+                "state": common["state"],
+                "updated_at": common["updated_at"],
+                "reason": common["reason"],
+                "summaries": summaries,
+            })
+
     facets = _facets(normalized)
     for facet in facets.values():
         facet["complete"] = complete
+    for row in normalized:
+        row.pop("_relationship_identity", None)
 
     return {
         "sources": list(sources),
