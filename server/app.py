@@ -14055,6 +14055,13 @@ def _library_engram_provider(query: str = "") -> dict:
              AND segments.type = ?
             LEFT JOIN embeddings
               ON embeddings.segment_id = segments.id
+             AND EXISTS (
+                   SELECT 1
+                   FROM embedding_metadata engram_type
+                   WHERE engram_type.id = embeddings.id
+                     AND engram_type.key = 'type'
+                     AND engram_type.string_value = 'engram'
+                 )
             LEFT JOIN embedding_metadata
               ON embedding_metadata.id = embeddings.id
             WHERE databases.name = ?
