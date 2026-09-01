@@ -14077,101 +14077,117 @@ def _library_engram_provider(query: str = "") -> dict:
             return {"rows": [], "complete": False, "reason": reason}
 
         metadata_segment_id = next(iter(authority_segments))
-        inventory_rows = connection.execute(
+        identities: dict[int, dict] = {}
+        identity_cursor = connection.execute(
             """
-            WITH engram_paths AS (
-                SELECT DISTINCT PYTHON_STRIP(path_metadata.string_value) AS path
-                FROM embeddings AS engram_embedding
-                JOIN embedding_metadata AS type_metadata
-                  ON type_metadata.id = engram_embedding.id
-                 AND PYTHON_STRIP(type_metadata.key) = 'type'
-                 AND type_metadata.string_value = 'engram'
-                JOIN embedding_metadata AS path_metadata
-                  ON path_metadata.id = engram_embedding.id
-                 AND PYTHON_STRIP(path_metadata.key) = 'path'
-                 AND PYTHON_STRIP(path_metadata.string_value) <> ''
-                WHERE engram_embedding.segment_id = ?
-            ),
-            candidate_embeddings AS (
-                SELECT DISTINCT embedding.id,
-                                embedding.embedding_id,
-                                PYTHON_STRIP(path_metadata.string_value) AS path
-                FROM embeddings AS embedding
-                JOIN embedding_metadata AS path_metadata
-                  ON path_metadata.id = embedding.id
-                 AND PYTHON_STRIP(path_metadata.key) = 'path'
-                JOIN engram_paths
-                  ON engram_paths.path = PYTHON_STRIP(path_metadata.string_value)
-                WHERE embedding.segment_id = ?
-            ),
-            compact_scalar AS (
-                SELECT candidate.id,
-                       candidate.embedding_id,
-                       candidate.path,
-                       json_group_array(json_object(
-                           'key', PYTHON_STRIP(metadata.key),
-                           'string', metadata.string_value,
-                           'int', metadata.int_value,
-                           'float', metadata.float_value,
-                           'bool', metadata.bool_value
-                       )) FILTER (
-                           WHERE PYTHON_STRIP(metadata.key) IN (
-                               'path', 'type', 'title', 'conversation_title',
-                               'source', 'raw_path', 'chunk_path',
-                               'obsidian_path', 'nexus', 'project_ids',
-                               'tags', 'tag', 'artifact_kind', 'managed_by',
-                               'source_file', 'source_chunk_id',
-                               'source_turn_index', 'turn_privacy'
-                           ) OR PYTHON_STRIP(metadata.key) LIKE 'tag_%'
-                       ) AS scalar_metadata,
-                       COUNT(PYTHON_STRIP(metadata.key)) AS scalar_key_count,
-                       COUNT(DISTINCT PYTHON_STRIP(metadata.key))
-                           AS distinct_scalar_key_count,
-                       MAX(CASE
-                           WHEN PYTHON_STRIP(metadata.key) IS NULL
-                             OR PYTHON_STRIP(metadata.key) = '' THEN 1 ELSE 0
-                       END) AS has_blank_scalar_key
-                FROM candidate_embeddings AS candidate
-                LEFT JOIN embedding_metadata AS metadata
-                  ON metadata.id = candidate.id
-                GROUP BY candidate.id, candidate.embedding_id, candidate.path
-            ),
-            compact_array AS (
-                SELECT candidate.id,
-                       json_group_array(json_object(
-                           'key', PYTHON_STRIP(metadata.key),
-                           'string', metadata.string_value,
-                           'int', metadata.int_value,
-                           'float', metadata.float_value,
-                           'bool', metadata.bool_value
-                       )) AS array_metadata
-                FROM candidate_embeddings AS candidate
-                JOIN embedding_metadata_array AS metadata
-                  ON metadata.id = candidate.id
-                 AND PYTHON_STRIP(metadata.key) IN ('tags', 'project_ids')
-                GROUP BY candidate.id
-            )
-            SELECT compact_scalar.id,
-                   compact_scalar.embedding_id,
-                   compact_scalar.path,
-                   compact_scalar.scalar_metadata,
-                   compact_array.array_metadata,
-                   compact_scalar.scalar_key_count,
-                   compact_scalar.distinct_scalar_key_count,
-                   compact_scalar.has_blank_scalar_key,
-                   COUNT(*) OVER (
-                       PARTITION BY PYTHON_STRIP(compact_scalar.embedding_id)
-                   ) AS embedding_identity_count
-            FROM compact_scalar
-            LEFT JOIN compact_array
-              ON compact_array.id = compact_scalar.id
-            ORDER BY compact_scalar.path, compact_scalar.id
+            SELECT embedding.id,
+                   embedding.embedding_id,
+                   PYTHON_STRIP(metadata.key),
+                   metadata.string_value
+            FROM embeddings AS embedding
+            JOIN embedding_metadata AS metadata
+              ON metadata.id = embedding.id
+            WHERE embedding.segment_id = ?
+              AND PYTHON_STRIP(metadata.key) IN ('path', 'type')
             """,
-            (metadata_segment_id, metadata_segment_id),
-        ).fetchall()
+            (metadata_segment_id,),
+        )
+        for row_id, raw_embedding_id, key, raw_value in identity_cursor:
+            identity = identities.setdefault(int(row_id), {
+                "embedding_id": raw_embedding_id,
+                "paths": set(),
+                "is_engram": False,
+            })
+            normalized_key = key.strip() if isinstance(key, str) else ""
+            if normalized_key == "path" and isinstance(raw_value, str):
+                path = raw_value.strip()
+                if path:
+                    identity["paths"].add(path)
+            elif normalized_key == "type" and raw_value == "engram":
+                identity["is_engram"] = True
+
+        engram_paths = {
+            path
+            for identity in identities.values()
+            if identity["is_engram"]
+            for path in identity["paths"]
+        }
+        candidate_ids = sorted(
+            row_id
+            for row_id, identity in identities.items()
+            if identity["paths"].intersection(engram_paths)
+        )
+        embedding_identity_counts: dict[str, int] = {}
+        for row_id in candidate_ids:
+            embedding_id = str(
+                identities[row_id]["embedding_id"] or ""
+            ).strip()
+            embedding_identity_counts[embedding_id] = (
+                embedding_identity_counts.get(embedding_id, 0) + 1
+            )
+
+        candidate_cursor = connection.execute(
+            """
+            SELECT embedding.id,
+                   embedding.embedding_id,
+                   (
+                       SELECT json_object(
+                           'items', json_group_array(json_object(
+                               'key', PYTHON_STRIP(metadata.key),
+                               'string', metadata.string_value,
+                               'int', metadata.int_value,
+                               'float', metadata.float_value,
+                               'bool', metadata.bool_value
+                           )) FILTER (
+                               WHERE PYTHON_STRIP(metadata.key) IN (
+                                   'path', 'type', 'title',
+                                   'conversation_title', 'source', 'raw_path',
+                                   'chunk_path', 'obsidian_path', 'nexus',
+                                   'project_ids', 'tags', 'tag',
+                                   'artifact_kind', 'managed_by',
+                                   'source_file', 'source_chunk_id',
+                                   'source_turn_index', 'turn_privacy'
+                               ) OR PYTHON_STRIP(metadata.key) LIKE 'tag_%'
+                           ),
+                           'key_count', COUNT(PYTHON_STRIP(metadata.key)),
+                           'distinct_key_count', COUNT(
+                               DISTINCT PYTHON_STRIP(metadata.key)
+                           ),
+                           'has_blank_key', COALESCE(MAX(CASE
+                               WHEN PYTHON_STRIP(metadata.key) IS NULL
+                                 OR PYTHON_STRIP(metadata.key) = ''
+                               THEN 1 ELSE 0
+                           END), 0)
+                       )
+                       FROM embedding_metadata AS metadata
+                       WHERE metadata.id = embedding.id
+                   ) AS scalar_metadata,
+                   (
+                       SELECT json_group_array(json_object(
+                           'key', PYTHON_STRIP(metadata.key),
+                           'string', metadata.string_value,
+                           'int', metadata.int_value,
+                           'float', metadata.float_value,
+                           'bool', metadata.bool_value
+                       ))
+                       FROM embedding_metadata_array AS metadata
+                       WHERE metadata.id = embedding.id
+                         AND PYTHON_STRIP(metadata.key)
+                             IN ('tags', 'project_ids')
+                   ) AS array_metadata
+            FROM json_each(?) AS candidate
+            JOIN embeddings AS embedding
+              ON embedding.id = CAST(candidate.value AS INTEGER)
+            WHERE embedding.segment_id = ?
+            """,
+            (
+                json.dumps(candidate_ids, separators=(",", ":")),
+                metadata_segment_id,
+            ),
+        )
 
         complete, reason = True, None
-        metadatas: list[dict] = []
+        metadata_records: list[tuple[int, dict]] = []
 
         def stored_metadata_value(item: dict):
             if item.get("string") is not None:
@@ -14187,35 +14203,48 @@ def _library_engram_provider(query: str = "") -> dict:
         for (
             row_id,
             raw_embedding_id,
-            _path,
             raw_scalar_metadata,
             raw_array_metadata,
-            scalar_key_count,
-            distinct_scalar_key_count,
-            has_blank_scalar_key,
-            embedding_identity_count,
-        ) in inventory_rows:
+        ) in candidate_cursor:
             embedding_id = str(raw_embedding_id or "").strip()
             if (
                 not embedding_id
-                or embedding_identity_count != 1
+                or embedding_identity_counts.get(embedding_id) != 1
             ):
                 if complete:
                     reason = "the Engram index inventory has unstable identities"
                 complete = False
                 continue
-            if (
-                has_blank_scalar_key
-                or scalar_key_count != distinct_scalar_key_count
-            ):
+            try:
+                scalar_metadata = json.loads(raw_scalar_metadata or "{}")
+                array_items = json.loads(raw_array_metadata or "[]")
+            except (TypeError, ValueError, json.JSONDecodeError):
                 if complete:
                     reason = "the Engram index has incomplete authority metadata"
                 complete = False
                 continue
-            try:
-                scalar_items = json.loads(raw_scalar_metadata or "[]")
-                array_items = json.loads(raw_array_metadata or "[]")
-            except (TypeError, ValueError, json.JSONDecodeError):
+            scalar_items = (
+                scalar_metadata.get("items")
+                if isinstance(scalar_metadata, dict) else None
+            )
+            scalar_key_count = (
+                scalar_metadata.get("key_count")
+                if isinstance(scalar_metadata, dict) else None
+            )
+            distinct_scalar_key_count = (
+                scalar_metadata.get("distinct_key_count")
+                if isinstance(scalar_metadata, dict) else None
+            )
+            has_blank_scalar_key = (
+                scalar_metadata.get("has_blank_key")
+                if isinstance(scalar_metadata, dict) else None
+            )
+            if (
+                not isinstance(scalar_items, list)
+                or not isinstance(array_items, list)
+                or has_blank_scalar_key
+                or scalar_key_count != distinct_scalar_key_count
+            ):
                 if complete:
                     reason = "the Engram index has incomplete authority metadata"
                 complete = False
@@ -14223,17 +14252,22 @@ def _library_engram_provider(query: str = "") -> dict:
             metadata: dict = {}
             for item in scalar_items:
                 key = item.get("key") if isinstance(item, dict) else None
-                if not isinstance(key, str) or not key.strip() or key in metadata:
+                key = key.strip() if isinstance(key, str) else ""
+                if not key or key in metadata:
                     if complete:
                         reason = "the Engram index has incomplete authority metadata"
                     complete = False
                     metadata = {}
                     break
-                metadata[key] = stored_metadata_value(item)
+                value = stored_metadata_value(item)
+                if key == "path" and isinstance(value, str):
+                    value = value.strip()
+                metadata[key] = value
             if not metadata:
                 continue
             for item in array_items:
                 key = item.get("key") if isinstance(item, dict) else None
+                key = key.strip() if isinstance(key, str) else ""
                 if key not in {"tags", "project_ids"}:
                     continue
                 value = stored_metadata_value(item)
@@ -14244,7 +14278,8 @@ def _library_engram_provider(query: str = "") -> dict:
                     metadata[key] = [value]
                 else:
                     metadata[key] = [current, value]
-            metadatas.append(metadata)
+            metadata_records.append((int(row_id), metadata))
+        metadatas = [metadata for _row_id, metadata in metadata_records]
         connection.commit()
         connection.close()
         connection = None
@@ -14262,7 +14297,10 @@ def _library_engram_provider(query: str = "") -> dict:
             connection.close()
 
     grouped = {}
-    for metadata in metadatas:
+    for _row_id, metadata in sorted(
+        metadata_records,
+        key=lambda item: (str(item[1].get("path") or "").strip(), item[0]),
+    ):
         path = str(metadata.get("path") or "").strip()
         if (str(metadata.get("type") or "").lower() == "engram"
                 and path in admitted):

@@ -351,6 +351,10 @@ class TestLibraryBrowser(unittest.TestCase):
                         float_value REAL,
                         bool_value INTEGER
                     );
+                    CREATE INDEX embedding_metadata_by_id
+                        ON embedding_metadata(id);
+                    CREATE INDEX embedding_metadata_array_by_id
+                        ON embedding_metadata_array(id);
                     """
                 )
                 fixture.executemany(
@@ -432,6 +436,17 @@ class TestLibraryBrowser(unittest.TestCase):
                     "(id, key, string_value) VALUES (?, ?, ?)",
                     (8, " artifact_kind ", "conversation_runtime_derivative"),
                 )
+                fixture.executemany(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value, int_value) VALUES (?, ?, ?, ?)",
+                    [
+                        (8, " managed_by ", "ora", None),
+                        (8, " source_file ", "blocked-source.json", None),
+                        (8, " source_chunk_id ", "blocked-chunk", None),
+                        (8, " source_turn_index ", None, 1),
+                        (8, " turn_privacy ", "standard", None),
+                    ],
+                )
                 fixture.execute(
                     "UPDATE embedding_metadata SET key = ?, string_value = ? "
                     "WHERE id = ? AND key = 'path'",
@@ -471,19 +486,59 @@ class TestLibraryBrowser(unittest.TestCase):
             statements = []
             selected_embedding_ids = []
             compact_payloads = []
+            streamed_cursors = []
 
-            def capture_inventory_row(_cursor, row):
-                if len(row) == 9:
-                    selected_embedding_ids.append(row[1])
-                    compact_payloads.extend((row[3] or "", row[4] or ""))
-                return row
+            class StreamingCursor:
+                def __init__(self, cursor, label):
+                    self._cursor = cursor
+                    self._label = label
+                    self._started = False
+
+                def __iter__(self):
+                    if not self._started:
+                        streamed_cursors.append(self._label)
+                        self._started = True
+                    return self
+
+                def __next__(self):
+                    row = next(self._cursor)
+                    if self._label == "compact":
+                        selected_embedding_ids.append(row[1])
+                        compact_payloads.extend((row[2] or "", row[3] or ""))
+                    return row
+
+                def fetchall(self):
+                    raise AssertionError(
+                        f"{self._label} inventory must be streamed"
+                    )
+
+                def __getattr__(self, name):
+                    return getattr(self._cursor, name)
+
+            class ReadOnlyConnection:
+                def __init__(self, connection):
+                    self._connection = connection
+
+                def execute(self, sql, parameters=()):
+                    cursor = self._connection.execute(sql, parameters)
+                    normalized = " ".join(sql.split())
+                    if "FROM json_each(" in normalized:
+                        return StreamingCursor(cursor, "compact")
+                    if (
+                        "FROM embeddings AS embedding" in normalized
+                        and "IN ('path', 'type')" in normalized
+                    ):
+                        return StreamingCursor(cursor, "identity")
+                    return cursor
+
+                def __getattr__(self, name):
+                    return getattr(self._connection, name)
 
             def read_only_connect(database, *args, **kwargs):
                 connect_calls.append((database, args, kwargs))
                 connection = real_connect(database, *args, **kwargs)
                 connection.set_trace_callback(statements.append)
-                connection.row_factory = capture_inventory_row
-                return connection
+                return ReadOnlyConnection(connection)
 
             with (
                 mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
@@ -552,6 +607,12 @@ class TestLibraryBrowser(unittest.TestCase):
                 ]["artifact_kind"],
                 "conversation_runtime_derivative",
             )
+            self.assertEqual(
+                admitted_by_id[
+                    (str(blocked_path), "chat", "Blocked sibling")
+                ]["source_turn_index"],
+                1,
+            )
             self.assertNotIn(
                 str(blocked_path.resolve()),
                 [row["identity"] for row in engrams["rows"]],
@@ -569,6 +630,7 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertFalse(any(
                 "not-materialized" in payload for payload in compact_payloads
             ))
+            self.assertEqual(streamed_cursors, ["identity", "compact"])
 
             expected_connect = (
                 f"file:{db_path}?mode=ro", (), {"uri": True},
@@ -579,29 +641,44 @@ class TestLibraryBrowser(unittest.TestCase):
             ))
             normalized_statements = [" ".join(sql.split()) for sql in statements]
             self.assertEqual(normalized_statements[0], "PRAGMA query_only=ON")
-            self.assertEqual(normalized_statements[1], "BEGIN")
             self.assertEqual(normalized_statements[-1], "COMMIT")
-            authority_queries = [
-                sql for sql in normalized_statements if sql.startswith("SELECT ")
+            first_begin = normalized_statements.index("BEGIN")
+            first_commit = normalized_statements.index("COMMIT", first_begin)
+            second_begin = normalized_statements.index("BEGIN", first_commit + 1)
+            second_commit = normalized_statements.index("COMMIT", second_begin)
+            first_reads = [
+                sql for sql in normalized_statements[first_begin + 1:first_commit]
+                if sql.startswith("SELECT ")
             ]
-            compact_queries = [
-                sql for sql in normalized_statements if sql.startswith("WITH ")
+            second_reads = [
+                sql for sql in normalized_statements[second_begin + 1:second_commit]
+                if sql.startswith("SELECT ")
             ]
-            self.assertEqual(len(authority_queries), 2)
-            self.assertEqual(len(compact_queries), 1)
+            self.assertEqual(len(first_reads), 3)
+            self.assertEqual(len(second_reads), 1)
             self.assertTrue(all(
                 all(table in query for table in (
                     "databases", "collections", "segments",
                 ))
-                for query in authority_queries
+                for query in (first_reads[0], second_reads[0])
             ))
+            identity_query = first_reads[1]
+            compact_query = first_reads[2]
+            self.assertIn("FROM embeddings AS embedding", identity_query)
+            self.assertIn("IN ('path', 'type')", identity_query)
+            self.assertNotIn("embedding_metadata_array", identity_query)
             self.assertTrue(all(
-                table in compact_queries[0] for table in (
-                    "embeddings", "embedding_metadata",
+                table in compact_query for table in (
+                    "json_each", "embeddings", "embedding_metadata",
                     "embedding_metadata_array",
                 )
             ))
-            self.assertNotIn("chroma:document", compact_queries[0])
+            self.assertNotIn("chroma:document", compact_query)
+            self.assertNotIn("compact_scalar", compact_query)
+            self.assertNotIn("compact_array", compact_query)
+            self.assertNotIn(" OVER ", compact_query)
+            self.assertNotIn(" GROUP BY ", compact_query)
+            self.assertNotIn(" ORDER BY ", compact_query)
             self.assertEqual(
                 hashlib.sha256(db_path.read_bytes()).hexdigest(), fixture_hash,
             )
