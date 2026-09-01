@@ -238,6 +238,7 @@
 <script src="/static/commands/export-pdf.js"></script>
 
 <script src="/static/js/sidebar.js?v=create-flow-20260630" defer></script>
+<script src="/static/js/library-workspace.js?v=knowledge-library-20260901" defer></script>
 <script src="/static/js/project-modal.js?v=persona-20260805" defer></script>
 <script src="/static/js/model-profile-selector.js?v=g116-20260722" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
@@ -1093,6 +1094,10 @@
         <circle cx="145" cy="145" r="145" fill="transparent" stroke="none"/>
         <circle cx="145" cy="145" r="136" class="wm-stroke-base"/>
         <circle cx="145" cy="145" r="91"  class="wm-stroke-bright"/>
+        <text class="library-o-type" x="145" y="134" text-anchor="middle"
+              aria-hidden="true"></text>
+        <text class="library-o-state" x="145" y="169" text-anchor="middle"
+              aria-hidden="true"></text>
       </g>
 
       <g id="logo-r" class="wordmark-letter" aria-hidden="true">
@@ -1261,6 +1266,87 @@
       </div>
     </section>
   </div>
+
+  <!-- Knowledge Library owns the upper workspace and the physical bridge while
+       open. Its controller measures those live regions; this stable mount does
+       not create a second spine, O, or lower-pane implementation. -->
+  <section id="libraryWorkspace" class="library-workspace" hidden
+           aria-label="Knowledge Library" aria-describedby="libraryWorkspaceStatus">
+    <div class="library-workspace__surface">
+      <header class="library-search">
+        <label class="library-search__field">
+          <span class="library-search__label">Knowledge Library</span>
+          <input id="librarySearchInput" type="search" autocomplete="off"
+                 spellcheck="false" placeholder="Search Dialogue and Engram text"
+                 aria-label="Search readable Dialogue and Engram text">
+        </label>
+        <button type="button" class="library-search__clear" data-library-command="clear-search"
+                aria-label="Clear Library search">Clear</button>
+      </header>
+
+      <div class="library-workspace__notice" id="libraryWorkspaceNotice" hidden></div>
+      <div class="library-workspace__results" id="libraryWorkspaceResults"
+           aria-label="Library results"></div>
+
+      <div class="library-workspace__bridge" aria-label="Library controls">
+        <div class="library-bridge-bank library-bridge-bank--left">
+          <button type="button" data-library-command="close" aria-label="Close Knowledge Library">Close</button>
+          <button type="button" data-library-popover="sources" aria-haspopup="dialog"
+                  aria-expanded="false">Sources <span data-library-source-count>3</span></button>
+        </div>
+        <div class="library-bridge-bank library-bridge-bank--right">
+          <button type="button" data-library-view="list" aria-pressed="true">List</button>
+          <button type="button" data-library-view="visual" aria-pressed="false">Visual</button>
+          <button type="button" data-library-popover="group" aria-haspopup="dialog"
+                  aria-expanded="false">Group</button>
+          <button type="button" data-library-popover="filters" aria-haspopup="dialog"
+                  aria-expanded="false">Filters</button>
+          <button type="button" data-library-popover="actions" aria-haspopup="dialog"
+                  aria-expanded="false" disabled>Actions</button>
+        </div>
+      </div>
+
+      <div class="library-popover" data-library-panel="sources" role="dialog"
+           aria-label="Library sources" hidden>
+        <p>Include any combination. Omitting every source means all sources, so zero selected is an honest empty state here.</p>
+        <label><input type="checkbox" value="dialogues" data-library-source checked> Dialogues</label>
+        <label><input type="checkbox" value="engrams" data-library-source checked> Engrams</label>
+        <label><input type="checkbox" value="files" data-library-source checked> Files</label>
+      </div>
+      <div class="library-popover" data-library-panel="group" role="dialog"
+           aria-label="Group Library results" hidden>
+        <label>Group by
+          <select data-library-group>
+            <option value="none">None</option>
+            <option value="source">Source</option>
+            <option value="type">Type</option>
+            <option value="project">Project</option>
+          </select>
+        </label>
+        <label>Sort
+          <select data-library-sort>
+            <option value="recent">Most recent</option>
+            <option value="title">Title</option>
+          </select>
+        </label>
+      </div>
+      <div class="library-popover" data-library-panel="filters" role="dialog"
+           aria-label="Filter Library results" hidden>
+        <label>Type <select data-library-filter="type"><option value="">All types</option></select></label>
+        <label>Project scope
+          <select data-library-project><option value="commons">Commons</option></select>
+        </label>
+        <button type="button" data-library-command="clear-filters">Clear filters</button>
+      </div>
+      <div class="library-popover" data-library-panel="actions" role="dialog"
+           aria-label="Actions for selected Library item" hidden>
+        <div data-library-actions></div>
+      </div>
+
+      <div class="library-workspace__status" id="libraryWorkspaceStatus"
+           role="status" aria-live="polite">Library closed.</div>
+    </div>
+  </section>
 
 </div>
 
@@ -3130,12 +3216,20 @@
     setTimeout(() => logoO.classList.remove('wordmark-pulse'), 360);
   };
 
-  logoO.addEventListener('click', () => { pulseLogoO(); submitInput(); });
+  const activateLogoO = () => {
+    if (window.OraLibraryWorkspace && window.OraLibraryWorkspace.isOpen()) {
+      window.OraLibraryWorkspace.activatePinned();
+      return;
+    }
+    pulseLogoO();
+    submitInput();
+  };
+
+  logoO.addEventListener('click', activateLogoO);
   logoO.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      pulseLogoO();
-      submitInput();
+      activateLogoO();
     }
   });
 

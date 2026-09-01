@@ -11328,6 +11328,7 @@ def _browser_chroma_exact_rows(
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
     target_tag: str = "",
+    error_sink: list[str] | None = None,
 ) -> list[dict]:
     terms = _browser_terms(query)
     if not terms:
@@ -11363,6 +11364,10 @@ def _browser_chroma_exact_rows(
         admitted_knowledge_paths = (
             _browser_knowledge_admitted_path_inventory(target_tag)
         )
+        if admitted_knowledge_paths is None:
+            if error_sink is not None:
+                error_sink.append("exact knowledge authority inventory unavailable")
+            return []
         if not admitted_knowledge_paths:
             return []
         privacy_join = """
@@ -11419,6 +11424,10 @@ def _browser_chroma_exact_rows(
                     params,
                 ).fetchall()
             except Exception:
+                if error_sink is not None:
+                    error_sink.append(
+                        f"exact {logical_collection} FTS query failed"
+                    )
                 continue
             for row_id, embedding_id, fts_text, rank in matches:
                 if row_id in seen_row_ids:
@@ -11464,6 +11473,8 @@ def _browser_chroma_exact_rows(
         con.close()
     except Exception as exc:
         print(f"[conversation-browser] exact {logical_collection} search failed: {exc}", file=sys.stderr)
+        if error_sink is not None:
+            error_sink.append(f"exact {logical_collection} search failed")
     rows = sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)
     return rows if limit is None else rows[:limit]
 
@@ -11501,6 +11512,7 @@ def _browser_chroma_fuzzy_rows(
     required_tags: tuple[str, ...] | list[str] = (),
     show_archived: bool = False,
     target_tag: str = "",
+    error_sink: list[str] | None = None,
 ) -> list[dict]:
     fts_query = _browser_fuzzy_fts_query(query)
     if not fts_query:
@@ -11527,6 +11539,10 @@ def _browser_chroma_fuzzy_rows(
         admitted_knowledge_paths = (
             _browser_knowledge_admitted_path_inventory(target_tag)
         )
+        if admitted_knowledge_paths is None:
+            if error_sink is not None:
+                error_sink.append("fuzzy knowledge authority inventory unavailable")
+            return []
         if not admitted_knowledge_paths:
             return []
         privacy_join = """
@@ -11623,6 +11639,8 @@ def _browser_chroma_fuzzy_rows(
         con.close()
     except Exception as exc:
         print(f"[conversation-browser] fuzzy {logical_collection} search failed: {exc}", file=sys.stderr)
+        if error_sink is not None:
+            error_sink.append(f"fuzzy {logical_collection} search failed")
     rows = _browser_sort_rows(list(out.values()), "relevance")
     return rows if limit is None else rows[:limit]
 
@@ -13787,30 +13805,55 @@ def _library_path_preview(path: str) -> dict:
     }
 
 
-def _library_dialogue_provider() -> dict:
+def _library_dialogue_provider(query: str = "") -> dict:
+    query = str(query or "").strip()
     skipped_authority: list[str] = []
     try:
         from conversation_memory import iter_conversations
-        summaries = iter_conversations(
+        summaries = list(iter_conversations(
             include_closed=True,
             include_content=True,
             persist_heal=False,
             skipped_authority=skipped_authority,
-        )
+        ))
     except Exception:
         return {"rows": [], "complete": False,
                 "reason": "the Dialogue provider could not be read"}
 
     admitted_error = False
     try:
-        admitted_rows = _browser_live_rows(
+        readable_rows = _browser_live_rows(
             "", target_tag="", persist_heal=False,
             skipped_authority=skipped_authority,
             preloaded_summaries=summaries,
         )
+        if not query:
+            admitted_rows = readable_rows
+        elif _browser_terms(query):
+            admitted_rows = _browser_live_rows(
+                query, target_tag="", persist_heal=False,
+                skipped_authority=skipped_authority,
+                preloaded_summaries=summaries,
+            )
+        else:
+            admitted_rows = []
     except Exception:
+        readable_rows = []
         admitted_rows = []
         admitted_error = True
+
+    readable_ids: set[str] = set()
+    for readable_row in readable_rows:
+        try:
+            readable_item = _browser_contract_row(readable_row)
+        except Exception:
+            admitted_error = True
+            continue
+        readable_identity = str(
+            readable_item.get("conversation_id") or ""
+        ).strip()
+        if readable_identity:
+            readable_ids.add(readable_identity)
 
     contracts_by_id: dict[str, dict] = {}
     admitted_identity_unavailable = False
@@ -13892,7 +13935,11 @@ def _library_dialogue_provider() -> dict:
                     "reason": "one or more Dialogue identities are unavailable"}
         item = contracts_by_id.get(identity)
         if item is None:
+            if query and identity in readable_ids:
+                continue
             metadata_only_present = True
+            if query:
+                continue
             rows.append({
                 "identity": identity,
                 "title": "Dialogue metadata",
@@ -13968,7 +14015,8 @@ def _library_dialogue_provider() -> dict:
     }
 
 
-def _library_engram_provider() -> dict:
+def _library_engram_provider(query: str = "") -> dict:
+    query = str(query or "").strip()
     connection = None
     try:
         import sqlite3
@@ -14164,6 +14212,39 @@ def _library_engram_provider() -> dict:
                             "reason": ("editing is outside the Library adapter" if exists
                                        else "the indexed source file is unavailable")},
         })
+    if query:
+        search_errors: list[str] = []
+        matches: list[dict] = []
+        for label, helper in (
+            ("exact", _browser_chroma_exact_rows),
+            ("fuzzy", _browser_chroma_fuzzy_rows),
+        ):
+            try:
+                matches.extend(helper(
+                    query, logical_collection="knowledge", limit=None,
+                    show_archived=False, target_tag="",
+                    error_sink=search_errors,
+                ))
+            except Exception:
+                search_errors.append(f"{label} knowledge search failed")
+        matched_paths: set[str] = set()
+        for match in matches:
+            try:
+                ref = str(match.get("conversation_id") or "")
+                path = _browser_decode_source_id("engram", ref)
+                if path:
+                    matched_paths.add(os.path.realpath(_browser_resolve_path(path)))
+            except Exception:
+                search_errors.append("an Engram search result identity was invalid")
+        rows = [
+            row for row in rows
+            if os.path.realpath(_browser_resolve_path(row["identity"]))
+            in matched_paths
+        ]
+        if search_errors:
+            complete = False
+            search_reason = "one or more Engram exact/fuzzy keyword search paths were unavailable"
+            reason = f"{reason}; {search_reason}" if reason else search_reason
     return {"rows": rows, "complete": complete, "reason": reason}
 
 
@@ -14291,13 +14372,26 @@ def library_browser():
     )
     try:
         sources = parse_sources(request.args.getlist("source"))
+        requested_project = (request.args.get("project_id") or "").strip().lower()
+        project_id = "commons" if requested_project in {"", "commons", "general"} else requested_project
+        query = (request.args.get("q") or "").strip()
         offset = int(request.args.get("offset") or 0)
         limit = int(request.args.get("limit") or 100)
         providers = {}
         loaders = {
-            "dialogues": _library_dialogue_provider,
-            "engrams": _library_engram_provider,
-            "files": _library_file_provider,
+            "dialogues": lambda: _library_dialogue_provider(query),
+            "engrams": lambda: _library_engram_provider(query),
+            "files": lambda: (
+                {
+                    "rows": [],
+                    "complete": False,
+                    "reason": (
+                        "Files do not support body keyword search; Dialogue "
+                        "and Engram matches remain available"
+                    ),
+                }
+                if query else _library_file_provider()
+            ),
         }
         for source in sources:
             try:
@@ -14309,7 +14403,8 @@ def library_browser():
                 }
         _library_enrich_relationships(providers)
         payload = build_browser_response(
-            providers, requested_sources=sources, offset=offset, limit=limit,
+            providers, requested_sources=sources, project_id=project_id,
+            query=query, offset=offset, limit=limit,
         )
     except (LibraryBrowserError, TypeError, ValueError) as exc:
         return _json_response({"error": str(exc)}, status=400)
@@ -14469,22 +14564,42 @@ def conversations_browser():
             row for row in rows
             if _browser_creation_row_allowed(row, target_tag)
         ]
-        include_ref = (request.args.get("include_ref") or "").strip()
-        if include_ref and not any(
-            row.get("conversation_id") == include_ref for row in rows
-        ):
+        try:
+            include_refs = _normalized_creation_refs([
+                value for value in request.args.getlist("include_ref")
+                if isinstance(value, str) and value.strip()
+            ])
+        except ValueError as exc:
+            return _json_response({"error": str(exc)}, status=400)
+        for include_ref in include_refs:
+            if any(row.get("conversation_id") == include_ref for row in rows):
+                continue
             included = _browser_row_for_creation_ref(
                 include_ref, target_tag=target_tag,
             )
             if included is None or not _browser_creation_row_allowed(included, target_tag):
                 return _json_response({
-                    "error": "requested contributor no longer resolves",
+                    "error": f"requested contributor no longer resolves: {include_ref}",
                 }, status=409)
-            rows.insert(0, included)
+            rows.append(included)
+    else:
+        include_refs = []
     rows = _browser_enrich_archive_rows(rows)
     rows = _browser_contract_filter_rows(rows, filters)
     rows = _browser_sort_rows(rows, sort_mode)
-    visible_rows = rows[:limit]
+    if include_refs:
+        rows_by_ref = {row.get("conversation_id"): row for row in rows}
+        missing_refs = [ref for ref in include_refs if ref not in rows_by_ref]
+        if missing_refs:
+            return _json_response({
+                "error": "requested contributor is outside the active creation scope: "
+                         + ", ".join(missing_refs),
+            }, status=409)
+        included_rows = [rows_by_ref[ref] for ref in include_refs]
+        rows = included_rows + [
+            row for row in rows if row.get("conversation_id") not in include_refs
+        ]
+    visible_rows = rows[:max(limit, len(include_refs))]
     payload = {
         "query": query,
         "purpose": purpose,
