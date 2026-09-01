@@ -21,6 +21,7 @@ Usage:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -94,12 +95,23 @@ def _snapshot_timestamp(value: str | None) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def _latest_vault_markdown_mtime(vault_path: Path) -> tuple[datetime | None, str | None]:
-    """Inspect canonical Markdown mtimes without reading or mutating notes."""
+def _markdown_inventory_digest(relative_paths) -> str:
+    digest = hashlib.sha256()
+    for relative_path in sorted(relative_paths):
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _latest_vault_markdown_mtime(
+    vault_path: Path,
+) -> tuple[datetime | None, str | None, str | None]:
+    """Inspect canonical Markdown mtimes and path inventory read-only."""
 
     if not vault_path.is_dir():
-        return None, "vault relationship authority is unavailable"
+        return None, None, "vault relationship authority is unavailable"
     latest_ns: int | None = None
+    relative_paths: list[str] = []
     walk_errors: list[OSError] = []
 
     def record_walk_error(error: OSError) -> None:
@@ -114,18 +126,26 @@ def _latest_vault_markdown_mtime(vault_path: Path) -> tuple[datetime | None, str
             for filename in files:
                 if not filename.endswith(".md"):
                     continue
+                relative_paths.append(
+                    Path(root, filename).relative_to(vault_path).as_posix()
+                )
                 try:
                     mtime_ns = Path(root, filename).stat().st_mtime_ns
                 except OSError:
-                    return None, "one or more canonical relationship notes could not be inspected"
+                    return None, None, "one or more canonical relationship notes could not be inspected"
                 latest_ns = mtime_ns if latest_ns is None else max(latest_ns, mtime_ns)
     except OSError:
-        return None, "canonical relationship notes could not be enumerated"
+        return None, None, "canonical relationship notes could not be enumerated"
     if walk_errors:
-        return None, "one or more canonical relationship directories could not be inspected"
+        return None, None, "one or more canonical relationship directories could not be inspected"
+    inventory_digest = _markdown_inventory_digest(relative_paths)
     if latest_ns is None:
-        return None, None
-    return datetime.fromtimestamp(latest_ns / 1_000_000_000, timezone.utc), None
+        return None, inventory_digest, None
+    return (
+        datetime.fromtimestamp(latest_ns / 1_000_000_000, timezone.utc),
+        inventory_digest,
+        None,
+    )
 
 
 def read_relationship_snapshot(
@@ -195,14 +215,24 @@ def read_relationship_snapshot(
     updated_at = _snapshot_timestamp(updated_raw)
     state = "fresh"
     reason = None
-    if updated_at is None or metadata.get("last_update_complete") != "1":
+    stored_inventory = metadata.get("vault_markdown_inventory_sha256")
+    if (
+        updated_at is None
+        or metadata.get("last_update_complete") != "1"
+        or not stored_inventory
+    ):
         state = "incomplete"
         reason = "the latest relationship index update is not proven complete"
     else:
-        latest_note, inspection_error = _latest_vault_markdown_mtime(vault)
+        latest_note, inventory_digest, inspection_error = (
+            _latest_vault_markdown_mtime(vault)
+        )
         if inspection_error:
             state = "incomplete"
             reason = inspection_error
+        elif inventory_digest != stored_inventory:
+            state = "stale"
+            reason = "canonical relationship note inventory changed after the latest complete index update"
         elif latest_note is not None and updated_at < latest_note:
             state = "stale"
             reason = "canonical relationship notes changed after the latest complete index update"
@@ -298,6 +328,7 @@ class RelationshipGraph:
 
     def _stamp_update_metadata(
         self, coverage_started_at: datetime, errors: list[str],
+        inventory_digest: str,
     ) -> None:
         """Record one full YAML reconciliation's conservative coverage."""
 
@@ -313,6 +344,11 @@ class RelationshipGraph:
             "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
             ("last_update_complete", "1" if complete else "0"),
         )
+        if complete:
+            self.conn.execute(
+                "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                ("vault_markdown_inventory_sha256", inventory_digest),
+            )
 
     def _mark_update_incomplete(self) -> None:
         """Invalidate completeness inside the caller's current transaction."""
@@ -561,7 +597,7 @@ class RelationshipGraph:
 
     def _scan_vault_relationships(
         self, errors: list[str]
-    ) -> tuple[dict, int, dict, list[dict]]:
+    ) -> tuple[dict, int, dict, list[dict], str]:
         """One vault pass → ({source_title: {(target, type, confidence)}},
         notes_scanned, resolution_stats). Notes without relationships are
         not in the dict.
@@ -589,12 +625,16 @@ class RelationshipGraph:
         titles: set[str] = set()
         duplicate_claims = 0
         notes_scanned = 0
+        relative_paths: list[str] = []
 
         for root, filename in self._walk_vault_md(errors):
             source_title = filename[:-3]
             titles.add(source_title)
             notes_scanned += 1
             filepath = os.path.join(root, filename)
+            relative_paths.append(
+                Path(filepath).relative_to(self.vault_path).as_posix()
+            )
             try:
                 with open(filepath, "r") as f:
                     content = f.read()
@@ -661,7 +701,13 @@ class RelationshipGraph:
         archived_target_links.sort(
             key=lambda row: (row["source"], row["target"], row["type"])
         )
-        return desired, notes_scanned, resolution, archived_target_links
+        return (
+            desired,
+            notes_scanned,
+            resolution,
+            archived_target_links,
+            _markdown_inventory_digest(relative_paths),
+        )
 
     def build_from_vault(self) -> dict:
         """
@@ -676,7 +722,7 @@ class RelationshipGraph:
         self.conn.execute("DELETE FROM relationships")
 
         errors: list[str] = []
-        desired, notes_scanned, resolution, archived_target_links = (
+        desired, notes_scanned, resolution, archived_target_links, inventory_digest = (
             self._scan_vault_relationships(errors)
         )
 
@@ -699,7 +745,7 @@ class RelationshipGraph:
             "INSERT OR REPLACE INTO metadata (key, value) VALUES ('notes_scanned', ?)",
             (str(notes_scanned),)
         )
-        self._stamp_update_metadata(coverage_started_at, errors)
+        self._stamp_update_metadata(coverage_started_at, errors, inventory_digest)
         self.conn.commit()
 
         return {
@@ -724,7 +770,7 @@ class RelationshipGraph:
         """
         coverage_started_at = datetime.now(timezone.utc)
         errors: list[str] = []
-        desired, notes_scanned, resolution, archived_target_links = (
+        desired, notes_scanned, resolution, archived_target_links, inventory_digest = (
             self._scan_vault_relationships(errors)
         )
 
@@ -773,7 +819,7 @@ class RelationshipGraph:
             "INSERT OR REPLACE INTO metadata (key, value) VALUES ('notes_scanned', ?)",
             (str(notes_scanned),)
         )
-        self._stamp_update_metadata(coverage_started_at, errors)
+        self._stamp_update_metadata(coverage_started_at, errors, inventory_digest)
         self.conn.commit()
 
         return {

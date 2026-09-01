@@ -16,6 +16,7 @@ The load-bearing behaviors under test:
     and converges (including migrating pre-resolution claim-keyed rows).
 """
 
+import hashlib
 import os
 import shutil
 import sqlite3
@@ -123,7 +124,9 @@ class TestReadOnlyRelationshipSnapshot(unittest.TestCase):
         connection.executemany(
             "INSERT INTO metadata (key, value) VALUES (?, ?)",
             [("last_update_at", updated_at),
-             ("last_update_complete", complete)],
+             ("last_update_complete", complete),
+             ("vault_markdown_inventory_sha256",
+              hashlib.sha256(b"NoteA.md\0").hexdigest())],
         )
         connection.commit()
         connection.close()
@@ -218,6 +221,21 @@ class TestReadOnlyRelationshipSnapshot(unittest.TestCase):
         watermark = datetime.fromisoformat(metadata["last_update_at"])
         self.assertLessEqual(watermark, scan_started_at[0])
         self.assertEqual(metadata["last_update_complete"], "1")
+        snapshot = read_relationship_snapshot(
+            {"NoteA"}, db_path=graph.db_path, vault_path=self.vault,
+        )
+        self.assertEqual(snapshot["state"], "fresh")
+
+        note_a = os.path.join(self.vault, "NoteA.md")
+        renamed_note = os.path.join(self.vault, "RenamedNoteA.md")
+        note_mtime = os.stat(note_a).st_mtime_ns
+        os.rename(note_a, renamed_note)
+        self.assertEqual(os.stat(renamed_note).st_mtime_ns, note_mtime)
+        snapshot = read_relationship_snapshot(
+            {"NoteA"}, db_path=graph.db_path, vault_path=self.vault,
+        )
+        self.assertEqual(snapshot["state"], "stale")
+        self.assertIn("inventory changed", snapshot["reason"])
 
         graph.add_relationships("DirectSource", [{
             "type": "supports", "target": "NoteA", "confidence": "high",

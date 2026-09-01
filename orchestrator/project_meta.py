@@ -476,12 +476,20 @@ def read_project_meta(nexus: str, pointer_dir: Path | None = None) -> dict[str, 
     return _normalize_meta(nexus, data)
 
 
-def list_project_meta(pointer_dir: Path | None = None) -> list[dict[str, Any]]:
+def list_project_meta(
+    pointer_dir: Path | None = None,
+    *,
+    skipped_authority: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """All projects: Commons first, then real projects by recency.
 
     Reserved ``commons.json`` / ``general.json`` files are ignored.  They can
     only be stale pre-reservation collisions and must never produce a second
-    default row or shadow the synthetic Commons project.
+    default row or shadow the synthetic Commons project.  Default callers keep
+    the display-oriented behavior of omitting malformed or unreadable pointer
+    files; callers that make an inventory completeness claim can supply
+    ``skipped_authority`` to receive those skipped filenames while preserving
+    every safely parsed project row.
     """
     pdir = pointer_dir or POINTER_DIR
     out: list[dict[str, Any]] = []
@@ -491,12 +499,16 @@ def list_project_meta(pointer_dir: Path | None = None) -> list[dict[str, Any]]:
             try:
                 validate_existing_nexus_source(nexus)
             except NexusValidationError:
+                if skipped_authority is not None:
+                    skipped_authority.append(pf.name)
                 continue
             if canonicalize_project_nexus(nexus) == DEFAULT_NEXUS:
                 continue
             meta = read_project_meta(nexus, pointer_dir)
             if meta:
                 out.append(meta)
+            elif skipped_authority is not None:
+                skipped_authority.append(pf.name)
     out.sort(key=_priority_sort_key)
     return [default_project_meta()] + out
 

@@ -195,9 +195,16 @@ class TestLibraryBrowser(unittest.TestCase):
             "tags": [],
             "_relationship_available": True,
             "_relationship_kinds": relationship_kinds,
-        }]):
+        }]) as live_rows:
             provider = server._library_dialogue_provider()
 
+        live_rows.assert_called_once_with(
+            "", target_tag="", persist_heal=False,
+            skipped_authority=mock.ANY,
+        )
+        self.assertEqual(
+            live_rows.call_args.kwargs["skipped_authority"], [],
+        )
         self.assertTrue(provider["complete"])
         row = provider["rows"][0]
         self.assertEqual(row["editability"], {
@@ -223,73 +230,423 @@ class TestLibraryBrowser(unittest.TestCase):
         self.assertTrue(all("count" not in summary for summary in summaries.values()))
 
     def test_engram_and_file_providers_take_one_complete_inventory_read(self):
+        import hashlib
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+
         server = _server_module()
         import chromadb
         from orchestrator import conversation_memory, embedding, project_meta
 
-        class EngramCollection:
-            def __init__(self):
-                self.calls = []
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            chroma_dir = root / "chromadb"
+            chroma_dir.mkdir()
+            db_path = chroma_dir / "chroma.sqlite3"
+            engram_path = root / "indexed-engram.md"
+            vector_path = root / "vector-engram.md"
+            other_database_path = root / "other-database-engram.md"
+            vector_only_path = root / "vector-only-engram.md"
+            for path in (
+                engram_path, vector_path, other_database_path, vector_only_path,
+            ):
+                path.write_text(f"# {path.stem}\n", encoding="utf-8")
+            physical_collection = "knowledge-physical"
+            vector_only_collection = "knowledge-vector-only"
 
-            def get(self, **kwargs):
-                self.calls.append(kwargs)
-                return {
-                    "ids": ["chunk-1"],
-                    "metadatas": [{
-                        "type": "engram",
-                        "path": "/missing/engram.md",
-                        "title": "Engram",
-                        "tags": ["alpha"],
-                        "nexus": "ora",
+            real_connect = sqlite3.connect
+            fixture = real_connect(db_path)
+            try:
+                fixture.executescript(
+                    """
+                    CREATE TABLE databases (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        tenant_id TEXT NOT NULL
+                    );
+                    CREATE TABLE collections (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        database_id TEXT NOT NULL
+                    );
+                    CREATE TABLE segments (
+                        id TEXT PRIMARY KEY,
+                        collection TEXT NOT NULL,
+                        scope TEXT NOT NULL,
+                        type TEXT NOT NULL
+                    );
+                    CREATE TABLE embeddings (
+                        id INTEGER PRIMARY KEY,
+                        segment_id TEXT NOT NULL,
+                        embedding_id TEXT NOT NULL
+                    );
+                    CREATE TABLE embedding_metadata (
+                        id INTEGER NOT NULL,
+                        key TEXT NOT NULL,
+                        string_value TEXT,
+                        int_value INTEGER,
+                        float_value REAL,
+                        bool_value INTEGER
+                    );
+                    """
+                )
+                fixture.executemany(
+                    "INSERT INTO databases(id, name, tenant_id) VALUES (?, ?, ?)",
+                    [
+                        ("default-db", "default_database", "default_tenant"),
+                        ("other-db", "other_database", "default_tenant"),
+                    ],
+                )
+                fixture.executemany(
+                    "INSERT INTO collections(id, name, database_id) VALUES (?, ?, ?)",
+                    [
+                        ("collection-1", physical_collection, "default-db"),
+                        ("collection-other", physical_collection, "other-db"),
+                        ("collection-vector-only", vector_only_collection, "default-db"),
+                    ],
+                )
+                fixture.executemany(
+                    "INSERT INTO segments(id, collection, scope, type) "
+                    "VALUES (?, ?, ?, ?)",
+                    [
+                        ("segment-metadata", "collection-1", "METADATA",
+                         "urn:chroma:segment/metadata/sqlite"),
+                        ("segment-vector", "collection-1", "VECTOR",
+                         "urn:chroma:segment/vector/hnsw-local-persisted"),
+                        ("segment-other-metadata", "collection-other", "METADATA",
+                         "urn:chroma:segment/metadata/sqlite"),
+                        ("segment-vector-only", "collection-vector-only", "VECTOR",
+                         "urn:chroma:segment/vector/hnsw-local-persisted"),
+                    ],
+                )
+                fixture.executemany(
+                    "INSERT INTO embeddings(id, segment_id, embedding_id) "
+                    "VALUES (?, ?, ?)",
+                    [
+                        (1, "segment-metadata", "chunk-1"),
+                        (2, "segment-vector", "chunk-vector"),
+                        (3, "segment-other-metadata", "chunk-other-database"),
+                        (4, "segment-vector-only", "chunk-vector-only"),
+                    ],
+                )
+                for row_id, path, title in (
+                    (1, engram_path, "Indexed Engram"),
+                    (2, vector_path, "Vector Fake"),
+                    (3, other_database_path, "Other Database Fake"),
+                    (4, vector_only_path, "Vector Only Fake"),
+                ):
+                    fixture.executemany(
+                        "INSERT INTO embedding_metadata"
+                        "(id, key, string_value) VALUES (?, ?, ?)",
+                        [
+                            (row_id, "nexus", "ora"),
+                            (row_id, "path", str(path)),
+                            (row_id, "tags", '["alpha"]'),
+                            (row_id, "title", title),
+                            (row_id, "type", "engram"),
+                        ],
+                    )
+                fixture.commit()
+            finally:
+                fixture.close()
+
+            fixture_hash = hashlib.sha256(db_path.read_bytes()).hexdigest()
+            fixture_entries = sorted(path.name for path in chroma_dir.iterdir())
+            connect_calls = []
+            statements = []
+
+            def read_only_connect(database, *args, **kwargs):
+                connect_calls.append((database, args, kwargs))
+                connection = real_connect(database, *args, **kwargs)
+                connection.set_trace_callback(statements.append)
+                return connection
+
+            with (
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection",
+                    side_effect=[physical_collection, vector_only_collection],
+                ) as resolve_collection,
+                mock.patch.object(
+                    chromadb, "PersistentClient",
+                    side_effect=AssertionError("Library GET must not open Chroma"),
+                ) as persistent_client,
+                mock.patch.object(
+                    sqlite3, "connect", side_effect=read_only_connect,
+                ),
+                mock.patch.object(
+                    conversation_memory, "knowledge_admitted_paths",
+                    wraps=conversation_memory.knowledge_admitted_paths,
+                ) as admitted_paths,
+            ):
+                engrams = server._library_engram_provider()
+                vector_only = server._library_engram_provider()
+
+            self.assertTrue(engrams["complete"])
+            self.assertIsNone(engrams["reason"])
+            self.assertEqual(len(engrams["rows"]), 1)
+            engram = engrams["rows"][0]
+            self.assertEqual(engram["identity"], str(engram_path.resolve()))
+            self.assertEqual(engram["title"], "Indexed Engram")
+            self.assertEqual(engram["metadata"]["tags"], ["alpha"])
+            self.assertEqual(engram["metadata"]["project_ids"], ["ora"])
+            self.assertEqual(engram["metadata"]["item_type"], "engram")
+            self.assertTrue(engram["preview"]["available"])
+            self.assertEqual(engram["provenance"]["details"], {
+                "index": "knowledge",
+            })
+            self.assertFalse(vector_only["complete"])
+            self.assertEqual(vector_only["rows"], [])
+            self.assertIn("metadata segment", vector_only["reason"])
+            self.assertEqual(
+                resolve_collection.call_args_list,
+                [mock.call("knowledge"), mock.call("knowledge")],
+            )
+            persistent_client.assert_not_called()
+            admitted_paths.assert_called_once()
+            admitted_metadata, admitted_target = admitted_paths.call_args.args
+            self.assertEqual(admitted_target, "")
+            self.assertEqual(admitted_metadata, [{
+                "nexus": "ora",
+                "path": str(engram_path),
+                "tags": '["alpha"]',
+                "title": "Indexed Engram",
+                "type": "engram",
+            }])
+
+            expected_connect = (
+                f"file:{db_path}?mode=ro", (), {"uri": True},
+            )
+            self.assertEqual(connect_calls, [expected_connect, expected_connect])
+            self.assertTrue(all(
+                "immutable" not in database for database, _args, _kwargs in connect_calls
+            ))
+            normalized_statements = [" ".join(sql.split()) for sql in statements]
+            self.assertEqual(normalized_statements[0], "PRAGMA query_only=ON")
+            self.assertEqual(normalized_statements[1], "BEGIN")
+            self.assertEqual(normalized_statements[-1], "COMMIT")
+            inventory_queries = [
+                sql for sql in normalized_statements if sql.startswith("SELECT ")
+            ]
+            self.assertEqual(len(inventory_queries), 2)
+            for table in (
+                "databases", "collections", "segments", "embeddings",
+                "embedding_metadata",
+            ):
+                self.assertTrue(all(table in query for query in inventory_queries))
+            self.assertEqual(
+                hashlib.sha256(db_path.read_bytes()).hexdigest(), fixture_hash,
+            )
+            self.assertEqual(
+                sorted(path.name for path in chroma_dir.iterdir()), fixture_entries,
+            )
+
+            file_paths = []
+            for index in range(2):
+                path = root / f"f{index}.md"
+                path.write_text(f"# File {index}\n", encoding="utf-8")
+                file_paths.append(path)
+            inventory = {
+                "exists": True,
+                "complete": True,
+                "reason": None,
+                "files": [
+                    {
+                        "name": path.name,
+                        "rel_path": path.name,
+                        "abs_path": str(path),
+                        "size": path.stat().st_size,
+                        "mtime": "2026-09-01T12:00:00",
+                    }
+                    for path in file_paths
+                ],
+                "total": 2,
+                "offset": 0,
+                "limit": None,
+                "next_offset": None,
+            }
+            with (
+                mock.patch.object(
+                    project_meta, "list_project_meta", return_value=[{
+                        "nexus": "ora", "folder_name": "Ora", "is_default": False,
                     }],
-                }
+                ) as list_projects,
+                mock.patch.object(
+                    project_meta, "list_project_files", return_value=inventory,
+                ) as list_files,
+            ):
+                files = server._library_file_provider()
 
-        collection = EngramCollection()
-        with (
-            mock.patch.object(chromadb, "PersistentClient", return_value=object()),
-            mock.patch.object(embedding, "get_collection", return_value=collection),
-            mock.patch.object(
-                conversation_memory, "knowledge_admitted_paths",
-                return_value=["/missing/engram.md"],
-            ),
-        ):
-            engrams = server._library_engram_provider()
+            self.assertTrue(files["complete"])
+            self.assertEqual(
+                {row["identity"] for row in files["rows"]},
+                {str(path) for path in file_paths},
+            )
+            self.assertTrue(all(
+                row["metadata"]["project_ids"] == ["ora"]
+                and row["preview"]["available"]
+                and row["provenance"]["kind"] == "project-file-inventory"
+                for row in files["rows"]
+            ))
+            list_files.assert_called_once_with("Ora", max_files=None)
+            list_projects.assert_called_once_with(skipped_authority=mock.ANY)
+            self.assertEqual(
+                list_projects.call_args.kwargs["skipped_authority"], [],
+            )
 
-        inventory = {
-            "exists": True,
-            "complete": True,
-            "reason": None,
-            "files": [
-                {
-                    "name": f"f{index}.md",
-                    "rel_path": f"f{index}.md",
-                    "abs_path": f"/missing/f{index}.md",
-                    "size": 1,
+    def test_skipped_authority_records_keep_safe_rows_but_make_counts_incomplete(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        server = _server_module()
+        from orchestrator import conversation_memory, project_meta
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            sessions = root / "sessions"
+            good = sessions / "good"
+            good.mkdir(parents=True)
+            (good / "conversation.json").write_text(json.dumps({
+                "conversation_id": "good",
+                "display_name": "Readable Dialogue",
+                "messages": [
+                    {"role": "user", "content": "Question"},
+                    {"role": "assistant", "content": "Answer"},
+                ],
+                "project_ids": [],
+            }), encoding="utf-8")
+            (sessions / "missing").mkdir()
+            malformed = sessions / "malformed"
+            malformed.mkdir()
+            (malformed / "conversation.json").write_text(
+                "{", encoding="utf-8",
+            )
+            (sessions / "archived").mkdir()
+
+            skipped_dialogues: list[str] = []
+            dialogue_rows = conversation_memory.iter_conversations(
+                sessions_root=sessions,
+                include_closed=True,
+                persist_heal=False,
+                skipped_authority=skipped_dialogues,
+            )
+            default_dialogue_rows = conversation_memory.iter_conversations(
+                sessions_root=sessions,
+                include_closed=True,
+                persist_heal=False,
+            )
+            self.assertEqual(
+                [row["conversation_id"] for row in dialogue_rows], ["good"],
+            )
+            self.assertEqual(
+                [row["conversation_id"] for row in default_dialogue_rows],
+                ["good"],
+            )
+            self.assertEqual(set(skipped_dialogues), {"missing", "malformed"})
+
+            pointers = root / "projects"
+            pointers.mkdir()
+            (pointers / "ora.json").write_text(json.dumps({
+                "nexus": "ora", "name": "Ora", "status": "active",
+            }), encoding="utf-8")
+            (pointers / "broken.json").write_text("{", encoding="utf-8")
+            skipped_projects: list[str] = []
+            project_rows = project_meta.list_project_meta(
+                pointer_dir=pointers,
+                skipped_authority=skipped_projects,
+            )
+            default_project_rows = project_meta.list_project_meta(
+                pointer_dir=pointers,
+            )
+            self.assertEqual(
+                [row["nexus"] for row in project_rows], ["commons", "ora"],
+            )
+            self.assertEqual(
+                [row["nexus"] for row in default_project_rows],
+                ["commons", "ora"],
+            )
+            self.assertEqual(skipped_projects, ["broken.json"])
+
+            def partial_dialogues(
+                _query, *, target_tag, persist_heal, skipped_authority,
+            ):
+                self.assertEqual(target_tag, "")
+                self.assertFalse(persist_heal)
+                skipped_authority.append("missing")
+                return [{
+                    "conversation_id": "good",
+                    "title": "Readable Dialogue",
+                    "last_activity_at": "2026-09-01T12:00:00Z",
+                    "project_ids": [],
+                    "tags": [],
+                    "lifecycle": {"state": "active"},
+                    "privacy": {"state": "standard"},
+                    "relationship": {"kinds": []},
+                }]
+
+            file_path = root / "readable.md"
+            file_path.write_text("# Readable\n", encoding="utf-8")
+            inventory = {
+                "exists": True,
+                "complete": True,
+                "reason": None,
+                "files": [{
+                    "name": file_path.name,
+                    "rel_path": file_path.name,
+                    "abs_path": str(file_path),
+                    "size": file_path.stat().st_size,
                     "mtime": "2026-09-01T12:00:00",
-                }
-                for index in range(2)
-            ],
-            "total": 2,
-            "offset": 0,
-            "limit": None,
-            "next_offset": None,
-        }
-        with (
-            mock.patch.object(project_meta, "list_project_meta", return_value=[{
-                "nexus": "ora", "folder_name": "Ora", "is_default": False,
-            }]),
-            mock.patch.object(
-                project_meta, "list_project_files", return_value=inventory,
-            ) as list_files,
-        ):
-            files = server._library_file_provider()
+                }],
+                "total": 1,
+                "offset": 0,
+                "limit": None,
+                "next_offset": None,
+            }
 
-        self.assertTrue(engrams["complete"])
-        self.assertEqual(len(engrams["rows"]), 1)
-        self.assertEqual(collection.calls, [{"include": ["metadatas"]}])
-        self.assertTrue(files["complete"])
-        self.assertEqual(len(files["rows"]), 2)
-        list_files.assert_called_once_with("Ora", max_files=None)
+            def partial_projects(*, skipped_authority):
+                skipped_authority.append("broken.json")
+                return [{
+                    "nexus": "ora", "folder_name": "Ora", "is_default": False,
+                }]
+
+            with (
+                mock.patch.object(
+                    server, "_browser_live_rows", side_effect=partial_dialogues,
+                ),
+                mock.patch.object(
+                    project_meta, "list_project_meta", side_effect=partial_projects,
+                ),
+                mock.patch.object(
+                    project_meta, "list_project_files", return_value=inventory,
+                ),
+            ):
+                dialogue_provider = server._library_dialogue_provider()
+                file_provider = server._library_file_provider()
+
+            self.assertEqual(len(dialogue_provider["rows"]), 1)
+            self.assertFalse(dialogue_provider["complete"])
+            self.assertIn("missing or unreadable", dialogue_provider["reason"])
+            self.assertEqual(len(file_provider["rows"]), 1)
+            self.assertFalse(file_provider["complete"])
+            self.assertIn("malformed or unreadable", file_provider["reason"])
+
+            payload = build_browser_response(
+                {"dialogues": dialogue_provider, "files": file_provider},
+                requested_sources=["dialogues,files"],
+                limit=20,
+            )
+            self.assertEqual(payload["total"], 2)
+            self.assertEqual(
+                payload["source_counts"], {"dialogues": 1, "files": 1},
+            )
+            self.assertFalse(payload["universe"]["complete"])
+            self.assertFalse(payload["facets"]["projects"]["complete"])
+            self.assertEqual(
+                {item["source"] for item in payload["universe"]["unavailable_sources"]},
+                {"dialogues", "files"},
+            )
 
     def test_http_endpoint_accepts_multiple_sources_and_pages_combined_rows(self):
         server = _server_module()

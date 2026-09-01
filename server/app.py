@@ -12668,6 +12668,8 @@ def _browser_live_rows(
     query: str,
     *,
     target_tag: str = "",
+    persist_heal: bool = True,
+    skipped_authority: list[str] | None = None,
 ) -> list[dict]:
     try:
         from conversation_memory import (
@@ -12679,7 +12681,12 @@ def _browser_live_rows(
         raise RuntimeError(f"conversation browser import failed: {e}") from e
 
     try:
-        summaries = iter_conversations(include_closed=True, include_content=True)
+        summaries = iter_conversations(
+            include_closed=True,
+            include_content=True,
+            persist_heal=persist_heal,
+            skipped_authority=skipped_authority,
+        )
     except Exception as e:
         raise RuntimeError(f"conversation list failed: {e}") from e
 
@@ -13777,10 +13784,14 @@ def _library_path_preview(path: str) -> dict:
 
 
 def _library_dialogue_provider() -> dict:
+    skipped_authority: list[str] = []
     try:
         contracts = [
             _browser_contract_row(row)
-            for row in _browser_live_rows("", target_tag="")
+            for row in _browser_live_rows(
+                "", target_tag="", persist_heal=False,
+                skipped_authority=skipped_authority,
+            )
         ]
     except Exception:
         return {"rows": [], "complete": False,
@@ -13824,42 +13835,160 @@ def _library_dialogue_provider() -> dict:
                             "surface": "dialogue",
                             "reason": "Dialogues are read-only in the active Library programme"},
         })
-    return {"rows": rows, "complete": True, "reason": None}
+    complete = not skipped_authority
+    return {
+        "rows": rows,
+        "complete": complete,
+        "reason": (
+            None if complete else
+            "one or more Dialogue envelopes are missing or unreadable"
+        ),
+    }
 
 
 def _library_engram_provider() -> dict:
+    connection = None
     try:
-        import chromadb
+        import sqlite3
+        from chromadb.config import DEFAULT_DATABASE, DEFAULT_TENANT
+        from chromadb.segment import SegmentType
+        from chromadb.types import SegmentScope
         from orchestrator.conversation_memory import knowledge_admitted_paths
-        from orchestrator.embedding import get_collection
-        collection = get_collection(
-            chromadb.PersistentClient(path=str(rp.chromadb_dir())), "knowledge",
-        )
-        inventory = collection.get(include=["metadatas"])
-        ids = inventory.get("ids") if isinstance(inventory, dict) else None
-        raw_metadatas = (
-            inventory.get("metadatas") if isinstance(inventory, dict) else None
-        )
-        if (not isinstance(ids, list) or not isinstance(raw_metadatas, list)
-                or len(ids) != len(raw_metadatas)):
+        from orchestrator.embedding import resolve_collection
+
+        physical = resolve_collection("knowledge")
+        if not isinstance(physical, str) or not physical.strip():
             return {"rows": [], "complete": False,
-                    "reason": "the Engram index inventory is incomplete"}
+                    "reason": "the Engram index collection identity is unavailable"}
+        db_path = rp.chromadb_dir() / "chroma.sqlite3"
+        connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        connection.execute("PRAGMA query_only=ON")
+        connection.execute("BEGIN")
+        inventory_rows = connection.execute(
+            """
+            SELECT collections.id,
+                   segments.id,
+                   embeddings.id,
+                   embeddings.embedding_id,
+                   embedding_metadata.key,
+                   embedding_metadata.string_value,
+                   embedding_metadata.int_value,
+                   embedding_metadata.float_value,
+                   embedding_metadata.bool_value
+            FROM databases
+            JOIN collections
+              ON collections.database_id = databases.id
+             AND collections.name = ?
+            JOIN segments
+              ON segments.collection = collections.id
+             AND segments.scope = ?
+             AND segments.type = ?
+            LEFT JOIN embeddings
+              ON embeddings.segment_id = segments.id
+            LEFT JOIN embedding_metadata
+              ON embedding_metadata.id = embeddings.id
+            WHERE databases.name = ?
+              AND databases.tenant_id = ?
+            ORDER BY segments.id, embeddings.id, embedding_metadata.key
+            """,
+            (
+                physical.strip(),
+                SegmentScope.METADATA.value,
+                SegmentType.SQLITE.value,
+                DEFAULT_DATABASE,
+                DEFAULT_TENANT,
+            ),
+        ).fetchall()
+
+        authority_segments = {
+            str(row[1]) for row in inventory_rows if row[1]
+        }
+        if len(authority_segments) != 1:
+            reason = (
+                "the mapped Engram index metadata segment is unavailable"
+                if not authority_segments else
+                "the mapped Engram index metadata authority is ambiguous"
+            )
+            connection.commit()
+            connection.close()
+            connection = None
+            return {"rows": [], "complete": False, "reason": reason}
+
         complete, reason = True, None
-        normalized_ids = [str(identity or "").strip() for identity in ids]
-        if (any(not identity for identity in normalized_ids)
-                or len(normalized_ids) != len(set(normalized_ids))):
-            complete, reason = False, "the Engram index inventory has unstable identities"
-        metadatas = []
-        for metadata in raw_metadatas:
-            if not isinstance(metadata, dict):
-                complete = False
-                reason = "the Engram index has incomplete authority metadata"
+
+        metadata_by_id: dict[str, dict] = {}
+        row_id_by_embedding_id: dict[str, int] = {}
+        invalid_metadata_ids: set[str] = set()
+        for (
+            _collection_id,
+            _metadata_segment_id,
+            row_id,
+            raw_embedding_id,
+            raw_key,
+            string_value,
+            int_value,
+            float_value,
+            bool_value,
+        ) in inventory_rows:
+            # A present collection can legitimately contain no embeddings.
+            if row_id is None:
                 continue
-            metadatas.append(metadata)
+            embedding_id = str(raw_embedding_id or "").strip()
+            if not embedding_id:
+                if complete:
+                    reason = "the Engram index inventory has unstable identities"
+                complete = False
+                continue
+            previous_row_id = row_id_by_embedding_id.setdefault(
+                embedding_id, row_id,
+            )
+            if previous_row_id != row_id:
+                if complete:
+                    reason = "the Engram index inventory has unstable identities"
+                complete = False
+                invalid_metadata_ids.add(embedding_id)
+                continue
+
+            metadata = metadata_by_id.setdefault(embedding_id, {})
+            key = raw_key.strip() if isinstance(raw_key, str) else ""
+            if not key or key in metadata:
+                if complete:
+                    reason = "the Engram index has incomplete authority metadata"
+                complete = False
+                invalid_metadata_ids.add(embedding_id)
+                continue
+            if string_value is not None:
+                value = string_value
+            elif int_value is not None:
+                value = int(int_value)
+            elif float_value is not None:
+                value = float(float_value)
+            elif bool_value is not None:
+                value = bool(bool_value)
+            else:
+                value = None
+            metadata[key] = value
+
+        metadatas = [
+            metadata
+            for embedding_id, metadata in metadata_by_id.items()
+            if embedding_id not in invalid_metadata_ids
+        ]
+        connection.commit()
+        connection.close()
+        connection = None
         admitted = set(knowledge_admitted_paths(metadatas, ""))
     except Exception:
+        if connection is not None:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
         return {"rows": [], "complete": False,
                 "reason": "the Engram index could not be read"}
+    finally:
+        if connection is not None:
+            connection.close()
 
     grouped = {}
     for metadata in metadatas:
@@ -13917,15 +14046,22 @@ def _library_engram_provider() -> dict:
 
 
 def _library_file_provider() -> dict:
+    skipped_projects: list[str] = []
     try:
         import mimetypes
         from orchestrator import project_meta
-        projects = project_meta.list_project_meta()
+        projects = project_meta.list_project_meta(
+            skipped_authority=skipped_projects,
+        )
     except Exception:
         return {"rows": [], "complete": False,
                 "reason": "the project file inventory could not be read"}
     rows, seen_paths = [], set()
-    complete, reason = True, None
+    complete = not skipped_projects
+    reason = (
+        None if complete else
+        "one or more project pointer files are malformed or unreadable"
+    )
     for project in projects:
         project_id = str(project.get("nexus") or "commons").strip().lower()
         if project_id in {"", "general"}:
