@@ -34,6 +34,7 @@ import json
 import hashlib
 import os
 import re
+import stat
 import sys
 import threading
 import unicodedata
@@ -488,27 +489,54 @@ def list_project_meta(
     default row or shadow the synthetic Commons project.  Default callers keep
     the display-oriented behavior of omitting malformed or unreadable pointer
     files; callers that make an inventory completeness claim can supply
-    ``skipped_authority`` to receive those skipped filenames while preserving
-    every safely parsed project row.
+    ``skipped_authority`` to receive those skipped filenames (or the pointer
+    directory when enumeration itself fails) while preserving every safely
+    parsed project row.  A missing optional pointer directory remains an empty
+    project store rather than an authority failure.
     """
     pdir = pointer_dir or POINTER_DIR
     out: list[dict[str, Any]] = []
-    if pdir.is_dir():
-        for pf in pdir.glob("*.json"):
-            nexus = pf.stem
-            try:
-                validate_existing_nexus_source(nexus)
-            except NexusValidationError:
-                if skipped_authority is not None:
-                    skipped_authority.append(pf.name)
-                continue
-            if canonicalize_project_nexus(nexus) == DEFAULT_NEXUS:
-                continue
-            meta = read_project_meta(nexus, pointer_dir)
-            if meta:
-                out.append(meta)
-            elif skipped_authority is not None:
-                skipped_authority.append(pf.name)
+    try:
+        scan = os.scandir(pdir)
+    except FileNotFoundError:
+        scan = None
+    except OSError:
+        scan = None
+        if skipped_authority is not None:
+            skipped_authority.append(str(pdir))
+    if scan is not None:
+        try:
+            with scan:
+                entries = iter(scan)
+                while True:
+                    try:
+                        entry = next(entries)
+                    except StopIteration:
+                        break
+                    except OSError:
+                        if skipped_authority is not None:
+                            skipped_authority.append(str(pdir))
+                        break
+                    if not Path(entry.name).match("*.json"):
+                        continue
+                    pf = pdir / entry.name
+                    nexus = pf.stem
+                    try:
+                        validate_existing_nexus_source(nexus)
+                    except NexusValidationError:
+                        if skipped_authority is not None:
+                            skipped_authority.append(pf.name)
+                        continue
+                    if canonicalize_project_nexus(nexus) == DEFAULT_NEXUS:
+                        continue
+                    meta = read_project_meta(nexus, pointer_dir)
+                    if meta:
+                        out.append(meta)
+                    elif skipped_authority is not None:
+                        skipped_authority.append(pf.name)
+        except OSError:
+            if skipped_authority is not None:
+                skipped_authority.append(str(pdir))
     out.sort(key=_priority_sort_key)
     return [default_project_meta()] + out
 
@@ -978,6 +1006,67 @@ def ensure_project_folder(name: str, vault_projects_dir: Path | None = None) -> 
 _FILE_INDEX_SKIP = {".git", ".obsidian", ".trash", "node_modules", "__pycache__", ".DS_Store"}
 
 
+def _enumerate_project_file_rows(
+    base: Path, *, recursive: bool,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Enumerate safe file rows while reporting every scan/stat failure."""
+    collected: list[dict[str, Any]] = []
+    complete = True
+    pending = [base]
+    while pending:
+        directory = pending.pop()
+        try:
+            scan = os.scandir(directory)
+        except OSError:
+            complete = False
+            continue
+        try:
+            with scan:
+                entries = iter(scan)
+                while True:
+                    try:
+                        entry = next(entries)
+                    except StopIteration:
+                        break
+                    except OSError:
+                        complete = False
+                        break
+
+                    if entry.name in _FILE_INDEX_SKIP:
+                        continue
+                    path = directory / entry.name
+                    try:
+                        entry_stat = entry.stat(follow_symlinks=False)
+                        is_symlink = stat.S_ISLNK(entry_stat.st_mode)
+                        if is_symlink:
+                            entry_stat = entry.stat(follow_symlinks=True)
+                    except OSError:
+                        complete = False
+                        continue
+
+                    if stat.S_ISDIR(entry_stat.st_mode):
+                        if recursive and not is_symlink:
+                            pending.append(path)
+                        continue
+                    if not stat.S_ISREG(entry_stat.st_mode):
+                        continue
+
+                    rel = path.relative_to(base)
+                    collected.append({
+                        "name": path.name,
+                        "rel_path": str(rel),
+                        "abs_path": str(path),
+                        "size": entry_stat.st_size,
+                        "mtime": datetime.fromtimestamp(
+                            entry_stat.st_mtime
+                        ).isoformat(timespec="seconds"),
+                        "_mtime_ns": entry_stat.st_mtime_ns,
+                    })
+        except OSError:
+            complete = False
+    return collected, complete
+
+
 def list_project_files(
     name: str | None,
     *,
@@ -1016,7 +1105,11 @@ def list_project_files(
         if is_vault_root
         else project_folder_path(name, projects_base)
     )
-    if not base.is_dir():
+    try:
+        base_stat = base.stat()
+    except OSError:
+        base_stat = None
+    if base_stat is None or not stat.S_ISDIR(base_stat.st_mode):
         return {
             "exists": False,
             "folder": str(base),
@@ -1030,31 +1123,9 @@ def list_project_files(
             "limit": max_files,
             "next_offset": None,
         }
-    collected: list[dict[str, Any]] = []
-    complete = True
-    try:
-        paths = base.iterdir() if is_vault_root else base.rglob("*")
-        for p in paths:
-            rel = p.relative_to(base)
-            if any(part in _FILE_INDEX_SKIP for part in rel.parts):
-                continue
-            if not p.is_file():
-                continue
-            try:
-                st = p.stat()
-            except OSError:
-                complete = False
-                continue
-            collected.append({
-                "name": p.name,
-                "rel_path": str(rel),
-                "abs_path": str(p),
-                "size": st.st_size,
-                "mtime": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
-                "_mtime_ns": st.st_mtime_ns,
-            })
-    except OSError:
-        complete = False
+    collected, complete = _enumerate_project_file_rows(
+        base, recursive=not is_vault_root,
+    )
     collected.sort(key=lambda f: (-f["_mtime_ns"], f["rel_path"]))
     total = len(collected)
     page = (
@@ -1076,7 +1147,10 @@ def list_project_files(
         "truncated": next_offset is not None,
         "is_vault_root": is_vault_root,
         "complete": complete,
-        "reason": None if complete else "one or more project files could not be read",
+        "reason": (
+            None if complete else
+            "one or more project files or folders could not be read"
+        ),
         "total": total,
         "offset": offset,
         "limit": max_files,

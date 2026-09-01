@@ -13796,6 +13796,12 @@ def _library_dialogue_provider() -> dict:
     except Exception:
         return {"rows": [], "complete": False,
                 "reason": "the Dialogue provider could not be read"}
+    relationships_incomplete = bool(skipped_authority)
+    relationship_reason = (
+        "one or more Dialogue envelopes were skipped, so relationship "
+        "authority is incomplete"
+        if relationships_incomplete else None
+    )
     rows = []
     for item in contracts:
         identity = str(item.get("conversation_id") or "").strip()
@@ -13819,7 +13825,11 @@ def _library_dialogue_provider() -> dict:
             "provenance": {"available": True, "kind": "dialogue-envelope",
                            "identity": identity},
             "relationships": {
-                "state": "fresh", "updated_at": item.get("last_activity_at"),
+                "state": (
+                    "incomplete" if relationships_incomplete else "fresh"
+                ),
+                "updated_at": item.get("last_activity_at"),
+                "reason": relationship_reason,
                 "summaries": [
                     {
                         "type": kind,
@@ -14060,7 +14070,7 @@ def _library_file_provider() -> dict:
     complete = not skipped_projects
     reason = (
         None if complete else
-        "one or more project pointer files are malformed or unreadable"
+        "one or more project pointers could not be enumerated or read"
     )
     for project in projects:
         project_id = str(project.get("nexus") or "commons").strip().lower()

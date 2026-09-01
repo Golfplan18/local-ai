@@ -628,9 +628,17 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(len(dialogue_provider["rows"]), 1)
             self.assertFalse(dialogue_provider["complete"])
             self.assertIn("missing or unreadable", dialogue_provider["reason"])
+            self.assertEqual(
+                dialogue_provider["rows"][0]["relationships"]["state"],
+                "incomplete",
+            )
+            self.assertIn(
+                "envelopes were skipped",
+                dialogue_provider["rows"][0]["relationships"]["reason"],
+            )
             self.assertEqual(len(file_provider["rows"]), 1)
             self.assertFalse(file_provider["complete"])
-            self.assertIn("malformed or unreadable", file_provider["reason"])
+            self.assertIn("enumerated or read", file_provider["reason"])
 
             payload = build_browser_response(
                 {"dialogues": dialogue_provider, "files": file_provider},
@@ -643,6 +651,16 @@ class TestLibraryBrowser(unittest.TestCase):
             )
             self.assertFalse(payload["universe"]["complete"])
             self.assertFalse(payload["facets"]["projects"]["complete"])
+            dialogue_row = next(
+                row for row in payload["rows"] if row["source"] == "dialogues"
+            )
+            self.assertEqual(
+                dialogue_row["relationships"]["state"], "incomplete",
+            )
+            self.assertIn(
+                "envelopes were skipped",
+                dialogue_row["relationships"]["reason"],
+            )
             self.assertEqual(
                 {item["source"] for item in payload["universe"]["unavailable_sources"]},
                 {"dialogues", "files"},
