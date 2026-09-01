@@ -300,6 +300,8 @@ def build_browser_response(
     providers: Mapping[str, Mapping[str, Any]],
     *,
     requested_sources: Iterable[str] | None = None,
+    project_id: str | None = "commons",
+    query: str = "",
     offset: int = 0,
     limit: int = 100,
 ) -> dict[str, Any]:
@@ -311,6 +313,10 @@ def build_browser_response(
     """
 
     sources = parse_sources(requested_sources)
+    scope = str(project_id or "").strip().lower()
+    if scope in {"", "commons", "general"}:
+        scope = "commons"
+    query = str(query or "").strip()
     if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
         raise LibraryBrowserError("offset must be a non-negative integer")
     if (
@@ -355,6 +361,12 @@ def build_browser_response(
             seen_ids.add(item["id"])
             normalized.append(item)
 
+    if scope != "commons":
+        normalized = [
+            row for row in normalized
+            if scope in row["metadata"].get("project_ids", [])
+        ]
+
     source_rank = {source: index for index, source in enumerate(sources)}
     normalized.sort(key=lambda row: (
         0 if _timestamp(row["metadata"].get("modified_at")) is not None else 1,
@@ -383,6 +395,8 @@ def build_browser_response(
 
     return {
         "sources": list(sources),
+        "project_id": scope,
+        "query": query,
         "rows": page,
         "total": len(normalized),
         "source_counts": source_counts,

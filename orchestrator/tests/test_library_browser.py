@@ -247,6 +247,38 @@ class TestLibraryBrowser(unittest.TestCase):
         )
         self.assertTrue(all("count" not in summary for summary in summaries.values()))
 
+    def test_dialogue_provider_nonempty_query_without_terms_has_no_matches(self):
+        server = _server_module()
+        import conversation_memory as runtime_conversation_memory
+
+        snapshot = [{"conversation_id": "dialogue-1"}]
+        readable = [{
+            "conversation_id": "dialogue-1",
+            "source_kind": "live",
+            "title": "Dialogue one",
+            "display_name": "Dialogue one",
+            "project_ids": [],
+            "tags": [],
+        }]
+        with (
+            mock.patch.object(
+                runtime_conversation_memory,
+                "iter_conversations",
+                return_value=snapshot,
+            ),
+            mock.patch.object(
+                server, "_browser_live_rows", return_value=readable,
+            ) as live_rows,
+        ):
+            provider = server._library_dialogue_provider("AI the")
+
+        self.assertEqual(provider["rows"], [])
+        live_rows.assert_called_once_with(
+            "", target_tag="", persist_heal=False,
+            skipped_authority=mock.ANY,
+            preloaded_summaries=snapshot,
+        )
+
     def test_engram_and_file_providers_take_one_complete_inventory_read(self):
         import hashlib
         import sqlite3
@@ -459,6 +491,65 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(
                 sorted(path.name for path in chroma_dir.iterdir()), fixture_entries,
             )
+
+            encoded_engram = server._browser_encode_source_id(
+                "engram", str(engram_path),
+            )
+
+            def surviving_exact(*_args, **_kwargs):
+                return [{"conversation_id": encoded_engram}]
+
+            def unavailable_fuzzy(*_args, **kwargs):
+                kwargs["error_sink"].append("fuzzy knowledge search failed")
+                return []
+
+            with (
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection", return_value=physical_collection,
+                ),
+                mock.patch.object(sqlite3, "connect", side_effect=read_only_connect),
+                mock.patch.object(
+                    conversation_memory, "knowledge_admitted_paths",
+                    wraps=conversation_memory.knowledge_admitted_paths,
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_exact_rows",
+                    side_effect=surviving_exact,
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_fuzzy_rows",
+                    side_effect=unavailable_fuzzy,
+                ),
+            ):
+                searched = server._library_engram_provider("forecast")
+
+            self.assertFalse(searched["complete"])
+            self.assertIn("keyword search paths", searched["reason"])
+            self.assertEqual(
+                [row["identity"] for row in searched["rows"]],
+                [str(engram_path.resolve())],
+            )
+
+            for helper, label in (
+                (server._browser_chroma_exact_rows, "exact"),
+                (server._browser_chroma_fuzzy_rows, "fuzzy"),
+            ):
+                errors = []
+                with mock.patch.object(
+                    server,
+                    "_browser_knowledge_admitted_path_inventory",
+                    return_value=None,
+                ):
+                    helper_rows = helper(
+                        "forecast", logical_collection="knowledge", limit=None,
+                        error_sink=errors,
+                    )
+                self.assertEqual(helper_rows, [])
+                self.assertIn(
+                    f"{label} knowledge authority inventory unavailable",
+                    errors,
+                )
 
             file_paths = []
             for index in range(2):
@@ -761,34 +852,149 @@ class TestLibraryBrowser(unittest.TestCase):
                 ("dialogues", "engrams", "files"), start=1,
             )
         }
+        fixtures["dialogues"]["rows"][0]["metadata"]["project_ids"] = ["project-a"]
+        fixtures["engrams"]["rows"][0]["metadata"]["project_ids"] = ["project-b"]
+        fixtures["files"]["rows"][0]["metadata"]["project_ids"] = ["project-a"]
+        searched = {
+            "dialogues": fixtures["dialogues"],
+            "engrams": fixtures["engrams"],
+        }
         with (
             mock.patch.object(
                 server, "_library_dialogue_provider",
-                return_value=fixtures["dialogues"],
-            ),
+                side_effect=lambda query="": (
+                    searched["dialogues"] if query else fixtures["dialogues"]
+                ),
+            ) as dialogue_provider,
             mock.patch.object(
                 server, "_library_engram_provider",
-                return_value=fixtures["engrams"],
-            ),
+                side_effect=lambda query="": (
+                    searched["engrams"] if query else fixtures["engrams"]
+                ),
+            ) as engram_provider,
             mock.patch.object(
                 server, "_library_file_provider",
                 return_value=fixtures["files"],
-            ),
+            ) as file_provider,
             server.app.test_client() as client,
         ):
             response = client.get(
                 "/api/library/browser?source=files,dialogues&source=engrams"
                 "&offset=1&limit=1"
             )
+            scoped_response = client.get(
+                "/api/library/browser?source=files,dialogues&source=engrams"
+                "&project_id=project-a&offset=0&limit=1"
+            )
+            query_response = client.get(
+                "/api/library/browser?source=dialogues&source=engrams&source=files"
+                "&q=budget+forecast&offset=0&limit=20"
+            )
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertEqual(payload["sources"], ["files", "dialogues", "engrams"])
+        self.assertEqual(payload["project_id"], "commons")
         self.assertEqual(payload["total"], 3)
         self.assertEqual(payload["source_counts"], {
             "files": 1, "dialogues": 1, "engrams": 1,
         })
         self.assertEqual(payload["pagination"]["returned"], 1)
+        self.assertEqual(scoped_response.status_code, 200)
+        scoped = scoped_response.get_json()
+        self.assertEqual(scoped["project_id"], "project-a")
+        self.assertEqual(scoped["total"], 2)
+        self.assertEqual(scoped["source_counts"], {
+            "files": 1, "dialogues": 1, "engrams": 0,
+        })
+        self.assertEqual(scoped["pagination"]["returned"], 1)
+        self.assertEqual(query_response.status_code, 200)
+        queried = query_response.get_json()
+        self.assertEqual(queried["query"], "budget forecast")
+        self.assertEqual(queried["project_id"], "commons")
+        self.assertEqual(queried["total"], 2)
+        self.assertEqual(queried["source_counts"], {
+            "dialogues": 1, "engrams": 1, "files": 0,
+        })
+        self.assertFalse(queried["universe"]["complete"])
+        self.assertEqual(
+            queried["universe"]["unavailable_sources"],
+            [{
+                "source": "files",
+                "reason": (
+                    "Files do not support body keyword search; Dialogue "
+                    "and Engram matches remain available"
+                ),
+            }],
+        )
+        dialogue_provider.assert_any_call("budget forecast")
+        engram_provider.assert_any_call("budget forecast")
+        self.assertEqual(file_provider.call_count, 2)
+
+    def test_creation_browser_preserves_repeated_included_context(self):
+        server = _server_module()
+        engram_ref = server._browser_encode_source_id(
+            "engram", "/vault/Engrams/claim.md",
+        )
+        included_rows = {
+            "dialogue-a": {
+                "conversation_id": "dialogue-a",
+                "source_kind": "live",
+                "title": "Dialogue A",
+                "tags": [],
+                "project_ids": [],
+            },
+            engram_ref: {
+                "conversation_id": engram_ref,
+                "source_kind": "engram",
+                "title": "Atomic claim",
+                "tags": ["atomic"],
+                "project_ids": [],
+            },
+        }
+        with (
+            mock.patch.object(server, "_browser_live_rows", return_value=[]),
+            mock.patch.object(server, "_browser_chroma_exact_rows", return_value=[]),
+            mock.patch.object(server, "_browser_chroma_fuzzy_rows", return_value=[]),
+            mock.patch.object(server, "_browser_chroma_semantic_rows", return_value=[]),
+            mock.patch.object(server, "_browser_vault_markdown_rows", return_value=[]),
+            mock.patch.object(
+                server, "_browser_creation_row_allowed",
+                side_effect=lambda row, _target_tag: (
+                    row.get("conversation_id") in included_rows
+                ),
+            ),
+            mock.patch.object(
+                server, "_browser_row_for_creation_ref",
+                side_effect=lambda ref, **_kwargs: included_rows.get(ref),
+            ),
+            mock.patch.object(
+                server, "_register_conversation_discovery",
+                return_value="review-token",
+            ),
+            server.app.test_client() as client,
+        ):
+            response = client.get(
+                "/api/conversations/browser",
+                query_string=[
+                    ("q", "Build a grounded planning dialogue"),
+                    ("purpose", "creation"),
+                    ("conversations", "1"),
+                    ("engrams", "1"),
+                    ("limit", "1"),
+                    ("include_ref", "dialogue-a"),
+                    ("include_ref", engram_ref),
+                ],
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["review_token"], "review-token")
+        self.assertEqual(
+            [row["conversation_id"] for row in payload["rows"]],
+            ["dialogue-a", engram_ref],
+        )
+        self.assertEqual(payload["total"], 2)
 
 
 if __name__ == "__main__":

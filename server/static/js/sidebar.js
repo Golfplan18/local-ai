@@ -115,42 +115,6 @@
   let conversationsEtag = '';
   let pollHandle = null;
   let activeConvId = null;
-  let browserOverlay = null;
-  let browserSearch = null;
-  let browserSort = null;
-  let browserRows = null;
-  let browserStatus = null;
-  let browserBulkBar = null;
-  let browserBulkProject = null;
-  let browserBulkAdd = null;
-  let browserConversationsToggle = null;
-  let browserEngramsToggle = null;
-  let browserTagsInput = null;
-  let browserShowArchivedToggle = null;
-  let browserProject = null;
-  let browserDateFrom = null;
-  let browserDateTo = null;
-  let browserPrivacy = null;
-  let browserLifecycle = null;
-  let browserRelationship = null;
-  let browserLocalRestriction = null;
-  let browserRelevanceSlider = null;
-  let browserRelevanceValue = null;
-  let browserResizeObserver = null;
-  let browserDismissedIds = new Set();
-  const browserSelectedIds = new Set();
-  let browserRowsCache = [];
-  let browserLastData = null;
-  let browserIncludeConversations = true;
-  let browserIncludeEngrams = true;
-  let browserTags = '';
-  let browserShowArchived = false;
-  let browserMinRelevance = 0;
-  let browserFetchTimer = null;
-  let browserFilterTimer = null;
-  let browserReturnFocus = null;
-  let browserAbortController = null;
-  let browserRequestSequence = 0;
   let creationOverlay = null;
   let creationTitle = null;
   let creationDescription = null;
@@ -166,7 +130,8 @@
   let creationContractFingerprint = '';
   let creationReviewedDescription = '';
   let creationTag = '';
-  let creationIncludedRef = '';
+  let creationIncludedRefs = [];
+  let creationUnsupportedContext = [];
   let creationReturnFocus = null;
   let creationBusy = false;
   const lifecycleBusyIds = new Set();
@@ -949,6 +914,7 @@
       activeConvId = lifecycle.getActiveConversationId() || null;
     }
     fetchList();
+    return result;
   };
 
   // Backlog 11 — retry an errored conversation. Server returns the
@@ -1141,21 +1107,23 @@
   const forkDiscoveredRow = async (row, draftMessage, tag, source) => {
     if (!row || row.source_kind !== 'live' || !row.conversation_id) return;
     try {
+      const requestBody = {};
+      if (typeof tag === 'string') requestBody.tag = tag;
       const resp = await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/fork`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tag: tag || '' }),
+        body: JSON.stringify(requestBody),
       });
       const data = await resp.json();
       if (!resp.ok || !data.new_conversation_id) {
         throw new Error(data.error || `HTTP ${resp.status}`);
       }
       closeCreation();
-      closeBrowser();
+      document.dispatchEvent(new CustomEvent('ora:library-close-requested'));
       document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
         detail: {
           conversation_id: data.new_conversation_id,
-          tag: data.tag || tag || '',
+          tag: data.tag || (typeof tag === 'string' ? tag : ''),
           title: data.new_conversation_id,
           draft_message: draftMessage || '',
           source: source || 'library-fork',
@@ -1254,7 +1222,7 @@
         limit: '40',
       });
       params.set('target_tag', creationTag);
-      if (creationIncludedRef) params.set('include_ref', creationIncludedRef);
+      creationIncludedRefs.forEach((ref) => params.append('include_ref', ref));
       const resp = await fetch('/api/conversations/browser?' + params.toString());
       const data = await resp.json();
       if (!resp.ok || !data.review_token) {
@@ -1270,15 +1238,18 @@
         Array.from(creationSelectedRefs).filter(ref =>
           creationRows.some(row => row.conversation_id === ref))
       );
-      if (creationIncludedRef && creationRows.some(row => row.conversation_id === creationIncludedRef)) {
-        creationSelectedRefs.add(creationIncludedRef);
-      }
+      creationIncludedRefs.forEach((ref) => {
+        if (creationRows.some(row => row.conversation_id === ref)) creationSelectedRefs.add(ref);
+      });
       renderCreationRows();
       creationReviewCheck.disabled = false;
       creationReviewCheck.checked = false;
-      creationStatus.textContent = creationRows.length
+      const unsupported = creationUnsupportedContext.length
+        ? ` Unsupported Library context: ${creationUnsupportedContext.join('; ')}.`
+        : '';
+      creationStatus.textContent = (creationRows.length
         ? `${creationRows.length} related item${creationRows.length === 1 ? '' : 's'} found. Review them before creating.`
-        : 'No related Dialogues or atomic notes found. Confirm that result before creating.';
+        : 'No related Dialogues or atomic notes found. Confirm that result before creating.') + unsupported;
     } catch (e) {
       resetCreationReview();
       creationStatus.textContent = 'Discovery failed: ' + (e.message || e);
@@ -1463,18 +1434,26 @@
 
   const openCreation = (detail = {}) => {
     ensureCreation();
-    closeBrowser();
+    document.dispatchEvent(new CustomEvent('ora:library-close-requested'));
     const active = document.activeElement;
     creationReturnFocus = active && active !== document.body && typeof active.focus === 'function'
       ? active
       : newThreadCmd;
     creationTag = detail.tag === 'private' || detail.tag === 'stealth' ? detail.tag : '';
-    creationIncludedRef = detail.prefill_row && detail.prefill_row.conversation_id
-      ? detail.prefill_row.conversation_id
-      : '';
+    const prefillRows = Array.isArray(detail.prefill_rows)
+      ? detail.prefill_rows
+      : (detail.prefill_row ? [detail.prefill_row] : []);
+    creationIncludedRefs = Array.from(new Set(prefillRows
+      .map(row => row && row.conversation_id ? String(row.conversation_id) : '')
+      .filter(Boolean)));
+    creationUnsupportedContext = Array.isArray(detail.unsupported_context)
+      ? detail.unsupported_context.map(String).filter(Boolean)
+      : [];
     creationTitle.value = '';
     creationDescription.value = detail.description || '';
-    creationStatus.textContent = 'Nothing is created until you confirm.';
+    creationStatus.textContent = creationUnsupportedContext.length
+      ? `Nothing is created until you confirm. Unsupported Library context: ${creationUnsupportedContext.join('; ')}.`
+      : 'Nothing is created until you confirm.';
     resetCreationReview();
     creationOverlay.classList.add('is-open');
     const heading = creationOverlay.querySelector('#conversationCreateHeading');
@@ -1482,565 +1461,162 @@
     setTimeout(() => creationTitle.focus(), 0);
   };
 
-  const ensureBrowser = () => {
-    if (browserOverlay) return browserOverlay;
-    browserOverlay = document.createElement('div');
-    browserOverlay.className = 'conversation-browser-overlay';
-    browserOverlay.setAttribute('role', 'dialog');
-    // The Library is docked beside the workspace and intentionally leaves the
-    // rest of Ora interactive, so it must not claim modal semantics.
-    browserOverlay.setAttribute('aria-modal', 'false');
-    browserOverlay.setAttribute('aria-label', 'Library');
-    browserOverlay.innerHTML = `
-      <div class="conversation-browser-panel">
-        <div class="conversation-browser-top">
-          <input class="conversation-browser-search" type="text"
-                 placeholder="Search Dialogues..."
-                 aria-label="Search Dialogues"
-                 spellcheck="true"
-                 autocorrect="on"
-                 autocapitalize="sentences"
-                 autocomplete="off" />
-          <select class="conversation-browser-sort" aria-label="Sort results">
-            <option value="relevance">Relevance</option>
-            <option value="recency">Recency</option>
-          </select>
-          <button class="conversation-browser-search-btn" type="button">Search</button>
-          <button class="conversation-browser-close" type="button" aria-label="Close Library">×</button>
-        </div>
-        <div class="conversation-browser-summary">
-          <div class="conversation-browser-status" aria-live="polite"></div>
-          <div class="conversation-browser-bulk" hidden>
-            <span class="conversation-browser-bulk-count"></span>
-            <label>Project
-              <select class="conversation-browser-bulk-project"
-                      aria-label="Project for selected Dialogues"></select>
-            </label>
-            <button class="conversation-browser-bulk-add" type="button">
-              Add selected
-            </button>
-          </div>
-          <div class="conversation-browser-filters">
-            <label class="conversation-browser-tags">Project
-              <select class="conversation-browser-project" aria-label="Filter by project">
-                <option value="commons">Commons</option>
-              </select>
-            </label>
-            <label class="conversation-browser-tags">From
-              <input class="conversation-browser-date-from" type="date"
-                     aria-label="Filter from date (inclusive)" />
-            </label>
-            <label class="conversation-browser-tags">To
-              <input class="conversation-browser-date-to" type="date"
-                     aria-label="Filter through date (inclusive)" />
-            </label>
-            <label class="conversation-browser-tags">Privacy
-              <select class="conversation-browser-privacy" aria-label="Filter by privacy">
-                <option value="">All privacy</option>
-                <option value="standard">Standard</option>
-                <option value="contains_private">Contains Private</option>
-                <option value="stealth">Stealth</option>
-              </select>
-            </label>
-            <label class="conversation-browser-tags">Lifecycle
-              <select class="conversation-browser-lifecycle" aria-label="Filter by lifecycle">
-                <option value="">All lifecycle states</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="indexed_archive">Indexed archive</option>
-                <option value="knowledge">Knowledge</option>
-              </select>
-            </label>
-            <label class="conversation-browser-tags">Relationship
-              <select class="conversation-browser-relationship" aria-label="Filter by relationship">
-                <option value="">All relationships</option>
-                <option value="parent">Parent</option>
-                <option value="direct-child">Direct child</option>
-                <option value="sibling">Sibling</option>
-                <option value="contributor">Contributor</option>
-                <option value="direct-related">Directly related</option>
-                <option value="shared-project">Shared project</option>
-                <option value="none">No recorded relationship</option>
-              </select>
-            </label>
-            <label class="conversation-browser-tags">Local
-              <select class="conversation-browser-local-restriction"
-                      aria-label="Filter by local restriction">
-                <option value="">Any local restriction</option>
-                <option value="restricted">Restricted locally</option>
-                <option value="unrestricted">Unrestricted locally</option>
-              </select>
-            </label>
-            <label class="conversation-browser-tags"
-                   title="Comma-separated tags; all selected tags must match">
-              <span class="conversation-browser-tags-label">Tags</span>
-              <input class="conversation-browser-tags-input" type="text"
-                     placeholder="atomic, framework/instruction"
-                     aria-label="Filter by tags (all selected tags must match)"
-                     spellcheck="false"
-                     autocorrect="off"
-                     autocapitalize="none"
-                     autocomplete="off" />
-            </label>
-            <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
-              <input class="conversation-browser-filter-conversations" type="checkbox" checked>
-              Dialogues
-            </label>
-            <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
-              <input class="conversation-browser-filter-engrams" type="checkbox" checked>
-              Engrams
-            </label>
-            <label class="conversation-browser-filter-chip">
-              <input class="conversation-browser-filter-archived" type="checkbox">
-              Show archived
-            </label>
-            <label class="conversation-browser-relevance" title="Minimum relevance for searched results">
-              <span class="conversation-browser-relevance-label">Relevance</span>
-              <input class="conversation-browser-relevance-slider" type="range"
-                     min="0" max="95" step="5" value="0"
-                     aria-label="Minimum relevance">
-              <span class="conversation-browser-relevance-value">0+</span>
-            </label>
-          </div>
-        </div>
-        <div class="conversation-browser-rows"></div>
-      </div>`;
-    document.body.appendChild(browserOverlay);
-    browserSearch = browserOverlay.querySelector('.conversation-browser-search');
-    browserSort = browserOverlay.querySelector('.conversation-browser-sort');
-    browserConversationsToggle = browserOverlay.querySelector('.conversation-browser-filter-conversations');
-    browserEngramsToggle = browserOverlay.querySelector('.conversation-browser-filter-engrams');
-    browserTagsInput = browserOverlay.querySelector('.conversation-browser-tags-input');
-    browserShowArchivedToggle = browserOverlay.querySelector('.conversation-browser-filter-archived');
-    browserProject = browserOverlay.querySelector('.conversation-browser-project');
-    browserDateFrom = browserOverlay.querySelector('.conversation-browser-date-from');
-    browserDateTo = browserOverlay.querySelector('.conversation-browser-date-to');
-    browserPrivacy = browserOverlay.querySelector('.conversation-browser-privacy');
-    browserLifecycle = browserOverlay.querySelector('.conversation-browser-lifecycle');
-    browserRelationship = browserOverlay.querySelector('.conversation-browser-relationship');
-    browserLocalRestriction = browserOverlay.querySelector('.conversation-browser-local-restriction');
-    browserRelevanceSlider = browserOverlay.querySelector('.conversation-browser-relevance-slider');
-    browserRelevanceValue = browserOverlay.querySelector('.conversation-browser-relevance-value');
-    browserRows = browserOverlay.querySelector('.conversation-browser-rows');
-    browserStatus = browserOverlay.querySelector('.conversation-browser-status');
-    browserBulkBar = browserOverlay.querySelector('.conversation-browser-bulk');
-    browserBulkProject = browserOverlay.querySelector('.conversation-browser-bulk-project');
-    browserBulkAdd = browserOverlay.querySelector('.conversation-browser-bulk-add');
-    browserOverlay.querySelector('.conversation-browser-close')
-      .addEventListener('click', closeBrowser);
-    browserOverlay.querySelector('.conversation-browser-search-btn')
-      .addEventListener('click', () => fetchBrowser(browserSearch.value));
-    if (browserBulkAdd) browserBulkAdd.addEventListener('click', addSelectedBrowserRowsToProject);
-    browserOverlay.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      e.stopPropagation();
-      closeBrowser();
-    });
-    if (browserSort) {
-      browserSort.addEventListener('change', () => fetchBrowser(browserSearch.value));
-    }
-    [browserProject, browserDateFrom, browserDateTo, browserPrivacy,
-      browserLifecycle, browserRelationship, browserLocalRestriction].forEach((control) => {
-      if (control) control.addEventListener('change', scheduleBrowserFilterRefresh);
-    });
-    [browserConversationsToggle, browserEngramsToggle, browserShowArchivedToggle].forEach((toggle) => {
-      if (!toggle) return;
-      toggle.addEventListener('change', scheduleBrowserFilterRefresh);
-      const chip = toggle.closest('.conversation-browser-filter-chip');
-      if (chip) chip.addEventListener('click', scheduleBrowserFilterRefresh);
-    });
-    if (browserRelevanceSlider) {
-      browserRelevanceSlider.addEventListener('input', () => {
-        browserMinRelevance = parseInt(browserRelevanceSlider.value, 10) || 0;
-        updateBrowserFilterUI();
-        scheduleBrowserFetch();
-      });
-    }
-    if (browserTagsInput) {
-      browserTagsInput.addEventListener('input', scheduleBrowserFetch);
-      browserTagsInput.addEventListener('change', scheduleBrowserFilterRefresh);
-      browserTagsInput.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        if (browserFetchTimer) clearTimeout(browserFetchTimer);
-        browserFetchTimer = null;
-        fetchBrowser(browserSearch ? browserSearch.value : '');
-      });
-    }
-    browserSearch.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        fetchBrowser(browserSearch.value);
-      }
-    });
-    refreshBrowserProjectOptions();
-    return browserOverlay;
-  };
-
-  const updateBrowserFilterUI = () => {
-    if (browserConversationsToggle) {
-      const chip = browserConversationsToggle.closest('.conversation-browser-filter-chip');
-      if (chip) chip.classList.toggle('conversation-browser-filter-chip-on', !!browserConversationsToggle.checked);
-    }
-    if (browserEngramsToggle) {
-      const chip = browserEngramsToggle.closest('.conversation-browser-filter-chip');
-      if (chip) chip.classList.toggle('conversation-browser-filter-chip-on', !!browserEngramsToggle.checked);
-    }
-    if (browserShowArchivedToggle) {
-      const chip = browserShowArchivedToggle.closest('.conversation-browser-filter-chip');
-      if (chip) chip.classList.toggle(
-        'conversation-browser-filter-chip-on', !!browserShowArchivedToggle.checked);
-    }
-    if (browserRelevanceValue) {
-      browserRelevanceValue.textContent = `${browserMinRelevance}+`;
-    }
-  };
-
-  const syncBrowserFilterState = () => {
-    browserIncludeConversations = !!(browserConversationsToggle && browserConversationsToggle.checked);
-    browserIncludeEngrams = !!(browserEngramsToggle && browserEngramsToggle.checked);
-    browserTags = browserTagsInput ? browserTagsInput.value : '';
-    browserShowArchived = !!(browserShowArchivedToggle && browserShowArchivedToggle.checked);
-  };
-
-  const scheduleBrowserFilterRefresh = () => {
-    if (browserFilterTimer) clearTimeout(browserFilterTimer);
-    browserFilterTimer = setTimeout(() => {
-      browserFilterTimer = null;
-      syncBrowserFilterState();
-      updateBrowserFilterUI();
-      fetchBrowser(browserSearch ? browserSearch.value : '');
-    }, 0);
-  };
-
-  const scheduleBrowserFetch = () => {
-    if (browserFetchTimer) clearTimeout(browserFetchTimer);
-    browserFetchTimer = setTimeout(() => {
-      browserFetchTimer = null;
-      fetchBrowser(browserSearch ? browserSearch.value : '');
-    }, 180);
-  };
-
-  const applyBrowserRequestFilters = (params) => {
-    syncBrowserFilterState();
-    params.set('conversations', browserIncludeConversations ? '1' : '0');
-    params.set('engrams', browserIncludeEngrams ? '1' : '0');
-    const tags = String(browserTags || '')
-      .split(',')
-      .map(tag => tag.trim().toLowerCase())
-      .filter((tag, index, all) => tag && all.indexOf(tag) === index)
-      .join(',');
-    if (tags) params.set('tags', tags);
-    params.set('show_archived', browserShowArchived ? '1' : '0');
-    params.set('min_relevance', String(browserMinRelevance || 0));
-    params.set('project_id', (browserProject && browserProject.value) || 'commons');
-    if (browserDateFrom && browserDateFrom.value) params.set('date_from', browserDateFrom.value);
-    if (browserDateTo && browserDateTo.value) params.set('date_to', browserDateTo.value);
-    if (browserPrivacy && browserPrivacy.value) params.set('privacy', browserPrivacy.value);
-    if (browserLifecycle && browserLifecycle.value) params.set('lifecycle', browserLifecycle.value);
-    if (browserRelationship && browserRelationship.value) params.set('relationship', browserRelationship.value);
-    if (browserLocalRestriction && browserLocalRestriction.value) {
-      params.set('local_restriction', browserLocalRestriction.value);
-    }
-    if (browserSort && browserSort.value) params.set('sort', browserSort.value);
-  };
-
-  const positionBrowser = () => {
-    if (!browserOverlay || !browserOverlay.classList.contains('is-open')) return;
-    const shell = document.querySelector('.ora-shell');
-    const leftColumn = document.querySelector('.left-column');
-    const rightColumn = document.querySelector('.right-column');
-    const inputPane = document.querySelector('.input-pane');
-    if (!shell || !inputPane) return;
-    const shellRect = shell.getBoundingClientRect();
-    const leftRect = leftColumn ? leftColumn.getBoundingClientRect() : shellRect;
-    const rightRect = rightColumn ? rightColumn.getBoundingClientRect() : shellRect;
-    const inputRect = inputPane.getBoundingClientRect();
-    const pad = 8;
-    const top = Math.max(shellRect.top + pad, inputRect.top + pad);
-    const height = Math.max(24, inputRect.bottom - pad - top);
-    const left = leftRect.left + pad;
-    const right = Math.max(left + 240, rightRect.right - pad);
-    browserOverlay.style.setProperty('--conversation-browser-left', `${left}px`);
-    browserOverlay.style.setProperty('--conversation-browser-top', `${top}px`);
-    browserOverlay.style.setProperty('--conversation-browser-width', `${Math.max(240, right - left)}px`);
-    browserOverlay.style.setProperty('--conversation-browser-height', `${height}px`);
-  };
-
-  const startBrowserPositioning = () => {
-    // Idempotent across repeat opens, the way the ResizeObserver below already
-    // is. positionBrowser is a stable reference, so the browser's dedupe of an
-    // identical (type, listener, capture) triple happened to keep this from
-    // leaking — an accident to depend on, not a guarantee to rely on.
-    window.removeEventListener('resize', positionBrowser);
-    window.addEventListener('resize', positionBrowser);
-    if (!browserResizeObserver && 'ResizeObserver' in window) {
-      browserResizeObserver = new ResizeObserver(positionBrowser);
-      const shell = document.querySelector('.ora-shell');
-      const leftColumn = document.querySelector('.left-column');
-      const rightColumn = document.querySelector('.right-column');
-      const inputPane = document.querySelector('.input-pane');
-      if (shell) browserResizeObserver.observe(shell);
-      if (leftColumn) browserResizeObserver.observe(leftColumn);
-      if (rightColumn) browserResizeObserver.observe(rightColumn);
-      if (inputPane) browserResizeObserver.observe(inputPane);
-    }
-    positionBrowser();
-  };
-
-  const stopBrowserPositioning = () => {
-    window.removeEventListener('resize', positionBrowser);
-    if (browserResizeObserver) {
-      browserResizeObserver.disconnect();
-      browserResizeObserver = null;
-    }
-  };
-
-  const openBrowser = () => {
-    ensureBrowser();
-    if (!browserOverlay.classList.contains('is-open')) {
-      browserDismissedIds = new Set();
-      const active = document.activeElement;
-      browserReturnFocus = active && active !== document.body && typeof active.focus === 'function'
-        ? active
-        : browseCmd;
-    }
-    browserOverlay.classList.add('is-open');
-    refreshBrowserBulkProjects();
-    updateBrowserFilterUI();
-    startBrowserPositioning();
-    fetchBrowser('');
-    setTimeout(() => {
-      positionBrowser();
-      try { browserSearch.focus(); } catch (e) {}
-    }, 0);
-  };
-
-  const browserHoldsFocus = (node) => {
-    if (!browserOverlay || !node) return false;
-    return browserOverlay === node || browserOverlay.contains(node);
-  };
-
-  // The Library is docked, not modal: the rest of Ora stays usable the whole
-  // time it is up, so at close time somebody else may hold focus for reasons
-  // that have nothing to do with the Library. Hand focus back only when the
-  // Library still holds it, or when nobody does.
-  // MIRRORS v3-browse-overlay.js::_focusIsOursToHandBack — the two must move
-  // together.
-  const browserFocusIsOursToHandBack = (focusBefore) => {
-    const body = document.body;
-    const now = document.activeElement;
-    // The Library still holds it — including its own now-hidden panel, which
-    // is exactly the case focus restoration exists for.
-    if (browserHoldsFocus(now)) return true;
-    // Somebody else holds it: an input the user moved to while the Library was
-    // docked. Taking it would be a theft.
-    if (now && now !== body) return false;
-    // Nobody holds it. Claim it back only if the Library — or nobody — held it
-    // when the close began. Focus that some third element merely lost is not
-    // ours to take.
-    return browserHoldsFocus(focusBefore) || !focusBefore || focusBefore === body;
-  };
-
-  const closeBrowser = () => {
-    const wasOpen = !!(browserOverlay && browserOverlay.classList.contains('is-open'));
-    // Read BEFORE the close work: hiding the overlay can already have sent
-    // focus to the body.
-    const focusBefore = document.activeElement;
-    if (browserOverlay) browserOverlay.classList.remove('is-open');
-    if (browserAbortController) browserAbortController.abort();
-    browserAbortController = null;
-    browserRequestSequence += 1;
-    stopBrowserPositioning();
-    if (!wasOpen) return;
-    const focusTarget = browserReturnFocus && browserReturnFocus.isConnected
-      ? browserReturnFocus
-      : browseCmd;
-    browserReturnFocus = null;
-    if (focusTarget && typeof focusTarget.focus === 'function'
-        && browserFocusIsOursToHandBack(focusBefore)) {
-      try { focusTarget.focus(); } catch (e) {}
-    }
-  };
-
-  const beginBrowserRequest = () => {
-    if (browserAbortController) browserAbortController.abort();
-    browserAbortController = new AbortController();
+  // The Knowledge Library owns its workspace and request state. Sidebar keeps
+  // only the existing Dialogue mutations so Library actions follow the same
+  // lifecycle, creation, project, and selection seams as ordinary sidebar rows.
+  const libraryDialogueRow = (row) => {
+    const locator = row && row.preview && row.preview.locator;
+    const conversationId = locator && locator.dialogue_id
+      ? String(locator.dialogue_id)
+      : '';
+    if (!conversationId) return null;
+    const privacy = String((row.metadata && row.metadata.privacy) || '').toLowerCase();
+    const tag = privacy === 'private' ? 'private'
+      : (privacy === 'stealth' || privacy === 'off_record') ? 'stealth' : '';
     return {
-      controller: browserAbortController,
-      sequence: ++browserRequestSequence,
+      conversation_id: conversationId,
+      title: row.title || conversationId,
+      tag,
+      source_kind: 'live',
+      result_type: 'dialogue',
     };
   };
 
-  const browserRequestIsCurrent = (requestState) => (
-    requestState.sequence === browserRequestSequence
-      && requestState.controller === browserAbortController
-  );
-
-  const fetchBrowser = async (query) => {
-    ensureBrowser();
-    const requestState = beginBrowserRequest();
-    browserStatus.textContent = 'Loading...';
-    try {
-      const params = new URLSearchParams();
-      if ((query || '').trim()) params.set('q', query.trim());
-      applyBrowserRequestFilters(params);
-      params.set('limit', '200');
-      const requestUrl = '/api/conversations/browser?' + params.toString();
-      const r = await fetch(requestUrl, { signal: requestState.controller.signal });
-      if (!browserRequestIsCurrent(requestState)) return;
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const data = await r.json();
-      if (!browserRequestIsCurrent(requestState)) return;
-      browserLastData = data;
-      browserRowsCache = data.rows || [];
-      const retainedLiveIds = new Set(browserRowsCache
-        .filter(row => (row.source_kind || 'live') === 'live')
-        .map(row => row.conversation_id));
-      Array.from(browserSelectedIds).forEach(id => {
-        if (!retainedLiveIds.has(id)) browserSelectedIds.delete(id);
-      });
-      renderBrowserRows(browserRowsCache, data.query || '');
-      updateBrowserStatus();
-    } catch (e) {
-      if (!browserRequestIsCurrent(requestState) || e.name === 'AbortError') return;
-      browserStatus.textContent = 'Search failed: ' + (e.message || e);
-      browserRows.innerHTML = '';
-    } finally {
-      if (browserRequestIsCurrent(requestState)) browserAbortController = null;
-    }
+  const openLibrary = () => {
+    closeCreation();
+    document.dispatchEvent(new CustomEvent('ora:library-open-requested', {
+      detail: { returnFocus: browseCmd },
+    }));
   };
 
-  const browserVisibleRows = () => (
-    (browserRowsCache || []).filter(row => !browserDismissedIds.has(row.conversation_id))
-  );
-
-  const updateBrowserStatus = () => {
-    if (!browserStatus) return;
-    renderBrowserFacets();
-    const visible = browserVisibleRows();
-    const counts = (browserLastData && browserLastData.source_counts) || {};
-    const parts = [];
-    if (counts.live) parts.push(`${counts.live} live`);
-    if (counts.archive) parts.push(`${counts.archive} archived`);
-    if (counts.engram) parts.push(`${counts.engram} engram${counts.engram === 1 ? '' : 's'}`);
-    const removed = Math.max(0, (browserRowsCache || []).length - visible.length);
-    const total = Number(browserLastData && browserLastData.total) || 0;
-    const localUnavailable = !!(
-      browserLocalRestriction && browserLocalRestriction.value
-      && browserLastData && browserLastData.facets
-      && browserLastData.facets.local_restriction
-      && browserLastData.facets.local_restriction.available === false
-    );
-    if (visible.length) {
-      const shown = total !== visible.length
-        ? `${visible.length} shown of ${total}`
-        : `${visible.length}`;
-      const resultCount = total !== visible.length ? total : visible.length;
-      const floor = browserMinRelevance > 0 ? `, ≥${browserMinRelevance} relevance` : '';
-      browserStatus.textContent = `${shown} result${resultCount === 1 ? '' : 's'}`
-        + `${parts.length ? ` (${parts.join(', ')})` : ''}`
-        + floor
-        + `${removed ? `, ${removed} removed` : ''}`
-        + `${localUnavailable ? ', local restriction unavailable' : ''}`;
-    } else {
-      browserStatus.textContent = removed
-        ? `No visible results, ${removed} removed`
-        : localUnavailable
-          ? 'Local restriction metadata is unavailable'
-          : 'No matching enabled Dialogues or engrams';
-    }
+  const continueLibraryDialogue = (row) => {
+    const dialogue = libraryDialogueRow(row);
+    if (!dialogue) throw new Error('This Dialogue is metadata-only and cannot be opened.');
+    document.dispatchEvent(new CustomEvent('ora:library-close-requested'));
+    activeConvId = dialogue.conversation_id;
+    document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+      detail: {
+        conversation_id: dialogue.conversation_id,
+        tag: dialogue.tag,
+        title: dialogue.title,
+        source_kind: dialogue.source_kind,
+        result_type: dialogue.result_type,
+        source: 'knowledge-library-continue',
+      },
+    }));
   };
 
-  function renderBrowserFacets() {
-    const facets = (browserLastData && browserLastData.facets) || {};
-    [
-      [browserProject, facets.projects],
-      [browserPrivacy, facets.privacy],
-      [browserLifecycle, facets.lifecycle],
-      [browserRelationship, facets.relationships],
-      [browserLocalRestriction, facets.local_restriction],
-    ].forEach(([control, facet]) => {
-      if (!control || !facet || !facet.counts) return;
-      Array.from(control.options).forEach((option) => {
-        if (!option.value) return;
-        if (!option.dataset.facetLabel) option.dataset.facetLabel = option.textContent;
-        option.textContent = `${option.dataset.facetLabel} (${Number(facet.counts[option.value]) || 0})`;
-      });
-      control.dataset.available = facet.available === false ? 'false' : 'true';
-      control.title = facet.available === false ? 'Metadata unavailable' : '';
-    });
-    if (browserDateFrom && facets.dates) browserDateFrom.min = facets.dates.min || '';
-    if (browserDateTo && facets.dates) browserDateTo.max = facets.dates.max || '';
-  }
+  const forkLibraryDialogue = async (row) => {
+    const dialogue = libraryDialogueRow(row);
+    if (!dialogue) throw new Error('This Dialogue is metadata-only and cannot be forked.');
+    // Omit tag so the server inherits the authoritative parent privacy. A
+    // Library aggregate such as contains_private is not fork-write authority.
+    await forkDiscoveredRow(dialogue, '', undefined, 'knowledge-library-fork');
+  };
 
-  function refreshBrowserProjectOptions() {
-    if (!browserProject) return;
-    const previous = browserProject.value || 'commons';
-    browserProject.innerHTML = '<option value="commons">Commons</option>';
-    projectsCache
-      .filter(project => canonicalProjectRecordId(project) !== 'commons')
-      .forEach(project => {
-        const option = document.createElement('option');
-        option.value = canonicalProjectRecordId(project);
-        option.textContent = project.name || project.nexus || option.value;
-        browserProject.appendChild(option);
-      });
-    browserProject.value = Array.from(browserProject.options)
-      .some(option => option.value === previous) ? previous : 'commons';
-  }
+  const createFromLibraryDialogue = (row) => {
+    const dialogue = libraryDialogueRow(row);
+    if (!dialogue) throw new Error('This Dialogue is metadata-only and cannot be a contributor.');
+    openCreation({ prefill_row: dialogue });
+  };
 
-  function refreshBrowserBulkProjects() {
-    if (!browserBulkProject) return;
-    const previous = browserBulkProject.value;
-    const render = () => {
-      refreshBrowserProjectOptions();
-      renderBrowserFacets();
-      browserBulkProject.innerHTML = '';
-      projectsCache
-        .filter(project => canonicalProjectRecordId(project) !== 'commons')
-        .forEach(project => {
-          const option = document.createElement('option');
-          option.value = canonicalProjectRecordId(project);
-          option.textContent = project.name || project.nexus || option.value;
-          browserBulkProject.appendChild(option);
-        });
-      if (previous && Array.from(browserBulkProject.options).some(option => option.value === previous)) {
-        browserBulkProject.value = previous;
-      } else if (activeProjectId !== 'commons'
-          && Array.from(browserBulkProject.options).some(option => option.value === activeProjectId)) {
-        browserBulkProject.value = activeProjectId;
+  const libraryContextPrivacyTag = (rows) => {
+    let privateContext = false;
+    for (const row of rows) {
+      const metadata = row && row.metadata && typeof row.metadata === 'object'
+        ? row.metadata : {};
+      const privacy = String(metadata.privacy || '').toLowerCase();
+      const tags = Array.isArray(metadata.tags)
+        ? metadata.tags.map(tag => String(tag).toLowerCase()) : [];
+      if (privacy === 'stealth' || privacy === 'off_record'
+          || tags.includes('stealth') || tags.includes('off_record')) return 'stealth';
+      if (privacy === 'private' || privacy === 'contains_private'
+          || tags.includes('private') || tags.includes('contains_private')) privateContext = true;
+    }
+    return privateContext ? 'private' : '';
+  };
+
+  const createFromLibrarySelection = (rows) => {
+    const selected = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    const contributors = [];
+    const unsupported = [];
+    selected.forEach((row) => {
+      if (row.source === 'dialogues') {
+        const dialogue = libraryDialogueRow(row);
+        if (dialogue) contributors.push(dialogue);
+        else unsupported.push(`${row.title || row.id || 'Dialogue'} (metadata-only Dialogue)`);
+        return;
       }
-      updateBrowserBulkState();
-    };
-    if (projectsCache.length) render();
-    else fetchProjects().then(render).catch(render);
-  }
+      if (row.source === 'engrams') {
+        const metadata = row.metadata && typeof row.metadata === 'object'
+          ? row.metadata : {};
+        const tags = Array.isArray(metadata.tags)
+          ? metadata.tags.map(tag => String(tag).toLowerCase()) : [];
+        if (String(row.id || '').startsWith('engrams:') && tags.includes('atomic')) {
+          contributors.push({
+            conversation_id: `engram:${String(row.id).slice('engrams:'.length)}`,
+            source_kind: 'engram',
+            result_type: 'engram',
+            title: row.title || row.id,
+          });
+        } else {
+          unsupported.push(`${row.title || row.id || 'Engram'} (non-atomic Engram)`);
+        }
+        return;
+      }
+      unsupported.push(`${row.title || row.id || 'Item'} (${row.source === 'files' ? 'File' : 'unsupported source'})`);
+    });
+    if (!contributors.length) {
+      throw new Error(`No checked item can be used as Dialogue context. Unsupported Library context: ${unsupported.join('; ') || 'none'}.`);
+    }
+    openCreation({
+      prefill_rows: contributors,
+      unsupported_context: unsupported,
+      tag: libraryContextPrivacyTag(selected),
+    });
+    return { contributors: contributors.map(row => row.conversation_id), unsupported };
+  };
 
-  function updateBrowserBulkState() {
-    if (!browserBulkBar) return;
-    const count = browserSelectedIds.size;
-    browserBulkBar.hidden = count === 0;
-    const countEl = browserBulkBar.querySelector('.conversation-browser-bulk-count');
-    if (countEl) countEl.textContent = `${count} selected`;
-    if (browserBulkAdd) browserBulkAdd.disabled = count === 0
-      || !browserBulkProject || !browserBulkProject.value;
-  }
+  const setLibraryDialogueArchived = async (row, archived) => {
+    const dialogue = libraryDialogueRow(row);
+    if (!dialogue) throw new Error('This Dialogue is metadata-only and has no lifecycle action.');
+    if (archived) {
+      const result = await onCloseClick(dialogue);
+      if (!result || result.ok !== true) return false;
+    } else {
+      const response = await fetch(
+        `/api/conversation/${encodeURIComponent(dialogue.conversation_id)}/restore`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      await fetchList();
+    }
+    if (row.metadata) row.metadata.lifecycle = archived ? 'inactive' : 'active';
+    if (window.OraLibraryWorkspace && window.OraLibraryWorkspace.isOpen()) {
+      await window.OraLibraryWorkspace.refresh();
+    }
+    return true;
+  };
 
-  async function addSelectedBrowserRowsToProject() {
-    const projectId = canonicalProjectId(browserBulkProject && browserBulkProject.value);
-    if (!projectId || projectId === 'commons' || browserSelectedIds.size === 0) return;
-    const selectedRows = Array.from(browserSelectedIds)
-      .map(id => browserRowsCache.find(row => row.conversation_id === id))
-      .filter(row => row && (row.source_kind || 'live') === 'live');
-    if (!selectedRows.length) return;
-    browserBulkAdd.disabled = true;
-    browserBulkAdd.textContent = 'Adding…';
-    browserStatus.textContent = `Adding ${selectedRows.length} selected Dialogue${selectedRows.length === 1 ? '' : 's'}…`;
-    let succeeded = 0;
-    const failed = [];
-    for (const row of selectedRows) {
+  const addLibrarySelectionToActiveProject = async (rows) => {
+    const projectId = canonicalProjectId(activeProjectId);
+    if (!projectId || projectId === 'commons') {
+      throw new Error('Choose a named active project before adding selected Dialogues.');
+    }
+    const dialogues = (rows || []).map((libraryRow) => ({
+      libraryId: libraryRow.id,
+      dialogue: libraryDialogueRow(libraryRow),
+    })).filter((item) => Boolean(item.dialogue));
+    if (!dialogues.length) throw new Error('The selection contains no readable Dialogues.');
+    const successfulIds = [];
+    const failures = [];
+    for (const item of dialogues) {
+      const row = item.dialogue;
       try {
         const response = await fetch(
           `/api/conversation/${encodeURIComponent(row.conversation_id)}/projects`,
@@ -2052,183 +1628,17 @@
         );
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-        row.project_ids = Array.isArray(data.project_ids) ? data.project_ids : row.project_ids;
-        browserSelectedIds.delete(row.conversation_id);
-        succeeded += 1;
+        successfulIds.push(item.libraryId);
       } catch (error) {
-        failed.push({ row, error });
+        failures.push(`${row.title}: ${error && error.message ? error.message : error}`);
       }
     }
-    browserBulkAdd.textContent = 'Add selected';
-    renderBrowserRows(browserRowsCache, (browserLastData && browserLastData.query) || '');
-    updateBrowserBulkState();
-    if (failed.length) {
-      browserStatus.textContent = `${succeeded} added; ${failed.length} failed and remain selected`;
-    } else {
-      browserStatus.textContent = `${succeeded} Dialogue${succeeded === 1 ? '' : 's'} added to project`;
+    await fetchList();
+    if (window.OraLibraryWorkspace && window.OraLibraryWorkspace.isOpen()) {
+      await window.OraLibraryWorkspace.refresh();
     }
-    fetchList();
-  }
-
-  const renderBrowserRows = (rows, query) => {
-    browserRows.innerHTML = '';
-    browserVisibleRows().forEach((row) => {
-      const item = document.createElement('div');
-      item.className = 'conversation-browser-row';
-      if (row.conversation_id === activeConvId) item.classList.add('is-active');
-      if (row.closed) item.classList.add('is-closed');
-      if (row.source_kind) item.classList.add(`is-${row.source_kind}`);
-      item.dataset.conversationId = row.conversation_id;
-      item.dataset.sourceKind = row.source_kind || 'live';
-
-      const rowTitle = row.title || row.conversation_id || '(untitled)';
-      const rowKind = row.source_kind === 'engram' ? 'Engram' : 'Dialogue';
-      item.setAttribute('role', 'group');
-      item.setAttribute('aria-label', `${rowKind}: ${rowTitle}`);
-
-      const check = document.createElement('input');
-      check.type = 'checkbox';
-      check.className = 'conversation-browser-check';
-      const assignable = (row.source_kind || 'live') === 'live';
-      check.checked = assignable && browserSelectedIds.has(row.conversation_id);
-      check.disabled = !assignable;
-      check.setAttribute('aria-label', `Select ${rowKind}: ${rowTitle}`);
-      check.addEventListener('click', (e) => e.stopPropagation());
-      check.addEventListener('change', () => {
-        if (check.checked) browserSelectedIds.add(row.conversation_id);
-        else browserSelectedIds.delete(row.conversation_id);
-        updateBrowserBulkState();
-      });
-      item.appendChild(check);
-
-      const title = document.createElement('button');
-      title.type = 'button';
-      title.className = 'conversation-browser-title';
-      title.textContent = rowTitle;
-      title.title = title.textContent;
-      title.setAttribute('aria-label', `Open ${rowKind}: ${rowTitle}`);
-      title.addEventListener('click', (e) => {
-        e.stopPropagation();
-        activateBrowserRow(row);
-      });
-      item.appendChild(title);
-
-      const actions = document.createElement('div');
-      actions.className = 'conversation-browser-actions';
-
-      const related = document.createElement('button');
-      related.type = 'button';
-      related.className = 'conversation-browser-related';
-      related.textContent = 'Related';
-      related.setAttribute('aria-label', `Show items related to ${rowTitle}`);
-      related.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fetchRelated(row.conversation_id);
-      });
-      actions.appendChild(related);
-
-      const addContributor = document.createElement('button');
-      addContributor.type = 'button';
-      addContributor.className = 'conversation-browser-add-contributor';
-      addContributor.textContent = 'Add contributor';
-      addContributor.setAttribute('aria-label', `Start a new Dialogue with ${rowTitle} as a contributor`);
-      addContributor.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openCreation({ prefill_row: row });
-      });
-      actions.appendChild(addContributor);
-
-      if (row.source_kind === 'live') {
-        const continueButton = document.createElement('button');
-        continueButton.type = 'button';
-        continueButton.className = 'conversation-browser-continue';
-        continueButton.textContent = 'Continue';
-        continueButton.setAttribute('aria-label', `Continue ${rowTitle}`);
-        continueButton.addEventListener('click', (e) => {
-          e.stopPropagation();
-          closeBrowser();
-          activateBrowserRow(row);
-        });
-        actions.appendChild(continueButton);
-
-        const forkButton = document.createElement('button');
-        forkButton.type = 'button';
-        forkButton.className = 'conversation-browser-fork';
-        forkButton.textContent = 'Fork';
-        forkButton.setAttribute('aria-label', `Fork ${rowTitle}`);
-        forkButton.addEventListener('click', (e) => {
-          e.stopPropagation();
-          forkDiscoveredRow(row, '', row.tag || '', 'library-fork');
-        });
-        actions.appendChild(forkButton);
-      }
-      item.appendChild(actions);
-
-      const dismiss = document.createElement('button');
-      dismiss.type = 'button';
-      dismiss.className = 'conversation-browser-dismiss';
-      dismiss.textContent = '×';
-      dismiss.title = 'Remove from these results';
-      dismiss.setAttribute('aria-label', `Remove ${rowTitle} from these results`);
-      dismiss.addEventListener('click', (e) => {
-        e.stopPropagation();
-        browserDismissedIds.add(row.conversation_id);
-        browserSelectedIds.delete(row.conversation_id);
-        renderBrowserRows(browserRowsCache, query);
-        updateBrowserStatus();
-        updateBrowserBulkState();
-      });
-      item.appendChild(dismiss);
-
-      item.addEventListener('click', () => activateBrowserRow(row));
-      browserRows.appendChild(item);
-    });
-    updateBrowserBulkState();
+    return { successfulIds, failures };
   };
-
-  const fetchRelated = async (conversationId) => {
-    if (!conversationId) return;
-    const requestState = beginBrowserRequest();
-    browserStatus.textContent = 'Loading related Dialogues...';
-    try {
-      const params = new URLSearchParams();
-      applyBrowserRequestFilters(params);
-      const requestUrl = `/api/conversation/${encodeURIComponent(conversationId)}/related?${params.toString()}`;
-      const r = await fetch(requestUrl, { signal: requestState.controller.signal });
-      if (!browserRequestIsCurrent(requestState)) return;
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const data = await r.json();
-      if (!browserRequestIsCurrent(requestState)) return;
-      browserLastData = data;
-      browserRowsCache = data.rows || [];
-      renderBrowserRows(browserRowsCache, '');
-      updateBrowserStatus();
-    } catch (e) {
-      if (!browserRequestIsCurrent(requestState) || e.name === 'AbortError') return;
-      browserStatus.textContent = 'Related lookup failed: ' + (e.message || e);
-    } finally {
-      if (browserRequestIsCurrent(requestState)) browserAbortController = null;
-    }
-  };
-
-  const activateBrowserRow = async (row) => {
-    if (!row || !row.conversation_id) return;
-    activeConvId = row.conversation_id;
-    document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
-      detail: {
-        conversation_id: row.conversation_id,
-        tag: row.tag,
-        title: row.title,
-        source_kind: row.source_kind,
-        result_type: row.result_type,
-        source_conversation_id: row.source_conversation_id,
-        matched_chunk_id: row.matched_chunk_id,
-        matched_turn_index: row.matched_turn_index,
-      },
-    }));
-    positionBrowser();
-  };
-
   // ── Wire-up ─────────────────────────────────────────────────────────
   if (expandIcon)  expandIcon.addEventListener('click',  () => setExpanded(true));
   if (dashProject) dashProject.addEventListener('click', openProjectManager);
@@ -2251,7 +1661,7 @@
   if (newChatIcon) newChatIcon.addEventListener('click', onNewThread);
   if (newThreadCmd) newThreadCmd.addEventListener('click', onNewThread);
   if (forkThreadCmd) forkThreadCmd.addEventListener('click', onForkThread);
-  if (browseCmd) browseCmd.addEventListener('click', openBrowser);
+  if (browseCmd) browseCmd.addEventListener('click', openLibrary);
   if (dash) {
     dash.addEventListener('click', (event) => {
       if (event.target === dash) setExpanded(true);
@@ -2273,7 +1683,6 @@
     [...sidebar.querySelectorAll('.sidebar-row')].forEach(el => {
       el.classList.remove('is-active');
     });
-    closeBrowser();
     if (!isPinned()) setExpanded(false);
   });
 
@@ -2393,16 +1802,6 @@
       closeCreation();
       return;
     }
-    // The Library is non-modal, so focus may legitimately be elsewhere in
-    // the workspace. Escape still closes it before any sidebar shortcut runs.
-    if (e.key === 'Escape'
-        && browserOverlay
-        && browserOverlay.classList.contains('is-open')) {
-      e.preventDefault();
-      closeBrowser();
-      return;
-    }
-
     const shortcuts = window.OraKeyboardShortcuts;
     const cmd = e.metaKey || e.ctrlKey;
     const k   = e.key.toLowerCase();
@@ -2670,6 +2069,12 @@
     setActiveProject: (nexus, name) => setActiveProject(nexus, name),
     openCreation,
     closeCreation,
+    continueLibraryDialogue,
+    forkLibraryDialogue,
+    createFromLibraryDialogue,
+    createFromLibrarySelection,
+    setLibraryDialogueArchived,
+    addLibrarySelectionToActiveProject,
   };
 
   // The server pointer determines where NEW Dialogues are stamped. Reconcile

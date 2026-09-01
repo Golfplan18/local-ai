@@ -2,7 +2,7 @@
 
 *A reader-facing explanation of what Ora is and why it exists. It derives entirely from [[Reference — Ora Technical Documentation]] and introduces no new claims — where you want the mechanism in full, that document has it. This one is for the door you walk through first: why any of this matters.*
 
-> Most of this overview retains the technical documentation's installed-system pin at `7a5e8f40`. Its descriptions of the optional video feature and Aside help are current to their landed Ora implementations (`a68568f2` and `d5d4ceba`). Where it says a thing works, it works on macOS on Apple Silicon — the platform Ora is actually tested on. See the closing section on honest limits.
+> Most of this overview retains the technical documentation's installed-system pin at `7a5e8f40`. Its descriptions of the Knowledge Library, optional video feature, and Aside help are current to their landed Ora implementations. Where it says a thing works, it works on macOS on Apple Silicon — the platform Ora is actually tested on. See the closing section on honest limits.
 
 ---
 
@@ -81,6 +81,20 @@ Exports use the same rule. **Save output to Vault** ignores the browser's render
 Dialogue lifecycle is equally literal. **Close** on Standard or Private hides the Dialogue from the ordinary sidebar while retaining it for restoration in Manage. The sidebar shows the current project's non-Stealth Dialogues plus only the active Stealth Dialogue. **Exit Stealth** merely navigates to the latest readable direct parent — even a Stealth parent — or opens a fresh Standard Dialogue; it closes or deletes nothing. **Delete Forever** is the protected Stealth purge. Descendants survive as detached branches with their own local turns, while explicit exports and copies already held by a provider, Git, or backups remain outside Ora's managed purge boundary.
 
 So the model is not remembering. It is receiving a fresh, bounded, privacy-aware briefing whose provenance remains in the raw exchanges and source notes.
+
+---
+
+## A Library that shows what it knows—and what it does not
+
+Long-lived work ends up in different places: Dialogues, refined Engrams, and ordinary project files. Ora's Knowledge Library gives those three stores one place to inspect without pretending they have become one database. Open it from the Dialogue sidebar and the upper Inquiry and Aside area becomes a single List/Visual workspace. The work you were composing is not thrown away. Your draft, attachments, selected Framework or Analysis, and Aside state are still there when you close it, while Findings and Exhibits stay visible below throughout.
+
+The source choices are genuinely independent. You can see Dialogues alone, Files alone, Dialogues with Engrams, or any other subset. Project scope is separate and mutually exclusive: Commons is the universal eligible view, or one named project means exact membership. List and Visual are two views of the same result state rather than separate searches. Pinning an item shows its known metadata and relationship summary below; it does not quietly replace the active Dialogue. A readable Dialogue moves into the normal reader only when you deliberately choose Continue. A Dialogue with no privacy-admitted exchange can remain visible as an anonymous metadata record while its title and content stay unreadable.
+
+The top field is intentionally bounded. It performs ordinary keyword search over readable Dialogue bodies and exact or fuzzy indexed Engram text after project and source scope, then computes the counts and pages. It does not run semantic search or filter one page and call that a complete answer. Files do not support body keyword search, so Ora keeps matching Dialogues and Engrams while naming the missing File part. Metadata-only Dialogues remain visible without a query but cannot match body text. Files and Engrams still show previews as unavailable rather than turning an internal filesystem path into a browser link.
+
+Checked readable Dialogues and atomic Engrams can ground a new Dialogue through Ora's existing contributor review. Files and metadata-only Dialogues are named as unsupported instead of quietly disappearing, and nothing is created until you complete the normal review and confirmation.
+
+Visual mode follows the same honesty rule. Items are real keyboard-focusable controls arranged around Ora's existing raised O, which becomes the selected-item anchor while the Library is open. If a dense result cannot fit the measured arc without collisions, Visual states its capacity while every row remains in List. Relationship details are also available as ordinary readable text. Inventory summaries that merely say “two supporting relationships” never invent two neighbors. For a pinned readable Dialogue or compatible Engram, Ora can separately ask its existing Related view for named endpoints; it draws an O-centred line only when the returned item also carries a supported stored relationship kind. Similarity suggestions, metadata-only Dialogues, Files, and unavailable authority stay connector-free and say why. Activating a relationship node moves focus to its typed text equivalent, so the picture is never the only disclosure.
 
 ---
 

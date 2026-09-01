@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-/* Focused jsdom coverage for the Library/UI quick-fix bundle.
+/* Focused jsdom coverage for the Knowledge Library workspace and the remaining
+ * independent UI quick fixes that share its Sidebar/Dialogue seams.
  *
  * Run:
  *   node ~/ora/server/static/tests/test-library-ui-quick-fixes.js
@@ -23,6 +24,17 @@ try {
   process.exit(2);
 }
 
+var indexSource = fs.readFileSync(path.resolve(__dirname, '..', '..', 'index-v3.html'), 'utf8');
+var libraryMountMatch = indexSource.match(
+  /<section id="libraryWorkspace"[\s\S]*?<\/section>\s*\n\s*<\/div>\s*\n\s*<script>/
+);
+if (!libraryMountMatch) {
+  console.error('error: stable Knowledge Library mount is missing from index-v3.html');
+  process.exit(2);
+}
+var libraryMountMarkup = libraryMountMatch[0]
+  .replace(/\s*<\/div>\s*\n\s*<script>[\s\S]*$/, '');
+
 var dom = new jsdom.JSDOM(
   '<!doctype html><html><body>' +
   '<div class="left-sidebar">' +
@@ -34,30 +46,99 @@ var dom = new jsdom.JSDOM(
   '  <button class="sidebar-fork-thread-cmd" disabled>Fork</button>' +
   '  <button class="sidebar-browse-cmd">Library</button>' +
   '</div>' +
+  '<div class="ora-shell"></div>' +
   '<div class="output-pane">' +
+  '  <div class="output-pane-header"></div>' +
   '  <span id="outputPaneDisplayName" class="output-pane-display-name">Dialogue</span>' +
   '  <span id="outputPaneModeIcon"></span>' +
   '  <button id="outputPaneNavBack"></button>' +
   '  <button id="outputPaneNavForward"></button>' +
   '  <span id="outputPaneTurnPosition"></span>' +
   '  <span id="outputPaneTimestamp"></span>' +
-  '  <div class="output-content"></div>' +
+  '  <div class="output-content"><p id="preservedFinding">Preserved finding</p></div>' +
   '</div>' +
   '<div class="input-pane"><textarea></textarea></div>' +
+  '<div id="bridgeStrip"><div class="bridge-toolbar"></div></div>' +
+  '<div id="chatZone"><div class="chat-input-pane"><textarea></textarea></div></div>' +
+  '<div id="bridgeStripRight"><div class="bridge-toolbar"></div></div>' +
+  '<section class="visual-pane-shell"><div class="visual-pane-header"></div>' +
+  '  <div class="right-pane"><span id="preservedExhibit">Preserved exhibit</span></div>' +
+  '  <div class="visual-pane-footer"></div>' +
+  '</section>' +
+  '<svg class="spine-wordmark"><g id="logo-o" role="button" tabindex="0" aria-label="Submit">' +
+  '  <text class="library-o-type"></text><text class="library-o-state"></text>' +
+  '</g></svg>' +
+  libraryMountMarkup +
   '</body></html>',
   { url: 'http://localhost/', pretendToBeVisual: true, runScripts: 'outside-only' }
 );
 
 var w = dom.window;
+var measuredWidth = 1024;
+function measuredRect(left, top, width, height) {
+  return {
+    left: left, top: top, width: width, height: height,
+    right: left + width, bottom: top + height,
+    x: left, y: top, toJSON: function () { return this; },
+  };
+}
+w.HTMLElement.prototype.getBoundingClientRect = function () {
+  if (this.classList && this.classList.contains('library-visual-map')) {
+    return measuredRect(80, 90, measuredWidth, 188);
+  }
+  if (this.classList && this.classList.contains('library-visual-node')) {
+    return measuredRect(
+      80 + (parseFloat(this.style.left) || 0),
+      90 + (parseFloat(this.style.top) || 0),
+      this.classList.contains('library-visual-node--related') ? 112 : 124,
+      50
+    );
+  }
+  return measuredRect(0, 0, 0, 0);
+};
+function installMeasuredGeometry() {
+  var left = 80;
+  var spine = 56;
+  var column = (measuredWidth - spine) / 2;
+  var upperHeight = 260;
+  var bridgeHeight = 48;
+  w.document.querySelector('.input-pane').getBoundingClientRect = function () {
+    return measuredRect(left, 16, column, upperHeight);
+  };
+  w.document.getElementById('bridgeStrip').getBoundingClientRect = function () {
+    return measuredRect(left, 16 + upperHeight, column, bridgeHeight);
+  };
+  w.document.getElementById('chatZone').getBoundingClientRect = function () {
+    return measuredRect(left + column + spine, 16, column, upperHeight);
+  };
+  w.document.getElementById('bridgeStripRight').getBoundingClientRect = function () {
+    return measuredRect(left + column + spine, 16 + upperHeight, column, bridgeHeight);
+  };
+  w.document.getElementById('logo-o').getBoundingClientRect = function () {
+    return measuredRect(left + column + 7, 16 + upperHeight - 21, 42, 42);
+  };
+  w.document.getElementById('libraryWorkspace').getBoundingClientRect = function () {
+    return measuredRect(left, 16, measuredWidth, upperHeight + bridgeHeight);
+  };
+  w.document.getElementById('libraryWorkspaceResults').getBoundingClientRect = function () {
+    return measuredRect(left, 90, measuredWidth, upperHeight + bridgeHeight - 120);
+  };
+}
+installMeasuredGeometry();
 var forkRequests = 0;
+var forkRequestBodies = [];
 var browserRequests = 0;
 var browserRequestUrls = [];
 var relatedRequestUrls = [];
+var queuedRelatedResponses = [];
 var queuedBrowserResponses = [];
+var libraryRequestUrls = [];
+var queuedLibraryResponses = [];
 var sidebarListRequests = 0;
 var envelopeRequests = 0;
 var projectWrites = [];
 var bulkFailIds = new Set();
+var activeProject = 'commons';
 var settingsTabs = [];
 var envelopes = {
   'named-live': {
@@ -94,6 +175,70 @@ var envelopes = {
   },
 };
 
+function libraryRow(id, source, title, options) {
+  options = options || {};
+  return {
+    id: id,
+    source: source,
+    title: title,
+    metadata: Object.assign({
+      project_ids: ['ora'],
+      tags: ['library'],
+      lifecycle: 'active',
+      privacy: 'standard',
+      modified_at: '2026-09-01T12:00:00Z',
+      content_type: 'text/markdown',
+      item_type: source === 'dialogues' ? 'Dialogue' : 'note',
+    }, options.metadata || {}),
+    unavailable_fields: options.unavailable_fields || [],
+    provenance: { available: true, kind: source, identity: id, reason: null },
+    relationships: options.relationships || {
+      state: 'fresh',
+      updated_at: '2026-08-31T10:00:00Z',
+      reason: null,
+      summaries: [{ type: 'supports', direction: 'outgoing', count: 1, confidence: 'recorded' }],
+    },
+    preview: options.preview || {
+      kind: 'text', route: 'text-pane', available: true, reason: null,
+      locator: source === 'dialogues' ? { dialogue_id: id.replace(/^dialogues:/, '') } : {},
+    },
+    editability: { available: true, editable: true, descriptor_only: true, reason: null },
+  };
+}
+
+function libraryPayload(rows, options) {
+  options = options || {};
+  var total = options.total === undefined ? rows.length : options.total;
+  var complete = options.complete !== false;
+  return {
+    sources: options.sources || ['dialogues', 'engrams', 'files'],
+    rows: rows,
+    total: total,
+    source_counts: options.source_counts || { dialogues: total, engrams: 0, files: 0 },
+    facets: {
+      projects: { counts: { ora: total }, unavailable: 0, complete: complete },
+      item_type: {
+        counts: options.item_type_counts || { Dialogue: total },
+        unavailable: 0,
+        complete: complete,
+      },
+      content_type: { counts: { 'text/markdown': total }, unavailable: 0, complete: complete },
+    },
+    universe: {
+      complete: complete,
+      providers: {},
+      unavailable_sources: complete ? [] : [{ source: 'files', reason: 'file inventory unavailable' }],
+    },
+    pagination: {
+      offset: options.offset || 0,
+      limit: 100,
+      returned: rows.length,
+      has_more: Boolean(options.has_more),
+      next_offset: options.has_more ? (options.next_offset || rows.length) : null,
+    },
+  };
+}
+
 function responseObject(ok, payload, status, headerValues) {
   var values = headerValues || {};
   return {
@@ -117,12 +262,32 @@ function deferredResponse() {
     promise: new Promise(function (done) { resolve = done; }),
     options: null,
     resolve: function (payload) { resolve(responseObject(true, payload)); },
+    resolveError: function (payload, status) {
+      resolve(responseObject(false, payload, status || 500));
+    },
   };
   return item;
 }
 
 w.fetch = function (url, opts) {
   var decoded = decodeURIComponent(String(url));
+  if (decoded.indexOf('/api/library/browser?') === 0) {
+    libraryRequestUrls.push(decoded);
+    if (queuedLibraryResponses.length) {
+      var queuedLibrary = queuedLibraryResponses.shift();
+      if (queuedLibrary && queuedLibrary.promise) {
+        queuedLibrary.options = opts || {};
+        return queuedLibrary.promise;
+      }
+      return response(true, queuedLibrary);
+    }
+    return response(true, libraryPayload([
+      libraryRow('dialogues:named-live', 'dialogues', 'Saved Dialogue Name'),
+      libraryRow('engrams:claim', 'engrams', 'Atomic Claim Title'),
+    ], { sources: ['dialogues', 'engrams'], source_counts: {
+      dialogues: 1, engrams: 1, files: 0,
+    } }));
+  }
   if (decoded.indexOf('/api/conversations/browser?') === 0) {
     browserRequests += 1;
     browserRequestUrls.push(decoded);
@@ -131,7 +296,7 @@ w.fetch = function (url, opts) {
       queued.options = opts || {};
       return queued.promise;
     }
-    return response(true, {
+    var browserPayload = {
       rows: [
         {
           conversation_id: 'named-live',
@@ -183,7 +348,11 @@ w.fetch = function (url, opts) {
           unavailable: 15,
         },
       },
-    });
+    };
+    if (new w.URL(decoded, w.location.href).searchParams.get('purpose') === 'creation') {
+      browserPayload.review_token = 'library-context-review-token';
+    }
+    return response(true, browserPayload);
   }
   if (decoded === '/api/projects/meta?status=active') {
     return response(true, {
@@ -191,6 +360,16 @@ w.fetch = function (url, opts) {
         { nexus: 'commons', name: 'Commons' },
         { nexus: 'project-a', name: 'Project A' },
       ],
+    });
+  }
+  if (decoded === '/api/active-project') {
+    if (opts && opts.method === 'POST') {
+      activeProject = JSON.parse(opts.body || '{}').nexus || 'commons';
+    }
+    return response(true, {
+      ok: true,
+      nexus: activeProject,
+      canonical_nexus: activeProject,
     });
   }
   var projectWrite = decoded.match(/^\/api\/conversation\/([^/]+)\/projects$/);
@@ -209,6 +388,14 @@ w.fetch = function (url, opts) {
   }
   if (/^\/api\/conversation\/[^/]+\/related\?/.test(decoded)) {
     relatedRequestUrls.push(decoded);
+    if (queuedRelatedResponses.length) {
+      var queuedRelated = queuedRelatedResponses.shift();
+      if (queuedRelated && queuedRelated.promise) {
+        queuedRelated.options = opts || {};
+        return queuedRelated.promise;
+      }
+      return response(true, queuedRelated);
+    }
     return response(true, {
       rows: [{
         conversation_id: 'named-live',
@@ -237,6 +424,7 @@ w.fetch = function (url, opts) {
   }
   if (/\/api\/conversation\/[^/]+\/fork$/.test(decoded)) {
     forkRequests += 1;
+    forkRequestBodies.push(JSON.parse((opts && opts.body) || '{}'));
     return response(true, { new_conversation_id: 'forked-live' });
   }
   if (/\/api\/conversation\/[^/]+\/mark-read$/.test(decoded)) return response(true, { ok: true });
@@ -276,6 +464,7 @@ function loadScript(rel) {
 loadScript('js/sidebar.js');
 loadScript('js/v3-state.js');
 loadScript('js/v3-conversation.js');
+loadScript('js/library-workspace.js');
 w.document.dispatchEvent(new w.Event('DOMContentLoaded', { bubbles: true }));
 
 var results = [];
@@ -285,6 +474,30 @@ function record(name, ok, detail) {
 }
 function flush() {
   return new Promise(function (resolve) { w.setTimeout(resolve, 0); });
+}
+
+function visualPlacementIsSafe() {
+  var map = w.document.querySelector('.library-visual-map');
+  if (!map) return false;
+  var mapRect = map.getBoundingClientRect();
+  var nodes = Array.from(map.querySelectorAll('.library-visual-node:not([hidden])'));
+  if (!nodes.length) return false;
+  var boxes = nodes.map(function (node) { return node.getBoundingClientRect(); });
+  var contained = boxes.every(function (box) {
+    return box.left >= mapRect.left
+      && box.top >= mapRect.top
+      && box.right <= mapRect.right
+      && box.bottom <= mapRect.bottom;
+  });
+  var nonOverlapping = boxes.every(function (box, index) {
+    return boxes.slice(index + 1).every(function (other) {
+      return box.right <= other.left
+        || other.right <= box.left
+        || box.bottom <= other.top
+        || other.bottom <= box.top;
+    });
+  });
+  return contained && nonOverlapping;
 }
 
 async function run() {
@@ -374,356 +587,636 @@ async function run() {
   w.OraConversation.appendUser('First prompt');
   record('first turn enables Fork', fork.disabled === false);
 
-  var initialBrowseButton = w.document.querySelector('.sidebar-browse-cmd');
-  initialBrowseButton.focus();
-  initialBrowseButton.click();
-  await flush();
-  await flush();
-  record('Library fetched rows', browserRequests > 0, 'requests=' + browserRequests);
-  record('Library row renders title',
-    !!w.document.querySelector('.conversation-browser-row .conversation-browser-title'));
-  record('Library row omits snippet element',
-    w.document.querySelector('.conversation-browser-snippet') === null);
-  record('Library status renders authoritative server totals and source counts',
-    w.document.querySelector('.conversation-browser-status').textContent
-      .indexOf('4 shown of 15 results (10 live, 3 archived, 2 engrams)') !== -1,
-    w.document.querySelector('.conversation-browser-status').textContent);
+  // Knowledge Library: inventory/paging truth, mixed sources, one shared
+  // List/Visual state, native O semantics, and lower-pane preservation.
+  var visibleDialogue = libraryRow(
+    'dialogues:named-live', 'dialogues', 'Saved Dialogue Name'
+  );
+  var metadataDialogue = libraryRow(
+    'dialogues:metadata-only', 'dialogues', 'Private Dialogue', {
+      metadata: { privacy: 'metadata_only' },
+      unavailable_fields: ['content_type'],
+      preview: {
+        kind: 'unsupported', route: 'metadata-only', available: false,
+        reason: 'No admitted exchanges are readable.',
+      },
+      relationships: {
+        state: 'stale', reason: 'Relationship snapshot is stale.',
+        summaries: [{ type: 'supports', direction: 'outgoing', count: 2, confidence: 'recorded' }],
+      },
+    }
+  );
+  var secondDialogue = libraryRow(
+    'dialogues:second-live', 'dialogues', 'Second Dialogue'
+  );
+  var contextEngram = libraryRow(
+    'engrams:claim', 'engrams', 'Atomic Claim Title', {
+      metadata: { item_type: 'Engram', tags: ['atomic'] },
+    }
+  );
+  var nonAtomicEngram = libraryRow(
+    'engrams:reference', 'engrams', 'Reference Engram', {
+      metadata: { item_type: 'Engram', tags: ['reference'] },
+    }
+  );
+  var contextFile = libraryRow(
+    'files:planning-brief', 'files', 'Planning brief.pdf', {
+      metadata: { item_type: 'File', privacy: 'private' },
+    }
+  );
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue], {
+    total: 2, complete: true, has_more: true, next_offset: 1,
+  }));
 
-  var library = w.document.querySelector('.conversation-browser-overlay');
-  var search = w.document.querySelector('.conversation-browser-search');
-  var row = w.document.querySelector('.conversation-browser-row');
-  var check = row.querySelector('.conversation-browser-check');
-  var related = row.querySelector('.conversation-browser-related');
-  var dismiss = row.querySelector('.conversation-browser-dismiss');
-  record('Library dialog has an accessible name',
-    library.getAttribute('aria-label') === 'Library');
-  record('Library exposes non-modal dialog semantics',
-    library.getAttribute('role') === 'dialog' &&
-    library.getAttribute('aria-modal') === 'false');
-  record('Library search has a programmatic label',
-    search.getAttribute('aria-label') === 'Search Dialogues');
-  var tagsInput = w.document.querySelector('.conversation-browser-tags-input');
-  var archivedToggle = w.document.querySelector('.conversation-browser-filter-archived');
-  var projectFilter = w.document.querySelector('.conversation-browser-project');
-  var dateFrom = w.document.querySelector('.conversation-browser-date-from');
-  var dateTo = w.document.querySelector('.conversation-browser-date-to');
-  var privacyFilter = w.document.querySelector('.conversation-browser-privacy');
-  var lifecycleFilter = w.document.querySelector('.conversation-browser-lifecycle');
-  var relationshipFilter = w.document.querySelector('.conversation-browser-relationship');
-  var localRestrictionFilter = w.document.querySelector('.conversation-browser-local-restriction');
-  record('Library tag filter communicates ALL-selected narrowing',
-    tagsInput.getAttribute('aria-label') === 'Filter by tags (all selected tags must match)');
-  record('Library archived toggle is labelled and opt-in',
-    archivedToggle.checked === false &&
-    archivedToggle.closest('label').textContent.indexOf('Show archived') !== -1);
-  record('Library exposes server-backed browse controls including Commons',
-    Array.from(projectFilter.options).some(function (option) { return option.value === 'commons'; })
-      && dateFrom.getAttribute('aria-label') === 'Filter from date (inclusive)'
-      && dateTo.getAttribute('aria-label') === 'Filter through date (inclusive)'
-      && privacyFilter && lifecycleFilter && relationshipFilter && localRestrictionFilter);
-  record('Library renders authoritative facet counts and unavailable metadata',
-    privacyFilter.options[1].textContent === 'Standard (12)'
-      && localRestrictionFilter.dataset.available === 'false'
-      && localRestrictionFilter.title === 'Metadata unavailable');
-  var initialBrowserParams = new w.URL(browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
-  record('Library defaults to hiding archived engrams',
-    initialBrowserParams.get('show_archived') === '0'
-      && !initialBrowserParams.has('tags')
-      && initialBrowserParams.get('project_id') === 'commons');
+  var preservedFinding = w.document.createElement('p');
+  preservedFinding.textContent = 'Preserved finding';
+  var preservedExhibit = w.document.createElement('span');
+  preservedExhibit.textContent = 'Preserved exhibit';
+  w.document.querySelector('.output-content').appendChild(preservedFinding);
+  w.document.querySelector('.right-pane').appendChild(preservedExhibit);
+  var browseButton = w.document.querySelector('.sidebar-browse-cmd');
+  browseButton.focus();
+  browseButton.click();
+  await flush();
+  await flush();
+  var library = w.document.getElementById('libraryWorkspace');
+  var librarySearch = w.document.getElementById('librarySearchInput');
+  var initialLibraryParams = new w.URL(
+    libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('Library opens the stable production mount with all independent sources',
+    !library.hidden
+      && initialLibraryParams.getAll('source').join(',') === 'dialogues,engrams,files'
+      && librarySearch.getAttribute('aria-label') === 'Search readable Dialogue and Engram text');
+  record('Library takes the upper workspace inert without destroying it',
+    w.document.querySelector('.input-pane').hasAttribute('inert')
+      && w.document.getElementById('chatZone').hasAttribute('inert')
+      && w.document.body.classList.contains('library-workspace-open'));
+  record('Library geometry is measured from the live 1024px upper workspace and bridge',
+    library.style.width === '1024px'
+      && library.style.getPropertyValue('--library-bridge-height') === '48px',
+    'width=' + library.style.width);
+  record('server total and pagination remain authoritative',
+    w.OraLibraryWorkspace.getState().loaded === 1
+      && w.OraLibraryWorkspace.getState().total === 2
+      && w.OraLibraryWorkspace.getState().pagination.has_more === true);
 
-  projectFilter.value = 'project-a';
-  dateFrom.value = '2026-08-01';
-  dateTo.value = '2026-08-31';
-  privacyFilter.value = 'contains_private';
-  lifecycleFilter.value = 'inactive';
-  relationshipFilter.value = 'direct-child';
-  localRestrictionFilter.value = 'unrestricted';
-  relationshipFilter.dispatchEvent(new w.Event('change', { bubbles: true }));
-  await flush();
-  await flush();
-  var filteredParams = new w.URL(
-    browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
-  record('Library sends project, inclusive dates, privacy, lifecycle, relationship, and local filters',
-    filteredParams.get('project_id') === 'project-a'
-      && filteredParams.get('date_from') === '2026-08-01'
-      && filteredParams.get('date_to') === '2026-08-31'
-      && filteredParams.get('privacy') === 'contains_private'
-      && filteredParams.get('lifecycle') === 'inactive'
-      && filteredParams.get('relationship') === 'direct-child'
-      && filteredParams.get('local_restriction') === 'unrestricted');
+  var partialGroupSelect = w.document.querySelector('[data-library-group]');
+  partialGroupSelect.value = 'source';
+  partialGroupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var partialListIsUngrouped = w.document.querySelectorAll('.library-result-group').length === 0
+    && w.document.getElementById('libraryWorkspaceNotice').textContent
+      .indexOf('grouping') !== -1;
+  w.document.querySelector('[data-library-view="visual"]').click();
+  var partialVisualIsUngrouped = w.document.querySelector('.library-visual-group-state').textContent
+    .indexOf('unavailable until every') !== -1
+    && w.document.querySelectorAll('.library-visual-node__group').length === 0;
+  w.document.querySelector('[data-library-view="list"]').click();
+  record('partial inventory keeps shared grouping visibly unavailable in List and Visual',
+    partialListIsUngrouped && partialVisualIsUngrouped);
 
-  tagsInput.value = ' Atomic, framework/instruction, atomic ';
-  tagsInput.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var supersededLoadAll = deferredResponse();
+  queuedLibraryResponses.push(supersededLoadAll);
+  w.document.querySelector('[data-library-command="load-all"]').click();
   await flush();
-  await flush();
-  var taggedBrowserParams = new w.URL(browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
-  record('Library sends normalized unique tags to browser search',
-    taggedBrowserParams.get('tags') === 'atomic,framework/instruction');
 
-  archivedToggle.checked = true;
-  archivedToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue], {
+    total: 1, complete: false,
+    source_counts: { dialogues: 1, engrams: 0, files: 0 },
+  }));
+  librarySearch.value = 'hidden body term';
+  librarySearch.dispatchEvent(new w.Event('input', { bubbles: true }));
   await flush();
   await flush();
-  var archivedBrowserParams = new w.URL(browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
-  record('Library show-archived toggle updates browser search',
-    archivedBrowserParams.get('show_archived') === '1');
+  var queryParams = new w.URL(
+    libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('keyword search is server-side over readable Dialogue and indexed Engram text',
+    queryParams.get('q') === 'hidden body term'
+      && w.document.querySelector('.library-list-row__pin').textContent.indexOf('Saved Dialogue Name') !== -1
+      && w.OraLibraryWorkspace.getState().total === 1
+      && w.OraLibraryWorkspace.getState().loadingAll === false
+      && supersededLoadAll.options.signal.aborted
+      && w.document.getElementById('libraryWorkspaceNotice').textContent
+        .indexOf('file inventory unavailable') !== -1);
+  supersededLoadAll.resolve(libraryPayload([metadataDialogue], {
+    total: 2, complete: true, offset: 1,
+  }));
+  await flush();
+  await flush();
+  record('replacement query supersedes generation-owned Load all and ignores its late page',
+    w.OraLibraryWorkspace.getState().query === 'hidden body term'
+      && w.OraLibraryWorkspace.getState().loaded === 1
+      && !w.document.querySelector('[data-library-row-id="dialogues:metadata-only"]'));
 
-  related.click();
+  var failedReplacement = deferredResponse();
+  queuedLibraryResponses.push(failedReplacement);
+  var failedReplacementPromise = w.OraLibraryWorkspace.refresh();
+  failedReplacement.resolveError({ error: 'replacement failed' }, 503);
+  await failedReplacementPromise;
   await flush();
-  var relatedParams = new w.URL(relatedRequestUrls[relatedRequestUrls.length - 1], w.location.href).searchParams;
-  record('Library forwards tags and archived visibility to related lookup',
-    relatedParams.get('tags') === 'atomic,framework/instruction' &&
-    relatedParams.get('show_archived') === '1');
-  var titleButton = row.querySelector('.conversation-browser-title');
-  record('Library row exposes a labelled group',
-    row.getAttribute('role') === 'group' &&
-    row.getAttribute('aria-label') === 'Dialogue: Saved Dialogue Name');
-  record('Library title is a keyboard-focusable open control',
-    titleButton.tagName === 'BUTTON' &&
-    titleButton.getAttribute('aria-label') === 'Open Dialogue: Saved Dialogue Name');
-  record('Library row controls have specific accessible names',
-    check.getAttribute('aria-label') === 'Select Dialogue: Saved Dialogue Name' &&
-    related.getAttribute('aria-label') === 'Show items related to Saved Dialogue Name' &&
-    dismiss.getAttribute('aria-label') === 'Remove Saved Dialogue Name from these results');
+  var failedReplacementParams = new w.URL(
+    libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('failed replacement keeps old rows and exposes replacement retry',
+    failedReplacementParams.get('offset') === '0'
+      && w.document.querySelector('[data-library-row-id="dialogues:named-live"]')
+      && !!w.document.querySelector('[data-library-command="retry"]'));
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue], {
+    total: 1, complete: false,
+    source_counts: { dialogues: 1, engrams: 0, files: 0 },
+  }));
+  w.document.querySelector('[data-library-command="retry"]').click();
+  await flush();
+  await flush();
+  var replacementRetryParams = new w.URL(
+    libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('replacement retry restarts at offset zero without appending stale rows',
+    replacementRetryParams.get('offset') === '0'
+      && w.OraLibraryWorkspace.getState().loaded === 1
+      && w.document.querySelectorAll('.library-list-row').length === 1);
 
-  // Related results above intentionally narrow to one row. Return to the
-  // complete Library result set before exercising bulk selection.
-  w.document.querySelector('.conversation-browser-search-btn').click();
-  await flush();
-  await flush();
-  var currentRows = Array.from(w.document.querySelectorAll('.conversation-browser-row'));
-  var firstCheck = currentRows[0].querySelector('.conversation-browser-check');
-  var secondCheck = currentRows[1].querySelector('.conversation-browser-check');
-  var thirdCheck = currentRows[2].querySelector('.conversation-browser-check');
-  var engramCheck = currentRows[3].querySelector('.conversation-browser-check');
-  firstCheck.checked = true;
-  firstCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
-  secondCheck.checked = true;
-  secondCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
-  w.document.querySelector('.conversation-browser-search-btn').click();
-  await flush();
-  await flush();
-  currentRows = Array.from(w.document.querySelectorAll('.conversation-browser-row'));
-  record('Library keeps live Dialogue selection through rerender',
-    currentRows[0].querySelector('.conversation-browser-check').checked === true
-      && currentRows[1].querySelector('.conversation-browser-check').checked === true);
-  record('Library prevents non-live project association',
-    engramCheck.disabled === true);
+  partialGroupSelect.value = 'none';
+  partialGroupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
 
-  var bulkProject = w.document.querySelector('.conversation-browser-bulk-project');
-  var bulkAdd = w.document.querySelector('.conversation-browser-bulk-add');
-  record('Library bulk target excludes Commons',
-    Array.from(bulkProject.options).every(function (option) { return option.value !== 'commons'; })
-      && Array.from(bulkProject.options).some(function (option) { return option.value === 'project-a'; }));
-  bulkProject.value = 'project-a';
-  bulkProject.dispatchEvent(new w.Event('change', { bubbles: true }));
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue], {
+    total: 5, complete: true, has_more: true, next_offset: 1,
+  }));
+  w.document.querySelector('[data-library-command="clear-search"]').click();
+  await flush();
+  await flush();
+  record('clearing keyword search restores authoritative inventory paging',
+    !new w.URL(libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href).searchParams.has('q')
+      && w.OraLibraryWorkspace.getState().total === 5
+      && w.OraLibraryWorkspace.getState().pagination.has_more === true);
+
+  queuedLibraryResponses.push(libraryPayload([
+    visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
+  ], {
+    total: 5, complete: true, offset: 1,
+    source_counts: { dialogues: 2, engrams: 2, files: 1 },
+    item_type_counts: { Dialogue: 2, Engram: 2, File: 1 },
+  }));
+  w.document.querySelector('[data-library-command="load-more"]').click();
+  await flush();
+  await flush();
+  record('stable-ID append deduplicates authoritative pages',
+    w.OraLibraryWorkspace.getState().loaded === 5
+      && w.document.querySelectorAll('.library-list-row').length === 5);
+  var libraryTypeFilter = w.document.querySelector('[data-library-filter="type"]');
+  var typeOptions = Array.from(libraryTypeFilter.options).map(function (option) { return option.value; });
+  libraryTypeFilter.value = 'Dialogue';
+  libraryTypeFilter.dispatchEvent(new w.Event('change', { bubbles: true }));
+  record('Type filter exposes and positively matches authoritative item_type values only',
+    typeOptions.indexOf('Dialogue') !== -1
+      && typeOptions.indexOf('text/markdown') === -1
+      && w.document.querySelectorAll('.library-list-row').length === 2);
+  queuedLibraryResponses.push(libraryPayload([contextEngram], {
+    total: 1,
+    source_counts: { dialogues: 0, engrams: 1, files: 0 },
+    item_type_counts: { Engram: 1 },
+  }));
+  await w.OraLibraryWorkspace.refresh();
+  await flush();
+  var zeroDialogueOption = Array.from(libraryTypeFilter.options).find(function (option) {
+    return option.value === 'Dialogue';
+  });
+  record('selected Type survives a facet rebuild as an honest zero-count filter',
+    w.OraLibraryWorkspace.getState().filters.type === 'Dialogue'
+      && !!zeroDialogueOption
+      && zeroDialogueOption.textContent === 'Dialogue (0)'
+      && zeroDialogueOption.dataset.zeroCount === 'true'
+      && w.document.querySelectorAll('.library-list-row').length === 0);
+  queuedLibraryResponses.push(libraryPayload([
+    visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
+  ], {
+    total: 5,
+    source_counts: { dialogues: 2, engrams: 2, files: 1 },
+    item_type_counts: { Dialogue: 2, Engram: 2, File: 1 },
+  }));
+  await w.OraLibraryWorkspace.refresh();
+  await flush();
+  w.document.querySelector('[data-library-command="clear-filters"]').click();
+
+  Array.from(w.document.querySelectorAll('.library-list-row')).forEach(function (item) {
+    var checkbox = item.querySelector('input[type="checkbox"]');
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new w.Event('change', { bubbles: true }));
+  });
+  record('checked-context action is reachable through Actions without a pinned item',
+    w.OraLibraryWorkspace.getState().pinnedId === null
+      && !w.document.querySelector('[data-library-popover="actions"]').disabled
+      && !!w.document.querySelector('[data-library-action="new-dialogue"]'));
+  w.document.querySelector('[data-library-action="new-dialogue"]').click();
+  await flush();
+  record('New Dialogue names unsupported checked context before review',
+    w.document.querySelector('.conversation-create-overlay').classList.contains('is-open')
+      && w.document.querySelector('#conversationCreateHeading').textContent === 'New Private Dialogue'
+      && w.document.querySelector('.conversation-create-status').textContent.indexOf('metadata-only Dialogue') !== -1
+      && w.document.querySelector('.conversation-create-status').textContent.indexOf('Planning brief.pdf (File)') !== -1
+      && w.document.querySelector('.conversation-create-status').textContent.indexOf('Reference Engram (non-atomic Engram)') !== -1);
+  var creationDescription = w.document.querySelector('.conversation-create-description');
+  creationDescription.value = 'Use the checked grounded context to plan this new dialogue.';
+  creationDescription.dispatchEvent(new w.Event('input', { bubbles: true }));
+  w.document.querySelector('.conversation-create-discover').click();
+  await flush();
+  await flush();
+  var creationParams = new w.URL(
+    browserRequestUrls[browserRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('only checked readable Dialogues and atomic Engrams enter reviewed creation',
+    creationParams.getAll('include_ref').sort().join(',') === 'engram:claim,named-live'
+      && creationParams.get('target_tag') === 'private'
+      && !creationParams.getAll('include_ref').includes('engram:reference')
+      && Array.from(w.document.querySelectorAll('.conversation-create-add'))
+        .filter(function (button) { return button.textContent === 'Added'; }).length === 2);
+  w.document.querySelector('.conversation-create-close').click();
+  queuedLibraryResponses.push(libraryPayload([
+    visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
+  ], {
+    total: 5, source_counts: { dialogues: 2, engrams: 2, files: 1 },
+  }));
+  browseButton.click();
+  await flush();
+  await flush();
+  Array.from(w.document.querySelectorAll('.library-list-row input[type="checkbox"]')).forEach(function (checkbox) {
+    if (!checkbox.checked) return;
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new w.Event('change', { bubbles: true }));
+  });
+
+  var extensionActionRuns = 0;
+  w.document.addEventListener('ora:library-actions-requested', function appendProofAction(event) {
+    event.detail.actions.push({
+      id: 'proof-extension', label: 'Extension proof action',
+      run: function () { extensionActionRuns += 1; },
+    });
+  });
+  Array.from(w.document.querySelectorAll('.library-list-row__pin')).find(function (button) {
+    return button.textContent.indexOf('Private Dialogue') !== -1;
+  }).click();
+  record('metadata-only Dialogues stay visible but unreadable',
+    w.document.querySelector('.library-preview-layer--findings').textContent
+      .indexOf('intentionally metadata-only') !== -1
+      && !Array.from(w.document.querySelectorAll('[data-library-action]')).some(function (button) {
+        return ['Continue Dialogue', 'Fork Dialogue', 'New Dialogue with contributor', 'Archive Dialogue']
+          .includes(button.textContent);
+      }));
+  record('relationship disclosure is native keyboard-readable and exposes missing family truthfully',
+    w.document.querySelector('.library-relationships summary').tagName === 'SUMMARY'
+      && w.document.querySelector('.library-relationships').textContent.indexOf('family unavailable') !== -1
+      && w.document.querySelector('.library-relationships').textContent.indexOf('snapshot is stale') !== -1
+      && w.document.querySelector('.library-relationships summary').textContent
+        .indexOf('Relationships (count unavailable) — state stale; updated time unavailable') !== -1);
+  record('G1.27-style contextual actions extend rather than replace built-ins',
+    !!w.document.querySelector('[data-library-action="proof-extension"]')
+      && !!w.document.querySelector('[data-library-action="related"]'));
+  w.document.querySelector('[data-library-action="proof-extension"]').click();
+  await flush();
+  record('extension contextual action remains callable', extensionActionRuns === 1);
+  record('native O becomes the selected-item anchor with compact state only',
+    w.document.getElementById('logo-o').getAttribute('aria-label').indexOf('Private Dialogue') !== -1
+      && w.document.querySelector('.library-o-type').textContent === 'Dialogues'
+      && w.document.querySelector('.library-o-state').textContent === 'metadata');
+  w.OraLibraryWorkspace.activatePinned();
+  record('O activation hands keyboard focus to relationship disclosure',
+    w.document.activeElement === w.document.querySelector('.library-relationships summary'));
+
+  w.document.querySelector('[data-library-view="visual"]').click();
+  record('List and Visual share the pinned result through the native O without duplicating it',
+    w.OraLibraryWorkspace.getState().view === 'visual'
+      && w.document.querySelectorAll('.library-visual-node').length === 4
+      && !w.document.querySelector('[data-library-node-id="dialogues:metadata-only"]')
+      && w.document.getElementById('logo-o').getAttribute('aria-label').indexOf('Private Dialogue') !== -1);
+  record('Visual invents no connector from relationship summaries without endpoints',
+    w.document.querySelectorAll('.library-visual-connectors line').length === 0
+      && w.document.querySelector('.library-visual-edge-state').textContent
+        .indexOf('privacy-safe Related locator') !== -1);
+
+  w.document.querySelector('[data-library-view="list"]').click();
+  queuedRelatedResponses.push({
+    rows: [
+      {
+        conversation_id: 'named-live', source_kind: 'live', title: 'Saved Dialogue Name',
+        relationship: { available: true, kinds: [] }, relation: 'self',
+      },
+      {
+        conversation_id: 'second-live', source_kind: 'live', title: 'Second Dialogue', score: 90,
+        relationship: { available: true, kinds: ['direct-child', 'shared-project'] },
+        relation: 'direct-child',
+      },
+      {
+        conversation_id: 'semantic-only', source_kind: 'engram', title: 'Semantic suggestion', score: 0.81,
+        relationship: { available: false, kinds: [] }, relation: 'semantic',
+      },
+    ],
+    total: 3,
+    source_counts: { live: 2, archive: 0, engram: 1 },
+    facets: {},
+  });
+  Array.from(w.document.querySelectorAll('.library-list-row__pin')).find(function (button) {
+    return button.textContent.indexOf('Saved Dialogue Name') !== -1;
+  }).click();
+  record('fresh numeric relationship summaries expose their exact count while endpoint detail loads',
+    w.document.querySelector('.library-relationships summary').textContent
+      .indexOf('Relationships (1) — state fresh') !== -1);
+  await flush();
+  await flush();
+  record('readable Dialogue keeps its existing contextual actions',
+    ['related', 'continue', 'fork', 'contributor', 'archive'].every(function (id) {
+      return !!w.document.querySelector('[data-library-action="' + id + '"]');
+    }));
+  w.document.querySelector('[data-library-view="visual"]').click();
+  await new Promise(function (resolve) { w.requestAnimationFrame(resolve); });
+  var relatedParams = new w.URL(
+    relatedRequestUrls[relatedRequestUrls.length - 1], w.location.href
+  );
+  record('pinned readable Dialogue uses Related only as relationship detail with active source filters',
+    relatedParams.pathname === '/api/conversation/named-live/related'
+      && relatedParams.searchParams.get('conversations') === '1'
+      && relatedParams.searchParams.get('engrams') === '1'
+      && !relatedParams.searchParams.has('q'));
+  record('explicit Related endpoint authority draws from the live O and withholds semantic suggestions',
+    w.document.querySelectorAll('.library-visual-connectors line').length === 1
+      && w.document.querySelector('.library-visual-connectors line').dataset.relationshipType
+        .indexOf('direct-child') !== -1
+      && w.document.querySelectorAll('.library-visual-node--related').length === 1
+      && w.document.querySelector('.library-visual-edge-state').textContent
+        .indexOf('lacked edge authority') !== -1
+      && visualPlacementIsSafe());
+  w.document.querySelector('.library-visual-node--related').click();
+  record('related nodes are keyboard buttons with equivalent typed relationship disclosure',
+    w.document.querySelector('.library-visual-node--related').tagName === 'BUTTON'
+      && w.document.activeElement.dataset.relatedEndpointId === 'second-live'
+      && w.document.querySelector('.library-relationships').textContent.indexOf('outgoing direct-child') !== -1
+      && w.document.querySelector('.library-relationships').textContent.indexOf('peer shared-project') !== -1
+      && w.document.querySelector('.library-relationships').textContent.indexOf('family unavailable') !== -1
+      && w.document.querySelector('.library-relationships').textContent.indexOf('confidence unavailable') !== -1
+      && w.document.querySelector('.library-relationships').textContent.indexOf('freshness unavailable') !== -1
+      && w.document.querySelector('.library-relationships summary').textContent
+        .indexOf('Relationships (1) — state fresh; updated 2026-08-31T10:00:00Z') !== -1);
+
+  await w.OraSidebar.setActiveProject('project-a', 'Project A');
+  w.document.querySelector('[data-library-view="list"]').click();
+  var savedDialogueListRow = Array.from(w.document.querySelectorAll('.library-list-row')).find(function (item) {
+    return item.textContent.indexOf('Saved Dialogue Name') !== -1;
+  });
+  var savedDialogueCheck = savedDialogueListRow.querySelector('input[type="checkbox"]');
+  savedDialogueCheck.checked = true;
+  savedDialogueCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var stableRefresh = deferredResponse();
+  queuedLibraryResponses.push(stableRefresh);
+  var stableRefreshPromise = w.OraLibraryWorkspace.refresh();
+  record('replacement refresh keeps the prior pin and selection until its response commits',
+    w.OraLibraryWorkspace.getState().pinnedId === 'dialogues:named-live'
+      && w.OraLibraryWorkspace.getState().selectedIds.includes('dialogues:named-live')
+      && w.document.querySelector('.library-list-row__pin').textContent.indexOf('Saved Dialogue Name') !== -1);
+  stableRefresh.resolve(libraryPayload([visibleDialogue, secondDialogue, metadataDialogue], {
+    total: 3, complete: true,
+  }));
+  await stableRefreshPromise;
+  await flush();
+  record('replacement refresh preserves pin and selection by stable ID after atomic commit',
+    w.OraLibraryWorkspace.getState().pinnedId === 'dialogues:named-live'
+      && w.OraLibraryWorkspace.getState().selectedIds.includes('dialogues:named-live')
+      && w.OraLibraryWorkspace.getState().loaded === 3);
+
+  var secondDialogueListRow = Array.from(w.document.querySelectorAll('.library-list-row')).find(function (item) {
+    return item.textContent.indexOf('Second Dialogue') !== -1;
+  });
+  var secondDialogueCheck = secondDialogueListRow.querySelector('input[type="checkbox"]');
+  secondDialogueCheck.checked = true;
+  secondDialogueCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  bulkFailIds.add('second-live');
   envelopes['named-live'].project_ids = ['existing-project', 'late-project'];
-  bulkAdd.click();
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue, secondDialogue, metadataDialogue], {
+    total: 3, complete: true,
+  }));
+  w.document.querySelector('[data-library-action="project"]').click();
   await flush();
   await flush();
+  await flush();
+  await flush();
+  bulkFailIds.delete('second-live');
   var namedWrite = projectWrites.find(function (write) { return write.id === 'named-live'; });
-  record('Library atomically adds without replacing post-search memberships',
+  var failedWrite = projectWrites.find(function (write) { return write.id === 'second-live'; });
+  record('project action clears successful selections, retains failed rows, and preserves newer membership',
     !!namedWrite
+      && !!failedWrite
       && namedWrite.body.add_project_id === 'project-a'
       && !Object.prototype.hasOwnProperty.call(namedWrite.body, 'project_ids')
       && envelopes['named-live'].project_ids.join(',') === 'existing-project,late-project,project-a'
-      && projectWrites.some(function (write) {
-        return write.id === 'second-live'
-          && write.body.add_project_id === 'project-a'
-          && !Object.prototype.hasOwnProperty.call(write.body, 'project_ids');
-      }));
-  record('Library clears successful selections',
-    w.document.querySelectorAll('.conversation-browser-check:checked').length === 0);
+      && w.OraLibraryWorkspace.getState().selectedIds.join(',') === 'dialogues:second-live'
+      && w.document.getElementById('libraryWorkspaceNotice').textContent.indexOf('1 added; 1 failed') !== -1);
 
-  currentRows = Array.from(w.document.querySelectorAll('.conversation-browser-row'));
-  secondCheck = currentRows[1].querySelector('.conversation-browser-check');
-  thirdCheck = currentRows[2].querySelector('.conversation-browser-check');
-  secondCheck.checked = true;
-  secondCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
-  thirdCheck.checked = true;
-  thirdCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
-  bulkFailIds.add('third-live');
-  bulkAdd.click();
+  var staleRelated = deferredResponse();
+  queuedRelatedResponses.push(staleRelated);
+  Array.from(w.document.querySelectorAll('.library-list-row__pin')).find(function (button) {
+    return button.textContent.indexOf('Saved Dialogue Name') !== -1;
+  }).click();
+  Array.from(w.document.querySelectorAll('.library-list-row__pin')).find(function (button) {
+    return button.textContent.indexOf('Private Dialogue') !== -1;
+  }).click();
+  record('a newer pin aborts the older relationship generation',
+    !!(staleRelated.options && staleRelated.options.signal && staleRelated.options.signal.aborted));
+  staleRelated.resolve({
+    rows: [{
+      conversation_id: 'third-live', source_kind: 'live', title: 'Stale endpoint',
+      relationship: { available: true, kinds: ['direct-child'] },
+    }],
+    total: 1,
+  });
   await flush();
   await flush();
-  currentRows = Array.from(w.document.querySelectorAll('.conversation-browser-row'));
-  record('Library reports partial failure and retains only failed selections',
-    currentRows[1].querySelector('.conversation-browser-check').checked === false
-      && currentRows[2].querySelector('.conversation-browser-check').checked === true
-      && w.document.querySelector('.conversation-browser-status').textContent.indexOf('1 failed') !== -1);
+  w.document.querySelector('[data-library-view="visual"]').click();
+  await flush();
+  record('late Related completion cannot attach endpoints to a metadata-only pin',
+    w.OraLibraryWorkspace.getState().pinnedId === 'dialogues:metadata-only'
+      && w.OraLibraryWorkspace.getState().related.drawable === 0
+      && w.document.querySelectorAll('.library-visual-connectors line').length === 0);
 
-  var requestsBeforeTitleOpen = envelopeRequests;
-  var listRequestsBeforeTitleOpen = sidebarListRequests;
-  titleButton.click();
+  var measuredCases = [];
+  var measuredPlacementSafety = [];
+  [736, 360].forEach(function (width) {
+    measuredWidth = width;
+    installMeasuredGeometry();
+    w.dispatchEvent(new w.Event('resize'));
+    measuredCases.push(library.style.width + ':' + library.dataset.layout);
+    measuredPlacementSafety.push(visualPlacementIsSafe());
+  });
+  record('live geometry remeasures at 736px and 360px with contained, non-overlapping nodes',
+    measuredCases.join(',') === '736px:wide,360px:narrow'
+      && measuredPlacementSafety.every(Boolean), measuredCases.join(','));
+
+  var groupLauncher = w.document.querySelector('[data-library-popover="group"]');
+  var filterLauncher = w.document.querySelector('[data-library-popover="filters"]');
+  var groupSelect = w.document.querySelector('[data-library-group]');
+  groupSelect.value = 'source';
+  groupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  libraryTypeFilter.value = 'Dialogue';
+  libraryTypeFilter.dispatchEvent(new w.Event('change', { bubbles: true }));
+  groupLauncher.focus();
+  groupLauncher.click();
+  var groupReachable = !w.document.querySelector('[data-library-panel="group"]').hidden
+    && w.document.activeElement === groupSelect;
+  groupLauncher.click();
+  filterLauncher.focus();
+  filterLauncher.click();
+  record('narrow Group and Filters launchers retain state, counts, and keyboard reachability',
+    library.dataset.layout === 'narrow'
+      && groupLauncher.tagName === 'BUTTON'
+      && filterLauncher.tagName === 'BUTTON'
+      && groupLauncher.textContent.indexOf('Source') !== -1
+      && filterLauncher.textContent.indexOf('Scope: Commons · 1') !== -1
+      && groupReachable
+      && !w.document.querySelector('[data-library-panel="filters"]').hidden
+      && w.document.activeElement === libraryTypeFilter);
+  filterLauncher.click();
+  groupSelect.value = 'none';
+  groupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  w.document.querySelector('[data-library-command="clear-filters"]').click();
+
+  var denseRows = Array.from({ length: 100 }, function (_, index) {
+    return libraryRow('dialogues:dense-' + index, 'dialogues', 'Dense row ' + index);
+  });
+  queuedLibraryResponses.push(libraryPayload(denseRows, { total: 100 }));
+  await w.OraLibraryWorkspace.refresh();
+  await new Promise(function (resolve) { w.requestAnimationFrame(resolve); });
+  var visibleDenseNodes = w.document.querySelectorAll(
+    '.library-visual-node:not(.library-visual-node--related):not([hidden])'
+  ).length;
+  record('dense Visual uses truthful measured capacity while retaining every row in List',
+    visibleDenseNodes > 0
+      && visibleDenseNodes < 100
+      && visualPlacementIsSafe()
+      && w.document.querySelector('.library-visual-capacity-state').textContent
+        .indexOf('All current result rows remain available in List') !== -1);
+  w.document.querySelector('[data-library-view="list"]').click();
+  record('dense Visual consolidation does not remove canonical List rows',
+    w.document.querySelectorAll('.library-list-row').length === 100);
+
+  // Return to List before source changes.
+  var filesToggle = w.document.querySelector('[data-library-source][value="files"]');
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue, metadataDialogue], {
+    sources: ['dialogues', 'engrams'], total: 2,
+  }));
+  filesToggle.checked = false;
+  filesToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
   await flush();
-  record('Library title control opens its row',
-    envelopeRequests > requestsBeforeTitleOpen,
-    'requests=' + envelopeRequests);
-  record('opening a Library row does not rebuild the full sidebar list',
-    sidebarListRequests === listRequestsBeforeTitleOpen,
-    'sidebar requests=' + sidebarListRequests);
+  await flush();
+  var mixedParams = new w.URL(
+    libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('Dialogues plus Engrams is a first-class mixed source request',
+    mixedParams.getAll('source').join(',') === 'dialogues,engrams'
+      && !mixedParams.getAll('source').includes('files'));
+
+  var projectScope = w.document.querySelector('[data-library-project]');
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue, metadataDialogue], {
+    sources: ['dialogues', 'engrams'], total: 2,
+  }));
+  projectScope.value = 'ora';
+  projectScope.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  var namedScopeParams = new w.URL(
+    libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('one named project scopes the complete mixed-source request server-side',
+    projectScope.tagName === 'SELECT'
+      && !projectScope.parentElement.querySelector('input[type="checkbox"]')
+      && w.OraLibraryWorkspace.getState().projectId === 'ora'
+      && namedScopeParams.get('project_id') === 'ora'
+      && namedScopeParams.getAll('source').join(',') === 'dialogues,engrams');
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue, metadataDialogue], {
+    sources: ['dialogues', 'engrams'], total: 2,
+  }));
+  projectScope.value = 'commons';
+  projectScope.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  var commonsScopeParams = new w.URL(
+    libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('Commons is the universal scope sentinel and is not sent as ordinary membership',
+    w.OraLibraryWorkspace.getState().projectId === 'commons'
+      && !commonsScopeParams.has('project_id')
+      && commonsScopeParams.getAll('source').join(',') === 'dialogues,engrams');
 
   var older = deferredResponse();
   var newer = deferredResponse();
-  queuedBrowserResponses.push(older, newer);
-  search.value = 'older';
-  w.document.querySelector('.conversation-browser-search-btn').click();
-  search.value = 'newer';
-  w.document.querySelector('.conversation-browser-search-btn').click();
-  record('newer Library request aborts the older request',
+  queuedLibraryResponses.push(older, newer);
+  var olderPromise = w.OraLibraryWorkspace.refresh();
+  var newerPromise = w.OraLibraryWorkspace.refresh();
+  record('a newer Library request aborts the older generation',
     !!(older.options && older.options.signal && older.options.signal.aborted));
-  newer.resolve({
-    query: 'newer',
-    rows: [{ conversation_id: 'newer-row', source_kind: 'live', title: 'Newer Row' }],
-    total: 7,
-    source_counts: { live: 7, archive: 0, engram: 0 },
-    facets: {
-      privacy: { available: true, counts: {
-        standard: 6, contains_private: 1, stealth: 0,
-      } },
-      local_restriction: { available: false, counts: {
-        restricted: 0, unrestricted: 0,
-      } },
-    },
+  newer.resolve(libraryPayload([
+    libraryRow('dialogues:newer', 'dialogues', 'Newer authoritative row'),
+  ], { sources: ['dialogues', 'engrams'] }));
+  await newerPromise;
+  older.resolve(libraryPayload([
+    libraryRow('dialogues:older', 'dialogues', 'Older stale row'),
+  ], { sources: ['dialogues', 'engrams'] }));
+  await olderPromise;
+  await flush();
+  record('late request completion cannot overwrite newer canonical results',
+    w.document.querySelector('.library-list-row__pin').textContent
+      .indexOf('Newer authoritative row') !== -1
+      && w.OraLibraryWorkspace.getState().requestGeneration > 0
+      && w.OraLibraryWorkspace.getState().renderGeneration > 0);
+
+  var dialogueToggle = w.document.querySelector('[data-library-source][value="dialogues"]');
+  var engramToggle = w.document.querySelector('[data-library-source][value="engrams"]');
+  queuedLibraryResponses.push(libraryPayload([
+    libraryRow('engrams:only', 'engrams', 'Engram only'),
+  ], { sources: ['engrams'], source_counts: { dialogues: 0, engrams: 1, files: 0 } }));
+  dialogueToggle.checked = false;
+  dialogueToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  var requestsBeforeZero = libraryRequestUrls.length;
+  engramToggle.checked = false;
+  engramToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  record('zero sources is a local honest empty state and never falls through to server default-all',
+    libraryRequestUrls.length === requestsBeforeZero
+      && w.OraLibraryWorkspace.getState().sources.length === 0
+      && w.document.querySelector('.library-empty-state').textContent.indexOf('No sources') !== -1);
+
+  browseButton.focus();
+  w.document.querySelector('[data-library-command="close"]').click();
+  browseButton.click();
+  await flush();
+  await w.OraLibraryWorkspace.refresh();
+  record('close, reopen, and refresh remain local when zero sources are selected',
+    !library.hidden
+      && libraryRequestUrls.length === requestsBeforeZero
+      && w.OraLibraryWorkspace.getState().sources.length === 0
+      && w.document.querySelector('.library-empty-state').textContent.indexOf('No sources') !== -1);
+  browseButton.focus();
+  w.document.querySelector('[data-library-command="close"]').click();
+  record('close restores Submit semantics, exact upper ownership, and opener focus',
+    library.hidden
+      && w.document.getElementById('logo-o').getAttribute('aria-label') === 'Submit'
+      && !w.document.querySelector('.input-pane').hasAttribute('inert')
+      && !w.document.getElementById('chatZone').hasAttribute('inert')
+      && w.document.activeElement === browseButton);
+  record('lower Findings and Exhibits DOM survives Library preview ownership unchanged',
+    preservedFinding.isConnected
+      && preservedFinding.parentElement === w.document.querySelector('.output-content')
+      && preservedFinding.textContent === 'Preserved finding'
+      && preservedExhibit.isConnected
+      && preservedExhibit.parentElement === w.document.querySelector('.right-pane')
+      && preservedExhibit.textContent === 'Preserved exhibit'
+      && !w.document.querySelector('.library-preview-layer'));
+
+  var containsPrivateDialogue = Object.assign({}, visibleDialogue, {
+    metadata: Object.assign({}, visibleDialogue.metadata, { privacy: 'contains_private' }),
   });
-  await flush();
-  await flush();
-  older.resolve({
-    query: 'older',
-    rows: [{ conversation_id: 'older-row', source_kind: 'live', title: 'Older Row' }],
-    total: 99,
-    source_counts: { live: 99, archive: 0, engram: 0 },
-    facets: { privacy: { available: true, counts: {
-      standard: 88, contains_private: 11, stealth: 0,
-    } } },
-  });
-  await flush();
-  await flush();
-  record('late older Library response cannot overwrite newer rows, status, or facets',
-    w.document.querySelector('.conversation-browser-title').textContent === 'Newer Row'
-      && w.document.querySelector('.conversation-browser-status').textContent
-        .indexOf('1 shown of 7 results (7 live)') !== -1
-      && privacyFilter.options[1].textContent === 'Standard (6)',
-    w.document.querySelector('.conversation-browser-status').textContent);
-
-  var browseButton = initialBrowseButton;
-  var escapeTargets = [
-    ['search', '.conversation-browser-search'],
-    ['sort', '.conversation-browser-sort'],
-    ['Search button', '.conversation-browser-search-btn'],
-    ['Close button', '.conversation-browser-close'],
-    ['Dialogue filter', '.conversation-browser-filter-conversations'],
-    ['Engram filter', '.conversation-browser-filter-engrams'],
-    ['project filter', '.conversation-browser-project'],
-    ['from-date filter', '.conversation-browser-date-from'],
-    ['through-date filter', '.conversation-browser-date-to'],
-    ['privacy filter', '.conversation-browser-privacy'],
-    ['lifecycle filter', '.conversation-browser-lifecycle'],
-    ['relationship filter', '.conversation-browser-relationship'],
-    ['local restriction filter', '.conversation-browser-local-restriction'],
-    ['tag filter', '.conversation-browser-tags-input'],
-    ['show archived filter', '.conversation-browser-filter-archived'],
-    ['relevance slider', '.conversation-browser-relevance-slider'],
-    ['row checkbox', '.conversation-browser-check'],
-    ['row title', '.conversation-browser-title'],
-    ['Related button', '.conversation-browser-related'],
-    ['row dismiss button', '.conversation-browser-dismiss'],
-  ];
-  var escapeFailures = [];
-  for (var i = 0; i < escapeTargets.length; i += 1) {
-    browseButton.focus();
-    browseButton.click();
-    await flush();
-    await flush();
-    var escapeTarget = w.document.querySelector(escapeTargets[i][1]);
-    if (!escapeTarget) {
-      escapeFailures.push(escapeTargets[i][0] + ': missing control');
-      continue;
-    }
-    escapeTarget.focus();
-    escapeTarget.dispatchEvent(new w.KeyboardEvent('keydown', {
-      key: 'Escape', bubbles: true, cancelable: true,
-    }));
-    if (library.classList.contains('is-open')) {
-      escapeFailures.push(escapeTargets[i][0] + ': Library stayed open');
-    } else if (w.document.activeElement !== browseButton) {
-      var activeFocus = w.document.activeElement;
-      escapeFailures.push(escapeTargets[i][0] + ': focus was not restored ('
-        + (activeFocus && (activeFocus.id || activeFocus.className || activeFocus.tagName)) + ')');
-    }
-  }
-  record('Escape closes Library from every control and restores focus',
-    escapeFailures.length === 0, escapeFailures.join('; '));
-
-  function describeFocus(el) {
-    if (!el) return 'null';
-    return el.id || el.className || el.tagName;
-  }
-
-  browseButton.focus();
-  browseButton.click();
-  await flush();
-  var workspaceInput = w.document.querySelector('.input-pane textarea');
-  workspaceInput.focus();
-  workspaceInput.dispatchEvent(new w.KeyboardEvent('keydown', {
-    key: 'Escape', bubbles: true, cancelable: true,
-  }));
-  record('Escape closes non-modal Library when focus is elsewhere',
-    !library.classList.contains('is-open'));
-  // The Library is docked, not modal — the user can go on working while it is
-  // up. Closing it must not pull the caret out of whatever they moved to.
-  record('closing the docked Library leaves focus where the user moved it',
-    w.document.activeElement === workspaceInput,
-    'activeElement=' + describeFocus(w.document.activeElement));
-
-  browseButton.focus();
-  browseButton.click();
-  await flush();
-  w.document.querySelector('.conversation-browser-search').focus();
-  w.document.querySelector('.conversation-browser-close').click();
-  record('closing the Library while it still holds focus returns focus to the opener',
-    !library.classList.contains('is-open') && w.document.activeElement === browseButton,
-    'activeElement=' + describeFocus(w.document.activeElement));
-
-  browseButton.focus();
-  browseButton.click();
-  await flush();
-  w.document.querySelector('.conversation-browser-search').blur();
-  w.document.querySelector('.conversation-browser-close').click();
-  record('closing the Library when nobody holds focus returns focus to the opener',
-    !library.classList.contains('is-open') && w.document.activeElement === browseButton,
-    'activeElement=' + describeFocus(w.document.activeElement));
-
-  // Counted from the registrations the module actually makes, not from any
-  // flag it sets: the browser collapses an identical (type, listener, capture)
-  // triple, so the live DOM listener count reads 1 whether or not the module
-  // removes before adding.
-  var realAdd = w.addEventListener;
-  var realRemove = w.removeEventListener;
-  var liveResize = [];
-  w.addEventListener = function (type, fn, opts) {
-    if (type === 'resize') liveResize.push(fn);
-    return realAdd.call(w, type, fn, opts);
-  };
-  w.removeEventListener = function (type, fn, opts) {
-    if (type === 'resize') {
-      var at = liveResize.indexOf(fn);
-      if (at !== -1) liveResize.splice(at, 1);
-    }
-    return realRemove.call(w, type, fn, opts);
-  };
-  for (var openPass = 0; openPass < 3; openPass += 1) {
-    browseButton.click();
-    await flush();
-  }
-  var resizeAfterOpens = liveResize.length;
-  w.document.querySelector('.conversation-browser-close').click();
-  var resizeAfterClose = liveResize.length;
-  w.addEventListener = realAdd;
-  w.removeEventListener = realRemove;
-  record('repeat Library opens keep exactly one live resize listener, and close drops it',
-    resizeAfterOpens === 1 && resizeAfterClose === 0,
-    'after 3 opens=' + resizeAfterOpens + ', after close=' + resizeAfterClose);
+  await w.OraSidebar.forkLibraryDialogue(containsPrivateDialogue);
+  record('Library Fork omits tag so the server inherits authoritative parent privacy',
+    forkRequestBodies.length > 0
+      && !Object.prototype.hasOwnProperty.call(forkRequestBodies[forkRequestBodies.length - 1], 'tag'));
 
   var passed = results.filter(function (r) { return r.ok; }).length;
   console.log('\n' + passed + ' / ' + results.length + ' tests passed');
