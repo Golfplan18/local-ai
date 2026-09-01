@@ -170,6 +170,10 @@ def _delete_graph_rows(titles: list[str], graph_db: Path) -> dict:
         cursor = connection.execute(
             f"DELETE FROM relationships WHERE {predicate}"
         )
+        connection.execute(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+            ("last_update_complete", "0"),
+        )
         connection.commit()
         return {"matched": before, "deleted": cursor.rowcount}
     finally:

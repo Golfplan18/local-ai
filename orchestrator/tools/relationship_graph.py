@@ -26,6 +26,7 @@ import os
 import re
 import sqlite3
 import yaml
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -80,6 +81,173 @@ INVERSE_MAP = {
 }
 
 
+def _snapshot_timestamp(value: str | None) -> datetime | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _latest_vault_markdown_mtime(vault_path: Path) -> tuple[datetime | None, str | None]:
+    """Inspect canonical Markdown mtimes without reading or mutating notes."""
+
+    if not vault_path.is_dir():
+        return None, "vault relationship authority is unavailable"
+    latest_ns: int | None = None
+    walk_errors: list[OSError] = []
+
+    def record_walk_error(error: OSError) -> None:
+        walk_errors.append(error)
+
+    try:
+        for root, dirs, files in os.walk(vault_path, onerror=record_walk_error):
+            dirs[:] = [
+                name for name in dirs
+                if not name.startswith(".") and name not in EXCLUDED_DIRS
+            ]
+            for filename in files:
+                if not filename.endswith(".md"):
+                    continue
+                try:
+                    mtime_ns = Path(root, filename).stat().st_mtime_ns
+                except OSError:
+                    return None, "one or more canonical relationship notes could not be inspected"
+                latest_ns = mtime_ns if latest_ns is None else max(latest_ns, mtime_ns)
+    except OSError:
+        return None, "canonical relationship notes could not be enumerated"
+    if walk_errors:
+        return None, "one or more canonical relationship directories could not be inspected"
+    if latest_ns is None:
+        return None, None
+    return datetime.fromtimestamp(latest_ns / 1_000_000_000, timezone.utc), None
+
+
+def read_relationship_snapshot(
+    identities,
+    *,
+    db_path: str | os.PathLike | None = None,
+    vault_path: str | os.PathLike | None = None,
+) -> dict:
+    """Return typed relationship summaries from SQLite opened truly read-only.
+
+    The result distinguishes availability of the compiled rows from evidence
+    that they represent the complete, current Markdown authority.  It never
+    constructs :class:`RelationshipGraph`, creates paths, switches journal
+    mode, initializes schema, or writes bookkeeping.
+    """
+
+    wanted = {str(identity).strip() for identity in identities if str(identity).strip()}
+    if db_path is None or vault_path is None:
+        from orchestrator import runtime_paths as rp
+        if db_path is None:
+            db_path = Path(rp.DATA_DIR_STR) / "relationship-graph.db"
+        if vault_path is None:
+            vault_path = rp.vault_dir()
+    database = Path(db_path).expanduser().resolve()
+    vault = Path(vault_path).expanduser().resolve()
+    unavailable = {
+        "state": "unavailable",
+        "updated_at": None,
+        "reason": "relationship snapshot is unavailable",
+        "items": {},
+    }
+    try:
+        connection = sqlite3.connect(
+            f"{database.as_uri()}?mode=ro", uri=True,
+        )
+    except (OSError, sqlite3.Error):
+        return unavailable
+
+    try:
+        connection.execute("PRAGMA query_only = ON")
+        connection.execute("BEGIN")
+        tables = {
+            row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_schema WHERE type = 'table'"
+            )
+        }
+        if not {"relationships", "metadata"}.issubset(tables):
+            unavailable["reason"] = "relationship snapshot schema is unavailable"
+            return unavailable
+        columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(relationships)")
+        }
+        if not {"source", "target", "type", "confidence"}.issubset(columns):
+            unavailable["reason"] = "relationship snapshot schema is incompatible"
+            return unavailable
+        metadata = dict(connection.execute("SELECT key, value FROM metadata"))
+        rows = connection.execute(
+            "SELECT source, target, type, confidence FROM relationships"
+        ).fetchall()
+    except sqlite3.Error:
+        unavailable["reason"] = "relationship snapshot could not be read"
+        return unavailable
+    finally:
+        connection.close()
+
+    updated_raw = metadata.get("last_update_at")
+    updated_at = _snapshot_timestamp(updated_raw)
+    state = "fresh"
+    reason = None
+    if updated_at is None or metadata.get("last_update_complete") != "1":
+        state = "incomplete"
+        reason = "the latest relationship index update is not proven complete"
+    else:
+        latest_note, inspection_error = _latest_vault_markdown_mtime(vault)
+        if inspection_error:
+            state = "incomplete"
+            reason = inspection_error
+        elif latest_note is not None and updated_at < latest_note:
+            state = "stale"
+            reason = "canonical relationship notes changed after the latest complete index update"
+
+    summaries: dict[str, dict[tuple[str, str, str, str | None], int]] = {
+        identity: {} for identity in wanted
+    }
+    for source, target, relation_type, confidence in rows:
+        relation_type = str(relation_type)
+        confidence = str(confidence or "")
+        if source in wanted:
+            key = (relation_type, "outgoing", confidence, None)
+            summaries[source][key] = summaries[source].get(key, 0) + 1
+        if target in wanted:
+            inverse = INVERSE_MAP.get(relation_type, relation_type)
+            key = (inverse, "incoming", confidence, relation_type)
+            summaries[target][key] = summaries[target].get(key, 0) + 1
+
+    items = {}
+    for identity in sorted(wanted):
+        typed = [
+            {
+                "type": relation_type,
+                "direction": direction,
+                "confidence": confidence,
+                "count": count,
+                **({"original_type": original} if original else {}),
+            }
+            for (relation_type, direction, confidence, original), count
+            in sorted(summaries[identity].items())
+        ]
+        items[identity] = {
+            "state": state,
+            "updated_at": updated_raw,
+            "reason": reason,
+            "summaries": typed,
+        }
+    return {
+        "state": state,
+        "updated_at": updated_raw,
+        "reason": reason,
+        "items": items,
+    }
+
+
 class RelationshipGraph:
     """In-memory + SQLite relationship graph built from vault YAML."""
 
@@ -128,10 +296,49 @@ class RelationshipGraph:
         """)
         self.conn.commit()
 
-    def _walk_vault_md(self):
+    def _stamp_update_metadata(
+        self, coverage_started_at: datetime, errors: list[str],
+    ) -> None:
+        """Record one full YAML reconciliation's conservative coverage."""
+
+        complete = not errors
+        updated_at = coverage_started_at.astimezone(timezone.utc).isoformat(
+            timespec="microseconds"
+        )
+        self.conn.execute(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+            ("last_update_at", updated_at),
+        )
+        self.conn.execute(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+            ("last_update_complete", "1" if complete else "0"),
+        )
+
+    def _mark_update_incomplete(self) -> None:
+        """Invalidate completeness inside the caller's current transaction."""
+
+        self.conn.execute(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+            ("last_update_complete", "0"),
+        )
+
+    def _walk_vault_md(self, errors: list[str] | None = None):
         """Yield (root, filename) for every vault .md file, applying the
         standard exclusions (hidden dirs, EXCLUDED_DIRS)."""
-        for root, dirs, files in os.walk(self.vault_path):
+
+        def record_walk_error(error: OSError) -> None:
+            message = f"{getattr(error, 'filename', None) or self.vault_path}: {error}"
+            if errors is not None:
+                errors.append(message)
+            else:
+                _LOG.warning("relationship graph vault traversal failed: %s", message)
+
+        if not os.path.isdir(self.vault_path):
+            record_walk_error(OSError("vault relationship authority is unavailable"))
+            return
+        for root, dirs, files in os.walk(
+            self.vault_path, onerror=record_walk_error,
+        ):
             dirs[:] = [d for d in dirs if not d.startswith(".")
                        and d not in EXCLUDED_DIRS]
             for filename in files:
@@ -383,7 +590,7 @@ class RelationshipGraph:
         duplicate_claims = 0
         notes_scanned = 0
 
-        for root, filename in self._walk_vault_md():
+        for root, filename in self._walk_vault_md(errors):
             source_title = filename[:-3]
             titles.add(source_title)
             notes_scanned += 1
@@ -463,6 +670,8 @@ class RelationshipGraph:
 
         Returns stats dict.
         """
+        coverage_started_at = datetime.now(timezone.utc)
+
         # Clear existing data
         self.conn.execute("DELETE FROM relationships")
 
@@ -490,6 +699,7 @@ class RelationshipGraph:
             "INSERT OR REPLACE INTO metadata (key, value) VALUES ('notes_scanned', ?)",
             (str(notes_scanned),)
         )
+        self._stamp_update_metadata(coverage_started_at, errors)
         self.conn.commit()
 
         return {
@@ -512,6 +722,7 @@ class RelationshipGraph:
 
         Returns stats dict.
         """
+        coverage_started_at = datetime.now(timezone.utc)
         errors: list[str] = []
         desired, notes_scanned, resolution, archived_target_links = (
             self._scan_vault_relationships(errors)
@@ -562,6 +773,7 @@ class RelationshipGraph:
             "INSERT OR REPLACE INTO metadata (key, value) VALUES ('notes_scanned', ?)",
             (str(notes_scanned),)
         )
+        self._stamp_update_metadata(coverage_started_at, errors)
         self.conn.commit()
 
         return {
@@ -591,6 +803,7 @@ class RelationshipGraph:
         added = 0
         blocked: list[dict] = []
         errors: list[str] = list(lookup_errors)
+        self._mark_update_incomplete()
         for rel in relationships:
             target = str(rel["target"])
             if target in archived_targets:
@@ -801,6 +1014,7 @@ class RelationshipGraph:
         """
         if orphans is None:
             orphans = self.find_orphan_targets()
+        self._mark_update_incomplete()
         self.conn.executemany(
             "DELETE FROM relationships WHERE source = ? AND target = ? AND type = ?",
             ((o["source"], o["target"], o["type"]) for o in orphans)

@@ -970,19 +970,33 @@ def list_project_files(
     name: str | None,
     *,
     vault_projects_dir: Path | None = None,
-    max_files: int = 500,
+    max_files: int | None = 500,
+    offset: int = 0,
 ) -> dict[str, Any]:
     """Index a project's vault output folder or Commons' vault-root output.
 
     The file-management line is "out of Ora" (Q2 LOCKED): this is a read-only
     clickable index — the modal links each entry to Obsidian / Finder; there is
     no native CRUD. Returns ``exists: False`` when the folder is absent (e.g.
-    cloud-ora has no vault). Files are newest-first; ``truncated`` flags a cap
-    hit. A ``None`` name selects the vault root and indexes only its direct
+    cloud-ora has no vault). Files are newest-first with a path tie-break;
+    ``offset`` and an integer ``max_files`` page the complete inventory, while
+    ``max_files=None`` returns the remaining inventory from one in-memory
+    enumeration. ``total`` and ``truncated`` describe the complete inventory.
+    A ``None`` name selects the vault root and indexes only its direct
     files: Commons output is saved directly there, while recursively walking
     the root would incorrectly absorb every real project's files and the rest
-    of the vault. Never raises.
+    of the vault. Storage enumeration failures are reflected by ``complete``;
+    invalid pagination arguments still raise ``ValueError``.
     """
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise ValueError("offset must be a non-negative integer")
+    if max_files is not None and (
+        isinstance(max_files, bool)
+        or not isinstance(max_files, int)
+        or max_files < 1
+    ):
+        raise ValueError("max_files must be a positive integer")
+
     projects_base = Path(vault_projects_dir or _default_vault_projects_dir())
     is_vault_root = name is None
     base = (
@@ -997,8 +1011,15 @@ def list_project_files(
             "files": [],
             "truncated": False,
             "is_vault_root": is_vault_root,
+            "complete": False,
+            "reason": "project folder is unavailable",
+            "total": 0,
+            "offset": offset,
+            "limit": max_files,
+            "next_offset": None,
         }
     collected: list[dict[str, Any]] = []
+    complete = True
     try:
         paths = base.iterdir() if is_vault_root else base.rglob("*")
         for p in paths:
@@ -1010,6 +1031,7 @@ def list_project_files(
             try:
                 st = p.stat()
             except OSError:
+                complete = False
                 continue
             collected.append({
                 "name": p.name,
@@ -1017,17 +1039,36 @@ def list_project_files(
                 "abs_path": str(p),
                 "size": st.st_size,
                 "mtime": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
+                "_mtime_ns": st.st_mtime_ns,
             })
     except OSError:
-        pass
-    collected.sort(key=lambda f: f.get("mtime") or "", reverse=True)
-    truncated = len(collected) > max_files
+        complete = False
+    collected.sort(key=lambda f: (-f["_mtime_ns"], f["rel_path"]))
+    total = len(collected)
+    page = (
+        collected[offset:]
+        if max_files is None
+        else collected[offset:offset + max_files]
+    )
+    for item in page:
+        item.pop("_mtime_ns", None)
+    next_offset = None
+    if max_files is not None:
+        next_offset = offset + len(page)
+        if next_offset >= total:
+            next_offset = None
     return {
         "exists": True,
         "folder": str(base),
-        "files": collected[:max_files],
-        "truncated": truncated,
+        "files": page,
+        "truncated": next_offset is not None,
         "is_vault_root": is_vault_root,
+        "complete": complete,
+        "reason": None if complete else "one or more project files could not be read",
+        "total": total,
+        "offset": offset,
+        "limit": max_files,
+        "next_offset": next_offset,
     }
 
 

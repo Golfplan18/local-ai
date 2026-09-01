@@ -6342,9 +6342,19 @@ def api_projects_files(nexus):
     is_commons = bool(rec and rec.get("is_default"))
     folder_name = None if is_commons else rec.get("folder_name")
     try:
+        offset = int(request.args.get("offset") or 0)
+        limit = int(request.args.get("limit") or 500)
+        if offset < 0 or limit < 1 or limit > 500:
+            raise ValueError("offset must be non-negative and limit must be from 1 to 500")
         if not is_commons:
             _pm.validate_folder_identity(folder_name, vault_root=_om.vault_root())
-        index = _pm.list_project_files(None if is_commons else folder_name)
+        index = _pm.list_project_files(
+            None if is_commons else folder_name,
+            offset=offset,
+            max_files=limit,
+        )
+    except ValueError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
     except _pm.ProjectStorageError as exc:
         return _json_response(
             {"ok": False, "migration_required": True, "error": str(exc)}, 409)
@@ -13722,6 +13732,330 @@ def _browser_engram_related_rows(
             _browser_merge_best(rows_by_id, row)
     rows = _browser_sort_rows(list(rows_by_id.values()), "relevance")
     return rows if limit is None else rows[:limit]
+
+
+_LIBRARY_TEXT_SUFFIXES = {
+    ".cfg", ".conf", ".css", ".csv", ".html", ".ini", ".js", ".json",
+    ".jsx", ".log", ".md", ".org", ".py", ".rst", ".sh", ".sql",
+    ".toml", ".ts", ".tsx", ".tsv", ".txt", ".xml", ".yaml", ".yml",
+}
+_LIBRARY_VISUAL_SUFFIXES = {
+    ".avif", ".bmp", ".gif", ".heic", ".jpeg", ".jpg", ".png",
+    ".svg", ".tif", ".tiff", ".webp",
+}
+_LIBRARY_DIALOGUE_DIRECTIONS = {
+    "direct-child": "outgoing",
+    "sibling": "peer",
+    "parent": "incoming",
+    "contributor": "outgoing",
+    "direct-related": "incoming",
+    "shared-project": "peer",
+}
+
+
+def _library_path_preview(path: str) -> dict:
+    suffix = Path(path).suffix.lower()
+    kind = (
+        "text" if suffix in _LIBRARY_TEXT_SUFFIXES else
+        "visual" if suffix in _LIBRARY_VISUAL_SUFFIXES else
+        "mixed" if suffix == ".pdf" else
+        "unsupported"
+    )
+    available = bool(
+        kind != "unsupported" and os.path.isfile(path) and os.access(path, os.R_OK)
+    )
+    return {
+        "kind": kind,
+        "available": available,
+        "locator": {"path": path},
+        "reason": (
+            None if available else
+            "the source file is not readable" if kind != "unsupported" else
+            "this file type has no Library preview route"
+        ),
+    }
+
+
+def _library_dialogue_provider() -> dict:
+    try:
+        contracts = [
+            _browser_contract_row(row)
+            for row in _browser_live_rows("", target_tag="")
+        ]
+    except Exception:
+        return {"rows": [], "complete": False,
+                "reason": "the Dialogue provider could not be read"}
+    rows = []
+    for item in contracts:
+        identity = str(item.get("conversation_id") or "").strip()
+        if not identity:
+            return {"rows": rows, "complete": False,
+                    "reason": "one or more Dialogue identities are unavailable"}
+        relationship = item.get("relationship") or {}
+        rows.append({
+            "identity": identity,
+            "title": item.get("title") or item.get("display_name"),
+            "metadata": {
+                "project_ids": item.get("project_ids") or [],
+                "tags": item.get("tags") or [],
+                "lifecycle": (item.get("lifecycle") or {}).get("state"),
+                "privacy": (item.get("privacy") or {}).get("state"),
+                "modified_at": item.get("last_activity_at") or None,
+                "content_type": "application/x-ora-dialogue",
+                "item_type": "dialogue",
+                "message_count": item.get("message_count"),
+            },
+            "provenance": {"available": True, "kind": "dialogue-envelope",
+                           "identity": identity},
+            "relationships": {
+                "state": "fresh", "updated_at": item.get("last_activity_at"),
+                "summaries": [
+                    {
+                        "type": kind,
+                        "direction": _LIBRARY_DIALOGUE_DIRECTIONS[kind],
+                    }
+                    for kind in relationship.get("kinds") or []
+                    if kind in _LIBRARY_DIALOGUE_DIRECTIONS
+                ],
+            },
+            "preview": {"kind": "text", "available": True,
+                        "locator": {"dialogue_id": identity}},
+            "editability": {"available": True, "editable": False,
+                            "surface": "dialogue",
+                            "reason": "Dialogues are read-only in the active Library programme"},
+        })
+    return {"rows": rows, "complete": True, "reason": None}
+
+
+def _library_engram_provider() -> dict:
+    try:
+        import chromadb
+        from orchestrator.conversation_memory import knowledge_admitted_paths
+        from orchestrator.embedding import get_collection
+        collection = get_collection(
+            chromadb.PersistentClient(path=str(rp.chromadb_dir())), "knowledge",
+        )
+        inventory = collection.get(include=["metadatas"])
+        ids = inventory.get("ids") if isinstance(inventory, dict) else None
+        raw_metadatas = (
+            inventory.get("metadatas") if isinstance(inventory, dict) else None
+        )
+        if (not isinstance(ids, list) or not isinstance(raw_metadatas, list)
+                or len(ids) != len(raw_metadatas)):
+            return {"rows": [], "complete": False,
+                    "reason": "the Engram index inventory is incomplete"}
+        complete, reason = True, None
+        normalized_ids = [str(identity or "").strip() for identity in ids]
+        if (any(not identity for identity in normalized_ids)
+                or len(normalized_ids) != len(set(normalized_ids))):
+            complete, reason = False, "the Engram index inventory has unstable identities"
+        metadatas = []
+        for metadata in raw_metadatas:
+            if not isinstance(metadata, dict):
+                complete = False
+                reason = "the Engram index has incomplete authority metadata"
+                continue
+            metadatas.append(metadata)
+        admitted = set(knowledge_admitted_paths(metadatas, ""))
+    except Exception:
+        return {"rows": [], "complete": False,
+                "reason": "the Engram index could not be read"}
+
+    grouped = {}
+    for metadata in metadatas:
+        path = str(metadata.get("path") or "").strip()
+        if (str(metadata.get("type") or "").lower() == "engram"
+                and path in admitted):
+            grouped.setdefault(os.path.realpath(_browser_resolve_path(path)), []).append(metadata)
+    rows = []
+    for path in sorted(grouped):
+        records = grouped[path]
+        tags = _browser_normalize_tags([_browser_metadata_tags(row) for row in records])
+        if "archived" in tags:
+            continue
+        privacy_values = {
+            _browser_knowledge_metadata_privacy(row) for row in records
+        } - {None}
+        privacy = next(
+            (value for value in ("stealth", "private", "standard")
+             if value in privacy_values), None,
+        )
+        try:
+            modified_at = datetime.fromtimestamp(os.stat(path).st_mtime).isoformat(
+                timespec="seconds"
+            )
+        except OSError:
+            modified_at = None
+        source_meta = {
+            "project_ids": _browser_normalize_tags([
+                _browser_row_project_ids(row) for row in records
+            ]),
+            "tags": tags, "lifecycle": "indexed",
+            "content_type": "text/markdown", "item_type": "engram",
+        }
+        if privacy is not None:
+            source_meta["privacy"] = privacy
+        if modified_at is not None:
+            source_meta["modified_at"] = modified_at
+        exists = os.path.isfile(path)
+        rows.append({
+            "identity": path, "title": _browser_source_title(records[0]),
+            "metadata": source_meta,
+            "unavailable_fields": (["privacy"] if privacy is None else [])
+            + (["modified_at"] if modified_at is None else []),
+            "provenance": {"available": True, "kind": "indexed-vault-note",
+                           "identity": path, "details": {"index": "knowledge"}},
+            "_relationship_identity": Path(path).stem,
+            "preview": _library_path_preview(path),
+            "editability": {"available": exists,
+                            "editable": os.access(path, os.W_OK) if exists else None,
+                            "surface": "external-file",
+                            "reason": ("editing is outside the Library adapter" if exists
+                                       else "the indexed source file is unavailable")},
+        })
+    return {"rows": rows, "complete": complete, "reason": reason}
+
+
+def _library_file_provider() -> dict:
+    try:
+        import mimetypes
+        from orchestrator import project_meta
+        projects = project_meta.list_project_meta()
+    except Exception:
+        return {"rows": [], "complete": False,
+                "reason": "the project file inventory could not be read"}
+    rows, seen_paths = [], set()
+    complete, reason = True, None
+    for project in projects:
+        project_id = str(project.get("nexus") or "commons").strip().lower()
+        if project_id in {"", "general"}:
+            project_id = "commons"
+        folder_name = None if project.get("is_default") else project.get("folder_name")
+        try:
+            inventory = project_meta.list_project_files(
+                folder_name, max_files=None,
+            )
+        except Exception:
+            complete, reason = False, "a project file inventory could not be read"
+            continue
+        if not inventory.get("exists") or not inventory.get("complete", True):
+            complete = False
+            reason = inventory.get("reason") or "a project file inventory is unavailable"
+        inventory_rows = inventory.get("files")
+        if not isinstance(inventory_rows, list):
+            complete, reason = False, "a project file inventory returned invalid rows"
+            inventory_rows = []
+        total = inventory.get("total")
+        if (not isinstance(total, int) or isinstance(total, bool) or total < 0
+                or total != len(inventory_rows)
+                or inventory.get("offset") != 0
+                or inventory.get("next_offset") is not None):
+            complete, reason = False, "a project file inventory is incomplete"
+        for item in inventory_rows:
+            raw_path = str(item.get("abs_path") or "").strip()
+            if not raw_path:
+                complete, reason = False, "a project file identity is unavailable"
+                continue
+            path = os.path.abspath(raw_path)
+            if path in seen_paths:
+                continue
+            seen_paths.add(path)
+            exists = os.path.isfile(path)
+            row = {
+                "identity": path, "title": item.get("name") or Path(path).name,
+                "metadata": {
+                    "project_ids": [project_id],
+                    "modified_at": item.get("mtime"),
+                    "content_type": mimetypes.guess_type(path)[0]
+                    or "application/octet-stream",
+                    "item_type": "file",
+                    "size_bytes": item.get("size"),
+                },
+                "unavailable_fields": ["tags", "lifecycle", "privacy"],
+                "provenance": {
+                    "available": True, "kind": "project-file-inventory",
+                    "identity": path,
+                    "details": {"project_id": project_id,
+                                "relative_path": item.get("rel_path")},
+                },
+                "preview": _library_path_preview(path),
+                "editability": {
+                    "available": exists,
+                    "editable": os.access(path, os.W_OK) if exists else None,
+                    "surface": "external-file",
+                    "reason": ("editing is outside the Library adapter" if exists
+                               else "the inventoried file is unavailable"),
+                },
+            }
+            if Path(path).suffix.lower() == ".md":
+                row["_relationship_identity"] = Path(path).stem
+            else:
+                row["relationships"] = {
+                    "state": "unavailable",
+                    "reason": "this file type is outside the Markdown relationship authority",
+                    "summaries": [],
+                }
+            rows.append(row)
+    return {"rows": rows, "complete": complete, "reason": reason}
+
+
+def _library_enrich_relationships(providers: dict) -> None:
+    graph_rows = [
+        row for provider in providers.values()
+        for row in provider.get("rows") or []
+        if row.get("_relationship_identity")
+    ]
+    if not graph_rows:
+        return
+    try:
+        from orchestrator.tools.relationship_graph import read_relationship_snapshot
+        snapshot = read_relationship_snapshot({
+            row["_relationship_identity"] for row in graph_rows
+        })
+    except Exception:
+        snapshot = {"state": "unavailable", "updated_at": None,
+                    "reason": "relationship snapshot is unavailable", "items": {}}
+    for row in graph_rows:
+        identity = row.pop("_relationship_identity")
+        row["relationships"] = (snapshot.get("items") or {}).get(identity) or {
+            "state": snapshot.get("state") or "unavailable",
+            "updated_at": snapshot.get("updated_at"),
+            "reason": snapshot.get("reason") or "relationship snapshot is unavailable",
+            "summaries": [],
+        }
+
+
+@app.route("/api/library/browser", methods=["GET"])
+def library_browser():
+    """Browse a complete, renderer-neutral Dialogue/Engram/File universe."""
+    from orchestrator.library_browser import (
+        LibraryBrowserError, build_browser_response, parse_sources,
+    )
+    try:
+        sources = parse_sources(request.args.getlist("source"))
+        offset = int(request.args.get("offset") or 0)
+        limit = int(request.args.get("limit") or 100)
+        providers = {}
+        loaders = {
+            "dialogues": _library_dialogue_provider,
+            "engrams": _library_engram_provider,
+            "files": _library_file_provider,
+        }
+        for source in sources:
+            try:
+                providers[source] = loaders[source]()
+            except Exception:
+                providers[source] = {
+                    "rows": [], "complete": False,
+                    "reason": f"the {source} provider could not be read",
+                }
+        _library_enrich_relationships(providers)
+        payload = build_browser_response(
+            providers, requested_sources=sources, offset=offset, limit=limit,
+        )
+    except (LibraryBrowserError, TypeError, ValueError) as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    return _json_response(payload)
 
 
 @app.route("/api/conversations/browser", methods=["GET"])

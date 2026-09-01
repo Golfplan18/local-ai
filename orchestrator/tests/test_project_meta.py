@@ -854,6 +854,45 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertEqual(len(idx["files"]), 3)
         self.assertTrue(idx["truncated"])
 
+    def test_list_project_files_pages_past_500(self):
+        proj_dir = self.d / "vp"
+        folder = pm.ensure_project_folder("Large", vault_projects_dir=proj_dir)
+        for index in range(503):
+            path = folder / f"f{index:03d}.md"
+            path.write_text("x", encoding="utf-8")
+            os.utime(path, ns=(1_700_000_000_000_000_000,) * 2)
+
+        first = pm.list_project_files(
+            "Large", vault_projects_dir=proj_dir, max_files=500,
+        )
+        second = pm.list_project_files(
+            "Large", vault_projects_dir=proj_dir, max_files=500, offset=500,
+        )
+        complete = pm.list_project_files(
+            "Large", vault_projects_dir=proj_dir, max_files=None,
+        )
+
+        first_paths = [item["rel_path"] for item in first["files"]]
+        second_paths = [item["rel_path"] for item in second["files"]]
+        self.assertEqual(first["total"], 503)
+        self.assertEqual(first["next_offset"], 500)
+        self.assertTrue(first["truncated"])
+        self.assertEqual(second["total"], 503)
+        self.assertIsNone(second["next_offset"])
+        self.assertFalse(second["truncated"])
+        self.assertEqual(len(second_paths), 3)
+        self.assertEqual(first_paths + second_paths, [
+            f"f{index:03d}.md" for index in range(503)
+        ])
+        self.assertEqual(
+            [item["rel_path"] for item in complete["files"]],
+            first_paths + second_paths,
+        )
+        self.assertEqual(complete["total"], 503)
+        self.assertIsNone(complete["limit"])
+        self.assertIsNone(complete["next_offset"])
+        self.assertFalse(complete["truncated"])
+
 
 class ProjectPriorityOrderTests(unittest.TestCase):
     """Priority is the user's ranked work queue: top of the list is next up.
