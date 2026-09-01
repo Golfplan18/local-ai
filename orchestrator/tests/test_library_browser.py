@@ -181,26 +181,43 @@ class TestLibraryBrowser(unittest.TestCase):
 
     def test_dialogue_provider_is_read_only_and_maps_stored_directions(self):
         server = _server_module()
+        import conversation_memory as runtime_conversation_memory
+
         relationship_kinds = [
             "direct-child", "sibling", "parent", "contributor",
             "direct-related", "shared-project",
         ]
-        with mock.patch.object(server, "_browser_live_rows", return_value=[{
-            "conversation_id": "dialogue-1",
-            "source_kind": "live",
-            "title": "Dialogue one",
-            "display_name": "Dialogue one",
-            "last_activity_at": "2026-09-01T12:00:00Z",
-            "project_ids": ["ora"],
-            "tags": [],
-            "_relationship_available": True,
-            "_relationship_kinds": relationship_kinds,
-        }]) as live_rows:
+        snapshot = [{"conversation_id": "dialogue-1"}]
+        with (
+            mock.patch.object(
+                runtime_conversation_memory,
+                "iter_conversations",
+                return_value=snapshot,
+            ) as iter_dialogues,
+            mock.patch.object(server, "_browser_live_rows", return_value=[{
+                "conversation_id": "dialogue-1",
+                "source_kind": "live",
+                "title": "Dialogue one",
+                "display_name": "Dialogue one",
+                "last_activity_at": "2026-09-01T12:00:00Z",
+                "project_ids": ["ora"],
+                "tags": [],
+                "_relationship_available": True,
+                "_relationship_kinds": relationship_kinds,
+            }]) as live_rows,
+        ):
             provider = server._library_dialogue_provider()
 
+        iter_dialogues.assert_called_once_with(
+            include_closed=True,
+            include_content=True,
+            persist_heal=False,
+            skipped_authority=mock.ANY,
+        )
         live_rows.assert_called_once_with(
             "", target_tag="", persist_heal=False,
             skipped_authority=mock.ANY,
+            preloaded_summaries=snapshot,
         )
         self.assertEqual(
             live_rows.call_args.kwargs["skipped_authority"], [],
@@ -497,27 +514,34 @@ class TestLibraryBrowser(unittest.TestCase):
             )
 
     def test_skipped_authority_records_keep_safe_rows_but_make_counts_incomplete(self):
+        import copy
         import json
         import tempfile
         from pathlib import Path
 
         server = _server_module()
         from orchestrator import conversation_memory, project_meta
+        import conversation_memory as runtime_conversation_memory
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             sessions = root / "sessions"
             good = sessions / "good"
             good.mkdir(parents=True)
-            (good / "conversation.json").write_text(json.dumps({
+            envelope_path = good / "conversation.json"
+            envelope_path.write_text(json.dumps({
                 "conversation_id": "good",
                 "display_name": "Readable Dialogue",
+                "tag": "",
+                "closed": True,
                 "messages": [
                     {"role": "user", "content": "Question"},
                     {"role": "assistant", "content": "Answer"},
                 ],
-                "project_ids": [],
+                "project_ids": ["ora"],
             }), encoding="utf-8")
+            envelope_bytes = envelope_path.read_bytes()
+            envelope_mtime_ns = envelope_path.stat().st_mtime_ns
             (sessions / "missing").mkdir()
             malformed = sessions / "malformed"
             malformed.mkdir()
@@ -570,23 +594,6 @@ class TestLibraryBrowser(unittest.TestCase):
             )
             self.assertEqual(skipped_projects, ["broken.json"])
 
-            def partial_dialogues(
-                _query, *, target_tag, persist_heal, skipped_authority,
-            ):
-                self.assertEqual(target_tag, "")
-                self.assertFalse(persist_heal)
-                skipped_authority.append("missing")
-                return [{
-                    "conversation_id": "good",
-                    "title": "Readable Dialogue",
-                    "last_activity_at": "2026-09-01T12:00:00Z",
-                    "project_ids": [],
-                    "tags": [],
-                    "lifecycle": {"state": "active"},
-                    "privacy": {"state": "standard"},
-                    "relationship": {"kinds": []},
-                }]
-
             file_path = root / "readable.md"
             file_path.write_text("# Readable\n", encoding="utf-8")
             inventory = {
@@ -612,10 +619,32 @@ class TestLibraryBrowser(unittest.TestCase):
                     "nexus": "ora", "folder_name": "Ora", "is_default": False,
                 }]
 
+            iter_for_provider = runtime_conversation_memory.iter_conversations
+            provider_snapshots: list[list[dict]] = []
+            provider_snapshots_before: list[list[dict]] = []
+
+            def one_dialogue_snapshot(*args, **kwargs):
+                snapshot = iter_for_provider(*args, **kwargs)
+                provider_snapshots.append(snapshot)
+                provider_snapshots_before.append(copy.deepcopy(snapshot))
+                return snapshot
+
             with (
                 mock.patch.object(
-                    server, "_browser_live_rows", side_effect=partial_dialogues,
+                    runtime_conversation_memory,
+                    "_DEFAULT_SESSIONS_ROOT",
+                    sessions,
                 ),
+                mock.patch.object(
+                    runtime_conversation_memory,
+                    "iter_conversations",
+                    side_effect=one_dialogue_snapshot,
+                ) as iter_dialogues,
+                mock.patch.object(
+                    server,
+                    "_browser_live_rows",
+                    wraps=server._browser_live_rows,
+                ) as live_rows,
                 mock.patch.object(
                     project_meta, "list_project_meta", side_effect=partial_projects,
                 ),
@@ -626,20 +655,64 @@ class TestLibraryBrowser(unittest.TestCase):
                 dialogue_provider = server._library_dialogue_provider()
                 file_provider = server._library_file_provider()
 
+            iter_dialogues.assert_called_once_with(
+                include_closed=True,
+                include_content=True,
+                persist_heal=False,
+                skipped_authority=mock.ANY,
+            )
+            live_rows.assert_called_once()
+            provider_snapshot = live_rows.call_args.kwargs[
+                "preloaded_summaries"
+            ]
+            self.assertIs(provider_snapshot, provider_snapshots[0])
+            self.assertEqual(provider_snapshot, provider_snapshots_before[0])
+            self.assertEqual(len(provider_snapshot), 1)
+            self.assertEqual(provider_snapshot[0]["conversation_id"], "good")
+            self.assertIn("_envelope", provider_snapshot[0])
+            self.assertIn("_effective_messages", provider_snapshot[0])
+            self.assertIs(
+                live_rows.call_args.kwargs["skipped_authority"],
+                iter_dialogues.call_args.kwargs["skipped_authority"],
+            )
             self.assertEqual(len(dialogue_provider["rows"]), 1)
             self.assertFalse(dialogue_provider["complete"])
             self.assertIn("missing or unreadable", dialogue_provider["reason"])
+            self.assertIn(
+                "no privacy-admitted exchange", dialogue_provider["reason"],
+            )
+            provider_row = dialogue_provider["rows"][0]
+            self.assertNotIn("_envelope", provider_row)
+            self.assertNotIn("_effective_messages", provider_row)
+            self.assertEqual(provider_row["title"], "Dialogue metadata")
+            self.assertNotIn("Readable Dialogue", str(provider_row))
+            self.assertNotIn("Question", str(provider_row))
+            self.assertNotIn("Answer", str(provider_row))
+            self.assertNotIn("snippet", provider_row)
+            self.assertEqual(provider_row["metadata"]["project_ids"], ["ora"])
+            self.assertEqual(provider_row["metadata"]["lifecycle"], "inactive")
+            self.assertEqual(provider_row["metadata"]["message_count"], 2)
+            self.assertIsNone(provider_row["metadata"]["privacy"])
+            self.assertIsNone(provider_row["metadata"]["tags"])
+            self.assertIn("title", provider_row["unavailable_fields"])
+            self.assertIn("privacy", provider_row["unavailable_fields"])
+            self.assertIn("tags", provider_row["unavailable_fields"])
+            self.assertFalse(provider_row["preview"]["available"])
+            self.assertNotIn("locator", provider_row["preview"])
+            self.assertTrue(provider_row["editability"]["available"])
+            self.assertFalse(provider_row["editability"]["editable"])
             self.assertEqual(
-                dialogue_provider["rows"][0]["relationships"]["state"],
+                provider_row["relationships"]["state"],
                 "incomplete",
             )
-            self.assertIsNone(
-                dialogue_provider["rows"][0]["relationships"]["updated_at"],
-            )
+            self.assertIsNone(provider_row["relationships"]["updated_at"])
+            self.assertEqual(provider_row["relationships"]["summaries"], [])
             self.assertIn(
-                "envelopes were skipped",
-                dialogue_provider["rows"][0]["relationships"]["reason"],
+                "per-turn privacy authority",
+                provider_row["relationships"]["reason"],
             )
+            self.assertEqual(envelope_path.read_bytes(), envelope_bytes)
+            self.assertEqual(envelope_path.stat().st_mtime_ns, envelope_mtime_ns)
             self.assertEqual(len(file_provider["rows"]), 1)
             self.assertFalse(file_provider["complete"])
             self.assertIn("enumerated or read", file_provider["reason"])
@@ -658,11 +731,17 @@ class TestLibraryBrowser(unittest.TestCase):
             dialogue_row = next(
                 row for row in payload["rows"] if row["source"] == "dialogues"
             )
+            self.assertEqual(dialogue_row["title"], "Dialogue metadata")
+            self.assertIn("title", dialogue_row["unavailable_fields"])
+            self.assertIn("privacy", dialogue_row["unavailable_fields"])
+            self.assertIn("tags", dialogue_row["unavailable_fields"])
+            self.assertFalse(dialogue_row["preview"]["available"])
+            self.assertNotIn("locator", dialogue_row["preview"])
             self.assertEqual(
                 dialogue_row["relationships"]["state"], "incomplete",
             )
             self.assertIn(
-                "envelopes were skipped",
+                "per-turn privacy authority",
                 dialogue_row["relationships"]["reason"],
             )
             self.assertEqual(

@@ -12670,6 +12670,7 @@ def _browser_live_rows(
     target_tag: str = "",
     persist_heal: bool = True,
     skipped_authority: list[str] | None = None,
+    preloaded_summaries: list[dict] | None = None,
 ) -> list[dict]:
     try:
         from conversation_memory import (
@@ -12680,15 +12681,18 @@ def _browser_live_rows(
     except Exception as e:
         raise RuntimeError(f"conversation browser import failed: {e}") from e
 
-    try:
-        summaries = iter_conversations(
-            include_closed=True,
-            include_content=True,
-            persist_heal=persist_heal,
-            skipped_authority=skipped_authority,
-        )
-    except Exception as e:
-        raise RuntimeError(f"conversation list failed: {e}") from e
+    if preloaded_summaries is None:
+        try:
+            summaries = iter_conversations(
+                include_closed=True,
+                include_content=True,
+                persist_heal=persist_heal,
+                skipped_authority=skipped_authority,
+            )
+        except Exception as e:
+            raise RuntimeError(f"conversation list failed: {e}") from e
+    else:
+        summaries = preloaded_summaries
 
     children_by_parent: dict[str, set[str]] = {}
     incoming_contributor_refs: set[str] = set()
@@ -13786,30 +13790,52 @@ def _library_path_preview(path: str) -> dict:
 def _library_dialogue_provider() -> dict:
     skipped_authority: list[str] = []
     try:
-        contracts = [
-            _browser_contract_row(row)
-            for row in _browser_live_rows(
-                "", target_tag="", persist_heal=False,
-                skipped_authority=skipped_authority,
-            )
-        ]
+        from conversation_memory import iter_conversations
+        summaries = iter_conversations(
+            include_closed=True,
+            include_content=True,
+            persist_heal=False,
+            skipped_authority=skipped_authority,
+        )
     except Exception:
         return {"rows": [], "complete": False,
                 "reason": "the Dialogue provider could not be read"}
+
+    admitted_error = False
+    try:
+        admitted_rows = _browser_live_rows(
+            "", target_tag="", persist_heal=False,
+            skipped_authority=skipped_authority,
+            preloaded_summaries=summaries,
+        )
+    except Exception:
+        admitted_rows = []
+        admitted_error = True
+
+    contracts_by_id: dict[str, dict] = {}
+    admitted_identity_unavailable = False
+    for admitted_row in admitted_rows:
+        try:
+            item = _browser_contract_row(admitted_row)
+        except Exception:
+            admitted_error = True
+            continue
+        identity = str(item.get("conversation_id") or "").strip()
+        if not identity:
+            admitted_identity_unavailable = True
+            continue
+        contracts_by_id[identity] = item
+
     relationships_incomplete = bool(skipped_authority)
     relationship_reason = (
         "one or more Dialogue envelopes were skipped, so relationship "
         "authority is incomplete"
         if relationships_incomplete else None
     )
-    rows = []
-    for item in contracts:
-        identity = str(item.get("conversation_id") or "").strip()
-        if not identity:
-            return {"rows": rows, "complete": False,
-                    "reason": "one or more Dialogue identities are unavailable"}
+
+    def admitted_provider_row(identity: str, item: dict) -> dict:
         relationship = item.get("relationship") or {}
-        rows.append({
+        return {
             "identity": identity,
             "title": item.get("title") or item.get("display_name"),
             "metadata": {
@@ -13822,8 +13848,11 @@ def _library_dialogue_provider() -> dict:
                 "item_type": "dialogue",
                 "message_count": item.get("message_count"),
             },
-            "provenance": {"available": True, "kind": "dialogue-envelope",
-                           "identity": identity},
+            "provenance": {
+                "available": True,
+                "kind": "dialogue-envelope",
+                "identity": identity,
+            },
             "relationships": {
                 "state": (
                     "incomplete" if relationships_incomplete else "fresh"
@@ -13839,20 +13868,103 @@ def _library_dialogue_provider() -> dict:
                     if kind in _LIBRARY_DIALOGUE_DIRECTIONS
                 ],
             },
-            "preview": {"kind": "text", "available": True,
-                        "locator": {"dialogue_id": identity}},
-            "editability": {"available": True, "editable": False,
-                            "surface": "dialogue",
-                            "reason": "Dialogues are read-only in the active Library programme"},
-        })
-    complete = not skipped_authority
+            "preview": {
+                "kind": "text",
+                "available": True,
+                "locator": {"dialogue_id": identity},
+            },
+            "editability": {
+                "available": True,
+                "editable": False,
+                "surface": "dialogue",
+                "reason": (
+                    "Dialogues are read-only in the active Library programme"
+                ),
+            },
+        }
+
+    rows = []
+    metadata_only_present = False
+    for summary in summaries:
+        identity = str(summary.get("conversation_id") or "").strip()
+        if not identity:
+            return {"rows": rows, "complete": False,
+                    "reason": "one or more Dialogue identities are unavailable"}
+        item = contracts_by_id.get(identity)
+        if item is None:
+            metadata_only_present = True
+            rows.append({
+                "identity": identity,
+                "title": "Dialogue metadata",
+                "metadata": {
+                    "project_ids": summary.get("project_ids") or [],
+                    "tags": None,
+                    "lifecycle": (
+                        "inactive" if summary.get("closed") is True else "active"
+                    ),
+                    "privacy": None,
+                    "modified_at": None,
+                    "content_type": "application/x-ora-dialogue",
+                    "item_type": "dialogue",
+                    "message_count": summary.get("message_count"),
+                },
+                "unavailable_fields": [
+                    "title", "tags", "privacy", "modified_at",
+                ],
+                "provenance": {
+                    "available": True,
+                    "kind": "dialogue-envelope",
+                    "identity": identity,
+                },
+                "relationships": {
+                    "state": (
+                        "incomplete" if relationships_incomplete
+                        else "unavailable"
+                    ),
+                    "updated_at": None,
+                    "reason": (
+                        "per-turn privacy authority is unavailable; one or "
+                        "more Dialogue envelopes were also skipped"
+                        if relationships_incomplete else
+                        "per-turn privacy authority is unavailable"
+                    ),
+                    "summaries": [],
+                },
+                "preview": {
+                    "kind": "unsupported",
+                    "available": False,
+                    "reason": (
+                        "human-readable Dialogue preview is unavailable "
+                        "without per-turn privacy authority"
+                    ),
+                },
+                "editability": {
+                    "available": True,
+                    "editable": False,
+                    "surface": "dialogue",
+                    "reason": (
+                        "Dialogues are read-only in the active Library programme"
+                    ),
+                },
+            })
+            continue
+        rows.append(admitted_provider_row(identity, item))
+    reasons: list[str] = []
+    if skipped_authority:
+        reasons.append("one or more Dialogue envelopes are missing or unreadable")
+    if metadata_only_present:
+        reasons.append(
+            "one or more readable Dialogues have no privacy-admitted exchange"
+        )
+    if admitted_error:
+        reasons.append("the privacy-admitted Dialogue inventory could not be read")
+    if admitted_identity_unavailable:
+        reasons.append("one or more admitted Dialogue identities are unavailable")
+    complete = not reasons
     return {
         "rows": rows,
         "complete": complete,
-        "reason": (
-            None if complete else
-            "one or more Dialogue envelopes are missing or unreadable"
-        ),
+        "reason": "; ".join(reasons) if reasons else None,
     }
 
 
