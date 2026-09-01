@@ -14502,30 +14502,10 @@ def _library_file_provider() -> dict:
     return {"rows": rows, "complete": complete, "reason": reason}
 
 
-def _library_enrich_relationships(providers: dict) -> None:
-    graph_rows = [
-        row for provider in providers.values()
-        for row in provider.get("rows") or []
-        if row.get("_relationship_identity")
-    ]
-    if not graph_rows:
-        return
-    try:
-        from orchestrator.tools.relationship_graph import read_relationship_snapshot
-        snapshot = read_relationship_snapshot({
-            row["_relationship_identity"] for row in graph_rows
-        })
-    except Exception:
-        snapshot = {"state": "unavailable", "updated_at": None,
-                    "reason": "relationship snapshot is unavailable", "items": {}}
-    for row in graph_rows:
-        identity = row.pop("_relationship_identity")
-        row["relationships"] = (snapshot.get("items") or {}).get(identity) or {
-            "state": snapshot.get("state") or "unavailable",
-            "updated_at": snapshot.get("updated_at"),
-            "reason": snapshot.get("reason") or "relationship snapshot is unavailable",
-            "summaries": [],
-        }
+def _library_resolve_relationships(identities: set[str]) -> dict:
+    from orchestrator.tools.relationship_graph import read_relationship_snapshot
+
+    return read_relationship_snapshot(identities)
 
 
 @app.route("/api/library/browser", methods=["GET"])
@@ -14565,10 +14545,10 @@ def library_browser():
                     "rows": [], "complete": False,
                     "reason": f"the {source} provider could not be read",
                 }
-        _library_enrich_relationships(providers)
         payload = build_browser_response(
             providers, requested_sources=sources, project_id=project_id,
             query=query, offset=offset, limit=limit,
+            relationship_resolver=_library_resolve_relationships,
         )
     except (LibraryBrowserError, TypeError, ValueError) as exc:
         return _json_response({"error": str(exc)}, status=400)

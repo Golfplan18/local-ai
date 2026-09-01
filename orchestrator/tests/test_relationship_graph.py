@@ -118,6 +118,8 @@ class TestReadOnlyRelationshipSnapshot(unittest.TestCase):
                 confidence TEXT NOT NULL
             );
             CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT);
+            CREATE INDEX idx_source ON relationships(source);
+            CREATE INDEX idx_target ON relationships(target);
             INSERT INTO relationships (source, target, type, confidence)
             VALUES ('NoteA', 'NoteB', 'supports', 'high');
         """)
@@ -136,30 +138,122 @@ class TestReadOnlyRelationshipSnapshot(unittest.TestCase):
             datetime.now(timezone.utc) + timedelta(seconds=2)
         ).isoformat(timespec="microseconds")
         self._database(updated_at=updated_at)
+        connection = sqlite3.connect(self.db_path)
+        connection.execute(
+            "INSERT INTO relationships (source, target, type, confidence) "
+            "VALUES ('NoteB', 'NoteA', 'extends', 'medium')"
+        )
+        connection.executemany(
+            "INSERT INTO relationships (source, target, type, confidence) "
+            "VALUES (?, ?, 'supports', 'low')",
+            [(f"IrrelevantSource{index}", f"IrrelevantTarget{index}")
+             for index in range(500)],
+        )
+        source_plan = " ".join(
+            str(part)
+            for row in connection.execute(
+                "EXPLAIN QUERY PLAN SELECT source, target, type, confidence "
+                "FROM relationships WHERE source IN (?, ?)",
+                ("NoteA", "NoteB"),
+            )
+            for part in row
+        )
+        target_plan = " ".join(
+            str(part)
+            for row in connection.execute(
+                "EXPLAIN QUERY PLAN SELECT source, target, type, confidence "
+                "FROM relationships WHERE target IN (?, ?)",
+                ("NoteA", "NoteB"),
+            )
+            for part in row
+        )
+        connection.commit()
+        connection.close()
+        self.assertIn("idx_source", source_plan)
+        self.assertIn("idx_target", target_plan)
         before = os.stat(self.db_path)
         before_names = set(os.listdir(self.tmp))
         real_connect = sqlite3.connect
 
+        statements = []
+        edge_fetchall = []
+
+        class TrackingCursor:
+            def __init__(self, cursor, sql):
+                self._cursor = cursor
+                self._sql = sql
+
+            def __iter__(self):
+                return iter(self._cursor)
+
+            def fetchall(self):
+                if "FROM relationships" in self._sql:
+                    edge_fetchall.append(self._sql)
+                return self._cursor.fetchall()
+
+        class TrackingConnection:
+            def __init__(self, connection):
+                self._connection = connection
+
+            def execute(self, sql, parameters=()):
+                statements.append(" ".join(sql.split()))
+                return TrackingCursor(
+                    self._connection.execute(sql, parameters), sql,
+                )
+
+            def close(self):
+                self._connection.close()
+
         with mock.patch(
             "orchestrator.tools.relationship_graph.sqlite3.connect",
-            wraps=real_connect,
+            side_effect=lambda *args, **kwargs: TrackingConnection(
+                real_connect(*args, **kwargs)
+            ),
         ) as connect:
             snapshot = read_relationship_snapshot(
                 {"NoteA", "NoteB"}, db_path=self.db_path,
                 vault_path=self.vault,
             )
+            empty_snapshot = read_relationship_snapshot(
+                set(), db_path=self.db_path, vault_path=self.vault,
+            )
 
         after = os.stat(self.db_path)
         self.assertEqual(snapshot["state"], "fresh")
-        self.assertEqual(snapshot["items"]["NoteA"]["summaries"], [{
-            "type": "supports", "direction": "outgoing",
-            "confidence": "high", "count": 1,
-        }])
-        self.assertEqual(snapshot["items"]["NoteB"]["summaries"], [{
-            "type": "is-supported-by", "direction": "incoming",
-            "confidence": "high", "count": 1,
-            "original_type": "supports",
-        }])
+        self.assertEqual(snapshot["items"]["NoteA"]["summaries"], [
+            {"type": "is-extended-by", "direction": "incoming",
+             "confidence": "medium", "count": 1,
+             "original_type": "extends"},
+            {"type": "supports", "direction": "outgoing",
+             "confidence": "high", "count": 1},
+        ])
+        self.assertEqual(snapshot["items"]["NoteB"]["summaries"], [
+            {"type": "extends", "direction": "outgoing",
+             "confidence": "medium", "count": 1},
+            {"type": "is-supported-by", "direction": "incoming",
+             "confidence": "high", "count": 1,
+             "original_type": "supports"},
+        ])
+        self.assertEqual(empty_snapshot["state"], "fresh")
+        self.assertEqual(empty_snapshot["items"], {})
+        self.assertNotIn("IrrelevantSource0", str(snapshot))
+        relationship_reads = [
+            statement for statement in statements
+            if "FROM relationships" in statement
+        ]
+        self.assertEqual(len(relationship_reads), 2)
+        self.assertTrue(all(
+            "WHERE source IN (?, ?)" in statement
+            or "WHERE target IN (?, ?)" in statement
+            for statement in relationship_reads
+        ))
+        self.assertTrue(any(
+            "WHERE source IN" in sql for sql in relationship_reads
+        ))
+        self.assertTrue(any(
+            "WHERE target IN" in sql for sql in relationship_reads
+        ))
+        self.assertEqual(edge_fetchall, [])
         uri = connect.call_args.args[0]
         self.assertIn("mode=ro", uri)
         self.assertTrue(connect.call_args.kwargs["uri"])

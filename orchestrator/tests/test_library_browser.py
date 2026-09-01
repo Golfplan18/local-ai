@@ -72,56 +72,131 @@ class TestLibraryBrowser(unittest.TestCase):
         with self.assertRaises(LibraryBrowserError):
             parse_sources(["dialogues,semantic-search"])
 
-    def test_complete_universe_is_faceted_before_pagination(self):
+    def test_complete_universe_is_faceted_before_page_relationship_resolution(self):
         providers = {
             "dialogues": {
                 "complete": True,
                 "rows": [
-                    _row("d-older", "Older", tag="alpha",
+                    _row("d-older", "Dialogue", tag="alpha",
                          modified_at="2026-08-01T00:00:00Z"),
-                    _row("d-newer", "Newer", tag="beta",
-                         modified_at="2026-08-04T00:00:00Z"),
                 ],
             },
             "engrams": {
                 "complete": True,
-                "rows": [_row("/vault/e.md", "Engram", tag="gamma",
-                              modified_at="2026-08-03T00:00:00Z")],
-            },
-            "files": {
-                "complete": True,
-                "rows": [_row("/vault/f.md", "File", tag="delta",
-                              modified_at="2026-08-02T00:00:00Z")],
+                "rows": [
+                    dict(
+                        _row("/vault/selected.md", "Selected", tag="beta",
+                             modified_at="2026-08-04T00:00:00Z"),
+                        _relationship_identity="Selected",
+                    ),
+                    dict(
+                        _row("/vault/off-page.md", "Off page", tag="gamma",
+                             modified_at="2026-08-03T00:00:00Z"),
+                        _relationship_identity="OffPage",
+                    ),
+                    dict(
+                        _row("/vault/other-project.md", "Other project",
+                             tag="delta",
+                             modified_at="2026-08-05T00:00:00Z"),
+                        _relationship_identity="OtherProject",
+                    ),
+                ],
             },
         }
+        for row in providers["dialogues"]["rows"]:
+            row["metadata"]["project_ids"] = ["project-a"]
+        for row in providers["engrams"]["rows"][:2]:
+            row["metadata"]["project_ids"] = ["project-a"]
+        providers["engrams"]["rows"][2]["metadata"]["project_ids"] = [
+            "project-b"
+        ]
+        requested = []
 
-        payload = build_browser_response(providers, offset=1, limit=2)
+        def resolve(identities):
+            requested.append(set(identities))
+            return {
+                "state": "stale",
+                "updated_at": "2026-08-06T00:00:00Z",
+                "reason": "canonical notes changed",
+                "items": {
+                    "Selected": {
+                        "summaries": [{
+                            "type": "supports",
+                            "direction": "outgoing",
+                            "confidence": "high",
+                            "count": 2,
+                        }],
+                    },
+                },
+            }
 
-        self.assertEqual(payload["total"], 4)
+        payload = build_browser_response(
+            providers,
+            requested_sources=["dialogues", "engrams"],
+            project_id="project-a",
+            limit=1,
+            relationship_resolver=resolve,
+        )
+
+        self.assertEqual(requested, [{"Selected"}])
+        self.assertNotIn("OffPage", requested[0])
+        self.assertEqual(payload["total"], 3)
         self.assertEqual(
             payload["source_counts"],
-            {"dialogues": 2, "engrams": 1, "files": 1},
+            {"dialogues": 1, "engrams": 2},
         )
         self.assertTrue(payload["universe"]["complete"])
         self.assertEqual(payload["pagination"], {
-            "offset": 1, "limit": 2, "returned": 2,
-            "has_more": True, "next_offset": 3,
+            "offset": 0, "limit": 1, "returned": 1,
+            "has_more": True, "next_offset": 1,
         })
         self.assertEqual(
             payload["facets"]["tags"]["counts"],
-            {"alpha": 1, "beta": 1, "delta": 1, "gamma": 1},
+            {"alpha": 1, "beta": 1, "gamma": 1},
         )
-        self.assertEqual(payload["facets"]["projects"]["counts"], {"ora": 4})
-        self.assertTrue(payload["facets"]["tags"]["complete"])
         self.assertEqual(
-            [row["title"] for row in payload["rows"]],
-            ["Engram", "File"],
+            payload["facets"]["relationships"]["counts"],
+            {"fresh": 1, "incomplete": 0, "stale": 2, "unavailable": 0},
         )
-        for row in payload["rows"]:
-            self.assertTrue(row["id"].startswith(f"{row['source']}:"))
-            self.assertEqual(row["preview"]["route"], "text-pane")
-            self.assertTrue(row["editability"]["descriptor_only"])
-            self.assertEqual(row["relationships"]["state"], "fresh")
+        self.assertEqual(
+            payload["facets"]["projects"]["counts"], {"project-a": 3},
+        )
+        self.assertTrue(payload["facets"]["tags"]["complete"])
+        row = payload["rows"][0]
+        self.assertEqual(row["title"], "Selected")
+        self.assertEqual(row["relationships"], {
+            "state": "stale",
+            "updated_at": "2026-08-06T00:00:00Z",
+            "reason": "canonical notes changed",
+            "summaries": [{
+                "type": "supports", "direction": "outgoing",
+                "confidence": "high", "count": 2,
+            }],
+        })
+        self.assertNotIn("_relationship_identity", str(payload))
+
+        def fail_resolution(_identities):
+            raise RuntimeError("relationship database unavailable")
+
+        failed = build_browser_response(
+            providers,
+            requested_sources=["dialogues", "engrams"],
+            project_id="project-a",
+            limit=1,
+            relationship_resolver=fail_resolution,
+        )
+        self.assertEqual(failed["total"], 3)
+        self.assertEqual(len(failed["rows"]), 1)
+        self.assertTrue(failed["universe"]["complete"])
+        self.assertTrue(failed["facets"]["relationships"]["complete"])
+        self.assertEqual(
+            failed["facets"]["relationships"]["counts"],
+            {"fresh": 1, "incomplete": 0, "stale": 0, "unavailable": 2},
+        )
+        self.assertEqual(
+            failed["rows"][0]["relationships"]["state"], "unavailable",
+        )
+        self.assertNotIn("_relationship_identity", str(failed))
 
     def test_incomplete_provider_never_presents_partial_universe_as_complete(self):
         providers = {

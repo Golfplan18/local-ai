@@ -202,9 +202,31 @@ def read_relationship_snapshot(
             unavailable["reason"] = "relationship snapshot schema is incompatible"
             return unavailable
         metadata = dict(connection.execute("SELECT key, value FROM metadata"))
-        rows = connection.execute(
-            "SELECT source, target, type, confidence FROM relationships"
-        ).fetchall()
+        summaries: dict[str, dict[tuple[str, str, str, str | None], int]] = {
+            identity: {} for identity in wanted
+        }
+        ordered_wanted = sorted(wanted)
+        if ordered_wanted:
+            placeholders = ", ".join("?" for _ in ordered_wanted)
+            for source, target, relation_type, confidence in connection.execute(
+                "SELECT source, target, type, confidence FROM relationships "
+                f"WHERE source IN ({placeholders})",
+                ordered_wanted,
+            ):
+                relation_type = str(relation_type)
+                confidence = str(confidence or "")
+                key = (relation_type, "outgoing", confidence, None)
+                summaries[source][key] = summaries[source].get(key, 0) + 1
+            for source, target, relation_type, confidence in connection.execute(
+                "SELECT source, target, type, confidence FROM relationships "
+                f"WHERE target IN ({placeholders})",
+                ordered_wanted,
+            ):
+                relation_type = str(relation_type)
+                confidence = str(confidence or "")
+                inverse = INVERSE_MAP.get(relation_type, relation_type)
+                key = (inverse, "incoming", confidence, relation_type)
+                summaries[target][key] = summaries[target].get(key, 0) + 1
     except sqlite3.Error:
         unavailable["reason"] = "relationship snapshot could not be read"
         return unavailable
@@ -236,20 +258,6 @@ def read_relationship_snapshot(
         elif latest_note is not None and updated_at < latest_note:
             state = "stale"
             reason = "canonical relationship notes changed after the latest complete index update"
-
-    summaries: dict[str, dict[tuple[str, str, str, str | None], int]] = {
-        identity: {} for identity in wanted
-    }
-    for source, target, relation_type, confidence in rows:
-        relation_type = str(relation_type)
-        confidence = str(confidence or "")
-        if source in wanted:
-            key = (relation_type, "outgoing", confidence, None)
-            summaries[source][key] = summaries[source].get(key, 0) + 1
-        if target in wanted:
-            inverse = INVERSE_MAP.get(relation_type, relation_type)
-            key = (inverse, "incoming", confidence, relation_type)
-            summaries[target][key] = summaries[target].get(key, 0) + 1
 
     items = {}
     for identity in sorted(wanted):
