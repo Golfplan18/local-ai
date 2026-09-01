@@ -365,6 +365,94 @@ class SettingsEndpointTests(unittest.TestCase):
         self.assertEqual(data["settings"]["whisper"]["model_size"], "large-v3")
         self.assertTrue(any(r["provider"] == "anthropic" for r in data["api_keys"]))
 
+    def test_extension_provider_is_dynamic_secret_free_and_credential_scoped(self):
+        from flask import Flask
+        import provider_registry
+        from server.feature_plugins import FeaturePluginSource, load_feature_plugins
+
+        fixture_root = (
+            REPO / "orchestrator" / "tests" / "fixtures"
+            / "feature_plugins" / "settings_probe"
+        )
+        providers_before = list(provider_registry.PROVIDERS)
+        by_id_before = dict(provider_registry._BY_ID)
+        self.assertNotIn("settings_probe", provider_registry.provider_ids())
+
+        try:
+            loaded = load_feature_plugins(
+                Flask("settings-probe-endpoint-test"),
+                self.S._feature_plugin_context,
+                sources=(FeaturePluginSource(
+                    "settings_probe",
+                    "orchestrator.tests.fixtures.feature_plugins.settings_probe",
+                    fixture_root,
+                ),),
+            )
+            self.assertIn("settings_probe", loaded.descriptors)
+            secret = "settings-probe-secret-must-not-leak"
+            set_payload = {"provider": "settings_probe", "value": secret}
+            first_store = self.client.post(
+                "/api/settings/api-key", json=set_payload,
+            )
+            self.assertFalse(self._US.api_key_present("settings_probe"))
+            stored = self._approve_protected_retry(
+                first_store,
+                lambda: self.client.post(
+                    "/api/settings/api-key", json=set_payload,
+                ),
+            )
+            self.assertEqual(stored.status_code, 200)
+            self.assertTrue(self._US.api_key_present("settings_probe"))
+
+            response = self.client.get("/api/settings")
+            self.assertEqual(response.status_code, 200)
+            payload = response.get_json()
+            self.assertIn("settings_probe", payload["providers"])
+            row = next(
+                item for item in payload["api_keys"]
+                if item["provider"] == "settings_probe"
+            )
+            self.assertEqual(row["label"], "Settings probe")
+            self.assertTrue(row["present"])
+            for forbidden in (
+                "key", "value", "secret", "keyring_username", "_feature_owner",
+            ):
+                self.assertNotIn(forbidden, row)
+            self.assertNotIn(secret, response.get_data(as_text=True))
+
+            verified = self.client.post(
+                "/api/settings/api-key/verify",
+                json={"provider": "settings_probe"},
+            )
+            self.assertEqual(verified.status_code, 200)
+            self.assertIsNone(verified.get_json()["ok"])
+
+            probe_module = sys.modules[
+                "orchestrator.tests.fixtures.feature_plugins.settings_probe"
+            ]
+            context = probe_module.LAST_CONTEXT
+            self.assertTrue(context.has_credential("settings_probe"))
+            self.assertEqual(context.get_credential("settings_probe"), secret)
+            with self.assertRaises(self._US.SettingsError):
+                context.get_credential("openai")
+
+            first_delete = self.client.delete(
+                "/api/settings/api-key/settings_probe"
+            )
+            deleted = self._approve_protected_retry(
+                first_delete,
+                lambda: self.client.delete(
+                    "/api/settings/api-key/settings_probe"
+                ),
+            )
+            self.assertEqual(deleted.status_code, 200)
+            self.assertFalse(self._US.api_key_present("settings_probe"))
+            self.assertFalse(context.has_credential("settings_probe"))
+        finally:
+            provider_registry.PROVIDERS[:] = providers_before
+            provider_registry._BY_ID.clear()
+            provider_registry._BY_ID.update(by_id_before)
+
     def test_post_updates_settings(self):
         resp = self.client.post(
             "/api/settings",

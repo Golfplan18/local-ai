@@ -259,6 +259,14 @@ After the bind, a sequence of self-heal hooks runs, each wrapped in its own `try
 
 Two of these hooks are the durability spine. The **orphan pending-submission scan** (`_scan_orphaned_pending_submissions`, defined at `server.py:5417`, called at `server.py:14984`) walks the pending submission directory at boot, surfaces each stuck submission as an errored chunk in the sidebar's Errored group with retry/dismiss controls, and moves the file to `processed/` so it is not re-surfaced next boot. This is the crash-recovery half of the lost-work guarantee. The **SIGINT/SIGTERM shutdown handler** (`_shutdown_handler`, `server.py:14959`, registered at `14975`–`14976`) fires `session_end` hooks, clears sidebar windows, and cleans up bash-execution state before exiting.
 
+**Trusted feature host.** During module assembly the server gives
+`server/feature_plugins.py` an explicit ordered source list. Production lists
+only Video, preserving its routes, asset URLs, and lifecycle callbacks. The host
+can retain multiple valid descriptors, inject each one's ordered browser assets,
+and dispatch lifecycle phases across them. An absent or broken source is logged
+and skipped independently; there is no filesystem discovery, installer, or
+third-party loading surface.
+
 **The `/chat` request lifecycle.** This is the path to read first for the whole subsystem.
 
 1. `chat()` (`server.py:6297`) parses the payload and immediately calls `_log_pending_submission` (`server.py:5352`) — *before* validation, before attachment processing, before anything that could fail. It writes the full submission (input, history, mode/framework selections, attachments) to a `pending/<submission_id>.json` record. This write is the recoverable record. If it fails, the handler logs and proceeds anyway — a disk error must not be the thing that drops the user's input.
@@ -438,6 +446,13 @@ At the reviewed commit, only three preset files are materialized on disk — `fr
 **Gear downgrade over hard failure.** When no endpoint can fill a required slot at the requested gear, the router does not fail — it drops one gear and retries with a wider eligibility pool (`router.py:500`, the cascade loop in `execute`). Gear 4 → 3 → 2 → 1. A single-model install still gets an answer, just a less adversarial one. The rejected alternative was to refuse the request; that would have made the free-tier install useless the moment its one endpoint hit a rate limit.
 
 **Curated registry authoritative for capability flags.** Rather than trust the hand-entered `vision_capable` in `routing-config.json`, an offline pipeline builds `config/model-registry.json` from OpenRouter, LiteLLM, Chatbot Arena, and Artificial Analysis, and `model_registry.overlay_routing_config` merges its capability values onto the endpoint dicts at load (`boot.py:1375`). The registry wins. This closes the `kimi-k2.6` class: a wrong flag in `routing-config.json` cannot propagate into routing because the overlay overwrites it. The tradeoff is a second source of truth that must be refreshed; when the registry is missing or malformed the overlay is a documented no-op and the routing-config values stand.
+
+**Feature-owned provider rows do not create routing.** A loaded trusted feature
+may atomically add an owner-bound provider declaration after collision checks.
+This makes its no-secret row and keyring presence available to Settings and lets
+that feature read only its declared named credential. It does not create a model
+endpoint, catalogue entry, preset, or routing fallback; those remain explicit
+configuration work in the mechanisms described below.
 
 **Open problems acknowledged in the design:**
 
@@ -1287,9 +1302,10 @@ managed purge begins.
 
 Three decisions define the current layer.
 
-**Video is one explicit first-party feature plugin.**
-`server/feature_plugins.py` loads only the built-in Python implementation
-`plugins.video`, and only when the configured `video` directory exists. By
+**Video is the only configured production source in a plural first-party host.**
+`server/feature_plugins.py` receives an explicit ordered source list and loads
+the built-in Python implementation `plugins.video` only when the configured
+`video` directory exists. By
 default that checked descriptor-and-assets root is `<ora>/plugins/video`.
 `ORA_FEATURE_PLUGINS_DIR` changes the parent of that checked root, but it does
 not change the Python import: implementation code still comes from
@@ -1300,11 +1316,12 @@ would need a new cross-process safety protocol before it could preserve the same
 purge guarantee. The accepted cost is that trusted first-party plugin code
 shares the server's process.
 
-**Registration is complete before installation.** The package returns a validated
-descriptor containing its id, static root, ordered scripts and styles, 31 routes,
-and Close/Delete lifecycle callbacks. It receives a fixed
+**Registration is complete before installation.** Each package returns a validated
+descriptor containing its source-matched id, static root, ordered scripts and
+styles, routes, optional owner-bound providers, and Close/Delete lifecycle
+callbacks. It receives a fixed
 `FeaturePluginContext`, not the Flask application. Validation accepts only the
-known `video` id and expected static root, confines assets below that root,
+expected source id and static root, confines assets below that root,
 requires declared files to exist, and rejects duplicate endpoint names. Only
 then are routes, the static asset route, and page tags installed. An absent or
 broken package is logged and returns no active descriptor; the core keeps
@@ -1329,8 +1346,9 @@ external-project subprocess convention described in Chapter 17.
 **Loader and contract.** `server/feature_plugins.py` defines `FeaturePlugin`,
 `PluginRoute`, `FeaturePluginContext`, descriptor validation, route installation,
 the plugin asset route, and asset-tag injection into `server/index-v3.html`.
-The explicit context supplies two paths plus fifteen lifecycle, safe-file,
-mutation-policy, settings, metadata, telemetry, and async-capability helpers. It
+The explicit context supplies two paths plus seventeen lifecycle, safe-file,
+mutation-policy, settings, declared-credential, metadata, telemetry, and
+async-capability helpers. It
 is the current contract; the earlier seven-helper proposal is obsolete.
 
 `plugins/video/__init__.py` registers the descriptor and three lifecycle
@@ -1358,9 +1376,9 @@ Before polling, it records the exact prediction ID with the same Dialogue and lo
 Submission and queued cancellation are lock-ordered, so a queued cancellation either wins before any provider call or becomes durable intent on the active job.
 Polling, terminal changes, cancellation, and artifact materialization authenticate the surviving Dialogue/job owner; artifacts are written only while that exact owner remains live.
 
-**Browser installation.** After complete validation, the loader replaces the
-single `<!-- ORA_FEATURE_PLUGIN_ASSETS -->` placeholder with the plugin's ordered
-styles and scripts. `plugins/video/static/video-plugin.js` registers four host
+**Browser installation.** After complete validation, the host replaces the
+single `<!-- ORA_FEATURE_PLUGIN_ASSETS -->` placeholder with every loaded
+descriptor's ordered styles and scripts. `plugins/video/static/video-plugin.js` registers four host
 seams: the Exhibits `video` pane through `OraPanes`; Video editor, Browse Dialogue
 media, and Send canvas image controls through `OraMounts`; the media browser
 through `OraBrowseOverlays`; and **Settings → Video** through
@@ -1385,9 +1403,9 @@ tombstone capture, import, preview, render, and library work; after the purge,
 Lifecycle errors are logged and collected without falsely claiming that an
 optional callback succeeded.
 
-**Failure and removal.** A missing package or an import, registration,
-descriptor, or route-install failure logs a specific error and yields no active
-descriptor, static route, or browser surface. An unexpected mid-route-loop
+**Failure and removal.** A missing source or an import, registration,
+descriptor, provider, or route-install failure logs a specific error, skips that
+source, and continues loading later explicit sources. An unexpected mid-route-loop
 failure can leave routes Flask already accepted until restart; the loader does
 not claim transactional rollback. Removing or renaming `plugins/video` and
 restarting removes its 31 routes, assets, settings, controls, pane, overlay, and

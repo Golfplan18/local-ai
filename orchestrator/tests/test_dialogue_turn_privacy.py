@@ -961,7 +961,7 @@ def test_library_search_filters_exact_authority_before_every_score(
         ),
         mock.patch.object(server_app, "SIDEBAR_WINDOW_AVAILABLE", False),
         mock.patch.object(
-            server_app, "_video_plugin",
+            server_app, "_feature_plugins",
             SimpleNamespace(
                 run_lifecycle=mock.Mock(return_value={"results": {}, "errors": []})
             ),

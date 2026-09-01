@@ -126,16 +126,6 @@ DEFAULTS: dict = {
     },
 }
 
-# Whitelisted providers for keyring writes/reads — derived from the
-# provider registry (the single source of truth). Maps provider id →
-# keyring username (under service "ora"). Adding a provider is a one-entry
-# edit in provider_registry.py; this map and the labelled display order
-# update automatically. OpenAI TTS reuses the OpenAI key.
-PROVIDER_KEYRING_USERNAME = _registry.keyring_username_map()
-
-# Providers whose keys are labelled in the UI, in registry (display) order.
-PROVIDER_LABELS = _registry.labels_map()
-
 _KEYRING_SERVICE = "ora"
 _lock = threading.Lock()
 
@@ -298,10 +288,30 @@ def _validate_updates(updates: dict) -> None:
 
 # ── API key handling (keyring) ──────────────────────────────────────────────
 
+def provider_ids() -> list[str]:
+    """Return the current provider ids, including loaded feature providers."""
+    return _registry.provider_ids()
+
+
 def _provider_username(provider: str) -> str:
-    if provider not in PROVIDER_KEYRING_USERNAME:
+    declaration = _registry.by_id(provider)
+    if declaration is None:
         raise SettingsError(f"unknown provider: {provider!r}")
-    return PROVIDER_KEYRING_USERNAME[provider]
+    return declaration["keyring_username"]
+
+
+def feature_credential(owner: str, credential_name: str) -> str | None:
+    """Read only a provider credential explicitly declared by ``owner``."""
+    import keyring
+
+    try:
+        username = _registry.credential_username_for_owner(owner, credential_name)
+    except ValueError as exc:
+        raise SettingsError(str(exc)) from exc
+    try:
+        return keyring.get_password(_KEYRING_SERVICE, username)
+    except Exception:
+        return None
 
 
 def set_api_key(provider: str, value: str) -> None:
@@ -440,16 +450,16 @@ def group_order() -> list[list]:
 
 __all__ = [
     "DEFAULTS",
-    "PROVIDER_LABELS",
-    "PROVIDER_KEYRING_USERNAME",
     "SettingsError",
     "load_settings",
     "save_settings",
     "reset_settings",
     "get_setting",
+    "provider_ids",
     "set_api_key",
     "delete_api_key",
     "api_key_present",
+    "feature_credential",
     "list_api_key_status",
     "group_order",
 ]

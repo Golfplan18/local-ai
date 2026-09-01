@@ -350,9 +350,57 @@ PROVIDERS: list[dict] = [
     },
 ]
 
-# ── derived lookups ──────────────────────────────────────────────────────
+# ── derived lookups and feature-owned additions ─────────────────────────
 
 _BY_ID = {p["id"]: p for p in PROVIDERS}
+
+
+def register_provider_batch(
+    owner: str,
+    declarations,
+    *,
+    commit: bool = True,
+) -> tuple[str, ...]:
+    """Validate, and optionally add, one feature owner's provider batch."""
+
+    required = {
+        "id", "label", "category", "keyring_username", "signup_url", "console_url",
+    }
+    if not owner or any(not isinstance(p, dict) for p in declarations):
+        raise ValueError("provider owner and dictionary declarations are required")
+    providers = tuple(dict(p) for p in declarations)
+    if any(any(not p.get(name) for name in required) for p in providers):
+        raise ValueError("provider declaration is incomplete")
+    for provider in providers:
+        provider.setdefault("essential", False)
+        provider.setdefault("auto_activate", False)
+        provider["_feature_owner"] = owner
+    provider_ids = tuple(provider["id"] for provider in providers)
+    usernames = tuple(provider["keyring_username"] for provider in providers)
+    if (len(set(provider_ids)) != len(provider_ids)
+            or set(provider_ids).intersection(_BY_ID)):
+        raise ValueError("provider id collision")
+    existing_usernames = {p["keyring_username"] for p in PROVIDERS}
+    if (len(set(usernames)) != len(usernames)
+            or set(usernames).intersection(existing_usernames)):
+        raise ValueError("provider keyring username collision")
+    if any(p.get("_feature_owner") == owner for p in PROVIDERS):
+        raise ValueError(f"provider owner already registered: {owner}")
+    if commit:
+        PROVIDERS.extend(providers)
+        _BY_ID.update((p["id"], p) for p in providers)
+    return provider_ids
+
+
+def credential_username_for_owner(owner: str, credential_name: str) -> str:
+    """Resolve only a named provider credential declared by ``owner``."""
+
+    provider = _BY_ID.get(credential_name)
+    if provider is None or provider.get("_feature_owner") != owner:
+        raise ValueError(
+            f"feature {owner!r} did not declare credential {credential_name!r}"
+        )
+    return provider["keyring_username"]
 
 
 def by_id(provider_id: str) -> dict | None:
@@ -411,7 +459,7 @@ def validate_key_format(provider_id: str, value: str) -> tuple[bool, str]:
     surprising shape, never refuse a key the user insists on.
     """
     v = (value or "").strip()
-    p = _BY_ID.get(provider_id)
+    p = by_id(provider_id)
     if not p:
         return False, f"unknown provider {provider_id!r}"
     if len(v) < 12:
@@ -430,6 +478,8 @@ def _transport_label(p: dict) -> str:
     the metered half of that answer; ``list_api_key_status`` adds the
     subscription half for the providers that have one.
     """
+    if p.get("transport"):
+        return str(p["transport"])
     dispatch = p.get("dispatch")
     if dispatch == "native":
         return "Direct calls to the vendor's own API — metered, billed per token"
@@ -471,4 +521,5 @@ __all__ = [
     "PROVIDERS", "GROUP_ORDER", "by_id", "provider_ids",
     "keyring_username_map", "labels_map", "env_bridge_pairs",
     "direct_llm_providers", "or_prefix_map", "validate_key_format", "ui_rows",
+    "register_provider_batch", "credential_username_for_owner",
 ]
