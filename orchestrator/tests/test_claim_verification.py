@@ -584,8 +584,6 @@ class FormatEvidenceBlockLabelPrefix(unittest.TestCase):
         self.assertIn("### Unflagged Claim 1", out)
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class QueryCapTruncation(unittest.TestCase):
@@ -652,3 +650,7 @@ class QueryCapTruncation(unittest.TestCase):
     def test_cap_never_raises(self):
         out, _ = self._run(30, "1")
         self.assertEqual(out["trace"]["status"], "ran")
+
+
+if __name__ == "__main__":
+    unittest.main()

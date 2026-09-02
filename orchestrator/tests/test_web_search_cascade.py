@@ -41,10 +41,19 @@ class CascadeOrderTests(unittest.TestCase):
     """Cascade walks providers in the configured order."""
 
     def setUp(self):
+        # The env override short-circuits _load_cascade_order before the
+        # routing-config file is read, so these tests must neutralise it —
+        # otherwise they fail on any machine that sets it, which includes the
+        # production host this feature exists for.
+        self._env = mock.patch.dict(
+            os.environ, {"ORA_SEARCH_CASCADE_ORDER": ""}, clear=False
+        )
+        self._env.start()
         ws._reset_cascade_order_cache()
 
     def tearDown(self):
         ws._reset_cascade_order_cache()
+        self._env.stop()
 
     def test_default_order_is_tavily_brave_ddg(self):
         with mock.patch.object(
@@ -479,8 +488,6 @@ class PublicEntryPointErrorPaths(unittest.TestCase):
         self.assertIn("rate limited", msg)
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class CascadeEnvOverrideTests(unittest.TestCase):
@@ -631,3 +638,102 @@ class QueryCapTests(unittest.TestCase):
     def test_negative_is_unlimited(self):
         with mock.patch.dict(os.environ, {"ORA_SEARCH_MAX_QUERIES": "-5"}, clear=False):
             self.assertEqual(ws.search_query_cap(), 0)
+
+
+class CascadeTypoSafetyTests(unittest.TestCase):
+    """A partially valid override must not delete a tier in silence.
+
+    This is the failure the whole change exists to prevent: one mistyped name
+    in a unit file leaving production on a single free tier, while the
+    accepted-order log line still reads like success.
+    """
+
+    def setUp(self):
+        ws._reset_cascade_order_cache()
+
+    def tearDown(self):
+        ws._reset_cascade_order_cache()
+
+    def _resolve(self, value, config=("tavily", "brave", "ddg")):
+        buf = io.StringIO()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
+            json.dump({"search_cascade_order": list(config)}, fh)
+            path = fh.name
+        try:
+            with mock.patch.object(ws, "_ROUTING_CONFIG_PATH", path), \
+                    mock.patch.dict(
+                        os.environ, {"ORA_SEARCH_CASCADE_ORDER": value}, clear=False
+                    ), mock.patch.object(sys, "stderr", buf):
+                return ws._load_cascade_order(), buf.getvalue()
+        finally:
+            os.unlink(path)
+
+    def test_one_mistyped_name_is_named_in_the_warning(self):
+        order, out = self._resolve("ddg,brve")
+        self.assertEqual(order, ("ddg",))
+        self.assertIn("Unknown provider(s) in ORA_SEARCH_CASCADE_ORDER", out)
+        self.assertIn("brve", out)
+
+    def test_case_is_folded_rather_than_rejected(self):
+        """"DDG,BRAVE" must not fall back to a cascade that leads with a paid
+        tier merely because the operator used capitals."""
+        order, out = self._resolve("DDG,BRAVE")
+        self.assertEqual(order, ("ddg", "brave"))
+        self.assertNotIn("Unknown provider", out)
+
+    def test_whitespace_and_empty_segments_are_tolerated(self):
+        order, _ = self._resolve(" ddg , , brave ")
+        self.assertEqual(order, ("ddg", "brave"))
+
+    def test_resolved_order_is_always_announced(self):
+        """The routing-config path resolves to a paid-first cascade on the
+        shipped tree; it must never be the one path that stays quiet."""
+        order, out = self._resolve("", config=("tavily", "brave", "ddg"))
+        self.assertEqual(order, ("tavily", "brave", "ddg"))
+        self.assertIn("cascade order:", out)
+        self.assertIn("routing-config", out)
+
+
+class SemanticAugmentOverrideTests(unittest.TestCase):
+    """Semantic augmentation is a second search per query that the cascade
+    order does not govern — pinning a free cascade must be able to stop it."""
+
+    def setUp(self):
+        ws._reset_semantic_augment_cache()
+
+    def tearDown(self):
+        ws._reset_semantic_augment_cache()
+
+    def _load(self, env, config_enabled=True):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
+            json.dump({"semantic_augment": {"enabled": config_enabled,
+                                            "provider": "exa"}}, fh)
+            path = fh.name
+        try:
+            with mock.patch.object(ws, "_ROUTING_CONFIG_PATH", path), \
+                    mock.patch.dict(
+                        os.environ, {"ORA_SEARCH_SEMANTIC_AUGMENT": env}, clear=False
+                    ), mock.patch.object(sys, "stderr", io.StringIO()):
+                return ws._load_semantic_augment()
+        finally:
+            os.unlink(path)
+
+    def test_env_off_beats_config_on(self):
+        enabled, _ = self._load("0", config_enabled=True)
+        self.assertFalse(enabled)
+
+    def test_env_on_beats_config_off(self):
+        enabled, _ = self._load("1", config_enabled=False)
+        self.assertTrue(enabled)
+
+    def test_unset_leaves_config_in_charge(self):
+        enabled, _ = self._load("", config_enabled=True)
+        self.assertTrue(enabled)
+
+    def test_garbage_leaves_config_in_charge(self):
+        enabled, _ = self._load("maybe", config_enabled=True)
+        self.assertTrue(enabled)
+
+
+if __name__ == "__main__":
+    unittest.main()

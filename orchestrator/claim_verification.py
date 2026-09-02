@@ -311,6 +311,7 @@ def assemble_claim_verification_evidence(
     # executor, and fail OPEN — the dropped claims simply go unverified, which
     # the pipeline already treats as a coverage gap, rather than raising and
     # turning a cost control into a pipeline breaker.
+    claims_submitted = len(flagged_claims)
     query_cap = search_query_cap()
     if query_cap and len(flagged_claims) > query_cap:
         dropped = len(flagged_claims) - query_cap
@@ -449,7 +450,13 @@ def assemble_claim_verification_evidence(
         "trace": {
             "status": "ran",
             "reason": None,
+            # claims_total is POST-cap. claims_submitted is what arrived.
+            # Without both, a capped run shows claims vanishing between the
+            # extracted count and the verified count with no failures to
+            # account for them.
             "claims_total": len(flagged_claims),
+            "claims_submitted": claims_submitted,
+            "claims_dropped_to_cap": claims_submitted - len(flagged_claims),
             "claims_succeeded": len(flagged_claims) - claims_failed,
             "claims_failed": claims_failed,
             "chunks_total": chunks_total,
@@ -766,6 +773,7 @@ def extract_and_verify_unflagged_claims(
             "reason": inner_trace.get("reason"),
             "extracted_count": len(extracted),
             "claims_total": inner_trace.get("claims_total", 0),
+            "claims_dropped_to_cap": inner_trace.get("claims_dropped_to_cap", 0),
             "claims_succeeded": inner_trace.get("claims_succeeded", 0),
             "claims_failed": inner_trace.get("claims_failed", 0),
             "chunks_total": inner_trace.get("chunks_total", 0),

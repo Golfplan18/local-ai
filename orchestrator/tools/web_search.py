@@ -289,16 +289,30 @@ def _load_cascade_order() -> tuple[str, ...]:
     # ORA_WEB_EXTRACTION_MAX_FETCHES. Comma-separated, e.g. "ddg,brave".
     raw_env = os.environ.get("ORA_SEARCH_CASCADE_ORDER", "").strip()
     if raw_env:
-        env_valid = tuple(
-            name for name in (x.strip() for x in raw_env.split(",")) if name in _PROVIDERS
-        )
-        if env_valid:
+        # Case-folded: the registry keys are lowercase, and an operator typing
+        # "DDG,BRAVE" into a unit file means the same thing as "ddg,brave".
+        # Matching strictly would drop every name and fall back to a cascade
+        # that leads with a paid tier.
+        env_names = [x.strip().lower() for x in raw_env.split(",") if x.strip()]
+        env_valid = tuple(name for name in env_names if name in _PROVIDERS)
+        env_dropped = [name for name in env_names if name not in _PROVIDERS]
+        if env_dropped:
+            # A partially valid list must not be accepted in silence. One
+            # mistyped name would otherwise delete a whole tier — losing, say,
+            # the paid fallback that absorbs the free tier's rate limiting —
+            # while the accepted-order line below still reads like success.
             print(
-                f"[web_search] cascade order from ORA_SEARCH_CASCADE_ORDER: "
-                f"{' -> '.join(env_valid)}",
+                f"[web_search] Unknown provider(s) in ORA_SEARCH_CASCADE_ORDER: "
+                f"{env_dropped} — ignored",
                 file=sys.stderr, flush=True,
             )
+        if env_valid:
             _cached_cascade_order = env_valid
+            print(
+                f"[web_search] cascade order: {' -> '.join(env_valid)} "
+                f"(ORA_SEARCH_CASCADE_ORDER)",
+                file=sys.stderr, flush=True,
+            )
             return _cached_cascade_order
         print(
             f"[web_search] ORA_SEARCH_CASCADE_ORDER={raw_env!r} names no known "
@@ -333,11 +347,11 @@ def _load_cascade_order() -> tuple[str, ...]:
             file=sys.stderr, flush=True,
         )
 
-    if order is _DEFAULT_CASCADE_ORDER:
-        print(
-            f"[web_search] cascade order: {' -> '.join(order)} (built-in default)",
-            file=sys.stderr, flush=True,
-        )
+    source = "built-in default" if order is _DEFAULT_CASCADE_ORDER else "routing-config"
+    print(
+        f"[web_search] cascade order: {' -> '.join(order)} ({source})",
+        file=sys.stderr, flush=True,
+    )
     _cached_cascade_order = order
     return order
 
@@ -353,6 +367,26 @@ def _reset_cascade_order_cache() -> None:
 
 _DEFAULT_SEMANTIC_PROVIDER = "exa"
 _cached_semantic_augment: tuple[bool, str] | None = None
+
+
+def _semantic_augment_env_override() -> bool | None:
+    """``ORA_SEARCH_SEMANTIC_AUGMENT`` as a tri-state: True, False, or None.
+
+    Semantic augmentation issues a SECOND, independent search per query
+    (``_gather_raw`` calls ``_search_text`` again pinned to the semantic
+    provider), and ``search_cascade_order`` does not govern it. A deployment
+    pinning a cheap keyword cascade for cost reasons would otherwise still pay
+    for one semantic call per query, with nothing in the cascade setting to
+    say so. None means "not set — use routing-config".
+    """
+    raw = os.environ.get("ORA_SEARCH_SEMANTIC_AUGMENT", "").strip().lower()
+    if not raw:
+        return None
+    if raw in ("0", "off", "false", "no"):
+        return False
+    if raw in ("1", "on", "true", "yes"):
+        return True
+    return None
 
 
 def _load_semantic_augment() -> tuple[bool, str]:
@@ -389,7 +423,18 @@ def _load_semantic_augment() -> tuple[bool, str]:
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
 
-    if explicit is not None:
+    env_override = _semantic_augment_env_override()
+    if env_override is not None:
+        # Env beats config for the same reason the cascade override exists:
+        # one deployment must be able to pin its own cost behaviour without
+        # forking the whole routing-config file.
+        enabled = env_override
+        print(
+            f"[web_search] semantic augmentation "
+            f"{'on' if enabled else 'off'} (ORA_SEARCH_SEMANTIC_AUGMENT)",
+            file=sys.stderr, flush=True,
+        )
+    elif explicit is not None:
         enabled = explicit                       # explicit config wins
     else:
         # Auto-activate when the semantic provider's key is present.
