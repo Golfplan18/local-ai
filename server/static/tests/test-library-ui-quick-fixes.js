@@ -39,6 +39,7 @@ var dom = new jsdom.JSDOM(
   '<!doctype html><html><body>' +
   '<div class="left-sidebar">' +
   '  <div class="sidebar-collapsed-dashboard">' +
+  '    <button id="sidebarDashExpand" aria-label="Expand Dialogues sidebar">Expand</button>' +
   '    <button id="sidebarDashProject">Projects</button>' +
   '    <button id="sidebarDashModel">Model</button>' +
   '    <button id="sidebarDashOutputStyle">Output Style</button>' +
@@ -1407,6 +1408,8 @@ async function run() {
       && w.OraLibraryWorkspace.getState().sources.length === 0
       && w.document.querySelector('.library-empty-state').textContent.indexOf('No sources') !== -1);
 
+  w.document.querySelector('.left-sidebar').classList.add('expanded');
+  w.document.body.classList.add('sidebar-expanded');
   browseButton.focus();
   w.document.querySelector('[data-library-command="close"]').click();
   browseButton.click();
@@ -1417,6 +1420,8 @@ async function run() {
       && libraryRequestUrls.length === requestsBeforeZero
       && w.OraLibraryWorkspace.getState().sources.length === 0
       && w.document.querySelector('.library-empty-state').textContent.indexOf('No sources') !== -1);
+  w.document.querySelector('.left-sidebar').classList.add('expanded');
+  w.document.body.classList.add('sidebar-expanded');
   browseButton.focus();
   w.document.querySelector('[data-library-command="close"]').click();
   record('close restores Submit semantics, exact upper ownership, and opener focus',
@@ -1425,6 +1430,16 @@ async function run() {
       && !w.document.querySelector('.input-pane').hasAttribute('inert')
       && !w.document.getElementById('chatZone').hasAttribute('inert')
       && w.document.activeElement === browseButton);
+  browseButton.click();
+  await flush();
+  w.document.querySelector('.left-sidebar').classList.remove('expanded');
+  w.document.body.classList.remove('sidebar-expanded');
+  browseButton.hidden = true;
+  w.document.querySelector('[data-library-command="close"]').click();
+  record('close hands focus to the visible sidebar opener when the original Library button collapsed',
+    library.hidden
+      && w.document.activeElement === w.document.getElementById('sidebarDashExpand'));
+  browseButton.hidden = false;
   record('close restores the decorative wordmark letters exactly',
     w.getComputedStyle(logoR).visibility === logoPresentationBefore.rVisibility
       && w.getComputedStyle(logoR).pointerEvents === logoPresentationBefore.rPointerEvents
