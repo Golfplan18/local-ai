@@ -33,6 +33,7 @@ import multiprocessing
 import os
 import signal
 import subprocess
+import sys
 import threading
 import time
 from datetime import date, datetime, time as clock_time, timedelta, timezone
@@ -92,6 +93,11 @@ FIRING_TIMEOUT_SEC = int(os.environ.get("ORA_TRIGGER_FIRING_TIMEOUT_SEC") or 360
 RECEIPT_EXCERPT_CHARS = 600
 TERMINATION_GRACE_SEC = 5.0
 
+#: macOS's existing, least-privileged idle-sleep assertion tool.  It is
+#: launched only inside the already-existing action process and is bound to
+#: that process's pid; it is not a daemon, scheduler, or second runner.
+_MACOS_CAFFEINATE = "/usr/bin/caffeinate"
+
 _PROCESS_LOCK = threading.RLock()
 #: trigger_id -> event_id of the firing currently executing in this process.
 _RUNNING: dict[str, str] = {}
@@ -122,6 +128,43 @@ def _canonical_json(value: Any) -> str:
 
 def _digest(value: Any) -> str:
     return "sha256:" + hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _active_run_sleep_available() -> bool:
+    """Whether this host can make the scoped macOS idle-sleep assertion."""
+    return (
+        sys.platform == "darwin"
+        and os.path.isfile(_MACOS_CAFFEINATE)
+        and os.access(_MACOS_CAFFEINATE, os.X_OK)
+    )
+
+
+def _local_routine_descriptor(action_kind: str | None = None) -> dict:
+    """Describe only the execution facts the current Trigger runner proves."""
+    sleep_available = _active_run_sleep_available()
+    authority = {"binding": "exact_action_binding"}
+    if action_kind is not None:
+        authority["action_kind"] = action_kind
+    return {
+        "execution_target": "local",
+        "remote_execution_supported": False,
+        "authority": authority,
+        "debug": {
+            "firing_event_type": FIRING_EVENT_TYPE,
+            "receipt_available": True,
+            "error_available": True,
+        },
+        "active_run_sleep_protection": {
+            "available": sleep_available,
+            "platform": "macos" if sys.platform == "darwin" else sys.platform,
+            "scope": "active_action_only" if sleep_available else None,
+            "prevents": "idle_system_sleep" if sleep_available else None,
+            "release_boundary": (
+                "action_scope_exit" if sleep_available else None
+            ),
+        },
+        "wake_from_sleep_supported": False,
+    }
 
 
 def _safe_id(value: Any, label: str) -> str:
@@ -603,6 +646,7 @@ def _record_view(record: Mapping[str, Any], *, firings: list | None = None) -> d
         "approved_action_binding": record.get("approved_action_binding"),
         "armed_deadline_key": record.get("armed_deadline_key"),
         "intermittency": INTERMITTENCY_NOTICE if spec["cause"] == "calendar" else "",
+        "routine": _local_routine_descriptor(spec["action"]["kind"]),
     }
     if spec["cause"] == "calendar" and record.get("status") == "active":
         view["next_due_at"] = record.get("next_due_at")
@@ -833,6 +877,7 @@ class TriggerService:
             "condition": copy.deepcopy(spec["condition"]),
             "will_run": _resolution_note(spec),
             "action_binding": binding,
+            "routine": _local_routine_descriptor(spec["action"]["kind"]),
             "runtime_justification": spec.get("runtime_justification"),
             "intermittency": (INTERMITTENCY_NOTICE
                               if spec["cause"] == "calendar" else ""),
@@ -1440,6 +1485,60 @@ def _spawn_firing_thread(work: Callable[[], None]) -> None:
     threading.Thread(target=work, daemon=True, name="ora-trigger-firing").start()
 
 
+@contextlib.contextmanager
+def _active_run_sleep_protection():
+    """Prevent macOS idle sleep only while this action process is working.
+
+    ``caffeinate -i`` is the existing macOS mechanism.  ``-w`` binds the
+    assertion to this action process, so an abrupt process death releases it
+    even when Python cannot run ``finally``.  Normal exits explicitly terminate
+    and reap the helper before the result crosses back to the parent.
+    """
+    if sys.platform != "darwin":
+        yield
+        return
+    if not _active_run_sleep_available():
+        raise TriggerError(
+            "macOS active-run sleep protection is unavailable; action work "
+            "was not started"
+        )
+    try:
+        guard = subprocess.Popen(
+            [_MACOS_CAFFEINATE, "-i", "-w", str(os.getpid())],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+        )
+    except OSError as exc:
+        raise TriggerError(
+            f"macOS active-run sleep protection could not start: {exc}"
+        ) from exc
+    if guard.poll() is not None:
+        code = guard.wait()
+        raise TriggerError(
+            "macOS active-run sleep protection exited before action work "
+            f"started (exit {code})"
+        )
+    try:
+        yield
+    finally:
+        if guard.poll() is None:
+            with contextlib.suppress(ProcessLookupError):
+                guard.terminate()
+        try:
+            guard.wait(timeout=TERMINATION_GRACE_SEC)
+        except subprocess.TimeoutExpired:
+            with contextlib.suppress(ProcessLookupError):
+                guard.kill()
+            try:
+                guard.wait(timeout=TERMINATION_GRACE_SEC)
+            except subprocess.TimeoutExpired as exc:
+                raise TriggerError(
+                    "macOS active-run sleep protection did not release"
+                ) from exc
+
+
 def _action_process_main(connection, action: dict, binding: dict) -> None:
     """Process-side action entry point; reports provider contact and outcome."""
     if os.name == "posix":
@@ -1451,12 +1550,13 @@ def _action_process_main(connection, action: dict, binding: dict) -> None:
             # default disposition in the tool itself.
             signal.signal(signal.SIGTERM, lambda *_args: None)
     try:
-        receipt = _execute_action(
-            action, binding, prepared=None,
-            on_provider_contact=lambda: connection.send(
-                ("provider_contact", None)
-            ),
-        )
+        with _active_run_sleep_protection():
+            receipt = _execute_action(
+                action, binding, prepared=None,
+                on_provider_contact=lambda: connection.send(
+                    ("provider_contact", None)
+                ),
+            )
         connection.send(("result", receipt))
     except BaseException as exc:
         with contextlib.suppress(Exception):
@@ -1734,6 +1834,7 @@ def available_actions() -> dict:
             "cause": "manual",
             "description": "Send one exact, Persona-disclosed email via Fastmail/JMAP",
         }],
+        "routine": _local_routine_descriptor(),
         "watch_roots": _watch_roots(),
         "intermittency": INTERMITTENCY_NOTICE,
     }

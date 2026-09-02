@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import re
@@ -120,6 +121,67 @@ class OperationMatrixReadTests(unittest.TestCase):
         self.assertFalse(mom["exists"])
         self.assertEqual(mom["mission"], "")
         self.assertEqual(mom["milestones"], [])
+
+
+class ProjectPriorityConsumerTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.pointer_dir = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _write_project(
+        self,
+        nexus: str,
+        *,
+        status: str = "active",
+        priority: int | None = None,
+        last_accessed_at: str,
+    ) -> None:
+        (self.pointer_dir / f"{nexus}.json").write_text(
+            json.dumps({
+                "nexus": nexus,
+                "name": nexus,
+                "display_name": nexus,
+                "folder_name": nexus,
+                "status": status,
+                "priority": priority,
+                "last_accessed_at": last_accessed_at,
+            }),
+            encoding="utf-8",
+        )
+
+    def test_active_projects_keep_canonical_priority_and_recency_order(self):
+        self._write_project(
+            "inactive-first", status="inactive", priority=0,
+            last_accessed_at="2026-06-01T00:00:00",
+        )
+        self._write_project(
+            "zulu-ranked", priority=1,
+            last_accessed_at="2026-01-01T00:00:00",
+        )
+        self._write_project(
+            "beta-ranked", priority=2,
+            last_accessed_at="2026-07-01T00:00:00",
+        )
+        self._write_project(
+            "zeta-recent", last_accessed_at="2026-05-01T00:00:00",
+        )
+        self._write_project(
+            "alpha-old", last_accessed_at="2026-03-01T00:00:00",
+        )
+        self._write_project(
+            "archived", status="archived",
+            last_accessed_at="2026-08-01T00:00:00",
+        )
+
+        rows = om.list_active_project_meta(self.pointer_dir)
+
+        self.assertEqual(
+            [row["nexus"] for row in rows],
+            ["zulu-ranked", "beta-ranked", "zeta-recent", "alpha-old"],
+        )
+        self.assertTrue(all(row["status"] == "active" for row in rows))
+        self.assertTrue(all(not row.get("is_default") for row in rows))
 
 
 class OperationMatrixWriteTests(unittest.TestCase):

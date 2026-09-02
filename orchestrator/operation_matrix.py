@@ -205,6 +205,34 @@ def resolve_matrix_path(
 
 
 # ---------------------------------------------------------------------------
+# Project order
+# ---------------------------------------------------------------------------
+
+def list_active_project_meta(
+    pointer_dir: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Return active real projects in the canonical project-metadata order.
+
+    ``project_meta.list_project_meta`` owns both explicit priority ranks and
+    the existing ``last_accessed_at`` fallback for unranked projects.  Filtering
+    that list in place keeps both guarantees; this consumer must not sort it a
+    second time or maintain a competing order.
+    """
+    # Lazy import avoids the existing reverse dependency used only by
+    # project_meta's explicit Matrix-identity migration path.
+    try:
+        import project_meta as _project_meta
+    except ImportError:  # pragma: no cover - package-qualified import context
+        from orchestrator import project_meta as _project_meta
+
+    return [
+        meta
+        for meta in _project_meta.list_project_meta(pointer_dir)
+        if not meta.get("is_default") and meta.get("status") == "active"
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Section splice
 # ---------------------------------------------------------------------------
 
@@ -699,6 +727,7 @@ __all__ = [
     "MatrixMigrationRequiredError",
     "vault_root",
     "resolve_matrix_path",
+    "list_active_project_meta",
     "read_mom",
     "write_mom",
     "parse_milestones",

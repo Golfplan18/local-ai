@@ -879,6 +879,212 @@ class InspectionTests(TriggerBase):
         self.assertIn("only while Ora is running", actions["intermittency"])
 
 
+# ── Automation Studio's truthful local-only foundation ─────────────────
+
+
+class AutomationStudioLocalContractTests(TriggerBase):
+    """Existing Trigger routes expose only capabilities the local runner has."""
+
+    def setUp(self):
+        super().setUp()
+        from server import app as server_app  # noqa: WPS433
+        self.client = server_app.app.test_client()
+        patcher = mock.patch.object(triggers, "_service", self.service)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.make_project()
+
+    def test_actions_route_exposes_local_authority_and_debug_facts(self):
+        payload = self.client.get("/api/triggers/actions").get_json()
+        routine = payload["routine"]
+        self.assertEqual(routine["execution_target"], "local")
+        self.assertFalse(routine["remote_execution_supported"])
+        self.assertFalse(routine["wake_from_sleep_supported"])
+        self.assertEqual(
+            routine["authority"], {"binding": "exact_action_binding"})
+        self.assertEqual(routine["debug"], {
+            "firing_event_type": triggers.FIRING_EVENT_TYPE,
+            "receipt_available": True,
+            "error_available": True,
+        })
+        sleep = routine["active_run_sleep_protection"]
+        self.assertEqual(
+            sleep["available"], triggers._active_run_sleep_available())
+        if sleep["available"]:
+            self.assertEqual(sleep["scope"], "active_action_only")
+            self.assertEqual(sleep["prevents"], "idle_system_sleep")
+            self.assertEqual(sleep["release_boundary"], "action_scope_exit")
+        else:
+            self.assertIsNone(sleep["scope"])
+            self.assertIsNone(sleep["prevents"])
+            self.assertIsNone(sleep["release_boundary"])
+
+    def test_existing_trigger_views_carry_the_action_specific_contract(self):
+        created = self.client.post(
+            "/api/triggers", json=self.tool_spec()).get_json()
+        shown = self.client.get("/api/triggers/nightly").get_json()
+        review = self.client.get(
+            "/api/triggers/nightly/review").get_json()
+        listed = self.client.get(
+            "/api/triggers").get_json()["triggers"][0]
+
+        expected_authority = {
+            "binding": "exact_action_binding",
+            "action_kind": "project_tool",
+        }
+        for view in (created, shown, review, listed):
+            self.assertEqual(view["routine"]["execution_target"], "local")
+            self.assertEqual(view["routine"]["authority"], expected_authority)
+            self.assertFalse(view["routine"]["remote_execution_supported"])
+            self.assertFalse(view["routine"]["wake_from_sleep_supported"])
+
+
+# ── Active action work, and only active action work, holds idle sleep ────
+
+
+class ActiveRunSleepProtectionTests(TriggerBase):
+    class _Guard:
+        def __init__(self, events):
+            self.events = events
+            self.alive = True
+
+        def poll(self):
+            return None if self.alive else 0
+
+        def terminate(self):
+            self.events.append(("guard", "terminate"))
+            self.alive = False
+
+        def kill(self):
+            self.events.append(("guard", "kill"))
+            self.alive = False
+
+        def wait(self, timeout=None):
+            self.events.append(("guard", "wait"))
+            return 0
+
+    class _Connection:
+        def __init__(self, events, *, fail_provider_callback=False):
+            self.events = events
+            self.fail_provider_callback = fail_provider_callback
+            self.messages = []
+
+        def send(self, message):
+            self.events.append(("connection", message[0]))
+            if self.fail_provider_callback and message[0] == "provider_contact":
+                raise RuntimeError("injected provider callback failure")
+            self.messages.append(message)
+
+        def close(self):
+            self.events.append(("connection", "close"))
+
+    def _exercise_action_process(self, outcome):
+        events = []
+        guard = self._Guard(events)
+        connection = self._Connection(
+            events, fail_provider_callback=(outcome == "provider_callback"))
+        launch = {}
+
+        def popen(argv, **kwargs):
+            launch["argv"] = argv
+            launch["kwargs"] = kwargs
+            events.append(("guard", "start"))
+            return guard
+
+        def execute(*_args, on_provider_contact=None, **_kwargs):
+            self.assertTrue(guard.alive)
+            events.append(("action", "work"))
+            if outcome == "ordinary_error":
+                raise RuntimeError("injected action failure")
+            if outcome == "provider_callback":
+                on_provider_contact()
+            if outcome == "cancellation":
+                raise KeyboardInterrupt("injected cancellation")
+            return {"outcome": "ran"}
+
+        with (
+            mock.patch.object(triggers.sys, "platform", "darwin"),
+            mock.patch.object(
+                triggers, "_active_run_sleep_available", return_value=True),
+            mock.patch.object(
+                triggers.subprocess, "Popen", side_effect=popen),
+            mock.patch.object(triggers.os, "setsid"),
+            mock.patch.object(triggers, "_execute_action", side_effect=execute),
+        ):
+            triggers._action_process_main(
+                connection, {"kind": "framework"}, {})
+        return events, guard, connection, launch
+
+    def test_success_holds_sleep_only_around_real_action_work(self):
+        events, guard, connection, launch = self._exercise_action_process(
+            "success")
+        self.assertFalse(guard.alive)
+        self.assertEqual(launch["argv"], [
+            triggers._MACOS_CAFFEINATE, "-i", "-w", str(os.getpid()),
+        ])
+        self.assertLess(
+            events.index(("guard", "start")),
+            events.index(("action", "work")),
+        )
+        self.assertLess(
+            events.index(("action", "work")),
+            events.index(("guard", "terminate")),
+        )
+        self.assertLess(
+            events.index(("guard", "wait")),
+            events.index(("connection", "result")),
+        )
+        self.assertEqual(connection.messages, [("result", {"outcome": "ran"})])
+
+    def test_error_callback_and_cancellation_release_before_reporting(self):
+        for outcome in ("ordinary_error", "provider_callback", "cancellation"):
+            with self.subTest(outcome=outcome):
+                events, guard, connection, _launch = (
+                    self._exercise_action_process(outcome))
+                self.assertFalse(guard.alive)
+                self.assertLess(
+                    events.index(("guard", "wait")),
+                    events.index(("connection", "error")),
+                )
+                self.assertEqual(connection.messages[-1][0], "error")
+
+    def test_macos_guard_failure_prevents_unprotected_action_work(self):
+        for unavailable, launch_error in ((True, None), (False, OSError("no exec"))):
+            with self.subTest(unavailable=unavailable):
+                events = []
+                connection = self._Connection(events)
+                execute = mock.Mock(return_value={"outcome": "ran"})
+                with (
+                    mock.patch.object(triggers.sys, "platform", "darwin"),
+                    mock.patch.object(
+                        triggers, "_active_run_sleep_available",
+                        return_value=not unavailable,
+                    ),
+                    mock.patch.object(
+                        triggers.subprocess, "Popen", side_effect=launch_error,
+                    ),
+                    mock.patch.object(triggers.os, "setsid"),
+                    mock.patch.object(triggers, "_execute_action", execute),
+                ):
+                    triggers._action_process_main(
+                        connection, {"kind": "framework"}, {})
+                execute.assert_not_called()
+                self.assertEqual(connection.messages[-1][0], "error")
+                self.assertIn("sleep protection", connection.messages[-1][1])
+
+    def test_non_macos_does_not_claim_or_start_macos_protection(self):
+        with (
+            mock.patch.object(triggers.sys, "platform", "linux"),
+            mock.patch.object(triggers.subprocess, "Popen") as popen,
+        ):
+            with triggers._active_run_sleep_protection():
+                pass
+            routine = triggers._local_routine_descriptor("project_tool")
+        popen.assert_not_called()
+        self.assertFalse(routine["active_run_sleep_protection"]["available"])
+        self.assertFalse(routine["wake_from_sleep_supported"])
+
+
 # ── Substrate additions ──────────────────────────────────────────────────
 
 
