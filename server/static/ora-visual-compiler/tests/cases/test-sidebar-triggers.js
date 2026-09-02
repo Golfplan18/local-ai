@@ -62,8 +62,21 @@ const ACTIONS = {
   project_tools: [{ nexus: 'msi', tool: 'deploy-check', description: 'Check the deploy',
                     interface: 'argv-stdout-json' }],
   frameworks: ['deep-research-protocol'],
+  channel_actions: [{ kind: 'email_send', provider: 'fastmail',
+                      description: 'Send one exact approved email' }],
   watch_roots: ['/Users/x/Documents/vault', '/Users/x/Documents/Ora Resources'],
   intermittency: 'Acts only while Ora is running.',
+};
+
+const PERSONAS = {
+  personas: [
+    { id: 'ora', display_name: 'Ora', description: 'Packaged Persona' },
+    { id: 'global-writer', display_name: 'Global Writer', description: 'Global choice' },
+    { id: 'project-writer', display_name: 'Project Writer', description: 'Project choice' },
+  ],
+  errors: [],
+  selected: { id: 'project-writer', display_name: 'Project Writer',
+              source: 'project', warnings: [] },
 };
 
 function sidebarMarkup() {
@@ -144,6 +157,7 @@ module.exports = {
         });
       }
       if (url === '/api/triggers/actions') return jsonResponse(ACTIONS);
+      if (url === '/api/personas') return jsonResponse(PERSONAS);
       if (/\/api\/triggers\/[^/]+\/review$/.test(url)) {
         return jsonResponse({
           trigger_id: 'on-brief', name: 'Index the brief',
@@ -266,10 +280,13 @@ module.exports = {
              JSON.stringify(posts.map(p => p.url)));
 
       // 10 + 11. The authoring form.
-      doc.querySelector('#triggerNewButton').click();
-      await tick(); await tick();
-      const overlay = doc.querySelector('#triggerFormOverlay');
-      const form = overlay && overlay.querySelector('.trigger-form');
+      const openForm = async () => {
+        doc.querySelector('#triggerNewButton').click();
+        await tick(); await tick(); await tick();
+        const overlay = doc.querySelector('#triggerFormOverlay');
+        return overlay && overlay.querySelector('.trigger-form');
+      };
+      let form = await openForm();
       record('form: opens with an action picker from the registry',
              !!form && form.querySelector('select[name="action"]')
                           .textContent.includes('msi:deploy-check'));
@@ -281,6 +298,50 @@ module.exports = {
         el.value = value;
         el.dispatchEvent(new win.Event('change'));
       };
+
+      setValue('select[name="action"]', 'channel:email_send');
+      const personaPicker = form.querySelector('select[name="email_persona"]');
+      record('email form: Persona is a registry-backed picker with a global default',
+             !!personaPicker && personaPicker.value === ''
+             && [...personaPicker.options].map(o => o.value).join(',')
+                === ',ora,global-writer,project-writer'
+             && personaPicker.options[0].textContent.includes('global default'),
+             personaPicker ? personaPicker.textContent : 'no Persona picker');
+      form.querySelector('input[name="name"]').value = 'Default Persona email';
+      form.querySelector('input[name="trigger_id"]').value = 'default-persona-email';
+      form.querySelector('input[name="email_to"]').value = 'recipient@example.com';
+      form.querySelector('input[name="email_from"]').value = 'sender@example.com';
+      form.querySelector('input[name="email_subject"]').value = 'Default';
+      form.querySelector('textarea[name="email_body"]').value = 'Exact body';
+      posts.length = 0;
+      form.dispatchEvent(new win.Event('submit', { cancelable: true }));
+      await tick(); await tick(); await tick();
+      const defaultPersonaPost = posts.find(p => p.url === '/api/triggers');
+      record('email form: global default is posted as omission, never literal Ora',
+             !!defaultPersonaPost
+             && !Object.prototype.hasOwnProperty.call(
+               defaultPersonaPost.body.action, 'persona_id'),
+             JSON.stringify(defaultPersonaPost && defaultPersonaPost.body.action));
+
+      form = await openForm();
+      setValue('select[name="action"]', 'channel:email_send');
+      setValue('select[name="email_persona"]', 'global-writer');
+      form.querySelector('input[name="name"]').value = 'Chosen Persona email';
+      form.querySelector('input[name="trigger_id"]').value = 'chosen-persona-email';
+      form.querySelector('input[name="email_to"]').value = 'recipient@example.com';
+      form.querySelector('input[name="email_from"]').value = 'sender@example.com';
+      form.querySelector('input[name="email_subject"]').value = 'Chosen';
+      form.querySelector('textarea[name="email_body"]').value = 'Exact body';
+      posts.length = 0;
+      form.dispatchEvent(new win.Event('submit', { cancelable: true }));
+      await tick(); await tick(); await tick();
+      const chosenPersonaPost = posts.find(p => p.url === '/api/triggers');
+      record('email form: explicit Persona posts that exact valid id',
+             !!chosenPersonaPost
+             && chosenPersonaPost.body.action.persona_id === 'global-writer',
+             JSON.stringify(chosenPersonaPost && chosenPersonaPost.body.action));
+
+      form = await openForm();
       form.querySelector('input[name="name"]').value = 'Rotate credentials';
       form.querySelector('input[name="trigger_id"]').value = 'rotate-creds';
       setValue('select[name="cause"]', 'calendar');

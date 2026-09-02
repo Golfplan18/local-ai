@@ -51,6 +51,7 @@ MAX_SUBJECT = 998
 MAX_BODY = 200_000
 CONFIG_RELATIVE_PATH = "config.json"
 FASTMAIL_SESSION_URL = "https://api.fastmail.com/jmap/session"
+_PERSONA_OMITTED = object()
 
 
 class EmailChannelError(RuntimeError):
@@ -105,12 +106,31 @@ def _recipients(value: Any) -> tuple[str, ...]:
     return tuple(result)
 
 
-def _resolve_persona(persona_id: Any) -> dict:
-    identifier = str(persona_id or "ora").strip()
+def _resolve_persona(persona_id: Any = _PERSONA_OMITTED) -> dict:
+    explicit = persona_id is not _PERSONA_OMITTED
+    if explicit:
+        if not isinstance(persona_id, str) or not persona_id.strip():
+            raise EmailInputError(
+                "persona_id must name one available Persona; omit it to use "
+                "the global default"
+            )
+        identifier = persona_id.strip()
+        kwargs = {"global_id": identifier, "project_persona_id": ""}
+    else:
+        identifier = None
+        kwargs = {"project_persona_id": ""}
     try:
-        return _persona.resolve_persona(global_id=identifier)
+        selected = _persona.resolve_persona(**kwargs)
     except Exception as exc:
-        raise EmailInputError(f"Persona {identifier!r} is unavailable: {exc}") from exc
+        requested = f"Persona {identifier!r}" if explicit else "global default Persona"
+        raise EmailInputError(f"{requested} is unavailable: {exc}") from exc
+    resolved_id = selected.get("id") if isinstance(selected, dict) else None
+    if not isinstance(resolved_id, str) or not resolved_id:
+        requested = f"Persona {identifier!r}" if explicit else "global default Persona"
+        raise EmailInputError(f"{requested} is unavailable")
+    if explicit and resolved_id != identifier:
+        raise EmailInputError(f"Persona {identifier!r} is unavailable")
+    return selected
 
 
 def _config_path() -> str:
@@ -181,11 +201,11 @@ def normalize_action(raw: Mapping[str, Any]) -> dict:
             "recipient is outside channel.email.recipient_allowlist: "
             + ", ".join(disallowed)
         )
-    persona_id = str(raw.get("persona_id") or "ora").strip() or "ora"
-    # Resolve during authoring so a draft cannot be created with an identity
-    # that will disappear before activation.  The resulting display name is
-    # bound again while preparing the exact message.
-    selected = _resolve_persona(persona_id)
+    # Omission means the user's global default. Project precedence is disabled
+    # for this composer, and an explicit id must resolve to that exact Persona.
+    # Persisting the result keeps a saved draft stable if the default changes.
+    selected = (_resolve_persona(raw["persona_id"])
+                if "persona_id" in raw else _resolve_persona())
     return {
         "kind": ACTION,
         "to": list(recipients),
@@ -217,6 +237,7 @@ class PreparedEmail:
     def as_dict(self) -> dict[str, Any]:
         return {
             "provider": PROVIDER_ID,
+            "persona_id": self.persona_id,
             "from": {"name": self.persona_name, "email": self.from_email},
             "to": list(self.to),
             "subject": self.subject,
