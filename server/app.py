@@ -14160,7 +14160,7 @@ def _library_engram_provider(query: str = "") -> dict:
                    embedding.embedding_id,
                    metadata.key,
                    metadata.string_value
-            FROM embeddings AS embedding
+            FROM embeddings AS embedding NOT INDEXED
             CROSS JOIN json_each(?) AS identity_key
             CROSS JOIN embedding_metadata AS metadata
               ON metadata.id = embedding.id

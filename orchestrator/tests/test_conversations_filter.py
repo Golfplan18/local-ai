@@ -52,7 +52,11 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         ap.DATA_DIR = self.root / "data"
         ap.ACTIVE_PROJECT_POINTER = ap.DATA_DIR / "active-project.json"
         cm.save_turn_spatial_state("c-general", "u", "a", sessions_root=self.root)
-        cm.save_turn_spatial_state("c-book", "u", "a", project_ids=["book"], sessions_root=self.root)
+        cm.save_turn_spatial_state(
+            "c-book", "u", "a", project_ids=["book"],
+            chunk_id="c-book-chunk-1", turn_index=1,
+            sessions_root=self.root,
+        )
         cm.save_turn_spatial_state("c-law", "u", "a", project_ids=["law"], sessions_root=self.root)
         self.client = server.app.test_client()
 
@@ -194,15 +198,45 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         self.assertEqual(ap.get_active_project(), "commons")
 
     def test_parsed_inventory_reuses_unchanged_envelopes_and_reparses_one_change(self):
+        forked = cm.fork_conversation(
+            "c-book", "c-book-fork", sessions_root=self.root,
+        )
+        self.assertIsNotNone(forked)
         cm._parsed_envelope_cache.clear()
         real_loads = cm.json.loads
-        with patch.object(cm.json, "loads", wraps=real_loads) as loads:
-            list(cm.iter_conversations(sessions_root=self.root))
+        with (
+            patch.object(cm.json, "loads", wraps=real_loads) as loads,
+            patch.object(
+                cm, "_read_history_envelope",
+                wraps=cm._read_history_envelope,
+            ) as history_reads,
+        ):
+            first_inventory = list(cm.iter_conversations(sessions_root=self.root))
             first_parse_count = loads.call_count
-            self.assertEqual(first_parse_count, 3)
+            self.assertEqual(first_parse_count, 4)
+            first_by_id = {
+                row["conversation_id"]: row for row in first_inventory
+            }
+            self.assertEqual(
+                first_by_id["c-book-fork"]["message_count"], 2,
+            )
+            self.assertEqual(
+                first_by_id["c-book-fork"]["local_message_count"], 0,
+            )
+            self.assertEqual(
+                first_by_id["c-book-fork"]["inherited_message_count"], 2,
+            )
+            self.assertEqual(
+                [call.args[0] for call in history_reads.call_args_list],
+                ["c-book"],
+            )
 
             list(cm.iter_conversations(sessions_root=self.root))
             self.assertEqual(loads.call_count, first_parse_count)
+            self.assertEqual(
+                [call.args[0] for call in history_reads.call_args_list],
+                ["c-book", "c-book"],
+            )
 
             path = self.root / "c-book" / "conversation.json"
             changed = real_loads(path.read_text(encoding="utf-8"))
@@ -210,12 +244,36 @@ class ConversationsProjectFilterTests(unittest.TestCase):
             path.write_text(json.dumps(changed), encoding="utf-8")
             list(cm.iter_conversations(sessions_root=self.root))
             self.assertEqual(loads.call_count, first_parse_count + 1)
+            self.assertEqual(
+                [call.args[0] for call in history_reads.call_args_list],
+                ["c-book", "c-book", "c-book"],
+            )
 
     def test_conversation_sidebar_etag_returns_304_until_inventory_changes(self):
+        forked = cm.fork_conversation(
+            "c-book", "c-book-fork", sessions_root=self.root,
+        )
+        self.assertIsNotNone(forked)
+        fork_path = self.root / "c-book-fork" / "conversation.json"
+        fork_data = json.loads(fork_path.read_text(encoding="utf-8"))
+        fork_data["display_name"] = ""
+        fork_path.write_text(json.dumps(fork_data), encoding="utf-8")
+
         first = self.client.get("/api/conversations?project_id=")
         self.assertEqual(first.status_code, 200)
         etag = first.headers.get("ETag")
         self.assertTrue(etag)
+        first_payload = json.loads(first.data)
+        first_fork = next(
+            row
+            for group in ("pinned", "errored", "pending", "unread", "active")
+            for row in first_payload.get(group, [])
+            if row["conversation_id"] == "c-book-fork"
+        )
+        self.assertEqual(first_fork["title"], "u")
+        self.assertEqual(first_fork["message_count"], 2)
+        self.assertEqual(first_fork["local_message_count"], 0)
+        self.assertEqual(first_fork["inherited_message_count"], 2)
 
         unchanged = self.client.get(
             "/api/conversations?project_id=",
@@ -224,9 +282,9 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         self.assertEqual(unchanged.status_code, 304)
         self.assertEqual(unchanged.data, b"")
 
-        path = self.root / "c-law" / "conversation.json"
+        path = self.root / "c-book" / "conversation.json"
         changed = json.loads(path.read_text(encoding="utf-8"))
-        changed["display_name"] = "Changed"
+        changed["messages"][0]["content"] = "Changed inherited title"
         path.write_text(json.dumps(changed), encoding="utf-8")
         refreshed = self.client.get(
             "/api/conversations?project_id=",
@@ -234,6 +292,17 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         )
         self.assertEqual(refreshed.status_code, 200)
         self.assertNotEqual(refreshed.headers.get("ETag"), etag)
+        refreshed_payload = json.loads(refreshed.data)
+        refreshed_fork = next(
+            row
+            for group in ("pinned", "errored", "pending", "unread", "active")
+            for row in refreshed_payload.get(group, [])
+            if row["conversation_id"] == "c-book-fork"
+        )
+        self.assertEqual(refreshed_fork["title"], "Changed inherited title")
+        self.assertEqual(refreshed_fork["message_count"], 2)
+        self.assertEqual(refreshed_fork["local_message_count"], 0)
+        self.assertEqual(refreshed_fork["inherited_message_count"], 2)
 
 
 if __name__ == "__main__":
