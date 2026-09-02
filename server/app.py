@@ -14225,6 +14225,7 @@ def _library_engram_provider(query: str = "") -> dict:
         complete, reason = True, None
         pending_path_records: dict[str, list[tuple[int, dict]]] = {}
         grouped: dict[str, list[tuple[str, int, dict]]] = {}
+        canonical_parents: dict[str, str] = {}
 
         def stored_metadata_value(raw_value, value_kind):
             if raw_value is None:
@@ -14245,6 +14246,22 @@ def _library_engram_provider(query: str = "") -> dict:
                 reason = message
             complete = False
 
+        def canonicalize_path(path: str) -> str:
+            lexical_path = _browser_resolve_path(path)
+            lexical_parent, leaf = os.path.split(lexical_path)
+            canonical_parent = canonical_parents.get(lexical_parent)
+            if canonical_parent is None:
+                canonical_parent = os.path.realpath(lexical_parent)
+                canonical_parents[lexical_parent] = canonical_parent
+            canonical_path = os.path.join(canonical_parent, leaf)
+            if "\x00" in leaf:
+                raise ValueError("embedded null byte")
+            if os.name == "nt":
+                return os.path.realpath(canonical_path)
+            if os.path.islink(canonical_path):
+                return os.path.realpath(canonical_path)
+            return canonical_path
+
         def admit_complete_path(path: str) -> None:
             path_records = pending_path_records.pop(path, [])
             if not path_records:
@@ -14254,7 +14271,7 @@ def _library_engram_provider(query: str = "") -> dict:
             ]
             if path not in set(knowledge_admitted_paths(path_metadatas, "")):
                 return
-            real_path = os.path.realpath(_browser_resolve_path(path))
+            real_path = canonicalize_path(path)
             destination = grouped.setdefault(real_path, [])
             destination.extend(
                 (path, row_id, metadata)
@@ -14541,13 +14558,12 @@ def _library_engram_provider(query: str = "") -> dict:
                 ref = str(match.get("conversation_id") or "")
                 path = _browser_decode_source_id("engram", ref)
                 if path:
-                    matched_paths.add(os.path.realpath(_browser_resolve_path(path)))
+                    matched_paths.add(canonicalize_path(path))
             except Exception:
                 search_errors.append("an Engram search result identity was invalid")
         rows = [
             row for row in rows
-            if os.path.realpath(_browser_resolve_path(row["identity"]))
-            in matched_paths
+            if canonicalize_path(row["identity"]) in matched_paths
         ]
         if search_errors:
             complete = False

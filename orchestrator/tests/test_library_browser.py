@@ -380,12 +380,15 @@ class TestLibraryBrowser(unittest.TestCase):
             private_path = root / "private-engram.md"
             blank_key_path = root / "blank-key-engram.md"
             duplicate_key_path = root / "duplicate-key-engram.md"
+            regular_sibling_path = root / "regular-sibling-engram.md"
+            symlink_alias_path = root / "zz-indexed-engram-alias.md"
             for path in (
                 engram_path, vector_path, other_database_path, vector_only_path,
                 non_engram_path, blocked_path, private_path, blank_key_path,
-                duplicate_key_path,
+                duplicate_key_path, regular_sibling_path,
             ):
                 path.write_text(f"# {path.stem}\n", encoding="utf-8")
+            symlink_alias_path.symlink_to(engram_path.name)
             physical_collection = "knowledge-physical"
             vector_only_collection = "knowledge-vector-only"
             blocked_sibling_id = 50_000
@@ -484,6 +487,8 @@ class TestLibraryBrowser(unittest.TestCase):
                         (11, "segment-metadata", " chunk "),
                         (12, "segment-metadata", "chunk-blank-key"),
                         (13, "segment-metadata", "chunk-duplicate-key"),
+                        (14, "segment-metadata", "chunk-regular-sibling"),
+                        (15, "segment-metadata", "chunk-symlink-alias"),
                         (blocked_sibling_id, "segment-metadata",
                          "chunk-blocked-sibling"),
                     ] + [
@@ -505,6 +510,8 @@ class TestLibraryBrowser(unittest.TestCase):
                     (11, engram_path, "Whitespace duplicate B", "chat"),
                     (12, blank_key_path, "Blank key Engram", "engram"),
                     (13, duplicate_key_path, "Duplicate key Engram", "engram"),
+                    (14, regular_sibling_path, "Regular sibling", "engram"),
+                    (15, symlink_alias_path, "Symlink alias", "engram"),
                 ):
                     fixture.executemany(
                         "INSERT INTO embedding_metadata"
@@ -601,7 +608,8 @@ class TestLibraryBrowser(unittest.TestCase):
                     ],
                 )
                 candidate_row_ids = (
-                    1, 6, 7, 9, 10, 11, 12, 13, blocked_sibling_id,
+                    1, 6, 7, 9, 10, 11, 12, 13, 14, 15,
+                    blocked_sibling_id,
                     *filler_row_ids,
                 )
                 fixture.commit()
@@ -626,7 +634,11 @@ class TestLibraryBrowser(unittest.TestCase):
             registered_functions = []
             streamed_cursors = []
             stat_calls = []
+            realpath_calls = []
+            islink_calls = []
             real_stat = server.os.stat
+            real_realpath = server.os.path.realpath
+            real_islink = server.os.path.islink
 
             class StreamingCursor:
                 def __init__(self, cursor, label):
@@ -713,6 +725,14 @@ class TestLibraryBrowser(unittest.TestCase):
                 stat_calls.append(str(path))
                 return real_stat(path, *args, **kwargs)
 
+            def counted_realpath(path, *args, **kwargs):
+                realpath_calls.append(str(path))
+                return real_realpath(path, *args, **kwargs)
+
+            def counted_islink(path, *args, **kwargs):
+                islink_calls.append(str(path))
+                return real_islink(path, *args, **kwargs)
+
             with (
                 mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
                 mock.patch.object(
@@ -731,13 +751,19 @@ class TestLibraryBrowser(unittest.TestCase):
                     wraps=conversation_memory.knowledge_admitted_paths,
                 ) as admitted_paths,
                 mock.patch.object(server.os, "stat", side_effect=counted_stat),
+                mock.patch.object(
+                    server.os.path, "realpath", side_effect=counted_realpath,
+                ),
+                mock.patch.object(
+                    server.os.path, "islink", side_effect=counted_islink,
+                ),
             ):
                 engrams = server._library_engram_provider()
                 vector_only = server._library_engram_provider()
 
             self.assertFalse(engrams["complete"])
             self.assertIn("unstable identities", engrams["reason"])
-            self.assertEqual(len(engrams["rows"]), 1)
+            self.assertEqual(len(engrams["rows"]), 2)
             engram = engrams["rows"][0]
             self.assertEqual(engram["identity"], str(engram_path.resolve()))
             self.assertEqual(engram["title"], "Indexed Engram")
@@ -752,6 +778,21 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(engram["provenance"]["details"], {
                 "index": "knowledge",
             })
+            self.assertEqual(
+                [row["identity"] for row in engrams["rows"]],
+                [str(engram_path.resolve()), str(regular_sibling_path.resolve())],
+            )
+            self.assertEqual(
+                sum(
+                    row["identity"] == str(engram_path.resolve())
+                    for row in engrams["rows"]
+                ),
+                1,
+            )
+            self.assertNotIn(
+                str(symlink_alias_path),
+                [row["identity"] for row in engrams["rows"]],
+            )
             self.assertFalse(vector_only["complete"])
             self.assertEqual(vector_only["rows"], [])
             self.assertIn("metadata segment", vector_only["reason"])
@@ -841,7 +882,23 @@ class TestLibraryBrowser(unittest.TestCase):
                 str(duplicate_key_path.resolve()),
                 [row["identity"] for row in engrams["rows"]],
             )
-            self.assertEqual(stat_calls, [str(engram_path.resolve())])
+            self.assertEqual(
+                stat_calls,
+                [str(engram_path.resolve()), str(regular_sibling_path.resolve())],
+            )
+            canonical_root = engram_path.resolve().parent
+            self.assertEqual(
+                realpath_calls,
+                [str(root), str(canonical_root / symlink_alias_path.name)],
+            )
+            self.assertEqual(
+                islink_calls,
+                [
+                    str(canonical_root / regular_sibling_path.name),
+                    str(canonical_root / symlink_alias_path.name),
+                    str(canonical_root / engram_path.name),
+                ],
+            )
             self.assertEqual(set(selected_flat_row_ids), set(candidate_row_ids))
             self.assertNotIn(5, selected_flat_row_ids)
             candidate_batches = [
@@ -1084,6 +1141,68 @@ class TestLibraryBrowser(unittest.TestCase):
             encoded_engram = server._browser_encode_source_id(
                 "engram", str(engram_path),
             )
+            encoded_regular_sibling = server._browser_encode_source_id(
+                "engram", str(regular_sibling_path),
+            )
+            canonical_engram_path = str(engram_path.resolve())
+            windows_realpath_calls = []
+
+            def windows_realpath(path, *args, **kwargs):
+                value = str(path)
+                windows_realpath_calls.append(value)
+                if value == str(canonical_root / regular_sibling_path.name):
+                    return canonical_engram_path
+                return real_realpath(path, *args, **kwargs)
+
+            real_os = server.os
+
+            class WindowsOSProxy:
+                name = "nt"
+
+                def __getattr__(self, name):
+                    return getattr(real_os, name)
+
+            with (
+                mock.patch.object(server, "os", WindowsOSProxy()),
+                mock.patch.object(
+                    real_os.path, "realpath", side_effect=windows_realpath,
+                ),
+                mock.patch.object(
+                    real_os.path, "islink",
+                    side_effect=AssertionError(
+                        "Windows leaves must use full-path realpath"
+                    ),
+                ) as windows_islink,
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection", return_value=physical_collection,
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_exact_rows",
+                    return_value=[{"conversation_id": encoded_regular_sibling}],
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_fuzzy_rows", return_value=[],
+                ),
+            ):
+                windows_searched = server._library_engram_provider("forecast")
+
+            self.assertEqual(
+                [row["identity"] for row in windows_searched["rows"]],
+                [canonical_engram_path],
+            )
+            windows_islink.assert_not_called()
+            self.assertEqual(
+                windows_realpath_calls,
+                [
+                    str(root),
+                    str(canonical_root / regular_sibling_path.name),
+                    str(canonical_root / symlink_alias_path.name),
+                    str(canonical_root / engram_path.name),
+                    str(canonical_root / regular_sibling_path.name),
+                    str(canonical_root / engram_path.name),
+                ],
+            )
 
             def surviving_exact(*_args, **_kwargs):
                 return [{"conversation_id": encoded_engram}]
@@ -1119,6 +1238,31 @@ class TestLibraryBrowser(unittest.TestCase):
                 [row["identity"] for row in searched["rows"]],
                 [str(engram_path.resolve())],
             )
+
+            malformed_search_path = server.os.path.join(
+                str(root), "malformed-search\x00-engram.md",
+            )
+            encoded_malformed_search = server._browser_encode_source_id(
+                "engram", malformed_search_path,
+            )
+            with (
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection", return_value=physical_collection,
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_exact_rows",
+                    return_value=[{"conversation_id": encoded_malformed_search}],
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_fuzzy_rows", return_value=[],
+                ),
+            ):
+                malformed_search = server._library_engram_provider("forecast")
+
+            self.assertFalse(malformed_search["complete"])
+            self.assertEqual(malformed_search["rows"], [])
+            self.assertIn("keyword search paths", malformed_search["reason"])
 
             for helper, label in (
                 (server._browser_chroma_exact_rows, "exact"),
@@ -1192,6 +1336,45 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(
                 list_projects.call_args.kwargs["skipped_authority"], [],
             )
+
+            malformed_inventory_path = server.os.path.join(
+                str(root), "malformed-inventory\x00-engram.md",
+            )
+            malformed_row_id = 60_000
+            fixture = real_connect(db_path)
+            try:
+                fixture.execute(
+                    "INSERT INTO embeddings(id, segment_id, embedding_id) "
+                    "VALUES (?, ?, ?)",
+                    (malformed_row_id, "segment-metadata", "chunk-malformed-path"),
+                )
+                fixture.executemany(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    [
+                        (malformed_row_id, "nexus", "ora"),
+                        (malformed_row_id, "path", malformed_inventory_path),
+                        (malformed_row_id, "title", "Malformed path Engram"),
+                        (malformed_row_id, "type", "engram"),
+                    ],
+                )
+                fixture.commit()
+            finally:
+                fixture.close()
+
+            with (
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection", return_value=physical_collection,
+                ),
+            ):
+                malformed_inventory = server._library_engram_provider()
+
+            self.assertEqual(malformed_inventory, {
+                "rows": [],
+                "complete": False,
+                "reason": "the Engram index could not be read",
+            })
 
     def test_skipped_authority_records_keep_safe_rows_but_make_counts_incomplete(self):
         import copy
