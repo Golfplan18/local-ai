@@ -13782,7 +13782,12 @@ _LIBRARY_DIALOGUE_DIRECTIONS = {
 }
 
 
-def _library_path_preview(path: str, *, is_file: bool | None = None) -> dict:
+def _library_path_preview(
+    path: str,
+    *,
+    is_file: bool | None = None,
+    inspect_access: bool = True,
+) -> dict:
     suffix = Path(path).suffix.lower()
     kind = (
         "text" if suffix in _LIBRARY_TEXT_SUFFIXES else
@@ -13792,15 +13797,16 @@ def _library_path_preview(path: str, *, is_file: bool | None = None) -> dict:
     )
     if is_file is None:
         is_file = os.path.isfile(path)
-    available = bool(
-        kind != "unsupported" and is_file and os.access(path, os.R_OK)
-    )
+    readable = bool(os.access(path, os.R_OK)) if is_file and inspect_access else False
+    available = bool(kind != "unsupported" and is_file and readable)
     return {
         "kind": kind,
         "available": available,
         "locator": {"path": path},
         "reason": (
             None if available else
+            "source readability is resolved only for returned Library rows"
+            if kind != "unsupported" and is_file and not inspect_access else
             "the source file is not readable" if kind != "unsupported" else
             "this file type has no Library preview route"
         ),
@@ -14231,8 +14237,12 @@ def _library_engram_provider(query: str = "") -> dict:
 
         complete, reason = True, None
         pending_path_records: dict[str, list[tuple[int, dict]]] = {}
+        admitted_path_records: dict[str, list[tuple[int, dict]]] = {}
         grouped: dict[str, list[tuple[str, int, dict]]] = {}
         canonical_parents: dict[str, str] = {}
+        directory_entries: dict[str, dict[str, object]] = {}
+        canonical_by_lexical_path: dict[str, str] = {}
+        filesystem_stats: dict[str, object | None] = {}
 
         def stored_metadata_value(raw_value, value_kind):
             if raw_value is None:
@@ -14253,19 +14263,48 @@ def _library_engram_provider(query: str = "") -> dict:
                 reason = message
             complete = False
 
-        def canonicalize_path(path: str) -> str:
+        def path_parts(path: str) -> tuple[str, str, str]:
             lexical_path = _browser_resolve_path(path)
             lexical_parent, leaf = os.path.split(lexical_path)
+            if "\x00" in leaf:
+                raise ValueError("embedded null byte")
             canonical_parent = canonical_parents.get(lexical_parent)
             if canonical_parent is None:
                 canonical_parent = os.path.realpath(lexical_parent)
                 canonical_parents[lexical_parent] = canonical_parent
+            return lexical_path, canonical_parent, leaf
+
+        def parent_entries(canonical_parent: str) -> dict[str, object]:
+            cached = directory_entries.get(canonical_parent)
+            if cached is not None:
+                return cached
+            try:
+                with os.scandir(canonical_parent) as entries:
+                    cached = {
+                        (
+                            os.path.normcase(entry.name)
+                            if os.name == "nt" else entry.name
+                        ): entry
+                        for entry in entries
+                    }
+            except OSError:
+                mark_incomplete(
+                    "one or more Engram filesystem parents were unavailable"
+                )
+                cached = {}
+            directory_entries[canonical_parent] = cached
+            return cached
+
+        def canonicalize_path(path: str) -> str:
+            lexical_path, canonical_parent, leaf = path_parts(path)
+            known = canonical_by_lexical_path.get(lexical_path)
+            if known is not None:
+                return known
             canonical_path = os.path.join(canonical_parent, leaf)
-            if "\x00" in leaf:
-                raise ValueError("embedded null byte")
             if os.name == "nt":
                 return os.path.realpath(canonical_path)
-            if os.path.islink(canonical_path):
+            entry = parent_entries(canonical_parent).get(leaf)
+            if entry is not None and entry.is_symlink():
                 return os.path.realpath(canonical_path)
             return canonical_path
 
@@ -14278,13 +14317,13 @@ def _library_engram_provider(query: str = "") -> dict:
             ]
             if path not in set(knowledge_admitted_paths(path_metadatas, "")):
                 return
-            real_path = canonicalize_path(path)
-            destination = grouped.setdefault(real_path, [])
-            destination.extend(
+            admitted_records = [
                 (path, row_id, metadata)
                 for row_id, metadata in path_records
                 if str(metadata.get("type") or "").lower() == "engram"
-            )
+            ]
+            if admitted_records:
+                admitted_path_records[path] = admitted_records
 
         batch_size = 4096
         for batch_start in range(0, len(candidate_ids), batch_size):
@@ -14471,6 +14510,44 @@ def _library_engram_provider(query: str = "") -> dict:
 
         if stable_candidate_info or path_remaining:
             mark_incomplete("the Engram index has incomplete authority metadata")
+
+        paths_by_parent: dict[
+            str, list[tuple[str, str, str]]
+        ] = {}
+        for source_path in sorted(admitted_path_records):
+            lexical_path, canonical_parent, leaf = path_parts(source_path)
+            paths_by_parent.setdefault(canonical_parent, []).append(
+                (source_path, lexical_path, leaf)
+            )
+
+        stat_entries: dict[str, object] = {}
+        for canonical_parent in sorted(paths_by_parent):
+            entries = parent_entries(canonical_parent)
+            for source_path, lexical_path, leaf in paths_by_parent[
+                canonical_parent
+            ]:
+                entry_key = os.path.normcase(leaf) if os.name == "nt" else leaf
+                entry = entries.get(entry_key)
+                canonical_path = os.path.join(canonical_parent, leaf)
+                if os.name == "nt":
+                    canonical_path = os.path.realpath(canonical_path)
+                elif entry is not None and entry.is_symlink():
+                    canonical_path = os.path.realpath(canonical_path)
+                canonical_by_lexical_path[lexical_path] = canonical_path
+                grouped.setdefault(canonical_path, []).extend(
+                    admitted_path_records[source_path]
+                )
+                if entry is not None and canonical_path not in stat_entries:
+                    stat_entries[canonical_path] = entry
+
+        for canonical_path, entry in stat_entries.items():
+            try:
+                filesystem_stats[canonical_path] = entry.stat(
+                    follow_symlinks=True,
+                )
+            except OSError:
+                filesystem_stats[canonical_path] = None
+
         connection.commit()
         connection.close()
         connection = None
@@ -14504,10 +14581,7 @@ def _library_engram_provider(query: str = "") -> dict:
             (value for value in ("stealth", "private", "standard")
              if value in privacy_values), None,
         )
-        try:
-            path_stat = os.stat(path)
-        except OSError:
-            path_stat = None
+        path_stat = filesystem_stats.get(path)
         modified_at = (
             datetime.fromtimestamp(path_stat.st_mtime).isoformat(
                 timespec="seconds"
@@ -14537,12 +14611,19 @@ def _library_engram_provider(query: str = "") -> dict:
             "provenance": {"available": True, "kind": "indexed-vault-note",
                            "identity": path, "details": {"index": "knowledge"}},
             "_relationship_identity": Path(path).stem,
-            "preview": _library_path_preview(path, is_file=exists),
-            "editability": {"available": exists,
-                            "editable": os.access(path, os.W_OK) if exists else None,
-                            "surface": "external-file",
-                            "reason": ("editing is outside the Library adapter" if exists
-                                       else "the indexed source file is unavailable")},
+            "preview": _library_path_preview(
+                path, is_file=exists, inspect_access=False,
+            ),
+            "editability": {
+                "available": False,
+                "editable": None,
+                "surface": "external-file",
+                "reason": (
+                    "exact Engram editability is resolved only for returned "
+                    "Library rows"
+                    if exists else "the indexed source file is unavailable"
+                ),
+            },
         })
     if query:
         search_errors: list[str] = []
@@ -14675,6 +14756,87 @@ def _library_resolve_relationships(identities: set[str]) -> dict:
     return read_relationship_snapshot(identities)
 
 
+def _library_hydrate_returned_engram_access(rows: list[dict]) -> None:
+    """Add exact file access only after authoritative paging is complete."""
+
+    for row in rows:
+        if row.get("source") != "engrams":
+            continue
+        preview = (
+            row.get("preview")
+            if isinstance(row.get("preview"), dict) else {}
+        )
+        locator = (
+            preview.get("locator")
+            if isinstance(preview.get("locator"), dict) else {}
+        )
+        path = str(locator.get("path") or "").strip()
+        try:
+            path_stat = os.stat(path)
+        except (OSError, TypeError, ValueError):
+            path_stat = None
+        exists = bool(
+            path_stat is not None
+            and (path_stat.st_mode & 0o170000) == 0o100000
+        )
+
+        readable = None
+        writable = None
+        if exists:
+            try:
+                readable = bool(os.access(path, os.R_OK))
+            except (OSError, TypeError, ValueError):
+                pass
+            try:
+                writable = bool(os.access(path, os.W_OK))
+            except (OSError, TypeError, ValueError):
+                pass
+
+        kind = preview.get("kind")
+        if kind == "unsupported":
+            preview.update({
+                "available": False,
+                "reason": "this file type has no Library preview route",
+            })
+        elif readable is True:
+            preview.update({"available": True, "reason": None})
+        elif readable is False:
+            preview.update({
+                "available": False,
+                "reason": "the source file is not readable",
+            })
+        else:
+            preview.update({
+                "available": False,
+                "reason": (
+                    "source readability could not be inspected"
+                    if exists else "the indexed source file is unavailable"
+                ),
+            })
+        row["preview"] = preview
+
+        editability = (
+            row.get("editability")
+            if isinstance(row.get("editability"), dict) else {}
+        )
+        if isinstance(writable, bool):
+            editability.update({
+                "available": True,
+                "editable": writable,
+                "reason": "editing is outside the Library adapter",
+            })
+        else:
+            editability.update({
+                "available": False,
+                "editable": None,
+                "reason": (
+                    "exact Engram editability could not be inspected"
+                    if exists else "the indexed source file is unavailable"
+                ),
+            })
+        row["editability"] = editability
+
+
 @app.route("/api/library/browser", methods=["GET"])
 def library_browser():
     """Browse a complete, renderer-neutral Dialogue/Engram/File universe."""
@@ -14717,6 +14879,7 @@ def library_browser():
             query=query, offset=offset, limit=limit,
             relationship_resolver=_library_resolve_relationships,
         )
+        _library_hydrate_returned_engram_access(payload["rows"])
     except (LibraryBrowserError, TypeError, ValueError) as exc:
         return _json_response({"error": str(exc)}, status=400)
     return _json_response(payload)
