@@ -109,6 +109,67 @@ class EmailSliceTests(EmailBase):
         message = email_channel.prepare_message(self.action)
         self.assertIn("Sent by Ora, an AI assistant", message.visible_body)
         self.assertIn("X-Ora-Assistant:\r\n Ora;", message.mime.decode())
+        self.assertEqual(email_channel.inspect_message(self.action)["persona_id"], "ora")
+        self.assertEqual(self.provider.calls, [])
+
+    def test_persona_default_and_explicit_override_are_stable(self):
+        current_default = {"id": "global-writer"}
+        resolutions = []
+
+        def resolve_persona(**kwargs):
+            resolutions.append(dict(kwargs))
+            if kwargs.get("project_persona_id") != "":
+                identifier = "active-project-writer"
+            else:
+                identifier = kwargs.get("global_id", current_default["id"])
+            if identifier == "unavailable-writer":
+                return {"id": "ora", "display_name": "Ora", "warnings": [
+                    "Requested global Persona was not usable.",
+                ]}
+            return {
+                "id": identifier,
+                "display_name": identifier.replace("-", " ").title(),
+                "warnings": [],
+            }
+
+        with mock.patch.object(email_channel._persona, "resolve_persona",
+                               side_effect=resolve_persona):
+            default_draft = self.service.create({
+                "trigger_id": "mail", "name": "Default Persona draft",
+                "cause": "manual", "condition": {}, "action": self.action,
+            })
+            self.assertEqual(
+                default_draft["spec"]["action"]["persona_id"], "global-writer")
+            self.assertEqual(default_draft["status"], "draft")
+            self.assertIsNone(default_draft["approved_spec_digest"])
+            self.assertIsNone(default_draft["approved_action_binding"])
+
+            current_default["id"] = "new-global-writer"
+            inspected = self.service.inspect("mail")
+            self.assertEqual(inspected["persona_id"], "global-writer")
+
+            explicit_action = dict(self.action, persona_id="chosen-writer")
+            explicit_draft = self.service.create({
+                "trigger_id": "chosen-mail", "name": "Chosen Persona draft",
+                "cause": "manual", "condition": {}, "action": explicit_action,
+            })
+            self.assertEqual(
+                explicit_draft["spec"]["action"]["persona_id"], "chosen-writer")
+            self.assertEqual(
+                self.service.inspect("chosen-mail")["persona_id"], "chosen-writer")
+
+            with self.assertRaises(email_channel.EmailInputError):
+                email_channel.normalize_action(dict(self.action, persona_id=None))
+            with self.assertRaises(email_channel.EmailInputError):
+                email_channel.normalize_action(
+                    dict(self.action, persona_id="unavailable-writer"))
+
+        self.assertEqual(resolutions[0], {"project_persona_id": ""})
+        self.assertTrue(all(call.get("project_persona_id") == ""
+                            for call in resolutions))
+        self.assertTrue(any(call.get("global_id") == "chosen-writer"
+                            for call in resolutions))
+        self.assertEqual(oversight_queue.list_paused(), [])
         self.assertEqual(self.provider.calls, [])
 
     def test_only_email_send_is_opened(self):

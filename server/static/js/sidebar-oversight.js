@@ -745,6 +745,7 @@
       ['Fires', conditionSummary(spec)],
     ];
     if (spec.action && spec.action.kind === 'email_send') {
+      rows.push(['Persona', spec.action.persona_id]);
       const last = (t.firings || [])[0];
       const sent = last && last.receipt && last.receipt.provider_contacted;
       rows.push(['Approval', sent
@@ -985,8 +986,18 @@
     return state.actions;
   };
 
+  const loadPersonas = async () => {
+    try {
+      const r = await fetch('/api/personas');
+      const data = r.ok ? await r.json() : {};
+      return Array.isArray(data.personas) ? data.personas : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
   const openTriggerForm = async () => {
-    const actions = await loadActions();
+    const [actions, personas] = await Promise.all([loadActions(), loadPersonas()]);
     const existing = document.getElementById('triggerFormOverlay');
     if (existing) existing.remove();
 
@@ -1073,9 +1084,14 @@
     emailBodyInput.placeholder = 'Write the exact message body.';
     const emailBodyField = field('Message', emailBodyInput,
       'Ora adds the Persona disclosure before this exact body.');
-    const emailPersonaInput = input('email_persona', 'ora');
+    const emailPersonaInput = select('email_persona', [
+      ['', 'Use global default Persona'],
+      ...personas
+        .filter(p => p && typeof p.id === 'string' && p.id)
+        .map(p => [p.id, p.display_name || p.id]),
+    ]);
     const emailPersonaField = field('Persona', emailPersonaInput,
-      'Visible sender/disclosure identity; defaults to Ora.');
+      'The resolved Persona is saved with this draft; unavailable choices are refused.');
 
     const causeSelect = select('cause', [
       ['manual', 'Only when I run it'],
@@ -1203,18 +1219,25 @@
 
   const buildSpecFromForm = (f) => {
     const [kind, ...rest] = f.actionSelect.value.split(':');
-    const action = kind === 'channel' && rest.join(':') === 'email_send'
-      ? { kind: 'email_send',
-          to: f.emailToInput.value.split(',').map(value => value.trim()).filter(Boolean),
-          from_email: f.emailFromInput.value.trim(),
-          subject: f.emailSubjectInput.value,
-          body: f.emailBodyInput.value,
-          persona_id: f.emailPersonaInput.value.trim() || 'ora' }
-      : kind === 'tool'
-      ? { kind: 'project_tool', nexus: rest[0], tool: rest[1],
-          args: f.argsInput.value.trim() ? f.argsInput.value.trim().split(/\s+/) : [] }
-      : { kind: 'framework', framework: rest.join(':'),
-          input: f.argsInput.value.trim() };
+    let action;
+    if (kind === 'channel' && rest.join(':') === 'email_send') {
+      action = {
+        kind: 'email_send',
+        to: f.emailToInput.value.split(',').map(value => value.trim()).filter(Boolean),
+        from_email: f.emailFromInput.value.trim(),
+        subject: f.emailSubjectInput.value,
+        body: f.emailBodyInput.value,
+      };
+      if (f.emailPersonaInput.value) {
+        action.persona_id = f.emailPersonaInput.value;
+      }
+    } else if (kind === 'tool') {
+      action = { kind: 'project_tool', nexus: rest[0], tool: rest[1],
+        args: f.argsInput.value.trim() ? f.argsInput.value.trim().split(/\s+/) : [] };
+    } else {
+      action = { kind: 'framework', framework: rest.join(':'),
+        input: f.argsInput.value.trim() };
+    }
 
     const spec = {
       trigger_id: f.idInput.value.trim(),
