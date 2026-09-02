@@ -619,6 +619,7 @@ class TestLibraryBrowser(unittest.TestCase):
             identity_query_plan = []
             selected_flat_row_ids = []
             flat_rows = []
+            flat_payload_rows = []
             flat_queries = []
             flat_parameters = []
             flat_query_plan = []
@@ -644,8 +645,12 @@ class TestLibraryBrowser(unittest.TestCase):
                     if self._label == "keys":
                         raw_key_rows.append(row)
                     elif self._label == "flat":
-                        selected_flat_row_ids.append(row[1])
-                        flat_rows.append(row)
+                        flat_payload_rows.append(row)
+                        lane, payload = row
+                        for payload_row in json.loads(payload):
+                            logical_row = (lane, *payload_row)
+                            selected_flat_row_ids.append(logical_row[1])
+                            flat_rows.append(logical_row)
                     return row
 
                 def fetchall(self):
@@ -853,6 +858,12 @@ class TestLibraryBrowser(unittest.TestCase):
             )
             self.assertEqual({row[0] for row in flat_rows}, {"scalar", "array"})
             self.assertTrue(all(len(row) == 5 for row in flat_rows))
+            self.assertEqual(len(flat_payload_rows), 6)
+            self.assertTrue(all(len(row) == 2 for row in flat_payload_rows))
+            self.assertTrue(all(
+                isinstance(json.loads(row[1]), list)
+                for row in flat_payload_rows
+            ))
             self.assertIn("", [
                 row[2].strip() for row in flat_rows
                 if row[0] == "scalar" and row[1] == 12
@@ -980,6 +991,9 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(
                 flat_query.count("SELECT value FROM json_each(?)"), 3,
             )
+            self.assertEqual(
+                flat_query.count("json_group_array(json_array("), 3,
+            )
             self.assertNotIn("AS selected_key", flat_query)
             hot_sql = " ".join([identity_query, *flat_queries])
             self.assertNotIn("PYTHON_STRIP", hot_sql)
@@ -1043,12 +1057,11 @@ class TestLibraryBrowser(unittest.TestCase):
             ), plan_details)
             self.assertNotIn("chroma:document", [row[2] for row in flat_rows])
             self.assertNotIn("json_object", flat_query)
-            self.assertNotIn("json_group_array", flat_query)
             self.assertNotIn(" OVER ", flat_query)
             self.assertNotIn(" GROUP BY ", flat_query)
             self.assertNotIn(" ORDER BY ", flat_query)
             provider_source = inspect.getsource(server._library_engram_provider)
-            self.assertNotIn("json.loads", provider_source)
+            self.assertIn("json.loads(payload)", provider_source)
             self.assertNotIn("metadata_records", provider_source)
             self.assertNotIn("connection.create_function", provider_source)
             self.assertEqual(
