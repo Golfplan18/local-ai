@@ -113,6 +113,8 @@
   let lastSnapshot = { pinned: [], errored: [], pending: [], unread: [], active: [] };
   let lastServerSnapshot = lastSnapshot;
   let conversationsEtag = '';
+  let fetchListInFlight = null;
+  let fetchListTrailing = false;
   let pollHandle = null;
   let activeConvId = null;
   let creationOverlay = null;
@@ -421,7 +423,7 @@
     }
   };
 
-  const fetchList = async () => {
+  const fetchListOnce = async () => {
     try {
       // Fetch the active universe, then apply the project rule locally. A
       // server-scoped response cannot include the currently displayed
@@ -440,6 +442,24 @@
     } catch (e) {
       // Network failure during polling — render the last snapshot we had.
     }
+  };
+
+  const fetchList = () => {
+    if (fetchListInFlight) {
+      fetchListTrailing = true;
+      return fetchListInFlight;
+    }
+    fetchListTrailing = false;
+    fetchListInFlight = Promise.resolve().then(async () => {
+      await fetchListOnce();
+      while (fetchListTrailing) {
+        fetchListTrailing = false;
+        await fetchListOnce();
+      }
+    }).finally(() => {
+      fetchListInFlight = null;
+    });
+    return fetchListInFlight;
   };
 
   // ── G1.33 project switcher ──────────────────────────────────────────────

@@ -45,6 +45,11 @@ var dom = new jsdom.JSDOM(
   '  </div>' +
   '  <button class="sidebar-fork-thread-cmd" disabled>Fork</button>' +
   '  <button class="sidebar-browse-cmd">Library</button>' +
+  '  <div data-group="pinned"><div class="sidebar-group-rows"></div></div>' +
+  '  <div data-group="errored"><div class="sidebar-group-rows"></div></div>' +
+  '  <div data-group="unread"><div class="sidebar-group-rows"></div></div>' +
+  '  <div data-group="active"><div class="sidebar-group-rows"></div></div>' +
+  '  <div data-group="pending"><div class="sidebar-group-rows"></div></div>' +
   '</div>' +
   '<div class="ora-shell"></div>' +
   '<div class="output-pane">' +
@@ -135,6 +140,9 @@ var queuedBrowserResponses = [];
 var libraryRequestUrls = [];
 var queuedLibraryResponses = [];
 var sidebarListRequests = 0;
+var queuedSidebarListResponses = [];
+var sidebarListInFlight = 0;
+var sidebarListMaxInFlight = 0;
 var envelopeRequests = 0;
 var projectWrites = [];
 var bulkFailIds = new Set();
@@ -261,7 +269,9 @@ function deferredResponse() {
   var item = {
     promise: new Promise(function (done) { resolve = done; }),
     options: null,
-    resolve: function (payload) { resolve(responseObject(true, payload)); },
+    resolve: function (payload, status, headerValues) {
+      resolve(responseObject(true, payload, status || 200, headerValues));
+    },
     resolveError: function (payload, status) {
       resolve(responseObject(false, payload, status || 500));
     },
@@ -411,16 +421,33 @@ w.fetch = function (url, opts) {
   }
   if (decoded.indexOf('/api/conversations?') === 0) {
     sidebarListRequests += 1;
-    if (opts && opts.headers && opts.headers['If-None-Match'] === '"sidebar-v1"') {
-      return response(false, {}, 304);
+    sidebarListInFlight += 1;
+    sidebarListMaxInFlight = Math.max(
+      sidebarListMaxInFlight, sidebarListInFlight,
+    );
+    var sidebarResponse;
+    if (queuedSidebarListResponses.length) {
+      var queuedSidebarList = queuedSidebarListResponses.shift();
+      queuedSidebarList.options = opts || {};
+      sidebarResponse = queuedSidebarList.promise;
+    } else if (opts && opts.headers && opts.headers['If-None-Match'] === '"sidebar-v1"') {
+      sidebarResponse = response(false, {}, 304);
+    } else {
+      sidebarResponse = response(true, {
+        pinned: [],
+        errored: [],
+        pending: [],
+        unread: [],
+        active: [{ conversation_id: 'sidebar-stable', title: 'Stable row', tag: '' }],
+      }, 200, { ETag: '"sidebar-v1"' });
     }
-    return response(true, {
-      pinned: [],
-      errored: [],
-      pending: [],
-      unread: [],
-      active: [{ conversation_id: 'sidebar-stable', title: 'Stable row', tag: '' }],
-    }, 200, { ETag: '"sidebar-v1"' });
+    return sidebarResponse.then(function (result) {
+      sidebarListInFlight -= 1;
+      return result;
+    }, function (error) {
+      sidebarListInFlight -= 1;
+      throw error;
+    });
   }
   if (/\/api\/conversation\/[^/]+\/fork$/.test(decoded)) {
     forkRequests += 1;
@@ -552,6 +579,72 @@ async function run() {
       ) === rowBeforeUnchangedPoll,
     'refreshes=' + (sidebarListRequests - listBeforeRestore)
       + ', intervals=' + (intervalCalls - intervalsBeforeRestore));
+
+  var firstSidebarResponse = deferredResponse();
+  var trailingSidebarResponse = deferredResponse();
+  queuedSidebarListResponses.push(firstSidebarResponse, trailingSidebarResponse);
+  var listBeforeCoalescing = sidebarListRequests;
+  sidebarListMaxInFlight = sidebarListInFlight;
+  var firstSidebarRefresh = w.OraSidebar.refresh();
+  var overlappingSidebarRefresh = w.OraSidebar.refresh();
+  var thirdSidebarRefresh = w.OraSidebar.refresh();
+  var sharedSidebarCompletions = 0;
+  [firstSidebarRefresh, overlappingSidebarRefresh, thirdSidebarRefresh].forEach(
+    function (pending) {
+      pending.then(function () { sharedSidebarCompletions += 1; });
+    }
+  );
+  await flush();
+  record('overlapping sidebar refreshes share one in-flight request',
+    firstSidebarRefresh === overlappingSidebarRefresh
+      && firstSidebarRefresh === thirdSidebarRefresh
+      && sidebarListRequests === listBeforeCoalescing + 1
+      && sidebarListInFlight === 1
+      && sidebarListMaxInFlight === 1,
+    'requests=' + (sidebarListRequests - listBeforeCoalescing)
+      + ', in-flight=' + sidebarListInFlight
+      + ', max=' + sidebarListMaxInFlight);
+
+  firstSidebarResponse.resolve({
+    pinned: [], errored: [], pending: [], unread: [],
+    active: [{ conversation_id: 'sidebar-intermediate', title: 'Intermediate row', tag: '' }],
+  }, 200, { ETag: '"sidebar-v2"' });
+  await flush();
+  await flush();
+  record('overlap coalesces to exactly one trailing ETag request',
+    sidebarListRequests === listBeforeCoalescing + 2
+      && sidebarListInFlight === 1
+      && sidebarListMaxInFlight === 1
+      && sharedSidebarCompletions === 0
+      && queuedSidebarListResponses.length === 0
+      && firstSidebarResponse.options.headers['If-None-Match'] === '"sidebar-v1"'
+      && trailingSidebarResponse.options.headers['If-None-Match'] === '"sidebar-v2"',
+    'requests=' + (sidebarListRequests - listBeforeCoalescing)
+      + ', completions=' + sharedSidebarCompletions
+      + ', max=' + sidebarListMaxInFlight);
+
+  trailingSidebarResponse.resolve({
+    pinned: [], errored: [], pending: [], unread: [],
+    active: [{ conversation_id: 'sidebar-final', title: 'Final row', tag: '' }],
+  }, 200, { ETag: '"sidebar-v3"' });
+  await Promise.all([
+    firstSidebarRefresh, overlappingSidebarRefresh, thirdSidebarRefresh,
+  ]);
+  await flush();
+  record('shared sidebar refresh completion exposes only the final trailing state',
+    sidebarListRequests === listBeforeCoalescing + 2
+      && sidebarListInFlight === 0
+      && sidebarListMaxInFlight === 1
+      && sharedSidebarCompletions === 3
+      && !!w.document.querySelector(
+        '[data-group="active"] .sidebar-row[data-conversation-id="sidebar-final"]'
+      )
+      && !w.document.querySelector(
+        '[data-group="active"] .sidebar-row[data-conversation-id="sidebar-intermediate"]'
+      ),
+    'requests=' + (sidebarListRequests - listBeforeCoalescing)
+      + ', completions=' + sharedSidebarCompletions
+      + ', in-flight=' + sidebarListInFlight);
   w.OraSidebar.setExpanded(false);
 
   record('Fork starts disabled', fork.disabled === true);

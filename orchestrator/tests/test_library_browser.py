@@ -970,7 +970,9 @@ class TestLibraryBrowser(unittest.TestCase):
                     "embedding_metadata_array",
                 )
             ))
-            self.assertIn("FROM embeddings AS embedding", identity_query)
+            self.assertIn(
+                "FROM embeddings AS embedding NOT INDEXED", identity_query,
+            )
             self.assertIn("CROSS JOIN json_each(?) AS identity_key", identity_query)
             self.assertIn("metadata.key = identity_key.value", identity_query)
             self.assertNotIn("embedding_metadata_array", identity_query)
@@ -1001,6 +1003,14 @@ class TestLibraryBrowser(unittest.TestCase):
             identity_plan_details = [
                 str(row[3]) for row in identity_query_plan
             ]
+            self.assertTrue(any(
+                "SCAN embedding" in detail
+                for detail in identity_plan_details
+            ), identity_plan_details)
+            self.assertFalse(any(
+                "sqlite_autoindex_embeddings_1" in detail
+                for detail in identity_plan_details
+            ), identity_plan_details)
             self.assertTrue(any(
                 "sqlite_autoindex_embedding_metadata_1 (id=? AND key=?)"
                 in detail

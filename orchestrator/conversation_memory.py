@@ -853,6 +853,7 @@ def resolve_effective_conversation_history(
     sessions_root: Path | None = None,
     diagnostics: list[str] | None = None,
     lineage_sink: set[str] | list[str] | None = None,
+    _parsed_target_envelope: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Return ordered server-authoritative history for one Dialogue.
 
@@ -873,6 +874,11 @@ def resolve_effective_conversation_history(
     Returned message snapshots preserve ordinary turn metadata for spatial
     continuity and carry private ``_ora_*`` routing hints used only by the
     capacity packer.  They are never persisted or sent to a provider.
+
+    ``_parsed_target_envelope`` is an inventory-only reuse seam.  It may
+    replace the depth-zero read after :func:`iter_conversations` has already
+    authenticated and parsed that exact target.  Every actual ancestor still
+    follows the ordinary read path.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
     try:
@@ -948,7 +954,12 @@ def resolve_effective_conversation_history(
             note(f"{current_id}: ancestry cycle detected")
             return [], 0, False
 
-        envelope = _read_history_envelope(current_id, root)
+        envelope = (
+            _parsed_target_envelope
+            if ancestry_depth == 0
+            and isinstance(_parsed_target_envelope, dict)
+            else _read_history_envelope(current_id, root)
+        )
         if envelope is None:
             note(f"{current_id}: envelope missing or unreadable")
             return [], 0, False
@@ -2185,6 +2196,7 @@ def iter_conversations(
         messages = resolve_effective_conversation_history(
             entry.name,
             sessions_root=root,
+            _parsed_target_envelope=data,
         )
         if not isinstance(messages, list):
             messages = []
