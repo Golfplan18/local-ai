@@ -14279,19 +14279,21 @@ def _library_engram_provider(query: str = "") -> dict:
             candidate_cursor = connection.execute(
                 """
                 SELECT 'scalar' AS lane,
-                       metadata.id,
-                       metadata.key,
-                       COALESCE(
-                           metadata.string_value,
-                           metadata.int_value,
-                           metadata.float_value,
-                           metadata.bool_value
-                       ),
-                       CASE WHEN metadata.string_value IS NOT NULL THEN 'string'
-                            WHEN metadata.int_value IS NOT NULL THEN 'int'
-                            WHEN metadata.float_value IS NOT NULL THEN 'float'
-                            WHEN metadata.bool_value IS NOT NULL THEN 'bool'
-                       END
+                       json_group_array(json_array(
+                           metadata.id,
+                           metadata.key,
+                           COALESCE(
+                               metadata.string_value,
+                               metadata.int_value,
+                               metadata.float_value,
+                               metadata.bool_value
+                           ),
+                           CASE WHEN metadata.string_value IS NOT NULL THEN 'string'
+                                WHEN metadata.int_value IS NOT NULL THEN 'int'
+                                WHEN metadata.float_value IS NOT NULL THEN 'float'
+                                WHEN metadata.bool_value IS NOT NULL THEN 'bool'
+                           END
+                       ))
                 FROM json_each(?) AS candidate
                 CROSS JOIN embedding_metadata AS metadata
                   ON metadata.id = CAST(candidate.value AS INTEGER)
@@ -14300,10 +14302,12 @@ def _library_engram_provider(query: str = "") -> dict:
                 )
                 UNION ALL
                 SELECT 'scalar' AS lane,
-                       metadata.id,
-                       metadata.key,
-                       NULL,
-                       NULL
+                       json_group_array(json_array(
+                           metadata.id,
+                           metadata.key,
+                           NULL,
+                           NULL
+                       ))
                 FROM json_each(?) AS candidate
                 CROSS JOIN embedding_metadata AS metadata
                   ON metadata.id = CAST(candidate.value AS INTEGER)
@@ -14312,19 +14316,21 @@ def _library_engram_provider(query: str = "") -> dict:
                 )
                 UNION ALL
                 SELECT 'array' AS lane,
-                       metadata.id,
-                       metadata.key,
-                       COALESCE(
-                           metadata.string_value,
-                           metadata.int_value,
-                           metadata.float_value,
-                           metadata.bool_value
-                       ),
-                       CASE WHEN metadata.string_value IS NOT NULL THEN 'string'
-                            WHEN metadata.int_value IS NOT NULL THEN 'int'
-                            WHEN metadata.float_value IS NOT NULL THEN 'float'
-                            WHEN metadata.bool_value IS NOT NULL THEN 'bool'
-                       END
+                       json_group_array(json_array(
+                           metadata.id,
+                           metadata.key,
+                           COALESCE(
+                               metadata.string_value,
+                               metadata.int_value,
+                               metadata.float_value,
+                               metadata.bool_value
+                           ),
+                           CASE WHEN metadata.string_value IS NOT NULL THEN 'string'
+                                WHEN metadata.int_value IS NOT NULL THEN 'int'
+                                WHEN metadata.float_value IS NOT NULL THEN 'float'
+                                WHEN metadata.bool_value IS NOT NULL THEN 'bool'
+                           END
+                       ))
                 FROM json_each(?) AS candidate
                 CROSS JOIN embedding_metadata_array AS metadata
                   ON metadata.id = CAST(candidate.value AS INTEGER)
@@ -14348,13 +14354,18 @@ def _library_engram_provider(query: str = "") -> dict:
                 ),
             )
 
+            logical_rows = (
+                (lane, *payload_row)
+                for lane, payload in candidate_cursor
+                for payload_row in json.loads(payload)
+            )
             for (
                 lane,
                 row_id,
                 raw_key,
                 raw_value,
                 value_kind,
-            ) in candidate_cursor:
+            ) in logical_rows:
                 state = batch_states.get(int(row_id))
                 if state is None:
                     mark_incomplete(
