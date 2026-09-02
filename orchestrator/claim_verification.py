@@ -41,7 +41,10 @@ if _HERE not in sys.path:
 
 from rag_engine import score_external_chunks  # noqa: E402
 from tools import web_corroboration  # noqa: E402
-from tools.web_search import web_search_structured  # noqa: E402
+from tools.web_search import (  # noqa: E402
+    search_query_cap,
+    web_search_structured,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +305,28 @@ def assemble_claim_verification_evidence(
             },
         }
 
+    # Fan-out width is chosen by a model (the evaluator's flagged-claim list,
+    # or the Step-5.5 extractor's), so it has no natural ceiling: production
+    # has recorded a single fan-out issuing 213 searches. Truncate before the
+    # executor, and fail OPEN — the dropped claims simply go unverified, which
+    # the pipeline already treats as a coverage gap, rather than raising and
+    # turning a cost control into a pipeline breaker.
+    claims_submitted = len(flagged_claims)
+    query_cap = search_query_cap()
+    if query_cap and len(flagged_claims) > query_cap:
+        dropped = len(flagged_claims) - query_cap
+        signals.append(
+            f"claim_verification_query_cap_applied: kept {query_cap}, "
+            f"dropped {dropped}"
+        )
+        print(
+            f"[claim_verification] query cap {query_cap} applied — verifying "
+            f"{query_cap} of {len(flagged_claims)} claims, {dropped} left "
+            f"unverified (ORA_SEARCH_MAX_QUERIES)",
+            file=sys.stderr, flush=True,
+        )
+        flagged_claims = flagged_claims[:query_cap]
+
     if trusted_registry is None:
         trusted_registry = web_corroboration.TrustedSourcesRegistry()
 
@@ -425,7 +450,13 @@ def assemble_claim_verification_evidence(
         "trace": {
             "status": "ran",
             "reason": None,
+            # claims_total is POST-cap. claims_submitted is what arrived.
+            # Without both, a capped run shows claims vanishing between the
+            # extracted count and the verified count with no failures to
+            # account for them.
             "claims_total": len(flagged_claims),
+            "claims_submitted": claims_submitted,
+            "claims_dropped_to_cap": claims_submitted - len(flagged_claims),
             "claims_succeeded": len(flagged_claims) - claims_failed,
             "claims_failed": claims_failed,
             "chunks_total": chunks_total,
@@ -742,6 +773,7 @@ def extract_and_verify_unflagged_claims(
             "reason": inner_trace.get("reason"),
             "extracted_count": len(extracted),
             "claims_total": inner_trace.get("claims_total", 0),
+            "claims_dropped_to_cap": inner_trace.get("claims_dropped_to_cap", 0),
             "claims_succeeded": inner_trace.get("claims_succeeded", 0),
             "claims_failed": inner_trace.get("claims_failed", 0),
             "chunks_total": inner_trace.get("chunks_total", 0),

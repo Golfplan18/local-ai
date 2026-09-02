@@ -584,5 +584,73 @@ class FormatEvidenceBlockLabelPrefix(unittest.TestCase):
         self.assertIn("### Unflagged Claim 1", out)
 
 
+
+
+class QueryCapTruncation(unittest.TestCase):
+    """ORA_SEARCH_MAX_QUERIES bounds a fan-out whose width a model chooses.
+
+    Production has recorded one fan-out issuing 213 searches; nothing in the
+    evaluator's flagged-claim contract limits how many claims it may emit.
+    The cap must fail OPEN — dropped claims go unverified (already an
+    ordinary coverage gap here) rather than raising, which would turn a cost
+    control into a pipeline breaker.
+    """
+
+    @staticmethod
+    def _claims(n):
+        return [
+            {
+                "claim_num": i + 1,
+                "claim_text": f"claim {i + 1}",
+                "challenge_query": f"query {i + 1}",
+            }
+            for i in range(n)
+        ]
+
+    def _run(self, n_claims, cap):
+        env = {"ORA_SEARCH_MAX_QUERIES": cap}
+        results = [_ddg_result("https://example.com/a", "t", "body")]
+        with mock.patch.dict(os.environ, env, clear=False), \
+                mock.patch.object(claim_verification, "web_search_structured",
+                                  return_value=results) as search:
+            out = claim_verification.assemble_claim_verification_evidence(
+                self._claims(n_claims),
+            )
+        return out, search
+
+    def test_cap_truncates_the_fan_out(self):
+        out, search = self._run(30, "12")
+        self.assertEqual(search.call_count, 12)
+        self.assertEqual(out["trace"]["claims_total"], 12)
+
+    def test_cap_is_reported_not_silent(self):
+        """A cap that quietly drops fact-checking is indistinguishable from a
+        model that simply flagged fewer claims."""
+        out, _ = self._run(30, "12")
+        signals = " ".join(out["trace"].get("signals") or [])
+        self.assertIn("claim_verification_query_cap_applied", signals)
+        self.assertIn("dropped 18", signals)
+
+    def test_under_the_cap_is_untouched(self):
+        out, search = self._run(5, "12")
+        self.assertEqual(search.call_count, 5)
+        signals = " ".join(out["trace"].get("signals") or [])
+        self.assertNotIn("query_cap_applied", signals)
+
+    def test_unset_cap_leaves_behaviour_unchanged(self):
+        """Default must be unlimited so machines that never set it — the
+        publisher's own Ora — keep exactly their current behaviour."""
+        _, search = self._run(30, "")
+        self.assertEqual(search.call_count, 30)
+
+    def test_malformed_cap_does_not_disable_search(self):
+        _, search = self._run(4, "twelve")
+        self.assertEqual(search.call_count, 4)
+
+    def test_cap_never_raises(self):
+        out, _ = self._run(30, "1")
+        self.assertEqual(out["trace"]["status"], "ran")
+
+
 if __name__ == "__main__":
     unittest.main()

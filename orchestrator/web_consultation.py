@@ -16,7 +16,9 @@ Replaces the prior gap-driven sequential web_supplement.py:
     that cannot articulate a justification are not emitted (anti-nitpicking
     enforced upstream, not via a count cap).
   - All intent queries fire in PARALLEL via ThreadPoolExecutor with a
-    per-query timeout for failure containment. No count cap.
+    per-query timeout for failure containment. Uncapped by default;
+    ORA_SEARCH_MAX_QUERIES sets a per-fan-out ceiling when a deployment
+    needs one (the model chooses the width, so it has no natural bound).
   - Each retained chunk carries provenance: source_tier (approved/open),
     weight, retrieved_at timestamp, origin_url, intent_justification.
   - Duplication across web/vault/training is signal, not noise — preserved
@@ -53,7 +55,10 @@ from rag_engine import (  # noqa: E402
     format_context_with_provenance,
 )
 from tools import web_corroboration  # noqa: E402
-from tools.web_search import web_search_structured  # noqa: E402
+from tools.web_search import (  # noqa: E402
+    search_query_cap,
+    web_search_structured,
+)
 
 # Extraction-failure escalation (Process 14) — optional deep-fetch of thin
 # high-trust snippets, chunked + fit-gated + folded back in beside the
@@ -632,8 +637,9 @@ def assemble_consultation_package(
       1. Identifies search intents (one fast-model call). Intents must
          carry justifications; unjustified intents are dropped at the
          model layer.
-      2. Issues all intent queries in PARALLEL via ThreadPoolExecutor.
-         No count cap. Per-query timeout for failure containment.
+      2. Issues intent queries in PARALLEL via ThreadPoolExecutor.
+         Uncapped by default; ORA_SEARCH_MAX_QUERIES truncates the intent
+         list when set. Per-query timeout for failure containment.
       3. Scores retrieved chunks via the trusted-source registry, threads
          provenance through (source_tier, weight, origin_url,
          retrieved_at, intent_justification).
@@ -737,6 +743,23 @@ def assemble_consultation_package(
     intent_elapsed = time.time() - t_intent_start
 
     intents = _parse_intents(intent_raw or "")
+    # Same unbounded-fan-out exposure as claim verification: the intent count
+    # is whatever the fast model emits. Fail open — dropped intents are simply
+    # not searched, which this step already reports as a coverage gap.
+    _query_cap = search_query_cap()
+    if _query_cap and len(intents) > _query_cap:
+        _dropped = len(intents) - _query_cap
+        signals.append(
+            f"web_consultation_query_cap_applied: kept {_query_cap}, "
+            f"dropped {_dropped}"
+        )
+        print(
+            f"[web_consultation] query cap {_query_cap} applied — running "
+            f"{_query_cap} of {len(intents)} intents, {_dropped} dropped "
+            f"(ORA_SEARCH_MAX_QUERIES)",
+            file=sys.stderr, flush=True,
+        )
+        intents = intents[:_query_cap]
     signals.append(f"web_consultation_intents_identified: {len(intents)}")
     # Observability fix #3 — flag slow intent calls. The intent extractor
     # runs on the step1_cleanup slot (fast cloud model). Anything over 10s

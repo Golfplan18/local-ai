@@ -253,7 +253,7 @@ def run_deterministic_tools(mode_text: str, prompt: str, *, executor=None) -> di
 # descriptions. Restricted to reads on purpose — an analyst never writes files,
 # runs shell, or mutates state mid-analysis.
 REQUESTABLE_TOOL_DESCRIPTIONS = {
-    "web_search": 'search the open web (Tavily → Brave → DDG cascade). params: {"query": str}',
+    "web_search": 'search the open web (provider cascade, configurable). params: {"query": str}',
     "web_fetch": 'fetch a specific URL as clean markdown. params: {"url": str}',
     "knowledge_search": 'semantic search over the vault + conversation corpus. params: {"query": str}',
     "search_files": 'filename / content search across a path. params: {"pattern": str, "directory": str}',
