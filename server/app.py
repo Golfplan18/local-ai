@@ -14156,10 +14156,12 @@ def _library_engram_provider(query: str = "") -> dict:
         identities: dict[int, dict] = {}
         identity_cursor = connection.execute(
             """
-            SELECT embedding.id,
-                   embedding.embedding_id,
-                   metadata.key,
-                   metadata.string_value
+            SELECT json_group_array(json_array(
+                       embedding.id,
+                       embedding.embedding_id,
+                       metadata.key,
+                       metadata.string_value
+                   ))
             FROM embeddings AS embedding NOT INDEXED
             CROSS JOIN json_each(?) AS identity_key
             CROSS JOIN embedding_metadata AS metadata
@@ -14172,7 +14174,12 @@ def _library_engram_provider(query: str = "") -> dict:
                 metadata_segment_id,
             ),
         )
-        for row_id, raw_embedding_id, raw_key, raw_value in identity_cursor:
+        identity_rows = (
+            payload_row
+            for (payload,) in identity_cursor
+            for payload_row in json.loads(payload)
+        )
+        for row_id, raw_embedding_id, raw_key, raw_value in identity_rows:
             identity = identities.setdefault(int(row_id), {
                 "embedding_id": raw_embedding_id,
                 "paths": set(),
