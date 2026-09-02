@@ -1002,6 +1002,112 @@ async function run() {
   await flush();
   w.document.querySelector('[data-library-command="clear-filters"]').click();
 
+  var scopeAllRows = [
+    visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
+  ];
+  var scopeMixedRows = scopeAllRows.slice(0, 4);
+  var scopeFilesToggle = w.document.querySelector('[data-library-source][value="files"]');
+  queuedLibraryResponses.push(libraryPayload(scopeMixedRows, {
+    sources: ['dialogues', 'engrams'], total: 4,
+    source_counts: { dialogues: 2, engrams: 2, files: 0 },
+    item_type_counts: { Dialogue: 2, Engram: 2 },
+  }));
+  scopeFilesToggle.checked = false;
+  scopeFilesToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  queuedLibraryResponses.push(libraryPayload(scopeMixedRows, {
+    sources: ['dialogues', 'engrams'], total: 4,
+    source_counts: { dialogues: 2, engrams: 2, files: 0 },
+    item_type_counts: { Dialogue: 2, Engram: 2 },
+  }));
+  librarySearch.value = 'preserve this scoped query';
+  librarySearch.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await flush();
+  await flush();
+  libraryTypeFilter.value = 'Dialogue';
+  libraryTypeFilter.dispatchEvent(new w.Event('change', { bubbles: true }));
+  partialGroupSelect.value = 'source';
+  partialGroupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var scopeSort = w.document.querySelector('[data-library-sort]');
+  scopeSort.value = 'title';
+  scopeSort.dispatchEvent(new w.Event('change', { bubbles: true }));
+
+  var scopeRelated = deferredResponse();
+  queuedRelatedResponses.push(scopeRelated);
+  var scopePinnedRow = Array.from(w.document.querySelectorAll('.library-list-row')).find(function (item) {
+    return item.textContent.indexOf('Saved Dialogue Name') !== -1;
+  });
+  scopePinnedRow.querySelector('.library-list-row__pin').click();
+  var scopeSelectedCheck = scopePinnedRow.querySelector('input[type="checkbox"]');
+  scopeSelectedCheck.checked = true;
+  scopeSelectedCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var namedScopeReplacement = deferredResponse();
+  queuedLibraryResponses.push(namedScopeReplacement);
+  var projectScope = w.document.querySelector('[data-library-project]');
+  projectScope.value = 'ora';
+  projectScope.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var clearedScopeState = w.OraLibraryWorkspace.getState();
+  var namedLibraryScopeParams = new w.URL(
+    libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('named project change clears old identity-bound Library state before its delayed response',
+    clearedScopeState.projectId === 'ora'
+      && clearedScopeState.loaded === 0
+      && clearedScopeState.indexed === 0
+      && clearedScopeState.selectedIds.length === 0
+      && clearedScopeState.pinnedId === null
+      && clearedScopeState.related.anchorId === null
+      && clearedScopeState.related.loading === false
+      && clearedScopeState.related.returned === 0
+      && clearedScopeState.related.drawable === 0
+      && scopeRelated.options.signal.aborted
+      && !w.document.querySelector('[data-library-row-id="dialogues:named-live"]')
+      && w.document.querySelector('.library-preview-layer--findings').textContent
+        .indexOf('Pin a Library item') !== -1
+      && w.document.querySelector('[data-library-popover="actions"]').disabled
+      && !w.document.querySelector('[data-library-action]'));
+  record('named project scope preserves independent browse controls and additive sources',
+    namedLibraryScopeParams.get('project_id') === 'ora'
+      && namedLibraryScopeParams.getAll('source').join(',') === 'dialogues,engrams'
+      && namedLibraryScopeParams.get('q') === 'preserve this scoped query'
+      && clearedScopeState.sources.join(',') === 'dialogues,engrams'
+      && clearedScopeState.query === 'preserve this scoped query'
+      && clearedScopeState.filters.type === 'Dialogue'
+      && clearedScopeState.group === 'source'
+      && clearedScopeState.sort === 'title');
+  scopeRelated.resolve({ rows: [], total: 0 });
+  namedScopeReplacement.resolve(libraryPayload(scopeMixedRows, {
+    sources: ['dialogues', 'engrams'], total: 4,
+    source_counts: { dialogues: 2, engrams: 2, files: 0 },
+    item_type_counts: { Dialogue: 2, Engram: 2 },
+  }));
+  await flush();
+  await flush();
+  queuedLibraryResponses.push(libraryPayload(scopeMixedRows, {
+    sources: ['dialogues', 'engrams'], total: 4,
+    source_counts: { dialogues: 2, engrams: 2, files: 0 },
+    item_type_counts: { Dialogue: 2, Engram: 2 },
+  }));
+  librarySearch.value = '';
+  librarySearch.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await flush();
+  await flush();
+  w.document.querySelector('[data-library-command="clear-filters"]').click();
+  partialGroupSelect.value = 'none';
+  partialGroupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  scopeSort.value = 'recent';
+  scopeSort.dispatchEvent(new w.Event('change', { bubbles: true }));
+  queuedLibraryResponses.push(libraryPayload(scopeAllRows, {
+    total: 5,
+    source_counts: { dialogues: 2, engrams: 2, files: 1 },
+    item_type_counts: { Dialogue: 2, Engram: 2, File: 1 },
+  }));
+  scopeFilesToggle.checked = true;
+  scopeFilesToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+
   Array.from(w.document.querySelectorAll('.library-list-row')).forEach(function (item) {
     var checkbox = item.querySelector('input[type="checkbox"]');
     checkbox.checked = true;
@@ -1011,6 +1117,11 @@ async function run() {
     w.OraLibraryWorkspace.getState().pinnedId === null
       && !w.document.querySelector('[data-library-popover="actions"]').disabled
       && !!w.document.querySelector('[data-library-action="new-dialogue"]'));
+  var namedDiscoveryMembershipBefore = {
+    projectWrites: projectWrites.length,
+    activeProject: activeProject,
+    projectIds: envelopes['named-live'].project_ids.slice(),
+  };
   w.document.querySelector('[data-library-action="new-dialogue"]').click();
   await flush();
   record('New Dialogue names unsupported checked context before review',
@@ -1028,12 +1139,88 @@ async function run() {
   var creationParams = new w.URL(
     browserRequestUrls[browserRequestUrls.length - 1], w.location.href
   ).searchParams;
-  record('only checked readable Dialogues and atomic Engrams enter reviewed creation',
+  record('named checked-context discovery sends project scope and every repeated admitted ref',
     creationParams.getAll('include_ref').sort().join(',') === 'engram:claim,named-live'
+      && creationParams.getAll('include_ref').length === 2
+      && creationParams.get('project_id') === 'ora'
       && creationParams.get('target_tag') === 'private'
       && !creationParams.getAll('include_ref').includes('engram:reference')
       && Array.from(w.document.querySelectorAll('.conversation-create-add'))
         .filter(function (button) { return button.textContent === 'Added'; }).length === 2);
+  record('named checked-context discovery does not mutate stored project membership',
+    projectWrites.length === namedDiscoveryMembershipBefore.projectWrites
+      && activeProject === namedDiscoveryMembershipBefore.activeProject
+      && envelopes['named-live'].project_ids.join(',')
+        === namedDiscoveryMembershipBefore.projectIds.join(','));
+  w.document.querySelector('.conversation-create-close').click();
+
+  var staleNamedDiscovery = deferredResponse();
+  queuedBrowserResponses.push(staleNamedDiscovery);
+  w.OraSidebar.createFromLibrarySelection([visibleDialogue, contextEngram], 'ora');
+  creationDescription = w.document.querySelector('.conversation-create-description');
+  creationDescription.value = 'Delay this named discovery until another creation opens.';
+  creationDescription.dispatchEvent(new w.Event('input', { bubbles: true }));
+  w.document.querySelector('.conversation-create-discover').click();
+  await flush();
+  var staleNamedDiscoveryParams = new w.URL(
+    browserRequestUrls[browserRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  w.OraSidebar.openCreation();
+  creationDescription = w.document.querySelector('.conversation-create-description');
+  staleNamedDiscovery.resolve({
+    review_token: 'stale-named-review-token',
+    rows: [{
+      conversation_id: 'stale-named-row', source_kind: 'live', title: 'Stale named result',
+    }],
+    total: 1,
+  });
+  await flush();
+  await flush();
+  record('ordinary creation ignores a delayed named-scope discovery response',
+    staleNamedDiscoveryParams.get('project_id') === 'ora'
+      && creationDescription.value === ''
+      && w.document.querySelectorAll('.conversation-create-result').length === 0
+      && w.document.querySelector('.conversation-create-reviewed input').disabled
+      && w.document.querySelector('.conversation-create-status').textContent
+        === 'Nothing is created until you confirm.');
+  creationDescription.value = 'Find ordinary material without a Library project scope.';
+  creationDescription.dispatchEvent(new w.Event('input', { bubbles: true }));
+  w.document.querySelector('.conversation-create-discover').click();
+  await flush();
+  await flush();
+  var ordinaryCreationParams = new w.URL(
+    browserRequestUrls[browserRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  w.document.querySelector('.conversation-create-close').click();
+  w.OraSidebar.createFromLibraryDialogue(visibleDialogue);
+  creationDescription = w.document.querySelector('.conversation-create-description');
+  creationDescription.value = 'Find material for one contributor without leaked scope.';
+  creationDescription.dispatchEvent(new w.Event('input', { bubbles: true }));
+  w.document.querySelector('.conversation-create-discover').click();
+  await flush();
+  await flush();
+  var singleContributorParams = new w.URL(
+    browserRequestUrls[browserRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  w.document.querySelector('.conversation-create-close').click();
+  w.OraSidebar.createFromLibrarySelection([visibleDialogue, contextEngram], 'general');
+  creationDescription = w.document.querySelector('.conversation-create-description');
+  creationDescription.value = 'Treat legacy General as Commons during contributor discovery.';
+  creationDescription.dispatchEvent(new w.Event('input', { bubbles: true }));
+  w.document.querySelector('.conversation-create-discover').click();
+  await flush();
+  await flush();
+  var generalCreationParams = new w.URL(
+    browserRequestUrls[browserRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('every creation open resets Library discovery scope outside checked-context flow',
+    !ordinaryCreationParams.has('project_id')
+      && ordinaryCreationParams.getAll('include_ref').length === 0
+      && !singleContributorParams.has('project_id')
+      && singleContributorParams.getAll('include_ref').join(',') === 'named-live'
+      && !generalCreationParams.has('project_id')
+      && generalCreationParams.getAll('include_ref').sort().join(',')
+        === 'engram:claim,named-live');
   w.document.querySelector('.conversation-create-close').click();
   queuedLibraryResponses.push(libraryPayload([
     visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
@@ -1293,7 +1480,7 @@ async function run() {
       && groupLauncher.tagName === 'BUTTON'
       && filterLauncher.tagName === 'BUTTON'
       && groupLauncher.textContent.indexOf('Source') !== -1
-      && filterLauncher.textContent.indexOf('Scope: Commons · 1') !== -1
+      && filterLauncher.textContent.indexOf('Scope: ora · 1') !== -1
       && groupReachable
       && !w.document.querySelector('[data-library-panel="filters"]').hidden
       && w.document.activeElement === libraryTypeFilter);
@@ -1337,7 +1524,6 @@ async function run() {
     mixedParams.getAll('source').join(',') === 'dialogues,engrams'
       && !mixedParams.getAll('source').includes('files'));
 
-  var projectScope = w.document.querySelector('[data-library-project]');
   queuedLibraryResponses.push(libraryPayload([visibleDialogue, metadataDialogue], {
     sources: ['dialogues', 'engrams'], total: 2,
   }));
@@ -1354,7 +1540,7 @@ async function run() {
       && w.OraLibraryWorkspace.getState().projectId === 'ora'
       && namedScopeParams.get('project_id') === 'ora'
       && namedScopeParams.getAll('source').join(',') === 'dialogues,engrams');
-  queuedLibraryResponses.push(libraryPayload([visibleDialogue, metadataDialogue], {
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue, contextEngram], {
     sources: ['dialogues', 'engrams'], total: 2,
   }));
   projectScope.value = 'commons';
@@ -1368,6 +1554,29 @@ async function run() {
     w.OraLibraryWorkspace.getState().projectId === 'commons'
       && !commonsScopeParams.has('project_id')
       && commonsScopeParams.getAll('source').join(',') === 'dialogues,engrams');
+
+  Array.from(w.document.querySelectorAll('.library-list-row input[type="checkbox"]')).forEach(function (checkbox) {
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new w.Event('change', { bubbles: true }));
+  });
+  w.document.querySelector('[data-library-action="new-dialogue"]').click();
+  await flush();
+  creationDescription = w.document.querySelector('.conversation-create-description');
+  creationDescription.value = 'Use checked Commons context without a project filter.';
+  creationDescription.dispatchEvent(new w.Event('input', { bubbles: true }));
+  w.document.querySelector('.conversation-create-discover').click();
+  await flush();
+  await flush();
+  var commonsCreationParams = new w.URL(
+    browserRequestUrls[browserRequestUrls.length - 1], w.location.href
+  ).searchParams;
+  record('Commons checked-context discovery omits project_id while retaining repeated refs',
+    !commonsCreationParams.has('project_id')
+      && commonsCreationParams.getAll('include_ref').sort().join(',') === 'engram:claim,named-live');
+  w.document.querySelector('.conversation-create-close').click();
+  browseButton.click();
+  await flush();
+  await flush();
 
   var older = deferredResponse();
   var newer = deferredResponse();

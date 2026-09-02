@@ -811,6 +811,26 @@
     renderActions();
   }
 
+  function invalidateProjectScopeRows() {
+    state.loading = false;
+    state.loadingAll = false;
+    state.retryAppend = false;
+    state.error = '';
+    state.actionNotice = '';
+    state.rows = [];
+    state.rowsById.clear();
+    state.selectedIds.clear();
+    state.pinnedId = null;
+    state.total = 0;
+    state.sourceCounts = {};
+    state.facets = {};
+    state.universe = null;
+    state.pagination = { offset: 0, limit: PAGE_LIMIT, returned: 0, has_more: false, next_offset: null };
+    updateFacetOptions();
+    resetRelated(null, 'Project scope changed. Pin an item from the new result universe to request Related.');
+    reconcileRows();
+  }
+
   function browserUrl(offset) {
     const params = new URLSearchParams({ offset: String(offset), limit: String(PAGE_LIMIT) });
     state.sources.forEach((source) => params.append('source', source));
@@ -1121,7 +1141,7 @@
       actions.push({
         id: 'new-dialogue',
         label: `New Dialogue with checked context (${selectedRows.length})`,
-        run: () => window.OraSidebar.createFromLibrarySelection(selectedRows),
+        run: () => window.OraSidebar.createFromLibrarySelection(selectedRows, state.projectId),
       });
     }
     if (selectedDialogues.length && window.OraSidebar && typeof window.OraSidebar.addLibrarySelectionToActiveProject === 'function') {
@@ -1366,7 +1386,11 @@
     render();
   });
   projectScope.addEventListener('change', () => {
-    state.projectId = projectScope.value || 'commons';
+    const nextProjectId = projectScope.value || 'commons';
+    if (nextProjectId !== state.projectId) {
+      state.projectId = nextProjectId;
+      invalidateProjectScopeRows();
+    }
     fetchPage({ append: false });
   });
 
@@ -1404,6 +1428,7 @@
       selectedIds: Array.from(state.selectedIds),
       pinnedId: state.pinnedId,
       loaded: state.rows.length,
+      indexed: state.rowsById.size,
       total: state.total,
       loadingAll: state.loadingAll,
       universeComplete: Boolean(state.universe && state.universe.complete),
