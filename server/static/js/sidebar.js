@@ -132,10 +132,12 @@
   let creationContractFingerprint = '';
   let creationReviewedDescription = '';
   let creationTag = '';
+  let creationDiscoveryProjectId = '';
   let creationIncludedRefs = [];
   let creationUnsupportedContext = [];
   let creationReturnFocus = null;
   let creationBusy = false;
+  let creationOpenGeneration = 0;
   const lifecycleBusyIds = new Set();
 
   const setExpanded = (on) => {
@@ -1231,6 +1233,7 @@
     updateCreationCommitState();
     creationStatus.textContent = 'Searching Dialogues and atomic notes…';
     const description = creationDescription.value.trim();
+    const openGeneration = creationOpenGeneration;
     try {
       const params = new URLSearchParams({
         q: description,
@@ -1242,9 +1245,11 @@
         limit: '40',
       });
       params.set('target_tag', creationTag);
+      if (creationDiscoveryProjectId) params.set('project_id', creationDiscoveryProjectId);
       creationIncludedRefs.forEach((ref) => params.append('include_ref', ref));
       const resp = await fetch('/api/conversations/browser?' + params.toString());
       const data = await resp.json();
+      if (openGeneration !== creationOpenGeneration) return;
       if (!resp.ok || !data.review_token) {
         throw new Error(data.error || `HTTP ${resp.status}`);
       }
@@ -1271,11 +1276,14 @@
         ? `${creationRows.length} related item${creationRows.length === 1 ? '' : 's'} found. Review them before creating.`
         : 'No related Dialogues or atomic notes found. Confirm that result before creating.') + unsupported;
     } catch (e) {
+      if (openGeneration !== creationOpenGeneration) return;
       resetCreationReview();
       creationStatus.textContent = 'Discovery failed: ' + (e.message || e);
     } finally {
-      creationBusy = false;
-      updateCreationCommitState();
+      if (openGeneration === creationOpenGeneration) {
+        creationBusy = false;
+        updateCreationCommitState();
+      }
     }
   };
 
@@ -1453,6 +1461,8 @@
   };
 
   const openCreation = (detail = {}) => {
+    creationOpenGeneration += 1;
+    creationBusy = false;
     ensureCreation();
     document.dispatchEvent(new CustomEvent('ora:library-close-requested'));
     const active = document.activeElement;
@@ -1460,6 +1470,7 @@
       ? active
       : newThreadCmd;
     creationTag = detail.tag === 'private' || detail.tag === 'stealth' ? detail.tag : '';
+    creationDiscoveryProjectId = compatibleProjectId(detail.discovery_project_id);
     const prefillRows = Array.isArray(detail.prefill_rows)
       ? detail.prefill_rows
       : (detail.prefill_row ? [detail.prefill_row] : []);
@@ -1556,7 +1567,7 @@
     return privateContext ? 'private' : '';
   };
 
-  const createFromLibrarySelection = (rows) => {
+  const createFromLibrarySelection = (rows, discoveryProjectId) => {
     const selected = Array.isArray(rows) ? rows.filter(Boolean) : [];
     const contributors = [];
     const unsupported = [];
@@ -1593,6 +1604,7 @@
       prefill_rows: contributors,
       unsupported_context: unsupported,
       tag: libraryContextPrivacyTag(selected),
+      discovery_project_id: discoveryProjectId,
     });
     return { contributors: contributors.map(row => row.conversation_id), unsupported };
   };
