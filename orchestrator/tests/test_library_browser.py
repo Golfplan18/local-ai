@@ -1141,6 +1141,68 @@ class TestLibraryBrowser(unittest.TestCase):
             encoded_engram = server._browser_encode_source_id(
                 "engram", str(engram_path),
             )
+            encoded_regular_sibling = server._browser_encode_source_id(
+                "engram", str(regular_sibling_path),
+            )
+            canonical_engram_path = str(engram_path.resolve())
+            windows_realpath_calls = []
+
+            def windows_realpath(path, *args, **kwargs):
+                value = str(path)
+                windows_realpath_calls.append(value)
+                if value == str(canonical_root / regular_sibling_path.name):
+                    return canonical_engram_path
+                return real_realpath(path, *args, **kwargs)
+
+            real_os = server.os
+
+            class WindowsOSProxy:
+                name = "nt"
+
+                def __getattr__(self, name):
+                    return getattr(real_os, name)
+
+            with (
+                mock.patch.object(server, "os", WindowsOSProxy()),
+                mock.patch.object(
+                    real_os.path, "realpath", side_effect=windows_realpath,
+                ),
+                mock.patch.object(
+                    real_os.path, "islink",
+                    side_effect=AssertionError(
+                        "Windows leaves must use full-path realpath"
+                    ),
+                ) as windows_islink,
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection", return_value=physical_collection,
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_exact_rows",
+                    return_value=[{"conversation_id": encoded_regular_sibling}],
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_fuzzy_rows", return_value=[],
+                ),
+            ):
+                windows_searched = server._library_engram_provider("forecast")
+
+            self.assertEqual(
+                [row["identity"] for row in windows_searched["rows"]],
+                [canonical_engram_path],
+            )
+            windows_islink.assert_not_called()
+            self.assertEqual(
+                windows_realpath_calls,
+                [
+                    str(root),
+                    str(canonical_root / regular_sibling_path.name),
+                    str(canonical_root / symlink_alias_path.name),
+                    str(canonical_root / engram_path.name),
+                    str(canonical_root / regular_sibling_path.name),
+                    str(canonical_root / engram_path.name),
+                ],
+            )
 
             def surviving_exact(*_args, **_kwargs):
                 return [{"conversation_id": encoded_engram}]
@@ -1176,6 +1238,31 @@ class TestLibraryBrowser(unittest.TestCase):
                 [row["identity"] for row in searched["rows"]],
                 [str(engram_path.resolve())],
             )
+
+            malformed_search_path = server.os.path.join(
+                str(root), "malformed-search\x00-engram.md",
+            )
+            encoded_malformed_search = server._browser_encode_source_id(
+                "engram", malformed_search_path,
+            )
+            with (
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection", return_value=physical_collection,
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_exact_rows",
+                    return_value=[{"conversation_id": encoded_malformed_search}],
+                ),
+                mock.patch.object(
+                    server, "_browser_chroma_fuzzy_rows", return_value=[],
+                ),
+            ):
+                malformed_search = server._library_engram_provider("forecast")
+
+            self.assertFalse(malformed_search["complete"])
+            self.assertEqual(malformed_search["rows"], [])
+            self.assertIn("keyword search paths", malformed_search["reason"])
 
             for helper, label in (
                 (server._browser_chroma_exact_rows, "exact"),
@@ -1249,6 +1336,45 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(
                 list_projects.call_args.kwargs["skipped_authority"], [],
             )
+
+            malformed_inventory_path = server.os.path.join(
+                str(root), "malformed-inventory\x00-engram.md",
+            )
+            malformed_row_id = 60_000
+            fixture = real_connect(db_path)
+            try:
+                fixture.execute(
+                    "INSERT INTO embeddings(id, segment_id, embedding_id) "
+                    "VALUES (?, ?, ?)",
+                    (malformed_row_id, "segment-metadata", "chunk-malformed-path"),
+                )
+                fixture.executemany(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    [
+                        (malformed_row_id, "nexus", "ora"),
+                        (malformed_row_id, "path", malformed_inventory_path),
+                        (malformed_row_id, "title", "Malformed path Engram"),
+                        (malformed_row_id, "type", "engram"),
+                    ],
+                )
+                fixture.commit()
+            finally:
+                fixture.close()
+
+            with (
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection", return_value=physical_collection,
+                ),
+            ):
+                malformed_inventory = server._library_engram_provider()
+
+            self.assertEqual(malformed_inventory, {
+                "rows": [],
+                "complete": False,
+                "reason": "the Engram index could not be read",
+            })
 
     def test_skipped_authority_records_keep_safe_rows_but_make_counts_incomplete(self):
         import copy

@@ -14254,6 +14254,10 @@ def _library_engram_provider(query: str = "") -> dict:
                 canonical_parent = os.path.realpath(lexical_parent)
                 canonical_parents[lexical_parent] = canonical_parent
             canonical_path = os.path.join(canonical_parent, leaf)
+            if "\x00" in leaf:
+                raise ValueError("embedded null byte")
+            if os.name == "nt":
+                return os.path.realpath(canonical_path)
             if os.path.islink(canonical_path):
                 return os.path.realpath(canonical_path)
             return canonical_path
