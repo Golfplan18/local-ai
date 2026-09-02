@@ -72,14 +72,22 @@ var dom = new jsdom.JSDOM(
   '</section>' +
   '<svg class="spine-wordmark"><g id="logo-o" role="button" tabindex="0" aria-label="Submit">' +
   '  <text class="library-o-type"></text><text class="library-o-state"></text>' +
-  '</g></svg>' +
+  '</g><g id="logo-r" aria-hidden="true"></g>' +
+  '<g id="logo-a" role="button" tabindex="0" aria-label="Open Dialogues sidebar"></g></svg>' +
   libraryMountMarkup +
   '</body></html>',
   { url: 'http://localhost/', pretendToBeVisual: true, runScripts: 'outside-only' }
 );
 
 var w = dom.window;
+var libraryCssSource = fs.readFileSync(path.resolve(
+  __dirname, '..', 'styles', 'components', 'library-workspace.css'
+), 'utf8');
+var libraryStyle = w.document.createElement('style');
+libraryStyle.textContent = libraryCssSource;
+w.document.head.appendChild(libraryStyle);
 var measuredWidth = 1024;
+var unequalBridgeGeometry = true;
 function measuredRect(left, top, width, height) {
   return {
     left: left, top: top, width: width, height: height,
@@ -87,7 +95,40 @@ function measuredRect(left, top, width, height) {
     x: left, y: top, toJSON: function () { return this; },
   };
 }
+function rectsIntersect(a, b) {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
+function sameRect(a, b) {
+  return a.left === b.left && a.top === b.top
+    && a.width === b.width && a.height === b.height;
+}
 w.HTMLElement.prototype.getBoundingClientRect = function () {
+  if (this.classList && this.classList.contains('library-bridge-bank')) {
+    var bankSide = this.classList.contains('library-bridge-bank--left') ? 'left' : 'right';
+    var bankMount = w.document.getElementById('libraryWorkspace');
+    return measuredRect(
+      80 + (parseFloat(bankMount.style.getPropertyValue('--library-' + bankSide + '-bank-left')) || 0),
+      16 + (parseFloat(bankMount.style.getPropertyValue('--library-' + bankSide + '-bank-top')) || 0),
+      parseFloat(bankMount.style.getPropertyValue('--library-' + bankSide + '-bank-width')) || 0,
+      parseFloat(bankMount.style.getPropertyValue('--library-' + bankSide + '-bank-height')) || 0
+    );
+  }
+  if (this.tagName === 'BUTTON' && this.parentElement
+      && this.parentElement.classList.contains('library-bridge-bank')) {
+    var parentRect = this.parentElement.getBoundingClientRect();
+    var siblings = Array.from(this.parentElement.children).filter(function (child) {
+      return child.tagName === 'BUTTON';
+    });
+    var buttonIndex = siblings.indexOf(this);
+    var isLeftBank = this.parentElement.classList.contains('library-bridge-bank--left');
+    var buttonWidth = isLeftBank ? 64 : (measuredWidth === 702 ? 72 : 48);
+    var buttonGap = 5;
+    var buttonRun = siblings.length * buttonWidth + Math.max(0, siblings.length - 1) * buttonGap;
+    var buttonLeft = isLeftBank || w.getComputedStyle(this.parentElement).justifyContent === 'flex-start'
+      ? parentRect.left + 6 + buttonIndex * (buttonWidth + buttonGap)
+      : parentRect.right - 6 - buttonRun + buttonIndex * (buttonWidth + buttonGap);
+    return measuredRect(buttonLeft, parentRect.top + Math.max(0, (parentRect.height - 28) / 2), buttonWidth, 28);
+  }
   if (this.classList && this.classList.contains('library-visual-map')) {
     return measuredRect(80, 90, measuredWidth, 188);
   }
@@ -105,28 +146,49 @@ function installMeasuredGeometry() {
   var left = 80;
   var spine = 56;
   var column = (measuredWidth - spine) / 2;
-  var upperHeight = 260;
-  var bridgeHeight = 48;
+  var library = w.document.getElementById('libraryWorkspace');
+  function leftUpperHeight() { return unequalBridgeGeometry ? 137 : 260; }
+  function rightUpperHeight() { return unequalBridgeGeometry ? 40 : 260; }
+  function rightBridgeHeight() { return unequalBridgeGeometry ? 40 : 48; }
   w.document.querySelector('.input-pane').getBoundingClientRect = function () {
-    return measuredRect(left, 16, column, upperHeight);
+    return measuredRect(left, 16, column, leftUpperHeight());
   };
   w.document.getElementById('bridgeStrip').getBoundingClientRect = function () {
-    return measuredRect(left, 16 + upperHeight, column, bridgeHeight);
+    return measuredRect(left, 16 + leftUpperHeight(), column, 48);
   };
   w.document.getElementById('chatZone').getBoundingClientRect = function () {
-    return measuredRect(left + column + spine, 16, column, upperHeight);
+    return measuredRect(left + column + spine, 16, column, rightUpperHeight());
   };
   w.document.getElementById('bridgeStripRight').getBoundingClientRect = function () {
-    return measuredRect(left + column + spine, 16 + upperHeight, column, bridgeHeight);
+    return measuredRect(
+      left + column + spine,
+      unequalBridgeGeometry ? 16 : 16 + rightUpperHeight(),
+      column,
+      rightBridgeHeight()
+    );
   };
   w.document.getElementById('logo-o').getBoundingClientRect = function () {
-    return measuredRect(left + column + 7, 16 + upperHeight - 21, 42, 42);
+    return measuredRect(left + column + 7, 16 + leftUpperHeight() - 21, 42, 42);
   };
   w.document.getElementById('libraryWorkspace').getBoundingClientRect = function () {
-    return measuredRect(left, 16, measuredWidth, upperHeight + bridgeHeight);
+    var leftBottom = 16 + leftUpperHeight() + 48;
+    var rightBottom = (unequalBridgeGeometry ? 16 : 16 + rightUpperHeight())
+      + rightBridgeHeight();
+    return measuredRect(left, 16, measuredWidth, Math.max(leftBottom, rightBottom) - 16);
   };
   w.document.getElementById('libraryWorkspaceResults').getBoundingClientRect = function () {
-    return measuredRect(left, 90, measuredWidth, upperHeight + bridgeHeight - 120);
+    var mountRect = w.document.getElementById('libraryWorkspace').getBoundingClientRect();
+    return measuredRect(left, 90, measuredWidth, Math.max(1, mountRect.bottom - 90 - 48));
+  };
+  w.document.getElementById('librarySearchInput').getBoundingClientRect = function () {
+    var searchLeft = parseFloat(library.style.getPropertyValue('--library-search-left')) || 0;
+    var searchRight = parseFloat(library.style.getPropertyValue('--library-search-right')) || 0;
+    return measuredRect(
+      left + 12 + searchLeft,
+      42,
+      Math.max(1, measuredWidth - 24 - searchLeft - searchRight),
+      38
+    );
   };
 }
 installMeasuredGeometry();
@@ -727,6 +789,14 @@ async function run() {
   preservedExhibit.textContent = 'Preserved exhibit';
   w.document.querySelector('.output-content').appendChild(preservedFinding);
   w.document.querySelector('.right-pane').appendChild(preservedExhibit);
+  var logoR = w.document.getElementById('logo-r');
+  var logoA = w.document.getElementById('logo-a');
+  var logoPresentationBefore = {
+    rVisibility: w.getComputedStyle(logoR).visibility,
+    rPointerEvents: w.getComputedStyle(logoR).pointerEvents,
+    aVisibility: w.getComputedStyle(logoA).visibility,
+    aPointerEvents: w.getComputedStyle(logoA).pointerEvents,
+  };
   var browseButton = w.document.querySelector('.sidebar-browse-cmd');
   browseButton.focus();
   browseButton.click();
@@ -749,6 +819,45 @@ async function run() {
     library.style.width === '1024px'
       && library.style.getPropertyValue('--library-bridge-height') === '48px',
     'width=' + library.style.width);
+  var leftBridgeRect = w.document.getElementById('bridgeStrip').getBoundingClientRect();
+  var rightBridgeRect = w.document.getElementById('bridgeStripRight').getBoundingClientRect();
+  var leftBankRect = w.document.querySelector('.library-bridge-bank--left').getBoundingClientRect();
+  var rightBankRect = w.document.querySelector('.library-bridge-bank--right').getBoundingClientRect();
+  var liveSearchRect = librarySearch.getBoundingClientRect();
+  var nativeORect = w.document.getElementById('logo-o').getBoundingClientRect();
+  var bridgeButtons = Array.from(w.document.querySelectorAll('.library-bridge-bank > button'));
+  record('unequal control banks align with their own physical bridge rectangles',
+    sameRect(leftBankRect, leftBridgeRect)
+      && sameRect(rightBankRect, rightBridgeRect)
+      && leftBankRect.top !== rightBankRect.top
+      && leftBankRect.height !== rightBankRect.height,
+    'left=' + JSON.stringify(leftBankRect) + ', right=' + JSON.stringify(rightBankRect));
+  record('bridge buttons clear the Library search and native O in the unequal layout',
+    bridgeButtons.every(function (button) {
+      var buttonRect = button.getBoundingClientRect();
+      return !rectsIntersect(buttonRect, liveSearchRect)
+        && !rectsIntersect(buttonRect, nativeORect);
+    })
+      && liveSearchRect.right <= rightBridgeRect.left,
+    'search=' + JSON.stringify(liveSearchRect) + ', O=' + JSON.stringify(nativeORect));
+  record('Library raises only the native O and suppresses decorative r/a while open',
+    w.getComputedStyle(w.document.getElementById('logo-o')).visibility !== 'hidden'
+      && w.getComputedStyle(logoR).visibility === 'hidden'
+      && w.getComputedStyle(logoR).pointerEvents === 'none'
+      && w.getComputedStyle(logoA).visibility === 'hidden'
+      && w.getComputedStyle(logoA).pointerEvents === 'none');
+
+  unequalBridgeGeometry = false;
+  w.dispatchEvent(new w.Event('resize'));
+  var equalLeftBankRect = w.document.querySelector('.library-bridge-bank--left').getBoundingClientRect();
+  var equalRightBankRect = w.document.querySelector('.library-bridge-bank--right').getBoundingClientRect();
+  record('equal-height bridge geometry remains aligned without reserving search width',
+    equalLeftBankRect.top === equalRightBankRect.top
+      && equalLeftBankRect.height === equalRightBankRect.height
+      && library.style.getPropertyValue('--library-search-left') === '0px'
+      && library.style.getPropertyValue('--library-search-right') === '0px');
+  unequalBridgeGeometry = true;
+  w.dispatchEvent(new w.Event('resize'));
   record('server total and pagination remain authoritative',
     w.OraLibraryWorkspace.getState().loaded === 1
       && w.OraLibraryWorkspace.getState().total === 2
@@ -1142,6 +1251,28 @@ async function run() {
     measuredCases.join(',') === '736px:wide,360px:narrow'
       && measuredPlacementSafety.every(Boolean), measuredCases.join(','));
 
+  measuredWidth = 702;
+  installMeasuredGeometry();
+  w.dispatchEvent(new w.Event('resize'));
+  var measuredNarrowRightBank = w.document.querySelector('.library-bridge-bank--right');
+  var measuredNarrowRightRect = measuredNarrowRightBank.getBoundingClientRect();
+  var measuredNarrowButtons = Array.from(measuredNarrowRightBank.querySelectorAll('button'))
+    .map(function (button) { return button.getBoundingClientRect(); });
+  var measuredNarrowRun = measuredNarrowButtons[measuredNarrowButtons.length - 1].right
+    - measuredNarrowButtons[0].left;
+  record('a narrow Library inside a 1024px viewport keeps every overflowing right-bank control reachable',
+    w.innerWidth === 1024
+      && library.style.width === '702px'
+      && library.dataset.layout === 'narrow'
+      && measuredNarrowRightRect.width === 323
+      && measuredNarrowRun > measuredNarrowRightRect.width
+      && w.getComputedStyle(measuredNarrowRightBank).justifyContent === 'flex-start'
+      && w.getComputedStyle(measuredNarrowRightBank).overflowX === 'auto');
+
+  measuredWidth = 360;
+  installMeasuredGeometry();
+  w.dispatchEvent(new w.Event('resize'));
+
   var groupLauncher = w.document.querySelector('[data-library-popover="group"]');
   var filterLauncher = w.document.querySelector('[data-library-popover="filters"]');
   var groupSelect = w.document.querySelector('[data-library-group]');
@@ -1294,6 +1425,11 @@ async function run() {
       && !w.document.querySelector('.input-pane').hasAttribute('inert')
       && !w.document.getElementById('chatZone').hasAttribute('inert')
       && w.document.activeElement === browseButton);
+  record('close restores the decorative wordmark letters exactly',
+    w.getComputedStyle(logoR).visibility === logoPresentationBefore.rVisibility
+      && w.getComputedStyle(logoR).pointerEvents === logoPresentationBefore.rPointerEvents
+      && w.getComputedStyle(logoA).visibility === logoPresentationBefore.aVisibility
+      && w.getComputedStyle(logoA).pointerEvents === logoPresentationBefore.aPointerEvents);
   record('lower Findings and Exhibits DOM survives Library preview ownership unchanged',
     preservedFinding.isConnected
       && preservedFinding.parentElement === w.document.querySelector('.output-content')

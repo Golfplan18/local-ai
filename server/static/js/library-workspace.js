@@ -156,19 +156,38 @@
     const left = Math.min(inputRect.left, leftBridgeRect.left);
     const right = Math.max(asideRect.right, rightBridgeRect.right);
     const top = Math.min(inputRect.top, asideRect.top);
-    const bridgeTop = Math.min(leftBridgeRect.top, rightBridgeRect.top);
     const bottom = Math.max(leftBridgeRect.bottom, rightBridgeRect.bottom);
 
     mount.style.left = `${left}px`;
     mount.style.top = `${top}px`;
     mount.style.width = `${Math.max(1, right - left)}px`;
     mount.style.height = `${Math.max(1, bottom - top)}px`;
-    mount.style.setProperty('--library-bridge-top', `${Math.max(0, bridgeTop - top)}px`);
     mount.style.setProperty('--library-bridge-height', `${Math.max(leftBridgeRect.height, rightBridgeRect.height)}px`);
     mount.style.setProperty('--library-left-bank-left', `${Math.max(0, leftBridgeRect.left - left)}px`);
+    mount.style.setProperty('--library-left-bank-top', `${Math.max(0, leftBridgeRect.top - top)}px`);
     mount.style.setProperty('--library-left-bank-width', `${leftBridgeRect.width}px`);
+    mount.style.setProperty('--library-left-bank-height', `${leftBridgeRect.height}px`);
     mount.style.setProperty('--library-right-bank-left', `${Math.max(0, rightBridgeRect.left - left)}px`);
+    mount.style.setProperty('--library-right-bank-top', `${Math.max(0, rightBridgeRect.top - top)}px`);
     mount.style.setProperty('--library-right-bank-width', `${rightBridgeRect.width}px`);
+    mount.style.setProperty('--library-right-bank-height', `${rightBridgeRect.height}px`);
+
+    // A bridge can sit at the top of one upper pane while its counterpart is
+    // below the other. Keep the one search field in the free horizontal span
+    // instead of covering controls that correctly follow that top bridge.
+    mount.style.setProperty('--library-search-left', '0px');
+    mount.style.setProperty('--library-search-right', '0px');
+    const searchRect = searchInput.getBoundingClientRect();
+    const overlapsSearch = (rect) => (
+      rect.top < searchRect.bottom && rect.bottom > searchRect.top
+      && rect.left < searchRect.right && rect.right > searchRect.left
+    );
+    if (overlapsSearch(leftBridgeRect)) {
+      mount.style.setProperty('--library-search-left', `${Math.max(0, leftBridgeRect.right - left)}px`);
+    }
+    if (overlapsSearch(rightBridgeRect)) {
+      mount.style.setProperty('--library-search-right', `${Math.max(0, right - rightBridgeRect.left)}px`);
+    }
     mount.dataset.layout = right - left < 720 ? 'narrow' : 'wide';
     layoutVisual(state.renderGeneration);
   }
