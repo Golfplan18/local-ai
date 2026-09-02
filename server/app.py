@@ -14293,10 +14293,10 @@ def _library_engram_provider(query: str = "") -> dict:
                             WHEN metadata.bool_value IS NOT NULL THEN 'bool'
                        END
                 FROM json_each(?) AS candidate
-                CROSS JOIN json_each(?) AS selected_key
                 CROSS JOIN embedding_metadata AS metadata
                   ON metadata.id = CAST(candidate.value AS INTEGER)
-                 AND metadata.key = selected_key.value
+                CROSS JOIN json_each(?) AS selected_key
+                  ON metadata.key = selected_key.value
                 UNION ALL
                 SELECT 'scalar' AS lane,
                        metadata.id,
@@ -14304,10 +14304,10 @@ def _library_engram_provider(query: str = "") -> dict:
                        NULL,
                        NULL
                 FROM json_each(?) AS candidate
-                CROSS JOIN json_each(?) AS selected_key
                 CROSS JOIN embedding_metadata AS metadata
                   ON metadata.id = CAST(candidate.value AS INTEGER)
-                 AND metadata.key = selected_key.value
+                CROSS JOIN json_each(?) AS selected_key
+                  ON metadata.key = selected_key.value
                 UNION ALL
                 SELECT 'array' AS lane,
                        metadata.id,
@@ -14324,10 +14324,10 @@ def _library_engram_provider(query: str = "") -> dict:
                             WHEN metadata.bool_value IS NOT NULL THEN 'bool'
                        END
                 FROM json_each(?) AS candidate
-                CROSS JOIN json_each(?) AS selected_key
                 CROSS JOIN embedding_metadata_array AS metadata
                   ON metadata.id = CAST(candidate.value AS INTEGER)
-                 AND metadata.key = selected_key.value
+                CROSS JOIN json_each(?) AS selected_key
+                  ON metadata.key = selected_key.value
                 """,
                 (
                     encoded_batch,

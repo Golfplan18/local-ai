@@ -1010,19 +1010,35 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(len(candidate_plan_rows), 6, plan_details)
             self.assertEqual(len(selected_key_plan_rows), 6, plan_details)
             self.assertEqual(len(metadata_plan_rows), 6, plan_details)
-            for candidate_plan_row, metadata_plan_row in zip(
-                candidate_plan_rows, metadata_plan_rows,
+            for (
+                candidate_plan_row,
+                metadata_plan_row,
+                selected_key_plan_row,
+            ) in zip(
+                candidate_plan_rows, metadata_plan_rows, selected_key_plan_rows,
             ):
                 self.assertLess(
                     candidate_plan_row, metadata_plan_row, plan_details,
                 )
+                self.assertLess(
+                    metadata_plan_row, selected_key_plan_row, plan_details,
+                )
+            metadata_plan_details = [
+                plan_details[index] for index in metadata_plan_rows
+            ]
+            self.assertTrue(all(
+                "(id=?)" in detail for detail in metadata_plan_details
+            ), metadata_plan_details)
+            self.assertFalse(any(
+                "key=?" in detail for detail in metadata_plan_details
+            ), metadata_plan_details)
             self.assertTrue(any(
-                "sqlite_autoindex_embedding_metadata_1 (id=? AND key=?)"
+                "sqlite_autoindex_embedding_metadata_1 (id=?)"
                 in detail
                 for detail in plan_details
             ), plan_details)
             self.assertTrue(any(
-                "embedding_metadata_array_by_id_key (id=? AND key=?)"
+                "embedding_metadata_array_by_id_key (id=?)"
                 in detail
                 for detail in plan_details
             ), plan_details)
