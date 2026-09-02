@@ -239,10 +239,36 @@ _PROVIDERS: dict[str, tuple[str | None, "callable"]] = {
 }
 
 
+# ── Per-fan-out query cap ───────────────────────────────────────────
+
+
+# 0 (the default) means unlimited, preserving existing behaviour everywhere
+# the variable is not deliberately set. A deployment that wants a ceiling —
+# MSI on cloud-ora — opts in through its service environment. Same idiom and
+# same failure handling as ORA_WEB_EXTRACTION_MAX_FETCHES.
+def search_query_cap() -> int:
+    """Max search queries a single fan-out may issue. 0 == unlimited.
+
+    The cap exists to bound a fan-out whose width is chosen by a model —
+    a runaway claim list or intent list — not to ration ordinary work.
+    Enforced by the fan-out sites (which know what they are dropping and
+    can report it) rather than inside the cascade, which cannot tell one
+    fan-out from the next and would need per-run state to try.
+    """
+    try:
+        cap = int(os.environ.get("ORA_SEARCH_MAX_QUERIES", "0"))
+    except ValueError:
+        return 0
+    return cap if cap > 0 else 0
+
+
 # ── Cascade ordering ────────────────────────────────────────────────
 
 
 _cached_cascade_order: tuple[str, ...] | None = None
+# Providers already reported as keyless this process — keeps the one-time
+# "tier is inactive" notice from repeating on every search.
+_KEYLESS_SKIP_ANNOUNCED: set[str] = set()
 
 
 def _load_cascade_order() -> tuple[str, ...]:
@@ -256,6 +282,29 @@ def _load_cascade_order() -> tuple[str, ...]:
     global _cached_cascade_order
     if _cached_cascade_order is not None:
         return _cached_cascade_order
+
+    # Env override wins over routing-config so a single deployment (MSI on
+    # cloud-ora) can pin its own cascade without forking the whole routing
+    # config file, which ORA_ROUTING_CONFIG_PATH would require. Same idiom as
+    # ORA_WEB_EXTRACTION_MAX_FETCHES. Comma-separated, e.g. "ddg,brave".
+    raw_env = os.environ.get("ORA_SEARCH_CASCADE_ORDER", "").strip()
+    if raw_env:
+        env_valid = tuple(
+            name for name in (x.strip() for x in raw_env.split(",")) if name in _PROVIDERS
+        )
+        if env_valid:
+            print(
+                f"[web_search] cascade order from ORA_SEARCH_CASCADE_ORDER: "
+                f"{' -> '.join(env_valid)}",
+                file=sys.stderr, flush=True,
+            )
+            _cached_cascade_order = env_valid
+            return _cached_cascade_order
+        print(
+            f"[web_search] ORA_SEARCH_CASCADE_ORDER={raw_env!r} names no known "
+            f"provider — ignoring it and falling back to routing-config",
+            file=sys.stderr, flush=True,
+        )
 
     order = _DEFAULT_CASCADE_ORDER
     try:
@@ -273,11 +322,22 @@ def _load_cascade_order() -> tuple[str, ...]:
                 )
             if valid:
                 order = valid
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        # Silent fall-through to default — routing-config may be absent
-        # in test environments or temporarily broken during edits.
-        pass
+    except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+        # routing-config may be absent in test environments or temporarily
+        # broken during edits. Do NOT stay silent: the default cascade leads
+        # with paid providers, so an unreadable config silently restores paid
+        # search. Announce it so a config typo cannot quietly cost money.
+        print(
+            f"[web_search] routing-config unreadable ({type(e).__name__}); "
+            f"falling back to default cascade {' -> '.join(order)}",
+            file=sys.stderr, flush=True,
+        )
 
+    if order is _DEFAULT_CASCADE_ORDER:
+        print(
+            f"[web_search] cascade order: {' -> '.join(order)} (built-in default)",
+            file=sys.stderr, flush=True,
+        )
     _cached_cascade_order = order
     return order
 
@@ -441,10 +501,21 @@ def _search_text(
         order = _load_cascade_order()
     else:
         order = tuple(p for p in order if p in _PROVIDERS) or _load_cascade_order()
-    for provider in order:
+    for index, provider in enumerate(order):
         env_var, fetcher = _PROVIDERS[provider]
         if env_var is not None and not os.environ.get(env_var, "").strip():
-            # Silently skip providers without a configured key.
+            # A configured-but-keyless provider used to be skipped in total
+            # silence, which is how a missing key quietly deletes a fallback
+            # tier: the cascade degrades with nothing in the logs saying so.
+            # Announce once per provider per process — enough to notice, not
+            # enough to flood a long-lived daemon's stderr.
+            if provider not in _KEYLESS_SKIP_ANNOUNCED:
+                _KEYLESS_SKIP_ANNOUNCED.add(provider)
+                print(
+                    f"[web_search] {provider} is in the cascade but "
+                    f"{env_var} is not set — that tier is inactive",
+                    file=sys.stderr, flush=True,
+                )
             continue
         try:
             results = fetcher(query, max_results)
@@ -455,6 +526,18 @@ def _search_text(
                 file=sys.stderr, flush=True,
             )
             continue
+        if results and index > 0:
+            # Only reported when an earlier tier did not serve this query.
+            # The first tier winning is the normal case and stays quiet; a
+            # fallthrough means a later — possibly billed — provider answered,
+            # which is exactly what an operator needs to be able to see. The
+            # winning provider was previously discarded entirely, so nothing
+            # in the logs distinguished a free hit from a paid one.
+            print(
+                f"[web_search] {provider} served query {query!r} after "
+                f"{index} earlier tier(s) did not",
+                file=sys.stderr, flush=True,
+            )
         if not results:
             # Empty (but successful) result is a soft miss, not a terminal
             # "no results" answer: a thin index or a free tier that returns

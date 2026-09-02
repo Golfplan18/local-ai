@@ -41,7 +41,10 @@ if _HERE not in sys.path:
 
 from rag_engine import score_external_chunks  # noqa: E402
 from tools import web_corroboration  # noqa: E402
-from tools.web_search import web_search_structured  # noqa: E402
+from tools.web_search import (  # noqa: E402
+    search_query_cap,
+    web_search_structured,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +304,27 @@ def assemble_claim_verification_evidence(
                 "signals": signals,
             },
         }
+
+    # Fan-out width is chosen by a model (the evaluator's flagged-claim list,
+    # or the Step-5.5 extractor's), so it has no natural ceiling: production
+    # has recorded a single fan-out issuing 213 searches. Truncate before the
+    # executor, and fail OPEN — the dropped claims simply go unverified, which
+    # the pipeline already treats as a coverage gap, rather than raising and
+    # turning a cost control into a pipeline breaker.
+    query_cap = search_query_cap()
+    if query_cap and len(flagged_claims) > query_cap:
+        dropped = len(flagged_claims) - query_cap
+        signals.append(
+            f"claim_verification_query_cap_applied: kept {query_cap}, "
+            f"dropped {dropped}"
+        )
+        print(
+            f"[claim_verification] query cap {query_cap} applied — verifying "
+            f"{query_cap} of {len(flagged_claims)} claims, {dropped} left "
+            f"unverified (ORA_SEARCH_MAX_QUERIES)",
+            file=sys.stderr, flush=True,
+        )
+        flagged_claims = flagged_claims[:query_cap]
 
     if trusted_registry is None:
         trusted_registry = web_corroboration.TrustedSourcesRegistry()

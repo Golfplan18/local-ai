@@ -481,3 +481,153 @@ class PublicEntryPointErrorPaths(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CascadeEnvOverrideTests(unittest.TestCase):
+    """ORA_SEARCH_CASCADE_ORDER pins a deployment's cascade without forking
+    the whole routing-config file, which ORA_ROUTING_CONFIG_PATH would
+    require (it is a full-file replacement, not a merge)."""
+
+    def setUp(self):
+        ws._reset_cascade_order_cache()
+
+    def tearDown(self):
+        ws._reset_cascade_order_cache()
+
+    def test_env_override_beats_routing_config(self):
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as fh:
+            json.dump({"search_cascade_order": ["tavily", "brave", "ddg"]}, fh)
+            path = fh.name
+        try:
+            with mock.patch.object(ws, "_ROUTING_CONFIG_PATH", path), \
+                    mock.patch.dict(
+                        os.environ,
+                        {"ORA_SEARCH_CASCADE_ORDER": "ddg,brave"},
+                        clear=False,
+                    ):
+                self.assertEqual(ws._load_cascade_order(), ("ddg", "brave"))
+        finally:
+            os.unlink(path)
+
+    def test_unknown_names_in_env_fall_back_to_config_not_to_paid_default(self):
+        """A typo must not silently promote the paid default cascade."""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as fh:
+            json.dump({"search_cascade_order": ["ddg"]}, fh)
+            path = fh.name
+        try:
+            with mock.patch.object(ws, "_ROUTING_CONFIG_PATH", path), \
+                    mock.patch.dict(
+                        os.environ,
+                        {"ORA_SEARCH_CASCADE_ORDER": "duckduckgo,brave-search"},
+                        clear=False,
+                    ):
+                self.assertEqual(ws._load_cascade_order(), ("ddg",))
+        finally:
+            os.unlink(path)
+
+    def test_unreadable_config_announces_the_paid_fallback(self):
+        """The default cascade leads with billed providers. Reverting to it
+        silently is how a config typo turns into a bill, so it must speak."""
+        buf = io.StringIO()
+        with mock.patch.object(
+            ws, "_ROUTING_CONFIG_PATH", "/nonexistent/path.json"
+        ), mock.patch.dict(
+            os.environ, {"ORA_SEARCH_CASCADE_ORDER": ""}, clear=False
+        ), mock.patch.object(sys, "stderr", buf):
+            order = ws._load_cascade_order()
+        self.assertEqual(order, ("tavily", "brave", "ddg"))
+        self.assertIn("routing-config unreadable", buf.getvalue())
+
+
+class KeylessTierVisibilityTests(unittest.TestCase):
+    """A keyed tier with no key used to vanish in total silence — that is how
+    a missing key can delete a fallback with nothing in the logs. Providers are
+    patched wholesale (``_PROVIDERS`` captures the fetchers by reference at
+    import, so patching the module-level names alone would let real network
+    calls through)."""
+
+    def setUp(self):
+        ws._reset_cascade_order_cache()
+        ws._KEYLESS_SKIP_ANNOUNCED.clear()
+        self._providers = mock.patch.object(ws, "_PROVIDERS", {
+            "tavily": ("TAVILY_API_KEY", mock.MagicMock(name="tavily_fetcher")),
+            "brave":  ("BRAVE_API_KEY",  mock.MagicMock(name="brave_fetcher")),
+            "exa":    ("EXA_API_KEY",    mock.MagicMock(name="exa_fetcher")),
+            "ddg":    (None,             mock.MagicMock(name="ddg_fetcher")),
+        })
+        self._providers.start()
+
+    def tearDown(self):
+        self._providers.stop()
+        ws._reset_cascade_order_cache()
+        ws._KEYLESS_SKIP_ANNOUNCED.clear()
+
+    @staticmethod
+    def _hit():
+        return [{"title": "t", "href": "u", "body": "b"}]
+
+    def test_missing_key_is_announced_once(self):
+        ws._PROVIDERS["ddg"][1].return_value = self._hit()
+        buf = io.StringIO()
+        with _isolate_keys(BRAVE_API_KEY=""), mock.patch.object(sys, "stderr", buf):
+            for _ in range(3):
+                ws._search_text("q", 5, order=("brave", "ddg"))
+        out = buf.getvalue()
+        self.assertIn("BRAVE_API_KEY is not set", out)
+        self.assertEqual(out.count("that tier is inactive"), 1)
+        ws._PROVIDERS["brave"][1].assert_not_called()
+
+    def test_fallthrough_names_the_provider_that_served(self):
+        ws._PROVIDERS["ddg"][1].side_effect = RuntimeError("throttled")
+        ws._PROVIDERS["brave"][1].return_value = self._hit()
+        buf = io.StringIO()
+        with _isolate_keys(BRAVE_API_KEY="k"), mock.patch.object(sys, "stderr", buf):
+            _, tag = ws._search_text("q", 5, order=("ddg", "brave"))
+        self.assertEqual(tag, "brave")
+        self.assertIn("brave served query", buf.getvalue())
+
+    def test_empty_result_also_falls_through_and_is_attributed(self):
+        """The soft-miss path, not just the exception path — this is what makes
+        Brave a real safety net behind a free primary rather than a decoration."""
+        ws._PROVIDERS["ddg"][1].return_value = []
+        ws._PROVIDERS["brave"][1].return_value = self._hit()
+        buf = io.StringIO()
+        with _isolate_keys(BRAVE_API_KEY="k"), mock.patch.object(sys, "stderr", buf):
+            _, tag = ws._search_text("q", 5, order=("ddg", "brave"))
+        self.assertEqual(tag, "brave")
+        self.assertIn("brave served query", buf.getvalue())
+
+    def test_first_tier_win_stays_quiet(self):
+        ws._PROVIDERS["ddg"][1].return_value = self._hit()
+        buf = io.StringIO()
+        with _isolate_keys(BRAVE_API_KEY="k"), mock.patch.object(sys, "stderr", buf):
+            _, tag = ws._search_text("q", 5, order=("ddg", "brave"))
+        self.assertEqual(tag, "ddg")
+        self.assertNotIn("served query", buf.getvalue())
+        ws._PROVIDERS["brave"][1].assert_not_called()
+
+
+class QueryCapTests(unittest.TestCase):
+    """search_query_cap() reads the per-fan-out ceiling. 0 == unlimited, so
+    machines that do not set it keep their existing behaviour."""
+
+    def test_absent_is_unlimited(self):
+        with mock.patch.dict(os.environ, {"ORA_SEARCH_MAX_QUERIES": ""}, clear=False):
+            self.assertEqual(ws.search_query_cap(), 0)
+
+    def test_value_is_read(self):
+        with mock.patch.dict(os.environ, {"ORA_SEARCH_MAX_QUERIES": "12"}, clear=False):
+            self.assertEqual(ws.search_query_cap(), 12)
+
+    def test_garbage_is_unlimited_not_zero_searches(self):
+        """A malformed value must not silently disable search entirely."""
+        with mock.patch.dict(os.environ, {"ORA_SEARCH_MAX_QUERIES": "twelve"}, clear=False):
+            self.assertEqual(ws.search_query_cap(), 0)
+
+    def test_negative_is_unlimited(self):
+        with mock.patch.dict(os.environ, {"ORA_SEARCH_MAX_QUERIES": "-5"}, clear=False):
+            self.assertEqual(ws.search_query_cap(), 0)
