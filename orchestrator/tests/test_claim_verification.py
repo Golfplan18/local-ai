@@ -696,5 +696,66 @@ class ModelErrorStringIsNotAnEmptyResult(unittest.TestCase):
         self.assertEqual(out["trace"]["status"], "errored")
 
 
+class PerStageQueryCap(unittest.TestCase):
+    """Flagged and unflagged claims cost the same per query and are not worth
+    the same. The evaluator's flagged claims are the check the pipeline has
+    always run; the unflagged scan is a speculative second pass that fans out
+    twice per gear-4 run on top of it."""
+
+    @staticmethod
+    def _claims(n):
+        return [{"claim_num": i + 1, "claim_text": f"c{i}",
+                 "challenge_query": f"q{i}"} for i in range(n)]
+
+    def _flagged(self, env, n=20):
+        results = [_ddg_result("https://example.com/a", "t", "b")]
+        with mock.patch.dict(os.environ, env, clear=False), \
+                mock.patch.object(claim_verification, "web_search_structured",
+                                  return_value=results) as search:
+            claim_verification.assemble_claim_verification_evidence(self._claims(n))
+        return search.call_count
+
+    def _unflagged(self, env, n=20):
+        results = [_ddg_result("https://example.com/a", "t", "b")]
+        raw = "EXTRACTED:\n" + "\n".join(
+            f'- claim: "c{i}"\n  claim_type: quantitative-figure\n'
+            f'  risk_level: high\n  challenge_query: q{i}' for i in range(n))
+        with mock.patch.dict(os.environ, env, clear=False), \
+                mock.patch.object(claim_verification, "web_search_structured",
+                                  return_value=results) as search:
+            claim_verification.extract_and_verify_unflagged_claims(
+                "draft body", [],
+                call_model=lambda m, e, images=None: raw,
+                fast_endpoint={"id": "t/m", "type": "api"})
+        return search.call_count
+
+    def test_unflagged_binds_tighter_than_flagged(self):
+        env = {"ORA_SEARCH_MAX_QUERIES": "12",
+               "ORA_SEARCH_MAX_QUERIES_UNFLAGGED": "3"}
+        self.assertEqual(self._flagged(env), 12)
+        self.assertEqual(self._unflagged(env), 3)
+
+    def test_unset_stage_defers_to_the_global_cap(self):
+        env = {"ORA_SEARCH_MAX_QUERIES": "12",
+               "ORA_SEARCH_MAX_QUERIES_UNFLAGGED": ""}
+        self.assertEqual(self._unflagged(env), 12)
+
+    def test_malformed_stage_value_defers_rather_than_disabling(self):
+        """A typo must not silently uncap the more expensive stage."""
+        env = {"ORA_SEARCH_MAX_QUERIES": "12",
+               "ORA_SEARCH_MAX_QUERIES_UNFLAGGED": "three"}
+        self.assertEqual(self._unflagged(env), 12)
+
+    def test_stage_zero_means_explicitly_unlimited(self):
+        env = {"ORA_SEARCH_MAX_QUERIES": "12",
+               "ORA_SEARCH_MAX_QUERIES_UNFLAGGED": "0"}
+        self.assertEqual(self._unflagged(env), 20)
+
+    def test_flagged_path_is_untouched_by_the_stage_variable(self):
+        env = {"ORA_SEARCH_MAX_QUERIES": "12",
+               "ORA_SEARCH_MAX_QUERIES_UNFLAGGED": "3"}
+        self.assertEqual(self._flagged(env, n=8), 8)
+
+
 if __name__ == "__main__":
     unittest.main()
