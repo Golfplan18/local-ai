@@ -318,6 +318,33 @@ def search_query_cap() -> int:
     return cap if cap > 0 else 0
 
 
+def search_query_cap_for(stage: str) -> int:
+    """Per-stage ceiling, falling back to the global one. 0 == unlimited.
+
+    Not every fan-out is worth the same. Verifying the claims an evaluator
+    actually flagged is the check the pipeline has always run; the
+    unflagged-claim scan is a speculative second pass that hunts for more.
+    They cost the same per query and are not worth the same, so
+    ORA_SEARCH_MAX_QUERIES_<STAGE> can bind one tighter than the other --
+    e.g. ORA_SEARCH_MAX_QUERIES_UNFLAGGED=3 while flagged claims keep 12.
+
+    An unset or malformed stage value defers to ORA_SEARCH_MAX_QUERIES, so
+    adding a stage name costs nothing until someone sets it.
+    """
+    raw = os.environ.get(
+        "ORA_SEARCH_MAX_QUERIES_" + str(stage or "").strip().upper(), ""
+    ).strip()
+    if not raw:
+        return search_query_cap()
+    try:
+        cap = int(raw)
+    except ValueError:
+        return search_query_cap()
+    # 0 means "this stage is explicitly unlimited", which is different from
+    # "unset"; a negative value is meaningless, so it defers like unset.
+    return cap if cap >= 0 else search_query_cap()
+
+
 # ── Cascade ordering ────────────────────────────────────────────────
 
 

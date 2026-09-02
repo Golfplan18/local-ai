@@ -43,6 +43,7 @@ from rag_engine import score_external_chunks  # noqa: E402
 from tools import web_corroboration  # noqa: E402
 from tools.web_search import (  # noqa: E402
     search_query_cap,
+    search_query_cap_for,
     web_search_structured,
 )
 
@@ -259,6 +260,7 @@ def assemble_claim_verification_evidence(
     trusted_registry: Optional[web_corroboration.TrustedSourcesRegistry] = None,
     per_query_timeout_seconds: int = DEFAULT_PER_QUERY_TIMEOUT_SECONDS,
     max_results_per_query: int = DEFAULT_MAX_RESULTS_PER_QUERY,
+    stage: str = "",
 ) -> dict:
     """Run claim-verification web searches in parallel and return the
     evidence package the reviser and verifier consume.
@@ -312,7 +314,7 @@ def assemble_claim_verification_evidence(
     # the pipeline already treats as a coverage gap, rather than raising and
     # turning a cost control into a pipeline breaker.
     claims_submitted = len(flagged_claims)
-    query_cap = search_query_cap()
+    query_cap = search_query_cap_for(stage) if stage else search_query_cap()
     if query_cap and len(flagged_claims) > query_cap:
         dropped = len(flagged_claims) - query_cap
         signals.append(
@@ -784,6 +786,11 @@ def extract_and_verify_unflagged_claims(
         trusted_registry=trusted_registry,
         per_query_timeout_seconds=per_query_timeout_seconds,
         max_results_per_query=max_results_per_query,
+        # This pass hunts for claims the evaluator did NOT flag. It is
+        # speculative, it fans out twice per gear-4 run exactly like the
+        # flagged path, and it costs the same per query -- so it gets its
+        # own, tighter ceiling via ORA_SEARCH_MAX_QUERIES_UNFLAGGED.
+        stage="unflagged",
     )
 
     # Re-render the evidence block with "Unflagged Claim N" labels so
