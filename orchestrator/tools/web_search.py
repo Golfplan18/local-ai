@@ -51,6 +51,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import urllib.parse
 import urllib.request
 
@@ -215,18 +216,73 @@ def _exa_text(query: str, max_results: int) -> list[dict]:
     return out
 
 
+# DuckDuckGo is a free service reached by scraping its HTML endpoint, and it
+# throttles on BURST concurrency far more than on steady volume. The pipeline's
+# fan-outs size their thread pool to the number of items, so a single claim-
+# verification pass could open a dozen simultaneous connections; production then
+# recorded 121 "operation timed out" plus connection resets in two hours, and
+# every one of those failures cascades to the next (billed) tier. Pacing the
+# requests converts those timeouts back into results, which costs nothing and
+# also removes the spend they were causing.
+#
+# 0 or a malformed value disables the limit and restores unbounded behaviour.
+_DDG_CONCURRENCY_DEFAULT = 3
+_ddg_gate: "threading.Semaphore | None" = None
+_ddg_gate_lock = threading.Lock()
+
+
+def ddg_concurrency() -> int:
+    """Max simultaneous DuckDuckGo requests. 0 == unlimited."""
+    try:
+        n = int(os.environ.get("ORA_SEARCH_DDG_CONCURRENCY",
+                               str(_DDG_CONCURRENCY_DEFAULT)))
+    except ValueError:
+        return _DDG_CONCURRENCY_DEFAULT
+    return n if n > 0 else 0
+
+
+def _get_ddg_gate() -> "threading.Semaphore | None":
+    """Build the shared semaphore once, under a lock.
+
+    Cached because every caller must share one gate for it to bound anything;
+    a per-call semaphore would let every thread through at once.
+    """
+    global _ddg_gate
+    # No early return on a cached value: the "disabled" state is stored as
+    # False, and returning that raw would hand `with gate:` a bool. Normalise
+    # on the way out instead, so every path yields a semaphore or None.
+    if _ddg_gate is None:
+        with _ddg_gate_lock:
+            if _ddg_gate is None:
+                limit = ddg_concurrency()
+                _ddg_gate = threading.Semaphore(limit) if limit else False
+    return _ddg_gate or None
+
+
+def _reset_ddg_gate() -> None:
+    """Test helper — drop the cached semaphore so the next call re-reads env."""
+    global _ddg_gate
+    _ddg_gate = None
+
+
 def _ddgs_text(query: str, max_results: int) -> list[dict]:
     """Run a DDG text search and return the library's raw result dicts.
 
     Imports the DDG library lazily so an import failure becomes a
     runtime failure (with a clear log) rather than a module-load
     failure that breaks every downstream import.
+
+    Serialised behind a shared semaphore — see the note above the gate.
     """
     try:
         from ddgs import DDGS
     except ImportError:
         from duckduckgo_search import DDGS
-    return list(DDGS().text(query, max_results=max_results))
+    gate = _get_ddg_gate()
+    if gate is None:
+        return list(DDGS().text(query, max_results=max_results))
+    with gate:
+        return list(DDGS().text(query, max_results=max_results))
 
 
 # Provider registry: name → (env_var_name | None, fetcher_callable).
