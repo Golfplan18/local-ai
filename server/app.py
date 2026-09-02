@@ -13782,7 +13782,7 @@ _LIBRARY_DIALOGUE_DIRECTIONS = {
 }
 
 
-def _library_path_preview(path: str) -> dict:
+def _library_path_preview(path: str, *, is_file: bool | None = None) -> dict:
     suffix = Path(path).suffix.lower()
     kind = (
         "text" if suffix in _LIBRARY_TEXT_SUFFIXES else
@@ -13790,8 +13790,10 @@ def _library_path_preview(path: str) -> dict:
         "mixed" if suffix == ".pdf" else
         "unsupported"
     )
+    if is_file is None:
+        is_file = os.path.isfile(path)
     available = bool(
-        kind != "unsupported" and os.path.isfile(path) and os.access(path, os.R_OK)
+        kind != "unsupported" and is_file and os.access(path, os.R_OK)
     )
     return {
         "kind": kind,
@@ -14038,26 +14040,8 @@ def _library_engram_provider(query: str = "") -> dict:
             "turn_privacy",
         }
 
-        def projectable_metadata_key(raw_key, array_lane):
-            if not isinstance(raw_key, str):
-                return False
-            key = raw_key.strip()
-            if array_lane:
-                return key in {"tags", "project_ids"}
-            return key in allowed_scalar_keys or key.startswith("tag_")
-
         db_path = rp.chromadb_dir() / "chroma.sqlite3"
         connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        connection.create_function(
-            "PYTHON_STRIP", 1,
-            lambda value: value.strip() if isinstance(value, str) else None,
-            deterministic=True,
-        )
-        connection.create_function(
-            "PYTHON_PROJECTABLE_KEY", 2,
-            projectable_metadata_key,
-            deterministic=True,
-        )
         connection.execute("PRAGMA query_only=ON")
         connection.execute("BEGIN")
         authority_rows = connection.execute(
@@ -14098,28 +14082,103 @@ def _library_engram_provider(query: str = "") -> dict:
             return {"rows": [], "complete": False, "reason": reason}
 
         metadata_segment_id = next(iter(authority_segments))
+        raw_key_cursor = connection.execute(
+            """
+            SELECT 'scalar' AS lane,
+                   scalar_keys.key
+            FROM (
+                SELECT DISTINCT metadata.key AS key
+                FROM embeddings AS embedding
+                JOIN embedding_metadata AS metadata
+                  ON metadata.id = embedding.id
+                WHERE embedding.segment_id = ?
+            ) AS scalar_keys
+            UNION ALL
+            SELECT 'array' AS lane,
+                   array_keys.key
+            FROM (
+                SELECT DISTINCT metadata.key AS key
+                FROM embeddings AS embedding
+                JOIN embedding_metadata_array AS metadata
+                  ON metadata.id = embedding.id
+                WHERE embedding.segment_id = ?
+            ) AS array_keys
+            """,
+            (metadata_segment_id, metadata_segment_id),
+        )
+        scalar_key_normalizations: dict[str, str] = {}
+        array_key_normalizations: dict[str, str] = {}
+        for lane, raw_key in raw_key_cursor:
+            if not isinstance(raw_key, str):
+                raise ValueError("metadata key is not text")
+            normalized_key = raw_key.strip()
+            if lane == "scalar":
+                scalar_key_normalizations[raw_key] = normalized_key
+            elif lane == "array":
+                array_key_normalizations[raw_key] = normalized_key
+
+        scalar_normalized_counts: dict[str, int] = {}
+        for normalized_key in scalar_key_normalizations.values():
+            scalar_normalized_counts[normalized_key] = (
+                scalar_normalized_counts.get(normalized_key, 0) + 1
+            )
+        identity_raw_keys = sorted(
+            raw_key
+            for raw_key, normalized_key in scalar_key_normalizations.items()
+            if normalized_key in {"path", "type"}
+        )
+        projectable_scalar_raw_keys = sorted(
+            raw_key
+            for raw_key, normalized_key in scalar_key_normalizations.items()
+            if (
+                normalized_key in allowed_scalar_keys
+                or normalized_key.startswith("tag_")
+            )
+        )
+        scalar_guard_raw_keys = {
+            raw_key
+            for raw_key, normalized_key in scalar_key_normalizations.items()
+            if (
+                not normalized_key
+                or scalar_normalized_counts[normalized_key] > 1
+            )
+        }
+        projectable_scalar_raw_key_set = set(projectable_scalar_raw_keys)
+        scalar_guard_only_raw_keys = sorted(
+            scalar_guard_raw_keys - projectable_scalar_raw_key_set
+        )
+        projectable_array_raw_keys = sorted(
+            raw_key
+            for raw_key, normalized_key in array_key_normalizations.items()
+            if normalized_key in {"tags", "project_ids"}
+        )
+
         identities: dict[int, dict] = {}
         identity_cursor = connection.execute(
             """
             SELECT embedding.id,
                    embedding.embedding_id,
-                   PYTHON_STRIP(metadata.key),
+                   metadata.key,
                    metadata.string_value
             FROM embeddings AS embedding
-            JOIN embedding_metadata AS metadata
+            CROSS JOIN json_each(?) AS identity_key
+            CROSS JOIN embedding_metadata AS metadata
               ON metadata.id = embedding.id
+             AND metadata.key = identity_key.value
             WHERE embedding.segment_id = ?
-              AND PYTHON_STRIP(metadata.key) IN ('path', 'type')
             """,
-            (metadata_segment_id,),
+            (
+                json.dumps(identity_raw_keys, separators=(",", ":")),
+                metadata_segment_id,
+            ),
         )
-        for row_id, raw_embedding_id, key, raw_value in identity_cursor:
+        for row_id, raw_embedding_id, raw_key, raw_value in identity_cursor:
             identity = identities.setdefault(int(row_id), {
                 "embedding_id": raw_embedding_id,
                 "paths": set(),
                 "is_engram": False,
             })
-            normalized_key = key.strip() if isinstance(key, str) else ""
+            normalized_key = scalar_key_normalizations.get(raw_key, "")
             if normalized_key == "path" and isinstance(raw_value, str):
                 path = raw_value.strip()
                 if path:
@@ -14133,22 +14192,39 @@ def _library_engram_provider(query: str = "") -> dict:
             if identity["is_engram"]
             for path in identity["paths"]
         }
-        candidate_ids = sorted(
-            row_id
-            for row_id, identity in identities.items()
-            if identity["paths"].intersection(engram_paths)
-        )
+        candidate_info: dict[int, tuple[str, tuple[str, ...]]] = {}
         embedding_identity_counts: dict[str, int] = {}
-        for row_id in candidate_ids:
+        path_remaining: dict[str, int] = {}
+        for row_id, identity in identities.items():
+            candidate_paths = tuple(sorted(
+                identity["paths"].intersection(engram_paths)
+            ))
+            if not candidate_paths:
+                continue
             embedding_id = str(
-                identities[row_id]["embedding_id"] or ""
+                identity["embedding_id"] or ""
             ).strip()
+            candidate_info[row_id] = (embedding_id, candidate_paths)
             embedding_identity_counts[embedding_id] = (
                 embedding_identity_counts.get(embedding_id, 0) + 1
             )
+            for path in candidate_paths:
+                path_remaining[path] = path_remaining.get(path, 0) + 1
+        candidate_ids = sorted(candidate_info)
+        stable_candidate_info = {
+            row_id: (
+                bool(embedding_id)
+                and embedding_identity_counts.get(embedding_id) == 1,
+                candidate_paths,
+            )
+            for row_id, (embedding_id, candidate_paths)
+            in candidate_info.items()
+        }
+        del identities, engram_paths, candidate_info, embedding_identity_counts
 
         complete, reason = True, None
-        metadata_records: list[tuple[int, dict]] = []
+        pending_path_records: dict[str, list[tuple[int, dict]]] = {}
+        grouped: dict[str, list[tuple[str, int, dict]]] = {}
 
         def stored_metadata_value(raw_value, value_kind):
             if raw_value is None:
@@ -14169,6 +14245,23 @@ def _library_engram_provider(query: str = "") -> dict:
                 reason = message
             complete = False
 
+        def admit_complete_path(path: str) -> None:
+            path_records = pending_path_records.pop(path, [])
+            if not path_records:
+                return
+            path_metadatas = [
+                metadata for _row_id, metadata in path_records
+            ]
+            if path not in set(knowledge_admitted_paths(path_metadatas, "")):
+                return
+            real_path = os.path.realpath(_browser_resolve_path(path))
+            destination = grouped.setdefault(real_path, [])
+            destination.extend(
+                (path, row_id, metadata)
+                for row_id, metadata in path_records
+                if str(metadata.get("type") or "").lower() == "engram"
+            )
+
         batch_size = 4096
         for batch_start in range(0, len(candidate_ids), batch_size):
             batch_ids = candidate_ids[batch_start:batch_start + batch_size]
@@ -14188,22 +14281,33 @@ def _library_engram_provider(query: str = "") -> dict:
                 SELECT 'scalar' AS lane,
                        metadata.id,
                        metadata.key,
-                       CASE WHEN PYTHON_PROJECTABLE_KEY(metadata.key, 0)
-                            THEN COALESCE(
-                                metadata.string_value,
-                                metadata.int_value,
-                                metadata.float_value,
-                                metadata.bool_value
-                            )
-                       END,
+                       COALESCE(
+                           metadata.string_value,
+                           metadata.int_value,
+                           metadata.float_value,
+                           metadata.bool_value
+                       ),
                        CASE WHEN metadata.string_value IS NOT NULL THEN 'string'
                             WHEN metadata.int_value IS NOT NULL THEN 'int'
                             WHEN metadata.float_value IS NOT NULL THEN 'float'
                             WHEN metadata.bool_value IS NOT NULL THEN 'bool'
                        END
                 FROM json_each(?) AS candidate
+                CROSS JOIN json_each(?) AS selected_key
                 CROSS JOIN embedding_metadata AS metadata
                   ON metadata.id = CAST(candidate.value AS INTEGER)
+                 AND metadata.key = selected_key.value
+                UNION ALL
+                SELECT 'scalar' AS lane,
+                       metadata.id,
+                       metadata.key,
+                       NULL,
+                       NULL
+                FROM json_each(?) AS candidate
+                CROSS JOIN json_each(?) AS selected_key
+                CROSS JOIN embedding_metadata AS metadata
+                  ON metadata.id = CAST(candidate.value AS INTEGER)
+                 AND metadata.key = selected_key.value
                 UNION ALL
                 SELECT 'array' AS lane,
                        metadata.id,
@@ -14220,11 +14324,25 @@ def _library_engram_provider(query: str = "") -> dict:
                             WHEN metadata.bool_value IS NOT NULL THEN 'bool'
                        END
                 FROM json_each(?) AS candidate
+                CROSS JOIN json_each(?) AS selected_key
                 CROSS JOIN embedding_metadata_array AS metadata
                   ON metadata.id = CAST(candidate.value AS INTEGER)
-                WHERE PYTHON_PROJECTABLE_KEY(metadata.key, 1)
+                 AND metadata.key = selected_key.value
                 """,
-                (encoded_batch, encoded_batch),
+                (
+                    encoded_batch,
+                    json.dumps(
+                        projectable_scalar_raw_keys, separators=(",", ":"),
+                    ),
+                    encoded_batch,
+                    json.dumps(
+                        scalar_guard_only_raw_keys, separators=(",", ":"),
+                    ),
+                    encoded_batch,
+                    json.dumps(
+                        projectable_array_raw_keys, separators=(",", ":"),
+                    ),
+                ),
             )
 
             for (
@@ -14240,7 +14358,11 @@ def _library_engram_provider(query: str = "") -> dict:
                         "the Engram index has incomplete authority metadata"
                     )
                     continue
-                key = raw_key.strip() if isinstance(raw_key, str) else ""
+                key_normalizations = (
+                    scalar_key_normalizations
+                    if lane == "scalar" else array_key_normalizations
+                )
+                key = key_normalizations.get(raw_key, "")
                 value = stored_metadata_value(raw_value, value_kind)
                 if lane == "scalar":
                     state["scalar_seen"] = True
@@ -14258,39 +14380,62 @@ def _library_engram_provider(query: str = "") -> dict:
 
             for row_id in batch_ids:
                 state = batch_states[row_id]
-                embedding_id = str(
-                    identities[row_id]["embedding_id"] or ""
-                ).strip()
-                if (
-                    not embedding_id
-                    or embedding_identity_counts.get(embedding_id) != 1
-                ):
+                stable_identity, candidate_paths = stable_candidate_info.pop(
+                    row_id
+                )
+                metadata = None
+                if not stable_identity:
                     mark_incomplete(
                         "the Engram index inventory has unstable identities"
                     )
-                    continue
-                if not state["scalar_seen"] or state["invalid_scalar"]:
+                elif not state["scalar_seen"] or state["invalid_scalar"]:
                     mark_incomplete(
                         "the Engram index has incomplete authority metadata"
                     )
-                    continue
-                metadata = state["metadata"]
-                if not metadata:
-                    continue
-                for key, value in state["array_items"]:
-                    current = metadata.get(key)
-                    if isinstance(current, list):
-                        current.append(value)
-                    elif current is None:
-                        metadata[key] = [value]
+                else:
+                    metadata = state["metadata"]
+                    if metadata:
+                        for key, value in state["array_items"]:
+                            current = metadata.get(key)
+                            if isinstance(current, list):
+                                current.append(value)
+                            elif current is None:
+                                metadata[key] = [value]
+                            else:
+                                metadata[key] = [current, value]
+                        metadata_path = str(
+                            metadata.get("path") or ""
+                        ).strip()
+                        if metadata_path not in candidate_paths:
+                            mark_incomplete(
+                                "the Engram index has incomplete authority metadata"
+                            )
+                        else:
+                            pending_path_records.setdefault(
+                                metadata_path, []
+                            ).append((int(row_id), metadata))
+
+                completed_paths: list[str] = []
+                for path in candidate_paths:
+                    remaining = path_remaining.get(path, 0) - 1
+                    if remaining < 0:
+                        mark_incomplete(
+                            "the Engram index has incomplete authority metadata"
+                        )
+                        continue
+                    if remaining == 0:
+                        path_remaining.pop(path, None)
+                        completed_paths.append(path)
                     else:
-                        metadata[key] = [current, value]
-                metadata_records.append((int(row_id), metadata))
-        metadatas = [metadata for _row_id, metadata in metadata_records]
+                        path_remaining[path] = remaining
+                for path in completed_paths:
+                    admit_complete_path(path)
+
+        if stable_candidate_info or path_remaining:
+            mark_incomplete("the Engram index has incomplete authority metadata")
         connection.commit()
         connection.close()
         connection = None
-        admitted = set(knowledge_admitted_paths(metadatas, ""))
     except Exception:
         if connection is not None:
             try:
@@ -14303,18 +14448,14 @@ def _library_engram_provider(query: str = "") -> dict:
         if connection is not None:
             connection.close()
 
-    grouped = {}
-    for _row_id, metadata in sorted(
-        metadata_records,
-        key=lambda item: (str(item[1].get("path") or "").strip(), item[0]),
-    ):
-        path = str(metadata.get("path") or "").strip()
-        if (str(metadata.get("type") or "").lower() == "engram"
-                and path in admitted):
-            grouped.setdefault(os.path.realpath(_browser_resolve_path(path)), []).append(metadata)
     rows = []
     for path in sorted(grouped):
-        records = grouped[path]
+        records = [
+            metadata
+            for _source_path, _row_id, metadata in sorted(
+                grouped[path], key=lambda item: (item[0], item[1]),
+            )
+        ]
         tags = _browser_normalize_tags([_browser_metadata_tags(row) for row in records])
         if "archived" in tags:
             continue
@@ -14326,11 +14467,19 @@ def _library_engram_provider(query: str = "") -> dict:
              if value in privacy_values), None,
         )
         try:
-            modified_at = datetime.fromtimestamp(os.stat(path).st_mtime).isoformat(
+            path_stat = os.stat(path)
+        except OSError:
+            path_stat = None
+        modified_at = (
+            datetime.fromtimestamp(path_stat.st_mtime).isoformat(
                 timespec="seconds"
             )
-        except OSError:
-            modified_at = None
+            if path_stat is not None else None
+        )
+        exists = bool(
+            path_stat is not None
+            and (path_stat.st_mode & 0o170000) == 0o100000
+        )
         source_meta = {
             "project_ids": _browser_normalize_tags([
                 _browser_row_project_ids(row) for row in records
@@ -14342,7 +14491,6 @@ def _library_engram_provider(query: str = "") -> dict:
             source_meta["privacy"] = privacy
         if modified_at is not None:
             source_meta["modified_at"] = modified_at
-        exists = os.path.isfile(path)
         rows.append({
             "identity": path, "title": _browser_source_title(records[0]),
             "metadata": source_meta,
@@ -14351,7 +14499,7 @@ def _library_engram_provider(query: str = "") -> dict:
             "provenance": {"available": True, "kind": "indexed-vault-note",
                            "identity": path, "details": {"index": "knowledge"}},
             "_relationship_identity": Path(path).stem,
-            "preview": _library_path_preview(path),
+            "preview": _library_path_preview(path, is_file=exists),
             "editability": {"available": exists,
                             "editable": os.access(path, os.W_OK) if exists else None,
                             "surface": "external-file",

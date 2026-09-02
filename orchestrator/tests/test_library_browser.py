@@ -357,6 +357,7 @@ class TestLibraryBrowser(unittest.TestCase):
     def test_engram_and_file_providers_take_one_complete_inventory_read(self):
         import hashlib
         import inspect
+        import json
         import sqlite3
         import tempfile
         from pathlib import Path
@@ -387,6 +388,8 @@ class TestLibraryBrowser(unittest.TestCase):
                 path.write_text(f"# {path.stem}\n", encoding="utf-8")
             physical_collection = "knowledge-physical"
             vector_only_collection = "knowledge-vector-only"
+            blocked_sibling_id = 50_000
+            filler_row_ids = tuple(range(100, 4_190))
 
             real_connect = sqlite3.connect
             fixture = real_connect(db_path)
@@ -476,12 +479,16 @@ class TestLibraryBrowser(unittest.TestCase):
                         (5, "segment-metadata", "chunk-non-engram"),
                         (6, "segment-metadata", "chunk-2"),
                         (7, "segment-metadata", "chunk-blocked-engram"),
-                        (8, "segment-metadata", "chunk-blocked-sibling"),
                         (9, "segment-metadata", "chunk-private-engram"),
                         (10, "segment-metadata", "chunk"),
                         (11, "segment-metadata", " chunk "),
                         (12, "segment-metadata", "chunk-blank-key"),
                         (13, "segment-metadata", "chunk-duplicate-key"),
+                        (blocked_sibling_id, "segment-metadata",
+                         "chunk-blocked-sibling"),
+                    ] + [
+                        (row_id, "segment-metadata", f"filler-{row_id}")
+                        for row_id in filler_row_ids
                     ],
                 )
                 for row_id, path, title, item_type in (
@@ -492,7 +499,7 @@ class TestLibraryBrowser(unittest.TestCase):
                     (5, non_engram_path, "Indexed Chat", "chat"),
                     (6, engram_path, "Indexed Engram", "engram"),
                     (7, blocked_path, "Blocked Engram", "engram"),
-                    (8, blocked_path, "Blocked sibling", "chat"),
+                    (blocked_sibling_id, blocked_path, "Blocked sibling", "chat"),
                     (9, private_path, "Private Engram", "engram"),
                     (10, engram_path, "Whitespace duplicate A", "chat"),
                     (11, engram_path, "Whitespace duplicate B", "chat"),
@@ -509,6 +516,18 @@ class TestLibraryBrowser(unittest.TestCase):
                             (row_id, "type", item_type),
                         ],
                     )
+                fixture.executemany(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, string_value) VALUES (?, ?, ?)",
+                    (
+                        (row_id, key, value)
+                        for row_id in filler_row_ids
+                        for key, value in (
+                            ("path", str(engram_path)),
+                            ("type", "chat"),
+                        )
+                    ),
+                )
                 document_sentinel = "not-materialized-" + ("x" * 100_000)
                 fixture.execute(
                     "INSERT INTO embedding_metadata"
@@ -534,28 +553,32 @@ class TestLibraryBrowser(unittest.TestCase):
                 fixture.execute(
                     "INSERT INTO embedding_metadata"
                     "(id, key, string_value) VALUES (?, ?, ?)",
-                    (8, " artifact_kind ", "conversation_runtime_derivative"),
+                    (blocked_sibling_id, "\u2003artifact_kind\u2029",
+                     "conversation_runtime_derivative"),
                 )
                 fixture.executemany(
                     "INSERT INTO embedding_metadata"
                     "(id, key, string_value, int_value) VALUES (?, ?, ?, ?)",
                     [
-                        (8, " managed_by ", "ora", None),
-                        (8, " source_file ", "blocked-source.json", None),
-                        (8, " source_chunk_id ", "blocked-chunk", None),
-                        (8, " source_turn_index ", None, 1),
-                        (8, " turn_privacy ", "standard", None),
+                        (blocked_sibling_id, " managed_by ", "ora", None),
+                        (blocked_sibling_id, " source_file ",
+                         "blocked-source.json", None),
+                        (blocked_sibling_id, " source_chunk_id ",
+                         "blocked-chunk", None),
+                        (blocked_sibling_id, " source_turn_index ", None, 1),
+                        (blocked_sibling_id, " turn_privacy ", "standard", None),
                     ],
                 )
                 fixture.execute(
                     "UPDATE embedding_metadata SET key = ?, string_value = ? "
                     "WHERE id = ? AND key = 'path'",
-                    ("\tpath\n", f"\t\u2003{blocked_path}\u2029\n", 8),
+                    ("\u2003path\u2029", f"\t\u2003{blocked_path}\u2029\n",
+                     blocked_sibling_id),
                 )
                 fixture.execute(
                     "UPDATE embedding_metadata SET key = ? "
                     "WHERE id = ? AND key = 'type'",
-                    ("\ttype\n", 7),
+                    ("\u2003type\u2029", 7),
                 )
                 fixture.execute(
                     "INSERT INTO embedding_metadata"
@@ -573,21 +596,13 @@ class TestLibraryBrowser(unittest.TestCase):
                     [
                         (1, "tags", "alpha"),
                         (6, "tags", "beta"),
-                        (6, " project_ids ", "project-x"),
+                        (6, "\u2003project_ids\u2029", "project-x"),
                         (1, "chroma:document", document_sentinel),
                     ],
                 )
-                candidate_row_ids = (1, 6, 7, 8, 9, 10, 11, 12, 13)
-                placeholders = ",".join("?" for _ in candidate_row_ids)
-                expected_projectable_key_calls = sum(
-                    fixture.execute(
-                        f"SELECT COUNT(*) FROM {table} "
-                        f"WHERE id IN ({placeholders})",
-                        candidate_row_ids,
-                    ).fetchone()[0]
-                    for table in (
-                        "embedding_metadata", "embedding_metadata_array",
-                    )
+                candidate_row_ids = (
+                    1, 6, 7, 9, 10, 11, 12, 13, blocked_sibling_id,
+                    *filler_row_ids,
                 )
                 fixture.commit()
             finally:
@@ -597,12 +612,20 @@ class TestLibraryBrowser(unittest.TestCase):
             fixture_entries = sorted(path.name for path in chroma_dir.iterdir())
             connect_calls = []
             statements = []
+            raw_key_rows = []
+            raw_key_queries = []
+            identity_queries = []
+            identity_parameters = []
+            identity_query_plan = []
             selected_flat_row_ids = []
             flat_rows = []
             flat_queries = []
+            flat_parameters = []
             flat_query_plan = []
-            projectable_key_calls = []
+            registered_functions = []
             streamed_cursors = []
+            stat_calls = []
+            real_stat = server.os.stat
 
             class StreamingCursor:
                 def __init__(self, cursor, label):
@@ -618,7 +641,9 @@ class TestLibraryBrowser(unittest.TestCase):
 
                 def __next__(self):
                     row = next(self._cursor)
-                    if self._label == "flat":
+                    if self._label == "keys":
+                        raw_key_rows.append(row)
+                    elif self._label == "flat":
                         selected_flat_row_ids.append(row[1])
                         flat_rows.append(row)
                     return row
@@ -637,32 +662,35 @@ class TestLibraryBrowser(unittest.TestCase):
 
                 def execute(self, sql, parameters=()):
                     normalized = " ".join(sql.split())
-                    if "FROM json_each(" in normalized:
+                    if "SELECT DISTINCT metadata.key AS key" in normalized:
+                        raw_key_queries.append(normalized)
+                    elif "AS identity_key" in normalized:
+                        identity_queries.append(normalized)
+                        identity_parameters.append(parameters)
+                        identity_query_plan.extend(
+                            self._connection.execute(
+                                f"EXPLAIN QUERY PLAN {sql}", parameters,
+                            ).fetchall()
+                        )
+                    elif "FROM json_each(?) AS candidate" in normalized:
                         flat_queries.append(normalized)
+                        flat_parameters.append(parameters)
                         flat_query_plan.extend(
                             self._connection.execute(
                                 f"EXPLAIN QUERY PLAN {sql}", parameters,
                             ).fetchall()
                         )
                     cursor = self._connection.execute(sql, parameters)
-                    if "FROM json_each(" in normalized:
-                        return StreamingCursor(cursor, "flat")
-                    if (
-                        "FROM embeddings AS embedding" in normalized
-                        and "IN ('path', 'type')" in normalized
-                    ):
+                    if "SELECT DISTINCT metadata.key AS key" in normalized:
+                        return StreamingCursor(cursor, "keys")
+                    if "AS identity_key" in normalized:
                         return StreamingCursor(cursor, "identity")
+                    if "FROM json_each(?) AS candidate" in normalized:
+                        return StreamingCursor(cursor, "flat")
                     return cursor
 
                 def create_function(self, name, narg, function, **kwargs):
-                    if name == "PYTHON_PROJECTABLE_KEY":
-                        registered_function = function
-
-                        def counted_function(*args):
-                            projectable_key_calls.append(args)
-                            return registered_function(*args)
-
-                        function = counted_function
+                    registered_functions.append((name, narg))
                     return self._connection.create_function(
                         name, narg, function, **kwargs,
                     )
@@ -675,6 +703,10 @@ class TestLibraryBrowser(unittest.TestCase):
                 connection = real_connect(database, *args, **kwargs)
                 connection.set_trace_callback(statements.append)
                 return ReadOnlyConnection(connection)
+
+            def counted_stat(path, *args, **kwargs):
+                stat_calls.append(str(path))
+                return real_stat(path, *args, **kwargs)
 
             with (
                 mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
@@ -693,6 +725,7 @@ class TestLibraryBrowser(unittest.TestCase):
                     conversation_memory, "knowledge_admitted_paths",
                     wraps=conversation_memory.knowledge_admitted_paths,
                 ) as admitted_paths,
+                mock.patch.object(server.os, "stat", side_effect=counted_stat),
             ):
                 engrams = server._library_engram_provider()
                 vector_only = server._library_engram_provider()
@@ -722,15 +755,25 @@ class TestLibraryBrowser(unittest.TestCase):
                 [mock.call("knowledge"), mock.call("knowledge")],
             )
             persistent_client.assert_not_called()
-            admitted_paths.assert_called_once()
-            admitted_metadata, admitted_target = admitted_paths.call_args.args
-            self.assertEqual(admitted_target, "")
+            admission_groups = []
+            for admission_call in admitted_paths.call_args_list:
+                admitted_metadata, admitted_target = admission_call.args
+                self.assertEqual(admitted_target, "")
+                admitted_group_paths = {
+                    str(row.get("path") or "").strip()
+                    for row in admitted_metadata
+                }
+                self.assertEqual(len(admitted_group_paths), 1)
+                admission_groups.append(admitted_metadata)
+            all_admitted_metadata = [
+                row for group in admission_groups for row in group
+            ]
             admitted_by_id = {
                 (str(row["path"]).strip(), row["type"], row.get("title")): row
-                for row in admitted_metadata
+                for row in all_admitted_metadata
             }
             self.assertTrue(all(
-                masked_numeric_key not in row for row in admitted_metadata
+                masked_numeric_key not in row for row in all_admitted_metadata
             ))
             self.assertTrue(all(
                 masked_numeric_key not in row["metadata"]
@@ -768,6 +811,15 @@ class TestLibraryBrowser(unittest.TestCase):
                 ]["tag_private"],
                 True,
             )
+            blocked_admission_groups = [
+                group for group in admission_groups
+                if str(group[0].get("path") or "").strip() == str(blocked_path)
+            ]
+            self.assertEqual(len(blocked_admission_groups), 1)
+            self.assertEqual(
+                {row.get("title") for row in blocked_admission_groups[0]},
+                {"Blocked Engram", "Blocked sibling"},
+            )
             self.assertNotIn(
                 str(blocked_path.resolve()),
                 [row["identity"] for row in engrams["rows"]],
@@ -784,8 +836,21 @@ class TestLibraryBrowser(unittest.TestCase):
                 str(duplicate_key_path.resolve()),
                 [row["identity"] for row in engrams["rows"]],
             )
+            self.assertEqual(stat_calls, [str(engram_path.resolve())])
             self.assertEqual(set(selected_flat_row_ids), set(candidate_row_ids))
             self.assertNotIn(5, selected_flat_row_ids)
+            candidate_batches = [
+                json.loads(parameters[0]) for parameters in flat_parameters
+            ]
+            self.assertEqual(len(candidate_batches), 2)
+            self.assertIn(7, candidate_batches[0])
+            self.assertNotIn(blocked_sibling_id, candidate_batches[0])
+            self.assertNotIn(7, candidate_batches[1])
+            self.assertIn(blocked_sibling_id, candidate_batches[1])
+            self.assertEqual(
+                set().union(*(set(batch) for batch in candidate_batches)),
+                set(candidate_row_ids),
+            )
             self.assertEqual({row[0] for row in flat_rows}, {"scalar", "array"})
             self.assertTrue(all(len(row) == 5 for row in flat_rows))
             self.assertIn("", [
@@ -799,31 +864,55 @@ class TestLibraryBrowser(unittest.TestCase):
             ), 2)
             document_rows = [
                 row for row in flat_rows
-                if row[0] == "scalar" and row[2] == "chroma:document"
+                if row[2] == "chroma:document"
             ]
-            self.assertEqual(len(document_rows), 1)
-            self.assertIsNone(document_rows[0][3])
+            self.assertEqual(document_rows, [])
             masked_numeric_rows = [
                 row for row in flat_rows
                 if row[0] == "scalar" and row[2] == masked_numeric_key
             ]
-            self.assertEqual(len(masked_numeric_rows), 1)
-            self.assertIsNone(masked_numeric_rows[0][3])
-            self.assertEqual(masked_numeric_rows[0][4], "int")
+            self.assertEqual(masked_numeric_rows, [])
             self.assertFalse(any(
                 document_sentinel in value
                 for row in flat_rows
                 for value in row[3:]
                 if isinstance(value, str)
             ))
-            self.assertEqual(
-                len(projectable_key_calls), expected_projectable_key_calls,
+            discovered_raw_keys = set(raw_key_rows)
+            self.assertIn(("scalar", "\u2003path\u2029"), discovered_raw_keys)
+            self.assertIn(("scalar", "\u2003type\u2029"), discovered_raw_keys)
+            self.assertIn(
+                ("scalar", "\u2003artifact_kind\u2029"),
+                discovered_raw_keys,
             )
+            self.assertIn(
+                ("array", "\u2003project_ids\u2029"),
+                discovered_raw_keys,
+            )
+            identity_bound_keys = set(json.loads(identity_parameters[0][0]))
+            self.assertTrue({
+                "path", "type", "\u2003path\u2029", "\u2003type\u2029",
+            }.issubset(identity_bound_keys))
+            scalar_bound_keys = set(json.loads(flat_parameters[0][1]))
+            scalar_guard_keys = set(json.loads(flat_parameters[0][3]))
+            array_bound_keys = set(json.loads(flat_parameters[0][5]))
+            self.assertIn("\u2003artifact_kind\u2029", scalar_bound_keys)
+            self.assertIn("\u2003project_ids\u2029", array_bound_keys)
+            self.assertIn(" \t ", scalar_guard_keys)
+            self.assertTrue({"title", " title "}.issubset(scalar_bound_keys))
+            self.assertNotIn("chroma:document", scalar_bound_keys)
+            self.assertNotIn("chroma:document", array_bound_keys)
+            self.assertNotIn(masked_numeric_key, scalar_bound_keys)
             self.assertTrue(all(
-                len(args) == 2 and args[1] in (0, 1)
-                for args in projectable_key_calls
+                set(json.loads(parameters[1])) == scalar_bound_keys
+                and set(json.loads(parameters[3])) == scalar_guard_keys
+                and set(json.loads(parameters[5])) == array_bound_keys
+                for parameters in flat_parameters
             ))
-            self.assertEqual(streamed_cursors, ["identity", "flat"])
+            self.assertEqual(registered_functions, [])
+            self.assertEqual(
+                streamed_cursors, ["keys", "identity", "flat", "flat"],
+            )
 
             expected_connect = (
                 f"file:{db_path}?mode=ro", (), {"uri": True},
@@ -847,19 +936,32 @@ class TestLibraryBrowser(unittest.TestCase):
                 sql for sql in normalized_statements[second_begin + 1:second_commit]
                 if sql.startswith("SELECT ")
             ]
-            self.assertEqual(len(first_reads), 3)
+            self.assertEqual(len(first_reads), 5)
             self.assertEqual(len(second_reads), 1)
-            self.assertEqual(len(flat_queries), 1)
+            self.assertEqual(len(raw_key_queries), 1)
+            self.assertEqual(len(identity_queries), 1)
+            self.assertEqual(len(flat_queries), 2)
+            self.assertEqual(len(set(flat_queries)), 1)
             self.assertTrue(all(
                 all(table in query for table in (
                     "databases", "collections", "segments",
                 ))
                 for query in (first_reads[0], second_reads[0])
             ))
-            identity_query = first_reads[1]
+            raw_key_query = raw_key_queries[0]
+            identity_query = identity_queries[0]
             flat_query = flat_queries[0]
+            self.assertIn("SELECT DISTINCT metadata.key AS key", raw_key_query)
+            self.assertEqual(raw_key_query.count("embedding.segment_id = ?"), 2)
+            self.assertTrue(all(
+                table in raw_key_query for table in (
+                    "embeddings", "embedding_metadata",
+                    "embedding_metadata_array",
+                )
+            ))
             self.assertIn("FROM embeddings AS embedding", identity_query)
-            self.assertIn("IN ('path', 'type')", identity_query)
+            self.assertIn("CROSS JOIN json_each(?) AS identity_key", identity_query)
+            self.assertIn("metadata.key = identity_key.value", identity_query)
             self.assertNotIn("embedding_metadata_array", identity_query)
             self.assertTrue(all(
                 table in flat_query for table in (
@@ -870,26 +972,44 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertNotIn("embeddings AS embedding", flat_query)
             self.assertIn("UNION ALL", flat_query)
             self.assertEqual(
-                flat_query.count("FROM json_each(?) AS candidate"), 2,
+                flat_query.count("FROM json_each(?) AS candidate"), 3,
             )
             self.assertEqual(
-                flat_query.count("PYTHON_PROJECTABLE_KEY(metadata.key, 0)"), 1,
+                flat_query.count("CROSS JOIN json_each(?) AS selected_key"), 3,
             )
             self.assertEqual(
-                flat_query.count("PYTHON_PROJECTABLE_KEY(metadata.key, 1)"), 1,
+                flat_query.count("metadata.key = selected_key.value"), 3,
             )
-            self.assertNotIn("PYTHON_STRIP", flat_query)
+            hot_sql = " ".join([identity_query, *flat_queries])
+            self.assertNotIn("PYTHON_STRIP", hot_sql)
+            self.assertNotIn("PYTHON_PROJECTABLE_KEY", hot_sql)
+            identity_plan_details = [
+                str(row[3]) for row in identity_query_plan
+            ]
+            self.assertTrue(any(
+                "sqlite_autoindex_embedding_metadata_1 (id=? AND key=?)"
+                in detail
+                for detail in identity_plan_details
+            ), identity_plan_details)
             plan_details = [str(row[3]) for row in flat_query_plan]
             candidate_plan_rows = [
                 index for index, detail in enumerate(plan_details)
                 if "SCAN candidate VIRTUAL TABLE" in detail
             ]
+            selected_key_plan_rows = [
+                index for index, detail in enumerate(plan_details)
+                if "SCAN selected_key VIRTUAL TABLE" in detail
+            ]
             metadata_plan_rows = [
                 index for index, detail in enumerate(plan_details)
-                if "SEARCH metadata USING INDEX" in detail
+                if (
+                    "SEARCH metadata USING INDEX" in detail
+                    or "SEARCH metadata USING COVERING INDEX" in detail
+                )
             ]
-            self.assertEqual(len(candidate_plan_rows), 2, plan_details)
-            self.assertEqual(len(metadata_plan_rows), 2, plan_details)
+            self.assertEqual(len(candidate_plan_rows), 6, plan_details)
+            self.assertEqual(len(selected_key_plan_rows), 6, plan_details)
+            self.assertEqual(len(metadata_plan_rows), 6, plan_details)
             for candidate_plan_row, metadata_plan_row in zip(
                 candidate_plan_rows, metadata_plan_rows,
             ):
@@ -897,27 +1017,29 @@ class TestLibraryBrowser(unittest.TestCase):
                     candidate_plan_row, metadata_plan_row, plan_details,
                 )
             self.assertTrue(any(
-                "sqlite_autoindex_embedding_metadata_1 (id=?)" in detail
+                "sqlite_autoindex_embedding_metadata_1 (id=? AND key=?)"
+                in detail
                 for detail in plan_details
             ), plan_details)
             self.assertTrue(any(
-                "embedding_metadata_array_by_id_key (id=?)" in detail
+                "embedding_metadata_array_by_id_key (id=? AND key=?)"
+                in detail
                 for detail in plan_details
             ), plan_details)
             self.assertFalse(any(
                 "SEARCH embedding USING INTEGER PRIMARY KEY" in detail
                 for detail in plan_details
             ), plan_details)
-            self.assertIn("chroma:document", [row[2] for row in flat_rows])
+            self.assertNotIn("chroma:document", [row[2] for row in flat_rows])
             self.assertNotIn("json_object", flat_query)
             self.assertNotIn("json_group_array", flat_query)
             self.assertNotIn(" OVER ", flat_query)
             self.assertNotIn(" GROUP BY ", flat_query)
             self.assertNotIn(" ORDER BY ", flat_query)
-            self.assertNotIn(
-                "json.loads",
-                inspect.getsource(server._library_engram_provider),
-            )
+            provider_source = inspect.getsource(server._library_engram_provider)
+            self.assertNotIn("json.loads", provider_source)
+            self.assertNotIn("metadata_records", provider_source)
+            self.assertNotIn("connection.create_function", provider_source)
             self.assertEqual(
                 hashlib.sha256(db_path.read_bytes()).hexdigest(), fixture_hash,
             )
