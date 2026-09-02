@@ -358,6 +358,7 @@ class TestLibraryBrowser(unittest.TestCase):
         import hashlib
         import inspect
         import json
+        import os
         import sqlite3
         import tempfile
         from pathlib import Path
@@ -382,12 +383,17 @@ class TestLibraryBrowser(unittest.TestCase):
             duplicate_key_path = root / "duplicate-key-engram.md"
             regular_sibling_path = root / "regular-sibling-engram.md"
             symlink_alias_path = root / "zz-indexed-engram-alias.md"
+            missing_path = root / "missing-engram.md"
             for path in (
                 engram_path, vector_path, other_database_path, vector_only_path,
                 non_engram_path, blocked_path, private_path, blank_key_path,
                 duplicate_key_path, regular_sibling_path,
             ):
                 path.write_text(f"# {path.stem}\n", encoding="utf-8")
+            indexed_mtime = 1_700_000_200
+            sibling_mtime = 1_700_000_100
+            os.utime(engram_path, (indexed_mtime, indexed_mtime))
+            os.utime(regular_sibling_path, (sibling_mtime, sibling_mtime))
             symlink_alias_path.symlink_to(engram_path.name)
             physical_collection = "knowledge-physical"
             vector_only_collection = "knowledge-vector-only"
@@ -489,6 +495,7 @@ class TestLibraryBrowser(unittest.TestCase):
                         (13, "segment-metadata", "chunk-duplicate-key"),
                         (14, "segment-metadata", "chunk-regular-sibling"),
                         (15, "segment-metadata", "chunk-symlink-alias"),
+                        (16, "segment-metadata", "chunk-missing-engram"),
                         (blocked_sibling_id, "segment-metadata",
                          "chunk-blocked-sibling"),
                     ] + [
@@ -512,6 +519,7 @@ class TestLibraryBrowser(unittest.TestCase):
                     (13, duplicate_key_path, "Duplicate key Engram", "engram"),
                     (14, regular_sibling_path, "Regular sibling", "engram"),
                     (15, symlink_alias_path, "Symlink alias", "engram"),
+                    (16, missing_path, "Missing Engram", "engram"),
                 ):
                     fixture.executemany(
                         "INSERT INTO embedding_metadata"
@@ -608,7 +616,7 @@ class TestLibraryBrowser(unittest.TestCase):
                     ],
                 )
                 candidate_row_ids = (
-                    1, 6, 7, 9, 10, 11, 12, 13, 14, 15,
+                    1, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16,
                     blocked_sibling_id,
                     *filler_row_ids,
                 )
@@ -635,12 +643,10 @@ class TestLibraryBrowser(unittest.TestCase):
             flat_query_plan = []
             registered_functions = []
             streamed_cursors = []
-            stat_calls = []
+            scandir_calls = []
             realpath_calls = []
-            islink_calls = []
-            real_stat = server.os.stat
+            real_scandir = server.os.scandir
             real_realpath = server.os.path.realpath
-            real_islink = server.os.path.islink
 
             class StreamingCursor:
                 def __init__(self, cursor, label):
@@ -730,17 +736,13 @@ class TestLibraryBrowser(unittest.TestCase):
                 connection.set_trace_callback(statements.append)
                 return ReadOnlyConnection(connection)
 
-            def counted_stat(path, *args, **kwargs):
-                stat_calls.append(str(path))
-                return real_stat(path, *args, **kwargs)
+            def counted_scandir(path, *args, **kwargs):
+                scandir_calls.append(str(path))
+                return real_scandir(path, *args, **kwargs)
 
             def counted_realpath(path, *args, **kwargs):
                 realpath_calls.append(str(path))
                 return real_realpath(path, *args, **kwargs)
-
-            def counted_islink(path, *args, **kwargs):
-                islink_calls.append(str(path))
-                return real_islink(path, *args, **kwargs)
 
             with (
                 mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
@@ -759,20 +761,31 @@ class TestLibraryBrowser(unittest.TestCase):
                     conversation_memory, "knowledge_admitted_paths",
                     wraps=conversation_memory.knowledge_admitted_paths,
                 ) as admitted_paths,
-                mock.patch.object(server.os, "stat", side_effect=counted_stat),
+                mock.patch.object(
+                    server.os, "stat",
+                    side_effect=AssertionError(
+                        "the Engram universe must use parent enumeration stats"
+                    ),
+                ) as universe_stat,
+                mock.patch.object(
+                    server.os, "scandir", side_effect=counted_scandir,
+                ),
                 mock.patch.object(
                     server.os.path, "realpath", side_effect=counted_realpath,
                 ),
                 mock.patch.object(
-                    server.os.path, "islink", side_effect=counted_islink,
-                ),
+                    server.os.path, "islink",
+                    side_effect=AssertionError(
+                        "the Engram universe must use enumerated symlink state"
+                    ),
+                ) as universe_islink,
             ):
                 engrams = server._library_engram_provider()
                 vector_only = server._library_engram_provider()
 
             self.assertFalse(engrams["complete"])
             self.assertIn("unstable identities", engrams["reason"])
-            self.assertEqual(len(engrams["rows"]), 2)
+            self.assertEqual(len(engrams["rows"]), 3)
             engram = engrams["rows"][0]
             self.assertEqual(engram["identity"], str(engram_path.resolve()))
             self.assertEqual(engram["title"], "Indexed Engram")
@@ -783,13 +796,23 @@ class TestLibraryBrowser(unittest.TestCase):
                 engram["metadata"]["project_ids"], ["ora", "project-x"],
             )
             self.assertEqual(engram["metadata"]["item_type"], "engram")
-            self.assertTrue(engram["preview"]["available"])
+            self.assertFalse(engram["preview"]["available"])
+            self.assertIn("returned Library rows", engram["preview"]["reason"])
+            self.assertFalse(engram["editability"]["available"])
+            self.assertIsNone(engram["editability"]["editable"])
+            self.assertIn(
+                "returned Library rows", engram["editability"]["reason"],
+            )
             self.assertEqual(engram["provenance"]["details"], {
                 "index": "knowledge",
             })
             self.assertEqual(
                 [row["identity"] for row in engrams["rows"]],
-                [str(engram_path.resolve()), str(regular_sibling_path.resolve())],
+                [
+                    str(engram_path.resolve()),
+                    str(missing_path.resolve()),
+                    str(regular_sibling_path.resolve()),
+                ],
             )
             self.assertEqual(
                 sum(
@@ -801,6 +824,31 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertNotIn(
                 str(symlink_alias_path),
                 [row["identity"] for row in engrams["rows"]],
+            )
+            missing_engram = next(
+                row for row in engrams["rows"]
+                if row["identity"] == str(missing_path.resolve())
+            )
+            self.assertIn(
+                "modified_at", missing_engram["unavailable_fields"],
+            )
+            self.assertFalse(missing_engram["preview"]["available"])
+            self.assertFalse(missing_engram["editability"]["available"])
+            self.assertEqual(
+                engram["metadata"]["modified_at"],
+                server.datetime.fromtimestamp(indexed_mtime).isoformat(
+                    timespec="seconds",
+                ),
+            )
+            regular_sibling = next(
+                row for row in engrams["rows"]
+                if row["identity"] == str(regular_sibling_path.resolve())
+            )
+            self.assertEqual(
+                regular_sibling["metadata"]["modified_at"],
+                server.datetime.fromtimestamp(sibling_mtime).isoformat(
+                    timespec="seconds",
+                ),
             )
             self.assertFalse(vector_only["complete"])
             self.assertEqual(vector_only["rows"], [])
@@ -891,22 +939,13 @@ class TestLibraryBrowser(unittest.TestCase):
                 str(duplicate_key_path.resolve()),
                 [row["identity"] for row in engrams["rows"]],
             )
-            self.assertEqual(
-                stat_calls,
-                [str(engram_path.resolve()), str(regular_sibling_path.resolve())],
-            )
             canonical_root = engram_path.resolve().parent
+            self.assertEqual(scandir_calls, [str(canonical_root)])
+            universe_stat.assert_not_called()
+            universe_islink.assert_not_called()
             self.assertEqual(
                 realpath_calls,
                 [str(root), str(canonical_root / symlink_alias_path.name)],
-            )
-            self.assertEqual(
-                islink_calls,
-                [
-                    str(canonical_root / regular_sibling_path.name),
-                    str(canonical_root / symlink_alias_path.name),
-                    str(canonical_root / engram_path.name),
-                ],
             )
             self.assertEqual(set(selected_flat_row_ids), set(candidate_row_ids))
             self.assertNotIn(5, selected_flat_row_ids)
@@ -1160,6 +1199,70 @@ class TestLibraryBrowser(unittest.TestCase):
                 sorted(path.name for path in chroma_dir.iterdir()), fixture_entries,
             )
 
+            permission_calls = []
+
+            def returned_row_access(path, mode):
+                permission_calls.append((str(path), mode))
+                self.assertEqual(str(path), str(engram_path.resolve()))
+                return mode == server.os.R_OK
+
+            with (
+                mock.patch.object(server.rp, "chromadb_dir", return_value=chroma_dir),
+                mock.patch.object(
+                    embedding, "resolve_collection", return_value=physical_collection,
+                ),
+                mock.patch.object(
+                    server, "_library_resolve_relationships",
+                    return_value={
+                        "state": "unavailable",
+                        "reason": "test relationship authority is unavailable",
+                        "items": {},
+                    },
+                ),
+                mock.patch.object(
+                    server.os, "access", side_effect=returned_row_access,
+                ),
+                server.app.test_client() as client,
+            ):
+                page_response = client.get(
+                    "/api/library/browser?source=engrams&limit=1",
+                )
+
+            self.assertEqual(page_response.status_code, 200)
+            page_payload = page_response.get_json()
+            self.assertEqual(page_payload["total"], 3)
+            self.assertEqual(page_payload["source_counts"], {"engrams": 3})
+            self.assertEqual(page_payload["pagination"]["returned"], 1)
+            self.assertTrue(page_payload["pagination"]["has_more"])
+            self.assertEqual(
+                page_payload["facets"]["editability"]["counts"],
+                {"editable": 0, "read_only": 0, "unavailable": 3},
+            )
+            self.assertEqual(
+                page_payload["facets"]["item_type"]["counts"],
+                {"engram": 3},
+            )
+            page_row = page_payload["rows"][0]
+            self.assertEqual(
+                page_row["provenance"]["identity"], str(engram_path.resolve()),
+            )
+            self.assertTrue(page_row["preview"]["available"])
+            self.assertTrue(page_row["editability"]["available"])
+            self.assertFalse(page_row["editability"]["editable"])
+            self.assertEqual(
+                permission_calls,
+                [
+                    (str(engram_path.resolve()), server.os.R_OK),
+                    (str(engram_path.resolve()), server.os.W_OK),
+                ],
+            )
+            self.assertEqual(
+                hashlib.sha256(db_path.read_bytes()).hexdigest(), fixture_hash,
+            )
+            self.assertEqual(
+                sorted(path.name for path in chroma_dir.iterdir()), fixture_entries,
+            )
+
             encoded_engram = server._browser_encode_source_id(
                 "engram", str(engram_path),
             )
@@ -1218,11 +1321,10 @@ class TestLibraryBrowser(unittest.TestCase):
                 windows_realpath_calls,
                 [
                     str(root),
+                    str(canonical_root / engram_path.name),
+                    str(canonical_root / missing_path.name),
                     str(canonical_root / regular_sibling_path.name),
                     str(canonical_root / symlink_alias_path.name),
-                    str(canonical_root / engram_path.name),
-                    str(canonical_root / regular_sibling_path.name),
-                    str(canonical_root / engram_path.name),
                 ],
             )
 
