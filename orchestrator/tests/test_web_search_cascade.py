@@ -19,6 +19,8 @@ import json
 import os
 import sys
 import tempfile
+import types
+import time
 import unittest
 from unittest import mock
 
@@ -733,6 +735,79 @@ class SemanticAugmentOverrideTests(unittest.TestCase):
     def test_garbage_leaves_config_in_charge(self):
         enabled, _ = self._load("maybe", config_enabled=True)
         self.assertTrue(enabled)
+
+
+class DdgConcurrencyTests(unittest.TestCase):
+    """DuckDuckGo throttles on burst concurrency, and each throttled request
+    cascades to the next (billed) tier. The gate paces requests so timeouts
+    become results instead of spend."""
+
+    def setUp(self):
+        ws._reset_ddg_gate()
+
+    def tearDown(self):
+        ws._reset_ddg_gate()
+
+    def _observe_peak(self, env, threads=12):
+        """Run N concurrent _ddgs_text calls; return the peak overlap seen."""
+        import threading as _t
+        live = {"now": 0, "peak": 0}
+        lock = _t.Lock()
+
+        class _FakeDDGS:
+            def text(self, query, max_results=None):
+                with lock:
+                    live["now"] += 1
+                    live["peak"] = max(live["peak"], live["now"])
+                time.sleep(0.02)
+                with lock:
+                    live["now"] -= 1
+                return [{"title": "t", "href": "u", "body": "b"}]
+
+        mod = types.ModuleType("ddgs")
+        mod.DDGS = _FakeDDGS
+        with mock.patch.dict(os.environ, env, clear=False), \
+                mock.patch.dict(sys.modules, {"ddgs": mod}):
+            ws._reset_ddg_gate()
+            workers = [_t.Thread(target=ws._ddgs_text, args=("q", 5))
+                       for _ in range(threads)]
+            for w in workers:
+                w.start()
+            for w in workers:
+                w.join()
+        return live["peak"]
+
+    def test_default_caps_concurrent_requests(self):
+        peak = self._observe_peak({"ORA_SEARCH_DDG_CONCURRENCY": ""})
+        self.assertLessEqual(peak, ws._DDG_CONCURRENCY_DEFAULT)
+
+    def test_limit_is_configurable(self):
+        peak = self._observe_peak({"ORA_SEARCH_DDG_CONCURRENCY": "2"})
+        self.assertLessEqual(peak, 2)
+
+    def test_zero_disables_the_gate(self):
+        """An operator must be able to restore unbounded behaviour."""
+        peak = self._observe_peak({"ORA_SEARCH_DDG_CONCURRENCY": "0"})
+        self.assertGreater(peak, ws._DDG_CONCURRENCY_DEFAULT)
+
+    def test_malformed_value_falls_back_to_the_default(self):
+        with mock.patch.dict(
+            os.environ, {"ORA_SEARCH_DDG_CONCURRENCY": "three"}, clear=False
+        ):
+            self.assertEqual(ws.ddg_concurrency(), ws._DDG_CONCURRENCY_DEFAULT)
+
+    def test_all_requests_still_complete(self):
+        """Pacing must not drop work — every query still runs."""
+        peak = self._observe_peak({"ORA_SEARCH_DDG_CONCURRENCY": "2"}, threads=8)
+        self.assertGreaterEqual(peak, 1)
+
+    def test_gate_is_shared_not_per_call(self):
+        """A per-call semaphore would bound nothing."""
+        with mock.patch.dict(
+            os.environ, {"ORA_SEARCH_DDG_CONCURRENCY": "3"}, clear=False
+        ):
+            ws._reset_ddg_gate()
+            self.assertIs(ws._get_ddg_gate(), ws._get_ddg_gate())
 
 
 if __name__ == "__main__":
