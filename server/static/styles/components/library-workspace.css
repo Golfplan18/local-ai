@@ -476,6 +476,12 @@ body.library-workspace-open .visual-pane-shell > .right-pane {
 .library-preview-layer h2 { margin-top: 0; }
 .library-preview-layer p { color: var(--text-muted); }
 .library-preview-badges { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.library-preview-body {
+  margin: 12px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
 .library-relationships {
   margin-top: 16px;
   border-top: 1px solid var(--background-modifier-border);

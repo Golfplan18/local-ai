@@ -63,8 +63,10 @@
     error: '',
     actionNotice: '',
     requestGeneration: 0,
+    previewGeneration: 0,
     relationshipGeneration: 0,
     renderGeneration: 0,
+    textPreview: { id: null, loading: false, error: '', text: null },
     related: {
       anchorId: null,
       locator: '',
@@ -79,6 +81,7 @@
   };
 
   let requestController = null;
+  let previewController = null;
   let relationshipController = null;
   let returnFocus = null;
   let resizeObserver = null;
@@ -266,6 +269,53 @@
     return '';
   }
 
+  const textPreviewEligible = (row) => Boolean(row
+    && (row.source === 'engrams' || row.source === 'files')
+    && row.preview && row.preview.kind === 'text'
+    && row.preview.available === true);
+
+  function resetTextPreview(row) {
+    ++state.previewGeneration;
+    if (previewController) previewController.abort();
+    previewController = null;
+    state.textPreview = { id: row ? row.id : null, loading: false, error: '', text: null };
+  }
+
+  async function fetchTextPreview(row) {
+    resetTextPreview(row);
+    if (!textPreviewEligible(row) || !state.open) return;
+    const generation = state.previewGeneration;
+    previewController = new AbortController();
+    const controller = previewController;
+    state.textPreview.loading = true;
+    try {
+      const params = new URLSearchParams({ id: row.id });
+      const response = await fetch(`/api/library/preview?${params.toString()}`, {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `Preview request failed (HTTP ${response.status})`);
+      if (generation !== state.previewGeneration || state.pinnedId !== row.id) return;
+      if (payload.id !== row.id || typeof payload.text !== 'string') {
+        throw new Error('The preview response did not match the pinned Library item.');
+      }
+      state.textPreview.text = payload.text;
+      state.textPreview.error = '';
+    } catch (error) {
+      if (error && error.name === 'AbortError') return;
+      if (generation !== state.previewGeneration) return;
+      state.textPreview.error = error && error.message ? error.message : String(error);
+      state.textPreview.text = null;
+    } finally {
+      if (generation === state.previewGeneration) {
+        state.textPreview.loading = false;
+        previewController = null;
+        renderPreview();
+      }
+    }
+  }
+
   function resetRelated(row, reason) {
     ++state.relationshipGeneration;
     if (relationshipController) relationshipController.abort();
@@ -386,6 +436,7 @@
   function pinRow(row) {
     state.pinnedId = row ? row.id : null;
     resetRelated(row);
+    fetchTextPreview(row);
     updateLogo();
     renderPreview();
     renderActions();
@@ -855,6 +906,7 @@
     state.universe = null;
     state.pagination = { offset: 0, limit: PAGE_LIMIT, returned: 0, has_more: false, next_offset: null };
     updateFacetOptions();
+    resetTextPreview(null);
     resetRelated(null, 'No sources are selected, so Related is not requested.');
     reconcileRows();
     render();
@@ -866,7 +918,10 @@
       return false;
     }
     const append = Boolean(options && options.append);
-    if (!append) state.loadingAll = false;
+    if (!append) {
+      state.loadingAll = false;
+      resetTextPreview(pinnedRow());
+    }
     state.actionNotice = '';
     const externalGeneration = options && options.generation;
     const generation = externalGeneration || ++state.requestGeneration;
@@ -913,6 +968,7 @@
         resetRelated(refreshedPin, previousPinnedId && !refreshedPin
           ? 'The previously pinned item is not present in the replacement inventory.'
           : undefined);
+        fetchTextPreview(refreshedPin);
       }
       reconcileRows();
       if (!append && state.related.locator) fetchRelated(pinnedRow());
@@ -1082,16 +1138,30 @@
     badges.className = 'library-preview-badges';
     badges.append(sourceBadge(row), document.createTextNode(` ${metadataLine(row)}`));
     const previewMessage = document.createElement('p');
+    const currentTextPreview = state.textPreview.id === row.id
+      ? state.textPreview
+      : null;
+    let previewBody = null;
     if (!row.preview.available) {
       previewMessage.textContent = row.source === 'dialogues'
         ? `This Dialogue is intentionally metadata-only and cannot be read here. ${row.preview.reason || ''}`.trim()
         : `Preview unavailable. ${row.preview.reason || ''}`.trim();
     } else if (row.source === 'dialogues') {
       previewMessage.textContent = 'The active Dialogue and its draft have not changed. Use Continue to open this readable Dialogue in the normal reader.';
+    } else if (currentTextPreview && currentTextPreview.loading) {
+      previewMessage.textContent = 'Loading the current text body…';
+    } else if (currentTextPreview && currentTextPreview.error) {
+      previewMessage.textContent = `Preview unavailable. ${currentTextPreview.error}`;
+    } else if (currentTextPreview && typeof currentTextPreview.text === 'string') {
+      previewMessage.textContent = 'Text preview';
+      previewBody = document.createElement('pre');
+      previewBody.className = 'library-preview-body';
+      previewBody.textContent = currentTextPreview.text;
     } else {
-      previewMessage.textContent = 'Metadata is available. This inventory response does not contain the item body.';
+      previewMessage.textContent = 'Preview unavailable. The current text body has not been loaded.';
     }
     previewTextLayer.append(heading, badges, previewMessage);
+    if (previewBody) previewTextLayer.appendChild(previewBody);
     appendRelationshipDisclosure(previewTextLayer, row);
 
     const visualHeading = document.createElement('h2');
@@ -1292,6 +1362,7 @@
     ++state.requestGeneration;
     if (requestController) requestController.abort();
     requestController = null;
+    resetTextPreview(null);
     resetRelated(null);
     state.loading = false;
     state.loadingAll = false;

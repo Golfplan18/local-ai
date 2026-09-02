@@ -202,6 +202,7 @@ var queuedRelatedResponses = [];
 var queuedBrowserResponses = [];
 var libraryRequestUrls = [];
 var queuedLibraryResponses = [];
+var queuedPreviewResponses = [];
 var sidebarListRequests = 0;
 var queuedSidebarListResponses = [];
 var sidebarListInFlight = 0;
@@ -344,6 +345,22 @@ function deferredResponse() {
 
 w.fetch = function (url, opts) {
   var decoded = decodeURIComponent(String(url));
+  if (decoded.indexOf('/api/library/preview?') === 0) {
+    if (queuedPreviewResponses.length) {
+      var queuedPreview = queuedPreviewResponses.shift();
+      if (queuedPreview && queuedPreview.promise) {
+        queuedPreview.options = opts || {};
+        return queuedPreview.promise;
+      }
+      return response(true, queuedPreview);
+    }
+    var previewId = new w.URL(decoded, w.location.href).searchParams.get('id');
+    return response(true, {
+      id: previewId,
+      source: String(previewId || '').indexOf('files:') === 0 ? 'files' : 'engrams',
+      text: 'Current body for ' + previewId,
+    });
+  }
   if (decoded.indexOf('/api/library/browser?') === 0) {
     libraryRequestUrls.push(decoded);
     if (queuedLibraryResponses.length) {
@@ -1235,6 +1252,57 @@ async function run() {
     checkbox.checked = false;
     checkbox.dispatchEvent(new w.Event('change', { bubbles: true }));
   });
+
+  var inquiryDraft = w.document.querySelector('.input-pane textarea');
+  inquiryDraft.value = 'Composer draft survives Library preview';
+  var activeDialogueBeforePreview = w.OraConversation.getActiveConversationId();
+  var visibleBody = '# Atomic Claim Title\n**literal Markdown**\n<em>literal HTML</em>';
+  queuedPreviewResponses.push({
+    id: contextEngram.id,
+    source: 'engrams',
+    text: visibleBody,
+  });
+  Array.from(w.document.querySelectorAll('.library-list-row__pin')).find(function (button) {
+    return button.textContent.indexOf('Atomic Claim Title') !== -1;
+  }).click();
+  await flush();
+  await flush();
+  var renderedPreviewBody = w.document.querySelector('.library-preview-body');
+  record('text body preview is literal and preserves active Dialogue, draft, and lower owners',
+    !!renderedPreviewBody
+      && renderedPreviewBody.textContent === visibleBody
+      && renderedPreviewBody.querySelector('em') === null
+      && w.getComputedStyle(renderedPreviewBody).whiteSpace === 'pre-wrap'
+      && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
+      && inquiryDraft.value === 'Composer draft survives Library preview'
+      && preservedFinding.parentElement === w.document.querySelector('.output-content')
+      && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
+
+  var staleBodyPreview = deferredResponse();
+  queuedPreviewResponses.push(staleBodyPreview);
+  w.document.querySelector(
+    '[data-library-row-id="engrams:reference"] .library-list-row__pin'
+  ).click();
+  await flush();
+  w.document.querySelector(
+    '[data-library-row-id="dialogues:metadata-only"] .library-list-row__pin'
+  ).click();
+  staleBodyPreview.resolve({
+    id: nonAtomicEngram.id,
+    source: 'engrams',
+    text: 'STALE BODY MUST NOT APPEAR',
+  });
+  await flush();
+  await flush();
+  var unavailablePreviewText = w.document.querySelector(
+    '.library-preview-layer--findings'
+  ).textContent;
+  record('newer pin aborts and generation-discards a late text body into an honest unavailable state',
+    staleBodyPreview.options.signal.aborted
+      && w.OraLibraryWorkspace.getState().pinnedId === metadataDialogue.id
+      && unavailablePreviewText.indexOf('cannot be read here') !== -1
+      && unavailablePreviewText.indexOf('STALE BODY MUST NOT APPEAR') === -1
+      && !w.document.querySelector('.library-preview-body'));
 
   var extensionActionRuns = 0;
   w.document.addEventListener('ora:library-actions-requested', function appendProofAction(event) {

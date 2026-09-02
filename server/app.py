@@ -14885,6 +14885,68 @@ def library_browser():
     return _json_response(payload)
 
 
+@app.route("/api/library/preview", methods=["GET"])
+def library_preview():
+    """Return one currently authorized Engram or project-file text body."""
+    from orchestrator.library_browser import normalize_row
+
+    item_ids = request.args.getlist("id")
+    item_id = str(item_ids[0] or "").strip() if len(item_ids) == 1 else ""
+    source, separator, encoded_identity = item_id.partition(":")
+    if (set(request.args) != {"id"} or not separator or not encoded_identity
+            or source not in {"engrams", "files"}):
+        return _json_response({
+            "error": "a valid Engram or File Library item id is required",
+        }, status=400)
+
+    try:
+        provider = (_library_engram_provider() if source == "engrams"
+                    else _library_file_provider())
+        normalized_rows = [
+            (raw, normalize_row(source, raw))
+            for raw in provider.get("rows", [])
+        ]
+    except Exception:
+        normalized_rows = []
+    matches = [pair for pair in normalized_rows if pair[1]["id"] == item_id]
+    if len(matches) != 1:
+        return _json_response({
+            "error": "the Library item is not present in the current source inventory",
+        }, status=404)
+
+    raw, row = matches[0]
+    if source == "engrams":
+        _library_hydrate_returned_engram_access([row])
+    preview = row["preview"]
+    identity = str(raw.get("identity") or "").strip()
+    if (preview.get("kind") != "text" or preview.get("available") is not True
+            or not identity):
+        return _json_response({
+            "error": preview.get("reason")
+            or "text preview is unavailable for the current Library item",
+        }, status=409)
+
+    if source == "engrams":
+        envelope = _browser_engram_envelope(
+            _browser_encode_source_id("engram", identity), target_tag="",
+        )
+        messages = envelope.get("messages", []) if isinstance(envelope, dict) else []
+        text = (messages[0].get("content") if len(messages) == 1
+                and isinstance(messages[0], dict) else None)
+    else:
+        try:
+            text = Path(identity).read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            text = None
+
+    if not isinstance(text, str):
+        return _json_response({
+            "error": "text preview is unavailable after current authority validation",
+        }, status=409)
+
+    return _json_response({"id": item_id, "source": source, "text": text})
+
+
 @app.route("/api/conversations/browser", methods=["GET"])
 def conversations_browser():
     """Search or browse live sessions plus archived conversation memory."""
