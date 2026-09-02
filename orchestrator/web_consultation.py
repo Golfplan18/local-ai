@@ -742,6 +742,18 @@ def assemble_consultation_package(
         return _empty_package("errored", f"intent_call_error: {exc}")
     intent_elapsed = time.time() - t_intent_start
 
+    if (intent_raw or "").lstrip().startswith("[Error"):
+        # Same laundering hazard as the claim scan: a dispatch failure would
+        # otherwise be indistinguishable from "this prompt warrants no
+        # searches", which is a legitimate and common outcome here.
+        signals.append(f"web_consultation_intent_error_string: {str(intent_raw)[:200]}")
+        print(
+            f"[web_consultation] intent identification returned an error "
+            f"instead of intents: {str(intent_raw)[:200]}",
+            file=sys.stderr, flush=True,
+        )
+        return _empty_package("errored", "intent_error_string")
+
     intents = _parse_intents(intent_raw or "")
     # Same unbounded-fan-out exposure as claim verification: the intent count
     # is whatever the fast model emits. Fail open — dropped intents are simply

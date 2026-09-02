@@ -652,5 +652,49 @@ class QueryCapTruncation(unittest.TestCase):
         self.assertEqual(out["trace"]["status"], "ran")
 
 
+class ModelErrorStringIsNotAnEmptyResult(unittest.TestCase):
+    """A dispatch failure must not be reported as "no claims found".
+
+    Ora's dispatch reports provider failures by RETURNING "[Error ...]"
+    rather than raising. The unflagged-claim scan parsed that string, found
+    no claims in it, and recorded status=ran extracted_count=0 — identical
+    to a clean draft with nothing worth checking. MSI's broker refused every
+    one of these calls for six weeks and the trace never said so.
+    """
+
+    DRAFT = "The Fed held rates at 4.25 percent. Powell cited 2.4 percent inflation."
+
+    def _run(self, model_return):
+        return claim_verification.extract_and_verify_unflagged_claims(
+            self.DRAFT, [],
+            call_model=lambda messages, endpoint, images=None: model_return,
+            fast_endpoint={"id": "test/model", "type": "api"},
+        )
+
+    def test_error_string_is_reported_as_errored(self):
+        out = self._run(
+            "[Error calling MSI text broker for ibm-granite/granite-4.1-8b: "
+            "RuntimeError: Gear-4 text call has no recognized procedural lane]"
+        )
+        self.assertEqual(out["trace"]["status"], "errored")
+        self.assertIn("extractor_error_string", str(out["trace"]["reason"]))
+
+    def test_error_string_names_the_cause_in_signals(self):
+        out = self._run("[Error calling MSI text broker: endpoint is not authorized]")
+        self.assertTrue(any("error_string" in str(s) for s in out["trace"]["signals"]))
+        self.assertIn("not authorized", str(out["trace"]["signals"]))
+
+    def test_genuine_empty_extraction_still_reads_as_ran(self):
+        """A draft with nothing worth checking is a legitimate zero, and must
+        stay distinguishable from a failure."""
+        out = self._run("EXTRACTED:\n(none)")
+        self.assertEqual(out["trace"]["status"], "ran")
+        self.assertEqual(out["trace"]["extracted_count"], 0)
+
+    def test_leading_whitespace_does_not_hide_the_error(self):
+        out = self._run("\n  [Error calling provider API: timeout]")
+        self.assertEqual(out["trace"]["status"], "errored")
+
+
 if __name__ == "__main__":
     unittest.main()
