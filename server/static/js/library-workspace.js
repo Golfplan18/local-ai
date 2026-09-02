@@ -1298,8 +1298,13 @@
     const target = options && options.focus === false ? null : returnFocus;
     returnFocus = null;
     savedLogo = null;
-    if (target && target.isConnected && typeof target.focus === 'function') {
-      try { target.focus(); } catch (error) {}
+    let focusTarget = target;
+    const targetSidebar = target && target.closest ? target.closest('.left-sidebar') : null;
+    if (targetSidebar && !targetSidebar.classList.contains('expanded')) {
+      focusTarget = document.getElementById('sidebarDashExpand') || target;
+    }
+    if (focusTarget && focusTarget.isConnected && typeof focusTarget.focus === 'function') {
+      try { focusTarget.focus(); } catch (error) {}
     }
   }
 
