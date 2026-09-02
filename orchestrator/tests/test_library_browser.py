@@ -1736,6 +1736,94 @@ class TestLibraryBrowser(unittest.TestCase):
                 {"dialogues", "files"},
             )
 
+    def test_text_preview_revalidates_library_authority(self):
+        import tempfile
+        from pathlib import Path
+
+        server = _server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            engram, empty_engram, plain_engram, project_file, withheld, invalid, malformed = (
+                root / "admitted.md", root / "empty.md", root / "plain.md",
+                root / "notes.txt", root / "withheld.md", root / "invalid.md",
+                root / "malformed.md",
+            )
+            exact_body = "\n  # Engram\r\nVisible body  \r\n\r\n"
+            plain_body = "  Plain body\r\nTrailing  \r\n"
+            for path, text in (
+                (engram, "---\ntags: [engram]\n---\n" + exact_body),
+                (empty_engram, "---\ntags: [engram]\n---"),
+                (plain_engram, plain_body),
+                (project_file, "Project body\n**plain text**\n"),
+                (withheld, "---\ntags: [private]\n---\nprivate body"),
+                (malformed, "---\ntags: [engram]\nno closing fence"),
+            ):
+                path.write_bytes(text.encode("utf-8"))
+            invalid.write_bytes(
+                b"---\ntags: [engram]\n---\ninvalid \xff SECRET_INVALID_BODY"
+            )
+
+            def row(path, kind="text", available=True):
+                return {"identity": str(path), "preview": {
+                    "kind": kind, "available": available,
+                    "locator": {"path": str(path)},
+                }}
+
+            with (
+                server.app.test_client() as client,
+                mock.patch.object(
+                    server, "_browser_engram_envelope",
+                    wraps=server._browser_engram_envelope,
+                ) as reader,
+            ):
+                def request(source, item_path, rows, **extra):
+                    provider = ("_library_engram_provider" if source == "engrams"
+                                else "_library_file_provider")
+                    with mock.patch.object(server, provider,
+                                           return_value={"rows": rows}):
+                        return client.get("/api/library/preview", query_string={
+                            "id": stable_item_id(source, str(item_path)), **extra,
+                        })
+
+                for source, path, expected in (
+                    ("engrams", engram, exact_body),
+                    ("engrams", empty_engram, ""),
+                    ("engrams", plain_engram, plain_body),
+                    ("files", project_file, "Project body\n**plain text**\n"),
+                ):
+                    with self.subTest(f"admitted {source}"):
+                        response = request(source, path, [row(
+                            path, available=source == "files",
+                        )])
+                        self.assertEqual(response.status_code, 200)
+                        self.assertEqual(response.get_json()["text"], expected)
+
+                for label, source, path, rows, extra, status in (
+                    ("stale/private", "engrams", withheld,
+                     [row(withheld, available=False)], {}, 409),
+                    ("unlisted", "files", withheld, [row(project_file)], {}, 404),
+                    ("unsupported", "files", project_file,
+                     [row(project_file, "unsupported", False)], {}, 409),
+                    ("forged locator", "files", project_file, [row(project_file)],
+                     {"path": str(withheld)}, 400),
+                    ("invalid UTF-8", "engrams", invalid,
+                     [row(invalid, available=False)], {}, 409),
+                    ("malformed frontmatter", "engrams", malformed,
+                     [row(malformed, available=False)], {}, 409),
+                ):
+                    with self.subTest(label):
+                        response = request(source, path, rows, **extra)
+                        self.assertEqual(response.status_code, status)
+                        self.assertNotIn("private body", response.get_data(as_text=True))
+                        self.assertNotIn(
+                            "SECRET_INVALID_BODY", response.get_data(as_text=True),
+                        )
+
+                self.assertTrue(reader.called)
+                self.assertTrue(all(call.kwargs == {"target_tag": ""}
+                                    for call in reader.call_args_list))
+
     def test_http_endpoint_accepts_multiple_sources_and_pages_combined_rows(self):
         server = _server_module()
 

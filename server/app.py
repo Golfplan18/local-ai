@@ -14885,6 +14885,96 @@ def library_browser():
     return _json_response(payload)
 
 
+@app.route("/api/library/preview", methods=["GET"])
+def library_preview():
+    """Return one currently authorized Engram or project-file text body."""
+    from orchestrator.library_browser import normalize_row
+
+    item_ids = request.args.getlist("id")
+    item_id = str(item_ids[0] or "").strip() if len(item_ids) == 1 else ""
+    source, separator, encoded_identity = item_id.partition(":")
+    if (set(request.args) != {"id"} or not separator or not encoded_identity
+            or source not in {"engrams", "files"}):
+        return _json_response({
+            "error": "a valid Engram or File Library item id is required",
+        }, status=400)
+
+    try:
+        provider = (_library_engram_provider() if source == "engrams"
+                    else _library_file_provider())
+        normalized_rows = [
+            (raw, normalize_row(source, raw))
+            for raw in provider.get("rows", [])
+        ]
+    except Exception:
+        normalized_rows = []
+    matches = [pair for pair in normalized_rows if pair[1]["id"] == item_id]
+    if len(matches) != 1:
+        return _json_response({
+            "error": "the Library item is not present in the current source inventory",
+        }, status=404)
+
+    raw, row = matches[0]
+    if source == "engrams":
+        _library_hydrate_returned_engram_access([row])
+    preview = row["preview"]
+    identity = str(raw.get("identity") or "").strip()
+    if (preview.get("kind") != "text" or preview.get("available") is not True
+            or not identity):
+        return _json_response({
+            "error": preview.get("reason")
+            or "text preview is unavailable for the current Library item",
+        }, status=409)
+
+    if source == "engrams":
+        try:
+            envelope = _browser_engram_envelope(
+                _browser_encode_source_id("engram", identity), target_tag="",
+            )
+            if not isinstance(envelope, dict):
+                raise ValueError("Engram is not Standard-readable")
+
+            path = _browser_resolve_path(identity)
+            with open(path, "r", encoding="utf-8", newline="") as stream:
+                candidate = stream.read()
+            owner_metadata = _browser_frontmatter_metadata(
+                candidate, path=path,
+            )
+            if (owner_metadata is None
+                    or not _browser_knowledge_metadata_allowed(
+                        owner_metadata, "",
+                    )):
+                raise ValueError("Engram is not Standard-readable")
+            frontmatter_candidate = candidate.lstrip("\ufeff")
+            if frontmatter_candidate.startswith("---"):
+                from orchestrator.conversation_closeout import _frontmatter_bounds
+
+                _opening_end, closing_start = _frontmatter_bounds(
+                    frontmatter_candidate,
+                )
+                closing_line_end = frontmatter_candidate.find(
+                    "\n", closing_start,
+                )
+                text = ("" if closing_line_end < 0
+                        else frontmatter_candidate[closing_line_end + 1:])
+            else:
+                text = candidate
+        except (OSError, UnicodeError, ValueError):
+            text = None
+    else:
+        try:
+            text = Path(identity).read_text(encoding="utf-8")
+        except (OSError, UnicodeError, ValueError):
+            text = None
+
+    if not isinstance(text, str):
+        return _json_response({
+            "error": "text preview is unavailable after current authority validation",
+        }, status=409)
+
+    return _json_response({"id": item_id, "source": source, "text": text})
+
+
 @app.route("/api/conversations/browser", methods=["GET"])
 def conversations_browser():
     """Search or browse live sessions plus archived conversation memory."""
