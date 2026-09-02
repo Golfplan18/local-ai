@@ -598,6 +598,23 @@ _EXTRACTED_BLOCK_RE = re.compile(
 )
 
 
+def _looks_like_model_error(raw: str) -> bool:
+    """True when a model call returned an error STRING rather than content.
+
+    Ora's dispatch layer reports provider failures by returning
+    ``"[Error ...]"`` instead of raising (boot.py's call_api/call_local
+    convention, checked the same way at boot.py:3926 and 11848). A parser
+    that only asks "did this yield any items?" therefore cannot tell a
+    genuine empty answer from a total dispatch failure, and reports the
+    failure as an ordinary empty result.
+
+    That is not hypothetical. MSI's broker refused every unflagged-claim
+    scan call for six weeks with such a string; the scan recorded
+    "0 claims extracted" 22,059 times and never once reported an error.
+    """
+    return (raw or "").lstrip().startswith("[Error")
+
+
 def _parse_extracted_claims(text: str) -> list[dict]:
     """Parse extracted unflagged claims from the fast-model output.
 
@@ -709,6 +726,20 @@ def extract_and_verify_unflagged_claims(
         signals.append(f"unflagged_scan_extractor_call_error: {exc}")
         return _empty_unflagged_result(
             "errored", f"extractor_call_error: {str(exc)[:200]}",
+            t_start, signals,
+        )
+
+    if _looks_like_model_error(raw):
+        # Distinguishing this from "the draft had no risky claims" is the
+        # whole point: both used to produce extracted_count=0, status=ran.
+        signals.append(f"unflagged_scan_extractor_error_string: {str(raw)[:200]}")
+        print(
+            f"[claim_verification] unflagged-claim scan extractor returned an "
+            f"error instead of claims: {str(raw)[:200]}",
+            file=sys.stderr, flush=True,
+        )
+        return _empty_unflagged_result(
+            "errored", f"extractor_error_string: {str(raw)[:200]}",
             t_start, signals,
         )
 
