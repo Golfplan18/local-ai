@@ -14030,11 +14030,32 @@ def _library_engram_provider(query: str = "") -> dict:
         if not isinstance(physical, str) or not physical.strip():
             return {"rows": [], "complete": False,
                     "reason": "the Engram index collection identity is unavailable"}
+        allowed_scalar_keys = {
+            "path", "type", "title", "conversation_title", "source",
+            "raw_path", "chunk_path", "obsidian_path", "nexus",
+            "project_ids", "tags", "tag", "artifact_kind", "managed_by",
+            "source_file", "source_chunk_id", "source_turn_index",
+            "turn_privacy",
+        }
+
+        def projectable_metadata_key(raw_key, array_lane):
+            if not isinstance(raw_key, str):
+                return False
+            key = raw_key.strip()
+            if array_lane:
+                return key in {"tags", "project_ids"}
+            return key in allowed_scalar_keys or key.startswith("tag_")
+
         db_path = rp.chromadb_dir() / "chroma.sqlite3"
         connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         connection.create_function(
             "PYTHON_STRIP", 1,
             lambda value: value.strip() if isinstance(value, str) else None,
+            deterministic=True,
+        )
+        connection.create_function(
+            "PYTHON_PROJECTABLE_KEY", 2,
+            projectable_metadata_key,
             deterministic=True,
         )
         connection.execute("PRAGMA query_only=ON")
@@ -14128,23 +14149,18 @@ def _library_engram_provider(query: str = "") -> dict:
 
         complete, reason = True, None
         metadata_records: list[tuple[int, dict]] = []
-        allowed_scalar_keys = {
-            "path", "type", "title", "conversation_title", "source",
-            "raw_path", "chunk_path", "obsidian_path", "nexus",
-            "project_ids", "tags", "tag", "artifact_kind", "managed_by",
-            "source_file", "source_chunk_id", "source_turn_index",
-            "turn_privacy",
-        }
 
-        def stored_metadata_value(string_value, int_value, float_value, bool_value):
-            if string_value is not None:
-                return string_value
-            if int_value is not None:
-                return int(int_value)
-            if float_value is not None:
-                return float(float_value)
-            if bool_value is not None:
-                return bool(bool_value)
+        def stored_metadata_value(raw_value, value_kind):
+            if raw_value is None:
+                return None
+            if value_kind == "string":
+                return raw_value
+            if value_kind == "int":
+                return int(raw_value)
+            if value_kind == "float":
+                return float(raw_value)
+            if value_kind == "bool":
+                return bool(raw_value)
             return None
 
         def mark_incomplete(message: str) -> None:
@@ -14170,85 +14186,53 @@ def _library_engram_provider(query: str = "") -> dict:
             candidate_cursor = connection.execute(
                 """
                 SELECT 'scalar' AS lane,
-                       embedding.id,
-                       embedding.embedding_id,
-                       PYTHON_STRIP(metadata.key),
-                       CASE WHEN PYTHON_STRIP(metadata.key) IN (
-                           'path', 'type', 'title', 'conversation_title',
-                           'source', 'raw_path', 'chunk_path', 'obsidian_path',
-                           'nexus', 'project_ids', 'tags', 'tag',
-                           'artifact_kind', 'managed_by', 'source_file',
-                           'source_chunk_id', 'source_turn_index',
-                           'turn_privacy'
-                       ) OR PYTHON_STRIP(metadata.key) LIKE 'tag_%'
-                       THEN metadata.string_value END,
-                       CASE WHEN PYTHON_STRIP(metadata.key) IN (
-                           'path', 'type', 'title', 'conversation_title',
-                           'source', 'raw_path', 'chunk_path', 'obsidian_path',
-                           'nexus', 'project_ids', 'tags', 'tag',
-                           'artifact_kind', 'managed_by', 'source_file',
-                           'source_chunk_id', 'source_turn_index',
-                           'turn_privacy'
-                       ) OR PYTHON_STRIP(metadata.key) LIKE 'tag_%'
-                       THEN metadata.int_value END,
-                       CASE WHEN PYTHON_STRIP(metadata.key) IN (
-                           'path', 'type', 'title', 'conversation_title',
-                           'source', 'raw_path', 'chunk_path', 'obsidian_path',
-                           'nexus', 'project_ids', 'tags', 'tag',
-                           'artifact_kind', 'managed_by', 'source_file',
-                           'source_chunk_id', 'source_turn_index',
-                           'turn_privacy'
-                       ) OR PYTHON_STRIP(metadata.key) LIKE 'tag_%'
-                       THEN metadata.float_value END,
-                       CASE WHEN PYTHON_STRIP(metadata.key) IN (
-                           'path', 'type', 'title', 'conversation_title',
-                           'source', 'raw_path', 'chunk_path', 'obsidian_path',
-                           'nexus', 'project_ids', 'tags', 'tag',
-                           'artifact_kind', 'managed_by', 'source_file',
-                           'source_chunk_id', 'source_turn_index',
-                           'turn_privacy'
-                       ) OR PYTHON_STRIP(metadata.key) LIKE 'tag_%'
-                       THEN metadata.bool_value END
+                       metadata.id,
+                       metadata.key,
+                       CASE WHEN PYTHON_PROJECTABLE_KEY(metadata.key, 0)
+                            THEN COALESCE(
+                                metadata.string_value,
+                                metadata.int_value,
+                                metadata.float_value,
+                                metadata.bool_value
+                            )
+                       END,
+                       CASE WHEN metadata.string_value IS NOT NULL THEN 'string'
+                            WHEN metadata.int_value IS NOT NULL THEN 'int'
+                            WHEN metadata.float_value IS NOT NULL THEN 'float'
+                            WHEN metadata.bool_value IS NOT NULL THEN 'bool'
+                       END
                 FROM json_each(?) AS candidate
-                CROSS JOIN embeddings AS embedding
-                  ON embedding.id = CAST(candidate.value AS INTEGER)
                 CROSS JOIN embedding_metadata AS metadata
-                  ON metadata.id = embedding.id
-                WHERE embedding.segment_id = ?
+                  ON metadata.id = CAST(candidate.value AS INTEGER)
                 UNION ALL
                 SELECT 'array' AS lane,
-                       embedding.id,
-                       embedding.embedding_id,
-                       PYTHON_STRIP(metadata.key),
-                       metadata.string_value,
-                       metadata.int_value,
-                       metadata.float_value,
-                       metadata.bool_value
+                       metadata.id,
+                       metadata.key,
+                       COALESCE(
+                           metadata.string_value,
+                           metadata.int_value,
+                           metadata.float_value,
+                           metadata.bool_value
+                       ),
+                       CASE WHEN metadata.string_value IS NOT NULL THEN 'string'
+                            WHEN metadata.int_value IS NOT NULL THEN 'int'
+                            WHEN metadata.float_value IS NOT NULL THEN 'float'
+                            WHEN metadata.bool_value IS NOT NULL THEN 'bool'
+                       END
                 FROM json_each(?) AS candidate
-                CROSS JOIN embeddings AS embedding
-                  ON embedding.id = CAST(candidate.value AS INTEGER)
                 CROSS JOIN embedding_metadata_array AS metadata
-                  ON metadata.id = embedding.id
-                WHERE embedding.segment_id = ?
-                  AND PYTHON_STRIP(metadata.key) IN ('tags', 'project_ids')
+                  ON metadata.id = CAST(candidate.value AS INTEGER)
+                WHERE PYTHON_PROJECTABLE_KEY(metadata.key, 1)
                 """,
-                (
-                    encoded_batch,
-                    metadata_segment_id,
-                    encoded_batch,
-                    metadata_segment_id,
-                ),
+                (encoded_batch, encoded_batch),
             )
 
             for (
                 lane,
                 row_id,
-                _raw_embedding_id,
                 raw_key,
-                string_value,
-                int_value,
-                float_value,
-                bool_value,
+                raw_value,
+                value_kind,
             ) in candidate_cursor:
                 state = batch_states.get(int(row_id))
                 if state is None:
@@ -14257,9 +14241,7 @@ def _library_engram_provider(query: str = "") -> dict:
                     )
                     continue
                 key = raw_key.strip() if isinstance(raw_key, str) else ""
-                value = stored_metadata_value(
-                    string_value, int_value, float_value, bool_value,
-                )
+                value = stored_metadata_value(raw_value, value_kind)
                 if lane == "scalar":
                     state["scalar_seen"] = True
                     duplicate_key = key in state["scalar_keys"]

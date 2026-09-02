@@ -421,7 +421,8 @@ class TestLibraryBrowser(unittest.TestCase):
                         string_value TEXT,
                         int_value INTEGER,
                         float_value REAL,
-                        bool_value INTEGER
+                        bool_value INTEGER,
+                        PRIMARY KEY (id, key)
                     );
                     CREATE TABLE embedding_metadata_array (
                         id INTEGER NOT NULL,
@@ -431,10 +432,8 @@ class TestLibraryBrowser(unittest.TestCase):
                         float_value REAL,
                         bool_value INTEGER
                     );
-                    CREATE INDEX embedding_metadata_by_id
-                        ON embedding_metadata(id);
-                    CREATE INDEX embedding_metadata_array_by_id
-                        ON embedding_metadata_array(id);
+                    CREATE INDEX embedding_metadata_array_by_id_key
+                        ON embedding_metadata_array(id, key);
                     """
                 )
                 fixture.executemany(
@@ -516,6 +515,12 @@ class TestLibraryBrowser(unittest.TestCase):
                     "(id, key, string_value) VALUES (?, ?, ?)",
                     (1, "chroma:document", document_sentinel),
                 )
+                masked_numeric_key = "internal_sequence"
+                fixture.execute(
+                    "INSERT INTO embedding_metadata"
+                    "(id, key, int_value) VALUES (?, ?, ?)",
+                    (1, masked_numeric_key, 17),
+                )
                 fixture.execute(
                     "INSERT INTO embedding_metadata"
                     "(id, key, string_value) VALUES (?, ?, ?)",
@@ -569,7 +574,20 @@ class TestLibraryBrowser(unittest.TestCase):
                         (1, "tags", "alpha"),
                         (6, "tags", "beta"),
                         (6, " project_ids ", "project-x"),
+                        (1, "chroma:document", document_sentinel),
                     ],
+                )
+                candidate_row_ids = (1, 6, 7, 8, 9, 10, 11, 12, 13)
+                placeholders = ",".join("?" for _ in candidate_row_ids)
+                expected_projectable_key_calls = sum(
+                    fixture.execute(
+                        f"SELECT COUNT(*) FROM {table} "
+                        f"WHERE id IN ({placeholders})",
+                        candidate_row_ids,
+                    ).fetchone()[0]
+                    for table in (
+                        "embedding_metadata", "embedding_metadata_array",
+                    )
                 )
                 fixture.commit()
             finally:
@@ -579,10 +597,11 @@ class TestLibraryBrowser(unittest.TestCase):
             fixture_entries = sorted(path.name for path in chroma_dir.iterdir())
             connect_calls = []
             statements = []
-            selected_embedding_ids = []
+            selected_flat_row_ids = []
             flat_rows = []
             flat_queries = []
             flat_query_plan = []
+            projectable_key_calls = []
             streamed_cursors = []
 
             class StreamingCursor:
@@ -600,7 +619,7 @@ class TestLibraryBrowser(unittest.TestCase):
                 def __next__(self):
                     row = next(self._cursor)
                     if self._label == "flat":
-                        selected_embedding_ids.append(row[2])
+                        selected_flat_row_ids.append(row[1])
                         flat_rows.append(row)
                     return row
 
@@ -634,6 +653,19 @@ class TestLibraryBrowser(unittest.TestCase):
                     ):
                         return StreamingCursor(cursor, "identity")
                     return cursor
+
+                def create_function(self, name, narg, function, **kwargs):
+                    if name == "PYTHON_PROJECTABLE_KEY":
+                        registered_function = function
+
+                        def counted_function(*args):
+                            projectable_key_calls.append(args)
+                            return registered_function(*args)
+
+                        function = counted_function
+                    return self._connection.create_function(
+                        name, narg, function, **kwargs,
+                    )
 
                 def __getattr__(self, name):
                     return getattr(self._connection, name)
@@ -697,6 +729,13 @@ class TestLibraryBrowser(unittest.TestCase):
                 (str(row["path"]).strip(), row["type"], row.get("title")): row
                 for row in admitted_metadata
             }
+            self.assertTrue(all(
+                masked_numeric_key not in row for row in admitted_metadata
+            ))
+            self.assertTrue(all(
+                masked_numeric_key not in row["metadata"]
+                for row in engrams["rows"]
+            ))
             self.assertIn(
                 (str(engram_path), "engram", "Indexed Engram"),
                 admitted_by_id,
@@ -717,6 +756,18 @@ class TestLibraryBrowser(unittest.TestCase):
                 ]["source_turn_index"],
                 1,
             )
+            self.assertIs(
+                type(admitted_by_id[
+                    (str(blocked_path), "chat", "Blocked sibling")
+                ]["source_turn_index"]),
+                int,
+            )
+            self.assertIs(
+                admitted_by_id[
+                    (str(private_path), "engram", "Private Engram")
+                ]["tag_private"],
+                True,
+            )
             self.assertNotIn(
                 str(blocked_path.resolve()),
                 [row["identity"] for row in engrams["rows"]],
@@ -733,34 +784,44 @@ class TestLibraryBrowser(unittest.TestCase):
                 str(duplicate_key_path.resolve()),
                 [row["identity"] for row in engrams["rows"]],
             )
-            self.assertEqual(set(selected_embedding_ids), {
-                "chunk-1", "chunk-2", "chunk-blocked-engram",
-                "chunk-blocked-sibling", "chunk-private-engram",
-                "chunk", " chunk ", "chunk-blank-key",
-                "chunk-duplicate-key",
-            })
-            self.assertNotIn("chunk-non-engram", selected_embedding_ids)
+            self.assertEqual(set(selected_flat_row_ids), set(candidate_row_ids))
+            self.assertNotIn(5, selected_flat_row_ids)
             self.assertEqual({row[0] for row in flat_rows}, {"scalar", "array"})
-            self.assertTrue(all(len(row) == 8 for row in flat_rows))
+            self.assertTrue(all(len(row) == 5 for row in flat_rows))
             self.assertIn("", [
-                row[3] for row in flat_rows
+                row[2].strip() for row in flat_rows
                 if row[0] == "scalar" and row[1] == 12
             ])
             self.assertEqual(sum(
-                row[0] == "scalar" and row[1] == 13 and row[3] == "title"
+                row[0] == "scalar" and row[1] == 13
+                and row[2].strip() == "title"
                 for row in flat_rows
             ), 2)
             document_rows = [
                 row for row in flat_rows
-                if row[0] == "scalar" and row[3] == "chroma:document"
+                if row[0] == "scalar" and row[2] == "chroma:document"
             ]
             self.assertEqual(len(document_rows), 1)
-            self.assertTrue(all(value is None for value in document_rows[0][4:]))
+            self.assertIsNone(document_rows[0][3])
+            masked_numeric_rows = [
+                row for row in flat_rows
+                if row[0] == "scalar" and row[2] == masked_numeric_key
+            ]
+            self.assertEqual(len(masked_numeric_rows), 1)
+            self.assertIsNone(masked_numeric_rows[0][3])
+            self.assertEqual(masked_numeric_rows[0][4], "int")
             self.assertFalse(any(
                 document_sentinel in value
                 for row in flat_rows
-                for value in row[4:]
+                for value in row[3:]
                 if isinstance(value, str)
+            ))
+            self.assertEqual(
+                len(projectable_key_calls), expected_projectable_key_calls,
+            )
+            self.assertTrue(all(
+                len(args) == 2 and args[1] in (0, 1)
+                for args in projectable_key_calls
             ))
             self.assertEqual(streamed_cursors, ["identity", "flat"])
 
@@ -802,38 +863,52 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertNotIn("embedding_metadata_array", identity_query)
             self.assertTrue(all(
                 table in flat_query for table in (
-                    "json_each", "embeddings", "embedding_metadata",
+                    "json_each", "embedding_metadata",
                     "embedding_metadata_array",
                 )
             ))
+            self.assertNotIn("embeddings AS embedding", flat_query)
             self.assertIn("UNION ALL", flat_query)
             self.assertEqual(
                 flat_query.count("FROM json_each(?) AS candidate"), 2,
             )
             self.assertEqual(
-                flat_query.count("CROSS JOIN embeddings AS embedding"), 2,
+                flat_query.count("PYTHON_PROJECTABLE_KEY(metadata.key, 0)"), 1,
             )
             self.assertEqual(
-                flat_query.count("WHERE embedding.segment_id = ?"), 2,
+                flat_query.count("PYTHON_PROJECTABLE_KEY(metadata.key, 1)"), 1,
             )
+            self.assertNotIn("PYTHON_STRIP", flat_query)
             plan_details = [str(row[3]) for row in flat_query_plan]
             candidate_plan_rows = [
                 index for index, detail in enumerate(plan_details)
                 if "SCAN candidate VIRTUAL TABLE" in detail
             ]
-            embedding_plan_rows = [
+            metadata_plan_rows = [
                 index for index, detail in enumerate(plan_details)
-                if "SEARCH embedding USING INTEGER PRIMARY KEY" in detail
+                if "SEARCH metadata USING INDEX" in detail
             ]
             self.assertEqual(len(candidate_plan_rows), 2, plan_details)
-            self.assertEqual(len(embedding_plan_rows), 2, plan_details)
-            for candidate_plan_row, embedding_plan_row in zip(
-                candidate_plan_rows, embedding_plan_rows,
+            self.assertEqual(len(metadata_plan_rows), 2, plan_details)
+            for candidate_plan_row, metadata_plan_row in zip(
+                candidate_plan_rows, metadata_plan_rows,
             ):
                 self.assertLess(
-                    candidate_plan_row, embedding_plan_row, plan_details,
+                    candidate_plan_row, metadata_plan_row, plan_details,
                 )
-            self.assertIn("chroma:document", [row[3] for row in flat_rows])
+            self.assertTrue(any(
+                "sqlite_autoindex_embedding_metadata_1 (id=?)" in detail
+                for detail in plan_details
+            ), plan_details)
+            self.assertTrue(any(
+                "embedding_metadata_array_by_id_key (id=?)" in detail
+                for detail in plan_details
+            ), plan_details)
+            self.assertFalse(any(
+                "SEARCH embedding USING INTEGER PRIMARY KEY" in detail
+                for detail in plan_details
+            ), plan_details)
+            self.assertIn("chroma:document", [row[2] for row in flat_rows])
             self.assertNotIn("json_object", flat_query)
             self.assertNotIn("json_group_array", flat_query)
             self.assertNotIn(" OVER ", flat_query)
