@@ -975,11 +975,12 @@ class TestLibraryBrowser(unittest.TestCase):
                 flat_query.count("FROM json_each(?) AS candidate"), 3,
             )
             self.assertEqual(
-                flat_query.count("CROSS JOIN json_each(?) AS selected_key"), 3,
+                flat_query.count("WHERE +metadata.key IN ("), 3,
             )
             self.assertEqual(
-                flat_query.count("metadata.key = selected_key.value"), 3,
+                flat_query.count("SELECT value FROM json_each(?)"), 3,
             )
+            self.assertNotIn("AS selected_key", flat_query)
             hot_sql = " ".join([identity_query, *flat_queries])
             self.assertNotIn("PYTHON_STRIP", hot_sql)
             self.assertNotIn("PYTHON_PROJECTABLE_KEY", hot_sql)
@@ -996,10 +997,6 @@ class TestLibraryBrowser(unittest.TestCase):
                 index for index, detail in enumerate(plan_details)
                 if "SCAN candidate VIRTUAL TABLE" in detail
             ]
-            selected_key_plan_rows = [
-                index for index, detail in enumerate(plan_details)
-                if "SCAN selected_key VIRTUAL TABLE" in detail
-            ]
             metadata_plan_rows = [
                 index for index, detail in enumerate(plan_details)
                 if (
@@ -1008,20 +1005,12 @@ class TestLibraryBrowser(unittest.TestCase):
                 )
             ]
             self.assertEqual(len(candidate_plan_rows), 6, plan_details)
-            self.assertEqual(len(selected_key_plan_rows), 6, plan_details)
             self.assertEqual(len(metadata_plan_rows), 6, plan_details)
-            for (
-                candidate_plan_row,
-                metadata_plan_row,
-                selected_key_plan_row,
-            ) in zip(
-                candidate_plan_rows, metadata_plan_rows, selected_key_plan_rows,
+            for candidate_plan_row, metadata_plan_row in zip(
+                candidate_plan_rows, metadata_plan_rows,
             ):
                 self.assertLess(
                     candidate_plan_row, metadata_plan_row, plan_details,
-                )
-                self.assertLess(
-                    metadata_plan_row, selected_key_plan_row, plan_details,
                 )
             metadata_plan_details = [
                 plan_details[index] for index in metadata_plan_rows
@@ -1032,6 +1021,12 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertFalse(any(
                 "key=?" in detail for detail in metadata_plan_details
             ), metadata_plan_details)
+            self.assertEqual(sum(
+                "LIST SUBQUERY" in detail for detail in plan_details
+            ), 6, plan_details)
+            self.assertEqual(sum(
+                "CREATE BLOOM FILTER" in detail for detail in plan_details
+            ), 6, plan_details)
             self.assertTrue(any(
                 "sqlite_autoindex_embedding_metadata_1 (id=?)"
                 in detail
