@@ -625,6 +625,8 @@ class TestLibraryBrowser(unittest.TestCase):
             identity_queries = []
             identity_parameters = []
             identity_query_plan = []
+            identity_payload_rows = []
+            identity_rows = []
             selected_flat_row_ids = []
             flat_rows = []
             flat_payload_rows = []
@@ -656,6 +658,13 @@ class TestLibraryBrowser(unittest.TestCase):
                     row = next(self._cursor)
                     if self._label == "keys":
                         raw_key_rows.append(row)
+                    elif self._label == "identity":
+                        identity_payload_rows.append(row)
+                        (payload,) = row
+                        identity_rows.extend(
+                            tuple(payload_row)
+                            for payload_row in json.loads(payload)
+                        )
                     elif self._label == "flat":
                         flat_payload_rows.append(row)
                         lane, payload = row
@@ -961,6 +970,16 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertTrue({
                 "path", "type", "\u2003path\u2029", "\u2003type\u2029",
             }.issubset(identity_bound_keys))
+            self.assertEqual(len(identity_payload_rows), 1)
+            self.assertEqual(len(identity_payload_rows[0]), 1)
+            self.assertEqual(
+                len(identity_rows), 2 * (len(candidate_row_ids) + 1),
+            )
+            self.assertTrue(all(len(row) == 4 for row in identity_rows))
+            self.assertEqual(
+                {row[0] for row in identity_rows},
+                set(candidate_row_ids) | {5},
+            )
             scalar_bound_keys = set(json.loads(flat_parameters[0][1]))
             scalar_guard_keys = set(json.loads(flat_parameters[0][3]))
             array_bound_keys = set(json.loads(flat_parameters[0][5]))
@@ -1033,6 +1052,9 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertIn("CROSS JOIN json_each(?) AS identity_key", identity_query)
             self.assertIn("metadata.key = identity_key.value", identity_query)
             self.assertNotIn("embedding_metadata_array", identity_query)
+            self.assertEqual(
+                identity_query.count("json_group_array(json_array("), 1,
+            )
             self.assertTrue(all(
                 table in flat_query for table in (
                     "json_each", "embedding_metadata",
