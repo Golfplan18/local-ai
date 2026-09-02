@@ -274,10 +274,15 @@
     && row.preview && row.preview.kind === 'text'
     && row.preview.available === true);
 
-  function resetTextPreview(row) {
+  function invalidateTextPreviewRequest() {
     ++state.previewGeneration;
     if (previewController) previewController.abort();
     previewController = null;
+    state.textPreview.loading = false;
+  }
+
+  function resetTextPreview(row) {
+    invalidateTextPreviewRequest();
     state.textPreview = { id: row ? row.id : null, loading: false, error: '', text: null };
   }
 
@@ -920,7 +925,7 @@
     const append = Boolean(options && options.append);
     if (!append) {
       state.loadingAll = false;
-      resetTextPreview(pinnedRow());
+      invalidateTextPreviewRequest();
     }
     state.actionNotice = '';
     const externalGeneration = options && options.generation;

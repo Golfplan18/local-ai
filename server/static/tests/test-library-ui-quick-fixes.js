@@ -1278,6 +1278,51 @@ async function run() {
       && preservedFinding.parentElement === w.document.querySelector('.output-content')
       && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
 
+  var failedBodyRefresh = deferredResponse();
+  queuedLibraryResponses.push(failedBodyRefresh);
+  var failedBodyRefreshPromise = w.OraLibraryWorkspace.refresh();
+  var bodyWhileRefreshPending = w.document.querySelector('.library-preview-body');
+  record('same-scope replacement keeps a settled text body visible while pending',
+    !!bodyWhileRefreshPending
+      && bodyWhileRefreshPending.textContent === visibleBody
+      && !!failedBodyRefresh.options
+      && failedBodyRefresh.options.signal.aborted === false);
+  failedBodyRefresh.resolveError({ error: 'replacement failed' }, 503);
+  await failedBodyRefreshPromise;
+  await flush();
+  var bodyAfterRefreshFailure = w.document.querySelector('.library-preview-body');
+  record('failed same-scope replacement keeps the settled text body visible',
+    !!bodyAfterRefreshFailure
+      && bodyAfterRefreshFailure.textContent === visibleBody
+      && w.document.getElementById('libraryWorkspaceNotice').textContent
+        .indexOf('replacement failed') !== -1);
+
+  var freshBody = 'Fresh body after replacement';
+  var successfulBodyRefresh = deferredResponse();
+  var revalidatedBodyPreview = deferredResponse();
+  queuedLibraryResponses.push(successfulBodyRefresh);
+  queuedPreviewResponses.push(revalidatedBodyPreview);
+  var successfulBodyRefreshPromise = w.OraLibraryWorkspace.refresh();
+  successfulBodyRefresh.resolve(libraryPayload([
+    visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
+  ], {
+    total: 5, source_counts: { dialogues: 2, engrams: 2, files: 1 },
+  }));
+  await successfulBodyRefreshPromise;
+  await flush();
+  revalidatedBodyPreview.resolve({
+    id: contextEngram.id,
+    source: 'engrams',
+    text: freshBody,
+  });
+  await flush();
+  await flush();
+  var bodyAfterRefreshSuccess = w.document.querySelector('.library-preview-body');
+  record('successful same-scope replacement revalidates the matching pinned body',
+    !!revalidatedBodyPreview.options
+      && !!bodyAfterRefreshSuccess
+      && bodyAfterRefreshSuccess.textContent === freshBody);
+
   var staleBodyPreview = deferredResponse();
   queuedPreviewResponses.push(staleBodyPreview);
   w.document.querySelector(

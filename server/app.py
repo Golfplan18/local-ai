@@ -14927,16 +14927,44 @@ def library_preview():
         }, status=409)
 
     if source == "engrams":
-        envelope = _browser_engram_envelope(
-            _browser_encode_source_id("engram", identity), target_tag="",
-        )
-        messages = envelope.get("messages", []) if isinstance(envelope, dict) else []
-        text = (messages[0].get("content") if len(messages) == 1
-                and isinstance(messages[0], dict) else None)
+        try:
+            envelope = _browser_engram_envelope(
+                _browser_encode_source_id("engram", identity), target_tag="",
+            )
+            if not isinstance(envelope, dict):
+                raise ValueError("Engram is not Standard-readable")
+
+            path = _browser_resolve_path(identity)
+            with open(path, "r", encoding="utf-8", newline="") as stream:
+                candidate = stream.read()
+            owner_metadata = _browser_frontmatter_metadata(
+                candidate, path=path,
+            )
+            if (owner_metadata is None
+                    or not _browser_knowledge_metadata_allowed(
+                        owner_metadata, "",
+                    )):
+                raise ValueError("Engram is not Standard-readable")
+            frontmatter_candidate = candidate.lstrip("\ufeff")
+            if frontmatter_candidate.startswith("---"):
+                from orchestrator.conversation_closeout import _frontmatter_bounds
+
+                _opening_end, closing_start = _frontmatter_bounds(
+                    frontmatter_candidate,
+                )
+                closing_line_end = frontmatter_candidate.find(
+                    "\n", closing_start,
+                )
+                text = ("" if closing_line_end < 0
+                        else frontmatter_candidate[closing_line_end + 1:])
+            else:
+                text = candidate
+        except (OSError, UnicodeError, ValueError):
+            text = None
     else:
         try:
             text = Path(identity).read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
+        except (OSError, UnicodeError, ValueError):
             text = None
 
     if not isinstance(text, str):

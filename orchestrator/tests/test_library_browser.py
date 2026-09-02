@@ -1744,15 +1744,25 @@ class TestLibraryBrowser(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            engram, project_file, withheld = (
-                root / "admitted.md", root / "notes.txt", root / "withheld.md",
+            engram, empty_engram, plain_engram, project_file, withheld, invalid, malformed = (
+                root / "admitted.md", root / "empty.md", root / "plain.md",
+                root / "notes.txt", root / "withheld.md", root / "invalid.md",
+                root / "malformed.md",
             )
+            exact_body = "\n  # Engram\r\nVisible body  \r\n\r\n"
+            plain_body = "  Plain body\r\nTrailing  \r\n"
             for path, text in (
-                (engram, "---\ntags: [engram]\n---\n# Engram\nVisible body"),
+                (engram, "---\ntags: [engram]\n---\n" + exact_body),
+                (empty_engram, "---\ntags: [engram]\n---"),
+                (plain_engram, plain_body),
                 (project_file, "Project body\n**plain text**\n"),
                 (withheld, "---\ntags: [private]\n---\nprivate body"),
+                (malformed, "---\ntags: [engram]\nno closing fence"),
             ):
-                path.write_text(text, encoding="utf-8")
+                path.write_bytes(text.encode("utf-8"))
+            invalid.write_bytes(
+                b"---\ntags: [engram]\n---\ninvalid \xff SECRET_INVALID_BODY"
+            )
 
             def row(path, kind="text", available=True):
                 return {"identity": str(path), "preview": {
@@ -1777,7 +1787,9 @@ class TestLibraryBrowser(unittest.TestCase):
                         })
 
                 for source, path, expected in (
-                    ("engrams", engram, "# Engram\nVisible body"),
+                    ("engrams", engram, exact_body),
+                    ("engrams", empty_engram, ""),
+                    ("engrams", plain_engram, plain_body),
                     ("files", project_file, "Project body\n**plain text**\n"),
                 ):
                     with self.subTest(f"admitted {source}"):
@@ -1795,11 +1807,18 @@ class TestLibraryBrowser(unittest.TestCase):
                      [row(project_file, "unsupported", False)], {}, 409),
                     ("forged locator", "files", project_file, [row(project_file)],
                      {"path": str(withheld)}, 400),
+                    ("invalid UTF-8", "engrams", invalid,
+                     [row(invalid, available=False)], {}, 409),
+                    ("malformed frontmatter", "engrams", malformed,
+                     [row(malformed, available=False)], {}, 409),
                 ):
                     with self.subTest(label):
                         response = request(source, path, rows, **extra)
                         self.assertEqual(response.status_code, status)
                         self.assertNotIn("private body", response.get_data(as_text=True))
+                        self.assertNotIn(
+                            "SECRET_INVALID_BODY", response.get_data(as_text=True),
+                        )
 
                 self.assertTrue(reader.called)
                 self.assertTrue(all(call.kwargs == {"target_tag": ""}
