@@ -16,6 +16,7 @@
  *   9. A failed firing shows as failed, with its error legible.
  *  10. The form builds a calendar spec carrying its named zone and reason.
  *  11. The form names the watch roots a file selector must sit inside.
+ *  12. Cards and activation review show only server-provided routine facts.
  */
 
 'use strict';
@@ -24,6 +25,19 @@ const fs   = require('fs');
 const path = require('path');
 
 const TOOL_ACTION = { kind: 'project_tool', nexus: 'msi', tool: 'deploy-check', args: [] };
+
+const LOCAL_ROUTINE = {
+  execution_target: 'local',
+  remote_execution_supported: false,
+  active_run_sleep_protection: {
+    available: true,
+    platform: 'macos',
+    scope: 'active_action_only',
+    prevents: 'idle_system_sleep',
+    release_boundary: 'action_scope_exit',
+  },
+  wake_from_sleep_supported: false,
+};
 
 const TRIGGERS = [
   {
@@ -40,6 +54,7 @@ const TRIGGERS = [
     spec_digest: 'sha256:aaa', status: 'active',
     next_due_at: '2026-08-20T11:30:00+00:00',
     intermittency: 'Acts only while Ora is running.',
+    routine: LOCAL_ROUTINE,
     firings: [{ event_id: 'evt-1', cause: 'calendar', status: 'completed',
                 outcome: 'ran', claimed_at: '2026-08-19T11:30:00+00:00',
                 finished_at: '2026-08-19T11:30:04+00:00' }],
@@ -51,6 +66,11 @@ const TRIGGERS = [
       action: TOOL_ACTION,
     },
     spec_digest: 'sha256:bbb', status: 'draft', intermittency: '',
+    routine: {
+      execution_target: 'local',
+      active_run_sleep_protection: { available: false, platform: 'linux' },
+      wake_from_sleep_supported: false,
+    },
     firings: [{ event_id: 'evt-2', cause: 'manual', status: 'failed',
                 outcome: 'failed', claimed_at: '2026-08-19T09:00:00+00:00',
                 finished_at: '2026-08-19T09:00:01+00:00',
@@ -165,6 +185,7 @@ module.exports = {
           condition: TRIGGERS[1].spec.condition,
           will_run: 'project tool msi:deploy-check',
           action_binding: { command_digest: 'sha256:cmd' },
+          routine: LOCAL_ROUTINE,
           runtime_justification: null, intermittency: '', status: 'draft',
         });
       }
@@ -248,6 +269,14 @@ module.exports = {
       record('activation: the drifted error is legible in the detail',
              cardFor('on-brief').textContent.includes('action_definition_drifted'),
              cardFor('on-brief').textContent.slice(0, 200));
+      record('routine: the card renders only the host facts it received',
+             cardFor('on-brief').textContent.includes('Execution target: local')
+             && cardFor('on-brief').textContent.includes(
+               'Idle-sleep protection: unavailable on this host')
+             && cardFor('on-brief').textContent.includes(
+               'Ora cannot wake a sleeping computer')
+             && !cardFor('on-brief').textContent.includes('Remote execution:'),
+             cardFor('on-brief').textContent.slice(0, 320));
       reviewBtn.click();
       await tick(); await tick();
       const reviewBox = doc.querySelector('.trigger-review');
@@ -256,6 +285,17 @@ module.exports = {
              && reviewBox.textContent.includes('project tool msi:deploy-check')
              && reviewBox.textContent.includes('sha256:bbb'),
              reviewBox ? reviewBox.textContent.slice(0, 120) : 'no review box');
+      record('routine: activation review renders the server-provided execution limits',
+             !!reviewBox
+             && reviewBox.textContent.includes('Execution target: local')
+             && reviewBox.textContent.includes('Remote execution: unavailable')
+             && reviewBox.textContent.includes(
+               'Idle sleep: prevented on this host while the action is actively running')
+             && reviewBox.textContent.includes(
+               'Idle-sleep protection: ends with the action')
+             && reviewBox.textContent.includes(
+               'Ora cannot wake a sleeping computer'),
+             reviewBox ? reviewBox.textContent.slice(0, 360) : 'no review box');
 
       // 7. Approving posts the exact digest.
       posts.length = 0;
@@ -271,6 +311,17 @@ module.exports = {
       posts.length = 0;
       cardFor('nightly-export').click();
       await tick();
+      record('routine: expanded active card shows local-only active-run protection',
+             cardFor('nightly-export').textContent.includes('Execution target: local')
+             && cardFor('nightly-export').textContent.includes(
+               'Remote execution: unavailable')
+             && cardFor('nightly-export').textContent.includes(
+               'Idle sleep: prevented on this host while the action is actively running')
+             && cardFor('nightly-export').textContent.includes(
+               'Idle-sleep protection: ends with the action')
+             && cardFor('nightly-export').textContent.includes(
+               'Ora cannot wake a sleeping computer'),
+             cardFor('nightly-export').textContent.slice(0, 360));
       [...cardFor('nightly-export')
           .querySelectorAll('.oversight-detail-actions button')]
         .find(b => b.textContent === 'Run now').click();
