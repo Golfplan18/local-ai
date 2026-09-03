@@ -1736,8 +1736,12 @@ class TestLibraryBrowser(unittest.TestCase):
             )
 
     def test_text_preview_revalidates_library_authority(self):
+        import base64
+        import io
         import tempfile
         from pathlib import Path
+
+        from PIL import Image as PillowImage
 
         server = _server_module()
 
@@ -1747,6 +1751,11 @@ class TestLibraryBrowser(unittest.TestCase):
                 root / "admitted.md", root / "empty.md", root / "plain.md",
                 root / "notes.txt", root / "withheld.md", root / "invalid.md",
                 root / "malformed.md",
+            )
+            image, image_link, image_spoof, image_svg, image_truncated = (
+                root / "admitted.png", root / "linked.png",
+                root / "spoofed.png", root / "unsupported.svg",
+                root / "truncated.jpg",
             )
             exact_body = "\n  # Engram\r\nVisible body  \r\n\r\n"
             plain_body = "  Plain body\r\nTrailing  \r\n"
@@ -1762,6 +1771,18 @@ class TestLibraryBrowser(unittest.TestCase):
             invalid.write_bytes(
                 b"---\ntags: [engram]\n---\ninvalid \xff SECRET_INVALID_BODY"
             )
+            image_bytes = base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+                "+A8AAQUBAScY42YAAAAASUVORK5CYII="
+            )
+            image.write_bytes(image_bytes)
+            image_link.symlink_to(image)
+            image_spoof.write_bytes(b"not a PNG")
+            image_svg.write_text("<svg xmlns='http://www.w3.org/2000/svg'/>")
+            jpeg_buffer = io.BytesIO()
+            with PillowImage.new("RGB", (1, 1)) as valid_jpeg:
+                valid_jpeg.save(jpeg_buffer, format="JPEG")
+            image_truncated.write_bytes(jpeg_buffer.getvalue()[:-2])
 
             def row(path, kind="text", available=True):
                 return {"identity": str(path), "preview": {
@@ -1798,6 +1819,14 @@ class TestLibraryBrowser(unittest.TestCase):
                         self.assertEqual(response.status_code, 200)
                         self.assertEqual(response.get_json()["text"], expected)
 
+                raster = request("files", image, [row(image, "visual")])
+                self.assertEqual(raster.status_code, 200)
+                self.assertEqual(raster.get_json()["image"]["mime_type"], "image/png")
+                self.assertEqual(
+                    base64.b64decode(raster.get_json()["image"]["data"]),
+                    image_bytes,
+                )
+
                 for label, source, path, rows, extra, status in (
                     ("stale/private", "engrams", withheld,
                      [row(withheld, available=False)], {}, 409),
@@ -1818,6 +1847,40 @@ class TestLibraryBrowser(unittest.TestCase):
                         self.assertNotIn(
                             "SECRET_INVALID_BODY", response.get_data(as_text=True),
                         )
+
+                for label, path, rows, extra, status in (
+                    ("stale/unlisted image", image, [row(project_file)], {}, 404),
+                    ("forged image locator", image, [row(image, "visual")],
+                     {"path": str(image_spoof)}, 400),
+                    ("symlink image", image_link, [row(image_link, "visual")], {}, 409),
+                    ("unsupported visual type", image_svg,
+                     [row(image_svg, "visual")], {}, 409),
+                    ("spoofed image bytes", image_spoof,
+                     [row(image_spoof, "visual")], {}, 409),
+                    ("truncated JPEG pixels", image_truncated,
+                     [row(image_truncated, "visual")], {}, 409),
+                ):
+                    with self.subTest(label):
+                        response = request("files", path, rows, **extra)
+                        self.assertEqual(response.status_code, status)
+                        self.assertNotIn("not a PNG", response.get_data(as_text=True))
+
+                with mock.patch.object(
+                    server, "_LIBRARY_IMAGE_PREVIEW_MAX_BYTES",
+                    len(image_bytes) - 1,
+                ):
+                    oversized = request(
+                        "files", image, [row(image, "visual")],
+                    )
+                self.assertEqual(oversized.status_code, 409)
+
+                with mock.patch.object(
+                    server.os, "open", side_effect=PermissionError,
+                ):
+                    unreadable = request(
+                        "files", image, [row(image, "visual")],
+                    )
+                self.assertEqual(unreadable.status_code, 409)
 
                 self.assertTrue(reader.called)
                 self.assertTrue(all(call.kwargs == {"target_tag": ""}

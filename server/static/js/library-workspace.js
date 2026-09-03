@@ -66,7 +66,7 @@
     previewGeneration: 0,
     relationshipGeneration: 0,
     renderGeneration: 0,
-    textPreview: { id: null, loading: false, error: '', text: null },
+    resolvedPreview: { id: null, loading: false, error: '', text: null, imageSrc: '' },
     edit: { id: null, text: '', digest: '', crlf: false, busy: false, error: '', notice: '' },
     related: {
       anchorId: null,
@@ -275,6 +275,11 @@
     && row.preview && row.preview.kind === 'text'
     && row.preview.available === true);
 
+  const imagePreviewEligible = (row) => Boolean(row
+    && row.source === 'files'
+    && row.preview && row.preview.kind === 'visual'
+    && row.preview.available === true);
+
   const markdownEditEligible = (row) => Boolean(textPreviewEligible(row)
     && row.metadata && row.metadata.content_type === 'text/markdown'
     && row.editability && row.editability.available === true
@@ -350,7 +355,7 @@
           : 'File saved. Files remain inventory-only.';
       resetEdit(message);
       renderPreview();
-      fetchTextPreview(row);
+      fetchPreview(row);
     } catch (error) {
       if (edit === state.edit) {
         edit.error = (error.message || String(error))
@@ -361,25 +366,27 @@
     }
   }
 
-  function invalidateTextPreviewRequest() {
+  function invalidatePreviewRequest() {
     ++state.previewGeneration;
     if (previewController) previewController.abort();
     previewController = null;
-    state.textPreview.loading = false;
+    state.resolvedPreview.loading = false;
   }
 
-  function resetTextPreview(row) {
-    invalidateTextPreviewRequest();
-    state.textPreview = { id: row ? row.id : null, loading: false, error: '', text: null };
+  function resetResolvedPreview(row) {
+    invalidatePreviewRequest();
+    state.resolvedPreview = {
+      id: row ? row.id : null, loading: false, error: '', text: null, imageSrc: '',
+    };
   }
 
-  async function fetchTextPreview(row) {
-    resetTextPreview(row);
-    if (!textPreviewEligible(row) || !state.open) return;
+  async function fetchPreview(row) {
+    resetResolvedPreview(row);
+    if ((!textPreviewEligible(row) && !imagePreviewEligible(row)) || !state.open) return;
     const generation = state.previewGeneration;
     previewController = new AbortController();
     const controller = previewController;
-    state.textPreview.loading = true;
+    state.resolvedPreview.loading = true;
     try {
       const params = new URLSearchParams({ id: row.id });
       const response = await fetch(`/api/library/preview?${params.toString()}`, {
@@ -389,19 +396,28 @@
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || `Preview request failed (HTTP ${response.status})`);
       if (generation !== state.previewGeneration || state.pinnedId !== row.id) return;
-      if (payload.id !== row.id || typeof payload.text !== 'string') {
+      if (payload.id !== row.id || payload.source !== row.source) {
         throw new Error('The preview response did not match the pinned Library item.');
       }
-      state.textPreview.text = payload.text;
-      state.textPreview.error = '';
+      if (textPreviewEligible(row) && typeof payload.text === 'string') {
+        state.resolvedPreview.text = payload.text;
+      } else if (imagePreviewEligible(row) && payload.image
+          && ['image/png', 'image/jpeg', 'image/webp'].includes(payload.image.mime_type)
+          && typeof payload.image.data === 'string' && payload.image.data) {
+        state.resolvedPreview.imageSrc = `data:${payload.image.mime_type};base64,${payload.image.data}`;
+      } else {
+        throw new Error('The preview response did not contain the requested safe content.');
+      }
+      state.resolvedPreview.error = '';
     } catch (error) {
       if (error && error.name === 'AbortError') return;
       if (generation !== state.previewGeneration) return;
-      state.textPreview.error = error && error.message ? error.message : String(error);
-      state.textPreview.text = null;
+      state.resolvedPreview.error = error && error.message ? error.message : String(error);
+      state.resolvedPreview.text = null;
+      state.resolvedPreview.imageSrc = '';
     } finally {
       if (generation === state.previewGeneration) {
-        state.textPreview.loading = false;
+        state.resolvedPreview.loading = false;
         previewController = null;
         renderPreview();
       }
@@ -529,7 +545,7 @@
     if (!row || state.edit.id !== row.id) resetEdit();
     state.pinnedId = row ? row.id : null;
     resetRelated(row);
-    fetchTextPreview(row);
+    fetchPreview(row);
     updateLogo();
     renderPreview();
     renderActions();
@@ -1002,7 +1018,7 @@
     state.universe = null;
     state.pagination = { offset: 0, limit: PAGE_LIMIT, returned: 0, has_more: false, next_offset: null };
     updateFacetOptions();
-    resetTextPreview(null);
+    resetResolvedPreview(null);
     resetRelated(null, 'No sources are selected, so Related is not requested.');
     reconcileRows();
     render();
@@ -1016,7 +1032,7 @@
     const append = Boolean(options && options.append);
     if (!append) {
       state.loadingAll = false;
-      invalidateTextPreviewRequest();
+      invalidatePreviewRequest();
     }
     state.actionNotice = '';
     const externalGeneration = options && options.generation;
@@ -1064,7 +1080,7 @@
         resetRelated(refreshedPin, previousPinnedId && !refreshedPin
           ? 'The previously pinned item is not present in the replacement inventory.'
           : undefined);
-        fetchTextPreview(refreshedPin);
+        fetchPreview(refreshedPin);
       }
       reconcileRows();
       if (!append && state.related.locator) fetchRelated(pinnedRow());
@@ -1245,7 +1261,7 @@
             if (label === 'Save') saveMarkdownEdit(row);
             else {
               resetEdit();
-              fetchTextPreview(row);
+              fetchPreview(row);
               renderPreview();
             }
           });
@@ -1295,8 +1311,8 @@
     badges.className = 'library-preview-badges';
     badges.append(sourceBadge(row), document.createTextNode(` ${metadataLine(row)}`));
     const previewMessage = document.createElement('p');
-    const currentTextPreview = state.textPreview.id === row.id
-      ? state.textPreview
+    const currentPreview = state.resolvedPreview.id === row.id
+      ? state.resolvedPreview
       : null;
     let previewBody = null;
     if (!row.preview.available) {
@@ -1305,17 +1321,21 @@
         : `Preview unavailable. ${row.preview.reason || ''}`.trim();
     } else if (row.source === 'dialogues') {
       previewMessage.textContent = 'The active Dialogue and its draft have not changed. Use Continue to open this readable Dialogue in the normal reader.';
-    } else if (currentTextPreview && currentTextPreview.loading) {
-      previewMessage.textContent = 'Loading the current text body…';
-    } else if (currentTextPreview && currentTextPreview.error) {
-      previewMessage.textContent = `Preview unavailable. ${currentTextPreview.error}`;
-    } else if (currentTextPreview && typeof currentTextPreview.text === 'string') {
+    } else if (currentPreview && currentPreview.loading) {
+      previewMessage.textContent = row.preview.kind === 'visual'
+        ? 'Loading the current image into Exhibits…'
+        : 'Loading the current text body…';
+    } else if (currentPreview && currentPreview.error) {
+      previewMessage.textContent = `Preview unavailable. ${currentPreview.error}`;
+    } else if (currentPreview && typeof currentPreview.text === 'string') {
       previewMessage.textContent = state.edit.id === row.id && state.edit.digest
         ? 'Edit complete Markdown'
         : 'Text preview';
-      previewBody = currentTextPreview.text;
+      previewBody = currentPreview.text;
+    } else if (currentPreview && currentPreview.imageSrc) {
+      previewMessage.textContent = 'Current image preview shown in Exhibits. Metadata and relationships remain in Findings.';
     } else {
-      previewMessage.textContent = 'Preview unavailable. The current text body has not been loaded.';
+      previewMessage.textContent = 'Preview unavailable. The current content has not been loaded.';
     }
     previewTextLayer.append(heading, badges, previewMessage);
     if (previewBody !== null) appendMarkdownEditor(previewTextLayer, row, previewBody);
@@ -1325,14 +1345,33 @@
     const visualHeading = document.createElement('h2');
     visualHeading.textContent = 'Exhibits preview';
     const visualMessage = document.createElement('p');
-    if (row.preview.kind === 'visual' || row.preview.kind === 'mixed') {
-      visualMessage.textContent = 'Visual preview is unavailable from the inventory-only Library response; no filesystem locator is opened in the browser.';
+    let previewImage = null;
+    if (row.preview.kind === 'visual' && currentPreview && currentPreview.loading) {
+      visualMessage.textContent = 'Loading the current image…';
+    } else if (row.preview.kind === 'visual' && currentPreview && currentPreview.error) {
+      visualMessage.textContent = `Image preview unavailable. ${currentPreview.error}`;
+    } else if (row.preview.kind === 'visual' && currentPreview && currentPreview.imageSrc) {
+      visualMessage.textContent = 'Current project image';
+      previewImage = document.createElement('img');
+      previewImage.className = 'library-preview-image';
+      previewImage.alt = row.title;
+      const imageGeneration = state.previewGeneration;
+      previewImage.addEventListener('error', () => {
+        if (imageGeneration !== state.previewGeneration || state.pinnedId !== row.id) return;
+        state.resolvedPreview.imageSrc = '';
+        state.resolvedPreview.error = 'The browser could not decode the current image.';
+        renderPreview();
+      }, { once: true });
+      previewImage.src = currentPreview.imageSrc;
+    } else if (row.preview.kind === 'visual' || row.preview.kind === 'mixed') {
+      visualMessage.textContent = 'Visual preview is unavailable after current authority, type, and size validation.';
     } else if (row.preview.kind === 'unsupported') {
       visualMessage.textContent = row.preview.reason || 'This item has no supported visual preview.';
     } else {
       visualMessage.textContent = 'This is a text-oriented item; its metadata and relationship disclosure are shown in Findings.';
     }
     previewVisualLayer.append(visualHeading, visualMessage);
+    if (previewImage) previewVisualLayer.appendChild(previewImage);
   }
 
   function dialogueId(row) {
@@ -1520,7 +1559,7 @@
     ++state.requestGeneration;
     if (requestController) requestController.abort();
     requestController = null;
-    resetTextPreview(null);
+    resetResolvedPreview(null);
     resetEdit();
     resetRelated(null);
     state.loading = false;
