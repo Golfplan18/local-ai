@@ -242,6 +242,7 @@
 <script src="/static/js/project-modal.js?v=persona-20260805" defer></script>
 <script src="/static/js/model-profile-selector.js?v=g116-20260722" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
+<script src="/static/js/overview-desktop.js" defer></script>
 <script src="/static/js/review-queue-panel.js" defer></script>
 <script src="/static/js/v3-layout.js" defer></script>
 <!-- Plugin extension seams. Loaded before the feature scripts so anything that
@@ -382,6 +383,19 @@
         </svg>
       </button>
     </div>
+
+    <button class="sidebar-dash-icon overview-desktop-launcher" type="button"
+            id="overviewDesktopOpen" aria-label="Open Overview" title="Overview"
+            aria-controls="overviewDesktop" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           width="18" height="18" aria-hidden="true">
+        <rect x="4" y="4" width="6" height="6" rx="1"/>
+        <rect x="14" y="4" width="6" height="6" rx="1"/>
+        <rect x="4" y="14" width="6" height="6" rx="1"/>
+        <rect x="14" y="14" width="6" height="6" rx="1"/>
+      </svg>
+    </button>
 
     <div class="sidebar-resize-handle" id="sidebarResizeHandle" role="separator"
          aria-orientation="vertical" aria-label="Resize Dialogues sidebar"
@@ -1350,6 +1364,24 @@
   </section>
 
 </div>
+
+<section class="overview-desktop" id="overviewDesktop" hidden role="dialog"
+         aria-modal="true" aria-labelledby="overviewDesktopTitle"
+         aria-describedby="overviewDesktopStatus">
+  <header class="overview-desktop__header">
+    <div>
+      <p class="overview-desktop__kicker">Ora</p>
+      <h1 id="overviewDesktopTitle">Overview</h1>
+    </div>
+    <div class="overview-desktop__commands">
+      <button type="button" data-overview-close>Close</button>
+    </div>
+  </header>
+  <main class="overview-desktop__sources" id="overviewDesktopSources"
+        aria-label="Overview sources"></main>
+  <p class="overview-desktop__status" id="overviewDesktopStatus"
+     role="status" aria-live="polite">Overview closed.</p>
+</section>
 
 <script>
 (() => {

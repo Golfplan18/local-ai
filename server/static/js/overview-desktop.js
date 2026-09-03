@@ -1,0 +1,163 @@
+/* Read-only Overview Desktop renderer. */
+(function () {
+  'use strict';
+
+  var order = ['project-priority', 'oversight', 'triggers', 'daily-note'];
+  var sourceStates = new Set(['ready', 'empty', 'partial', 'missing', 'unavailable']);
+  var launcher = document.getElementById('overviewDesktopOpen');
+  var mount = document.getElementById('overviewDesktop');
+  if (!launcher || !mount) return;
+
+  var host = document.getElementById('overviewDesktopSources');
+  var status = document.getElementById('overviewDesktopStatus');
+  var closeButton = mount.querySelector('[data-overview-close]');
+  var workspace = document.querySelector('.ora-shell');
+  var priorFocus = null;
+  var workspaceWasInert = false;
+  var requestId = 0;
+
+  function element(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = String(text);
+    return node;
+  }
+
+  function sourceState(value) {
+    return sourceStates.has(value) ? value : 'unavailable';
+  }
+
+  function itemState(value) {
+    return typeof value === 'string' && value.trim() ? value.trim() : 'unknown';
+  }
+
+  function addProjectAction(row, item) {
+    var actions = Array.isArray(item.actions) ? item.actions : [];
+    var scope = item.scope && typeof item.scope === 'object' ? item.scope : {};
+    var nexus = typeof scope.project_nexus === 'string' ? scope.project_nexus.trim() : '';
+    if (!actions.includes('open_project') || !nexus || !window.OraProjectModal
+        || typeof window.OraProjectModal.open !== 'function') return;
+
+    var button = element('button', 'overview-source__action', 'Open project');
+    button.type = 'button';
+    button.dataset.overviewAction = 'open_project';
+    button.addEventListener('click', function () {
+      close();
+      window.OraProjectModal.open(nexus, item.title || nexus);
+    });
+    row.appendChild(button);
+  }
+
+  function renderItem(item) {
+    var row = element('li', 'overview-source__item');
+    row.dataset.state = itemState(item.state);
+    row.appendChild(element('strong', '', item.title || 'Untitled'));
+    if (item.text) row.appendChild(element('p', '', item.text));
+
+    var details = [];
+    if (item.state) details.push(itemState(item.state));
+    if (item.time) details.push(item.time);
+    if (Number.isFinite(item.count)) details.push(item.count + ' total');
+    if (details.length) row.appendChild(element('small', '', details.join(' · ')));
+    addProjectAction(row, item);
+    return row;
+  }
+
+  function renderSource(source) {
+    var state = sourceState(source.state);
+    var card = element('section', 'overview-source');
+    card.dataset.sourceId = source.source_id;
+    card.dataset.state = state;
+
+    var heading = element('div', 'overview-source__heading');
+    heading.appendChild(element('h2', '', source.title || source.source_id));
+    heading.appendChild(element('span', 'overview-source__state', state));
+    card.appendChild(heading);
+
+    var count = Number.isFinite(source.count) ? source.count : 0;
+    var freshness = source.freshness && typeof source.freshness === 'object'
+      ? source.freshness : {};
+    var meta = [count + ' item' + (count === 1 ? '' : 's')];
+    if (freshness.observed_at) meta.push('Checked ' + freshness.observed_at);
+    if (freshness.last_success_at) meta.push('Last success ' + freshness.last_success_at);
+    card.appendChild(element('p', 'overview-source__meta', meta.join(' · ')));
+
+    if (source.error && source.error.message) {
+      card.appendChild(element('p', 'overview-source__error', source.error.message));
+    }
+    var items = Array.isArray(source.items) ? source.items : [];
+    if (items.length) {
+      var list = element('ol', 'overview-source__items');
+      items.forEach(function (item) { list.appendChild(renderItem(item)); });
+      card.appendChild(list);
+    } else {
+      card.appendChild(element(
+        'p', 'overview-source__empty',
+        state === 'unavailable' ? 'This source is unavailable.' : 'No items.'
+      ));
+    }
+    return card;
+  }
+
+  function render(sources) {
+    var byId = new Map();
+    sources.forEach(function (source) { byId.set(source.source_id, source); });
+    var ordered = order.map(function (id) { return byId.get(id); }).filter(Boolean);
+    if (ordered.length !== order.length) throw new Error('Ora returned incomplete Overview sources.');
+    host.replaceChildren();
+    ordered.forEach(function (source) { host.appendChild(renderSource(source)); });
+  }
+
+  async function load() {
+    var activeRequest = ++requestId;
+    host.replaceChildren();
+    status.textContent = 'Loading four Overview sources…';
+    try {
+      var response = await window.fetch('/api/overview', {
+        method: 'GET', headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) throw new Error('Request failed with status ' + response.status + '.');
+      var payload = await response.json();
+      if (!payload || !Array.isArray(payload.sources)) {
+        throw new Error('Ora returned an invalid Overview response.');
+      }
+      if (activeRequest !== requestId || mount.hidden) return;
+      render(payload.sources);
+      status.textContent = 'Four sources checked.';
+    } catch (error) {
+      if (activeRequest !== requestId || mount.hidden) return;
+      host.replaceChildren();
+      status.textContent = 'Overview could not be loaded. '
+        + (error && error.message ? error.message : String(error));
+    }
+  }
+
+  function open() {
+    if (!mount.hidden) return;
+    priorFocus = document.activeElement;
+    workspaceWasInert = Boolean(workspace && workspace.hasAttribute('inert'));
+    if (workspace) workspace.setAttribute('inert', '');
+    mount.hidden = false;
+    launcher.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('overview-desktop-open');
+    closeButton.focus();
+    load();
+  }
+
+  function close() {
+    if (mount.hidden) return;
+    requestId += 1;
+    mount.hidden = true;
+    launcher.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('overview-desktop-open');
+    if (workspace && !workspaceWasInert) workspace.removeAttribute('inert');
+    status.textContent = 'Overview closed.';
+    if (priorFocus && priorFocus.isConnected) priorFocus.focus();
+  }
+
+  launcher.addEventListener('click', open);
+  closeButton.addEventListener('click', close);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !mount.hidden) close();
+  });
+})();
