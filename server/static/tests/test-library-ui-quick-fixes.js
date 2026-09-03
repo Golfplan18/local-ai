@@ -26,14 +26,13 @@ try {
 
 var indexSource = fs.readFileSync(path.resolve(__dirname, '..', '..', 'index-v3.html'), 'utf8');
 var libraryMountMatch = indexSource.match(
-  /<section id="libraryWorkspace"[\s\S]*?<\/section>\s*\n\s*<\/div>\s*\n\s*<script>/
+  /<section id="libraryWorkspace"[\s\S]*?<\/section>/
 );
 if (!libraryMountMatch) {
   console.error('error: stable Knowledge Library mount is missing from index-v3.html');
   process.exit(2);
 }
-var libraryMountMarkup = libraryMountMatch[0]
-  .replace(/\s*<\/div>\s*\n\s*<script>[\s\S]*$/, '');
+var libraryMountMarkup = libraryMountMatch[0];
 
 var dom = new jsdom.JSDOM(
   '<!doctype html><html><body>' +
@@ -856,7 +855,7 @@ async function run() {
   );
   var windowsFolderFile = libraryRow(
     'files:archive-memo', 'files', 'Archive memo.md', {
-      metadata: { item_type: 'File' },
+      metadata: { item_type: 'File', content_type: '' },
       provenance: {
         available: true, kind: 'files', identity: 'files:archive-memo', reason: null,
         details: { relative_path: 'Notes\\Archive\\Archive memo.md' },
@@ -872,6 +871,7 @@ async function run() {
       },
     }
   );
+  delete projectRootFile.metadata.content_type;
   queuedLibraryResponses.push(libraryPayload([visibleDialogue], {
     total: 2, complete: true, has_more: true, next_offset: 1,
   }));
@@ -1941,7 +1941,9 @@ async function run() {
   var engramToggle = w.document.querySelector('[data-library-source][value="engrams"]');
   var filesToggle = w.document.querySelector('[data-library-source][value="files"]');
   var folderOption = groupSelect.querySelector('option[value="folder"]');
-  var folderWasInitiallyHidden = folderOption.hidden;
+  var contentTypeOption = groupSelect.querySelector('option[value="content-type"]');
+  var fileGroupsWereInitiallyUnavailable = folderOption.hidden && folderOption.disabled
+    && contentTypeOption.hidden && contentTypeOption.disabled;
 
   queuedLibraryResponses.push(libraryPayload([contextEngram, nestedFolderFile], {
     sources: ['engrams', 'files'], total: 2,
@@ -1955,14 +1957,51 @@ async function run() {
   queuedLibraryResponses.push(libraryPayload([
     nestedFolderFile, windowsFolderFile, projectRootFile,
   ], {
-    sources: ['files'], total: 3,
-    source_counts: { dialogues: 0, engrams: 0, files: 3 },
-    item_type_counts: { File: 3 },
+    sources: ['files'], total: 4, has_more: true, next_offset: 3,
+    source_counts: { dialogues: 0, engrams: 0, files: 4 },
+    item_type_counts: { File: 4 },
   }));
   engramToggle.checked = false;
   engramToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
   await flush();
   await flush();
+  groupSelect.value = 'content-type';
+  groupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var partialContentTypeList = w.document.querySelectorAll('.library-result-group').length === 0
+    && w.document.getElementById('libraryWorkspaceNotice').textContent.indexOf('grouping') !== -1;
+  w.document.querySelector('[data-library-view="visual"]').click();
+  var partialContentTypeVisual = w.document.querySelector('.library-visual-group-state').textContent
+    .indexOf('unavailable until every') !== -1
+    && w.document.querySelectorAll('.library-visual-node__group').length === 0;
+  w.document.querySelector('[data-library-view="list"]').click();
+  record('Files-only groups become available but Content type waits for every page',
+    fileGroupsWereInitiallyUnavailable
+      && !folderOption.hidden && !folderOption.disabled
+      && !contentTypeOption.hidden && !contentTypeOption.disabled
+      && w.OraLibraryWorkspace.getState().sources.join(',') === 'files'
+      && w.OraLibraryWorkspace.getState().group === 'content-type'
+      && partialContentTypeList && partialContentTypeVisual);
+
+  queuedLibraryResponses.push(libraryPayload([contextFile], {
+    sources: ['files'], total: 4, offset: 3,
+    source_counts: { dialogues: 0, engrams: 0, files: 4 },
+    item_type_counts: { File: 4 },
+  }));
+  w.document.querySelector('[data-library-command="load-all"]').click();
+  await flush();
+  await flush();
+  var contentTypeHeadings = Array.from(w.document.querySelectorAll('.library-result-group h2'))
+    .map(function (heading) { return heading.textContent; }).sort();
+  w.document.querySelector('[data-library-view="visual"]').click();
+  var contentTypeVisualLabels = Array.from(w.document.querySelectorAll('.library-visual-node__group'))
+    .map(function (label) { return label.textContent; }).sort();
+  record('Content type uses exact File metadata in both views and labels missing values Unavailable',
+    contentTypeHeadings.join('|') === ['Unavailable (2)', 'image/png (1)', 'text/markdown (1)'].sort().join('|')
+      && contentTypeVisualLabels.join('|') === ['Unavailable', 'Unavailable', 'image/png', 'text/markdown'].sort().join('|')
+      && groupLauncher.textContent.indexOf('Content type') !== -1,
+    contentTypeHeadings.join(', '));
+
+  w.document.querySelector('[data-library-view="list"]').click();
   groupSelect.value = 'folder';
   groupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
   var folderHeadings = Array.from(w.document.querySelectorAll('.library-result-group h2'))
@@ -1976,8 +2015,7 @@ async function run() {
   var folderVisualLabels = Array.from(w.document.querySelectorAll('.library-visual-node__group'))
     .map(function (label) { return label.textContent; });
   record('Files-only Folder grouping shares full relative and root labels across List and Visual',
-    folderWasInitiallyHidden
-      && !folderOption.hidden
+    !folderOption.hidden
       && !folderOption.disabled
       && w.OraLibraryWorkspace.getState().sources.join(',') === 'files'
       && w.OraLibraryWorkspace.getState().group === 'folder'
@@ -1991,29 +2029,56 @@ async function run() {
       && folderVisualLabels.indexOf('Project root') !== -1,
     folderHeadings.join(', '));
 
-  queuedLibraryResponses.push(libraryPayload([
-    visibleDialogue, nestedFolderFile, windowsFolderFile, projectRootFile,
-  ], {
-    sources: ['dialogues', 'files'], total: 4,
-    source_counts: { dialogues: 1, engrams: 0, files: 3 },
-    item_type_counts: { Dialogue: 1, File: 3 },
-  }));
+  groupSelect.value = 'content-type';
+  groupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  libraryTypeFilter.value = 'File';
+  libraryTypeFilter.dispatchEvent(new w.Event('change', { bubbles: true }));
+  scopeSort.value = 'title';
+  scopeSort.dispatchEvent(new w.Event('change', { bubbles: true }));
+  queuedLibraryResponses.push(
+    libraryPayload([], { sources: ['files'], total: 0 }),
+    libraryPayload([
+      visibleDialogue, nestedFolderFile, windowsFolderFile, projectRootFile, contextFile,
+    ], {
+      sources: ['dialogues', 'files'], total: 5,
+      source_counts: { dialogues: 1, engrams: 0, files: 4 },
+      item_type_counts: { Dialogue: 1, File: 4 },
+    })
+  );
+  librarySearch.value = 'preserve file controls';
+  librarySearch.dispatchEvent(new w.Event('input', { bubbles: true }));
   dialogueToggle.checked = true;
   dialogueToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
   await flush();
   await flush();
-  record('changing Folder grouping to a mixed source inventory repairs it to None',
+  var repairedGroupState = w.OraLibraryWorkspace.getState();
+  record('mixed sources repair Content type to None without resetting other browse controls',
     folderOption.hidden
       && folderOption.disabled
-      && w.OraLibraryWorkspace.getState().group === 'none'
+      && contentTypeOption.hidden
+      && contentTypeOption.disabled
+      && repairedGroupState.group === 'none'
+      && repairedGroupState.query === 'preserve file controls'
+      && repairedGroupState.filters.type === 'File'
+      && repairedGroupState.sort === 'title'
+      && new w.URL(libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href)
+        .searchParams.get('q') === 'preserve file controls'
       && groupSelect.value === 'none'
       && groupLauncher.textContent.indexOf('None') !== -1);
 
-  queuedLibraryResponses.push(libraryPayload([visibleDialogue, contextEngram, contextFile], {
-    sources: ['dialogues', 'engrams', 'files'], total: 3,
-    source_counts: { dialogues: 1, engrams: 1, files: 1 },
-    item_type_counts: { Dialogue: 1, Engram: 1, File: 1 },
-  }));
+  queuedLibraryResponses.push(
+    libraryPayload([], { sources: ['dialogues', 'files'], total: 0 }),
+    libraryPayload([visibleDialogue, contextEngram, contextFile], {
+      sources: ['dialogues', 'engrams', 'files'], total: 3,
+      source_counts: { dialogues: 1, engrams: 1, files: 1 },
+      item_type_counts: { Dialogue: 1, Engram: 1, File: 1 },
+    })
+  );
+  librarySearch.value = '';
+  librarySearch.dispatchEvent(new w.Event('input', { bubbles: true }));
+  w.document.querySelector('[data-library-command="clear-filters"]').click();
+  scopeSort.value = 'recent';
+  scopeSort.dispatchEvent(new w.Event('change', { bubbles: true }));
   engramToggle.checked = true;
   engramToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
   await flush();
