@@ -76,7 +76,7 @@ The user remains the principal. The approved runtime contract nevertheless deleg
 
 specification.
 
-Manual campaigns run in two decoupled phases: detection and resolver. Runtime mode receives one exact Engram write, evaluates at most eight related pairs, completes every judgment before mutation, and applies the result as one rollback-protected transaction. An error causes no mutation and no clock fallback.
+Manual campaigns run in two decoupled phases: detection and resolver. Runtime mode receives one exact Engram write, evaluates at most eight related pairs, completes every judgment before the mutation lock, then reauthenticates exact identities and applies the file/log changes as one rollback-protected transaction. A pre-commit error causes no mutation and no clock fallback; the separate post-lock index refresh reports its own failure without undoing a successful file mutation.
 
 ---
 
@@ -85,9 +85,9 @@ Manual campaigns run in two decoupled phases: detection and resolver. Runtime mo
 - ☑ The manual contradicts-edge corpus can be sampled into a tractable triage queue.
 - ☑ The manual resolver applies user-marked resolutions.
 - ☑ Exact Engram writes can trigger bounded autonomous judgment with no per-pair human triage.
-- ☑ All judgments finish before mutation; errors restore the snapshotted state.
+- ☑ All judgments finish before mutation; judgment, identity, or file/log mutation errors before commit restore the snapshotted state.
 - ☑ Resolution and runtime event evidence are append-only, and explicit rollback is drift-safe.
-- ☑ ChromaDB metadata is refreshed inside the governed transaction.
+- ☑ ChromaDB metadata is refreshed after the governed file transaction releases its mutation locks; refresh failure is reported separately.
 
 ---
 
@@ -250,7 +250,7 @@ The log is the audit trail. To roll back a resolution, the user can `git revert`
 
 ## LAYER 5: CHROMADB METADATA REFRESH
 
-After mutations land, the resolver pushes the updated YAML metadata into the ChromaDB `knowledge` collection for affected files. This ensures the `archived` tag (and any new `supersedes` relationship) flows to the retrieval path immediately — `archived`-tagged engrams are excluded from default retrieval per Schema §6.5.
+For an exact-write runtime event, after the file/log mutation lands and its exact-path locks are released, the resolver reads the current affected files and pushes their YAML metadata into the ChromaDB `knowledge` collection. If a newer writer wins after release, that newer file is the authority indexed. A refresh failure is reported separately and does not undo the already successful file mutation; until a later successful refresh, retrieval may remain stale.
 
 The refresh uses `collection.update()` (no re-embedding; metadata-only) following the same pattern as `phase3_chromadb_refresh.py` from the rev 5 migration.
 
@@ -277,7 +277,7 @@ KAC's Layer 8 (error correction and output formatting) writes its output to the 
 
 > *"Your session added N atomic engrams. The Engram Cleaning Framework has surfaced M new contradictions involving these atomics or related ones. Run `/cleaning` to triage them, or defer."*
 
-The interactive queue remains available for explicit historical campaigns. Separately, an exact Engram write may autonomously evaluate and mutate its bounded neighborhood under the event contract; an error causes no subject mutation and no clock retry.
+The interactive queue remains available for explicit historical campaigns. Separately, an exact Engram write may autonomously evaluate and mutate its bounded neighborhood under the event contract; a pre-commit error causes no subject mutation and no clock retry, while a post-commit index error is reported without reversing the successful file change.
 
 ### Manual invocation
 
