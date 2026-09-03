@@ -173,8 +173,12 @@ class ProjectPriorityConsumerTests(unittest.TestCase):
             "archived", status="archived",
             last_accessed_at="2026-08-01T00:00:00",
         )
+        (self.pointer_dir / "broken.json").write_text("{not-json}", encoding="utf-8")
 
-        rows = om.list_active_project_meta(self.pointer_dir)
+        skipped: list[str] = []
+        rows = om.list_active_project_meta(
+            self.pointer_dir, skipped_authority=skipped,
+        )
 
         self.assertEqual(
             [row["nexus"] for row in rows],
@@ -182,6 +186,7 @@ class ProjectPriorityConsumerTests(unittest.TestCase):
         )
         self.assertTrue(all(row["status"] == "active" for row in rows))
         self.assertTrue(all(not row.get("is_default") for row in rows))
+        self.assertEqual(skipped, ["broken.json"])
 
 
 class OperationMatrixWriteTests(unittest.TestCase):

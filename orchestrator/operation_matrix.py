@@ -210,6 +210,8 @@ def resolve_matrix_path(
 
 def list_active_project_meta(
     pointer_dir: Path | None = None,
+    *,
+    skipped_authority: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Return active real projects in the canonical project-metadata order.
 
@@ -227,7 +229,9 @@ def list_active_project_meta(
 
     return [
         meta
-        for meta in _project_meta.list_project_meta(pointer_dir)
+        for meta in _project_meta.list_project_meta(
+            pointer_dir, skipped_authority=skipped_authority,
+        )
         if not meta.get("is_default") and meta.get("status") == "active"
     ]
 
