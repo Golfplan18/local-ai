@@ -48,7 +48,27 @@
     row.appendChild(button);
   }
 
-  function renderItem(item) {
+  function addScheduledAction(row, item, sourceId) {
+    var actions = Array.isArray(item.actions) ? item.actions : [];
+    var itemId = typeof item.item_id === 'string' ? item.item_id : '';
+    var prefix = 'trigger:';
+    if (sourceId !== 'triggers' || !actions.includes('open_scheduled')
+        || !itemId.startsWith(prefix) || itemId.length === prefix.length) return;
+
+    var triggerId = itemId.slice(prefix.length);
+    var button = element('button', 'overview-source__action', 'Open in Scheduled');
+    button.type = 'button';
+    button.dataset.overviewAction = 'open_scheduled';
+    button.addEventListener('click', function () {
+      close();
+      document.dispatchEvent(new CustomEvent('ora:scheduled-trigger-open-requested', {
+        detail: { trigger_id: triggerId },
+      }));
+    });
+    row.appendChild(button);
+  }
+
+  function renderItem(item, sourceId) {
     var row = element('li', 'overview-source__item');
     row.dataset.state = itemState(item.state);
     row.appendChild(element('strong', '', item.title || 'Untitled'));
@@ -60,6 +80,7 @@
     if (Number.isFinite(item.count)) details.push(item.count + ' total');
     if (details.length) row.appendChild(element('small', '', details.join(' · ')));
     addProjectAction(row, item);
+    addScheduledAction(row, item, sourceId);
     return row;
   }
 
@@ -88,7 +109,9 @@
     var items = Array.isArray(source.items) ? source.items : [];
     if (items.length) {
       var list = element('ol', 'overview-source__items');
-      items.forEach(function (item) { list.appendChild(renderItem(item)); });
+      items.forEach(function (item) {
+        list.appendChild(renderItem(item, source.source_id));
+      });
       card.appendChild(list);
     } else {
       card.appendChild(element(

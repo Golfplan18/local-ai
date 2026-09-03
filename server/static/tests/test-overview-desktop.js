@@ -42,11 +42,15 @@ var dom = new jsdom.JSDOM(
 );
 var w = dom.window;
 var projectOpens = [];
+var scheduledOpens = [];
 var requests = [];
 var responses = [];
 w.OraProjectModal = {
   open: function (nexus, title) { projectOpens.push([nexus, title]); },
 };
+w.document.addEventListener('ora:scheduled-trigger-open-requested', function (event) {
+  scheduledOpens.push(event.detail);
+});
 w.fetch = function (url, options) {
   requests.push([url, options]);
   var next = responses.shift();
@@ -75,12 +79,16 @@ function source(id, title, state, items, error) {
   };
 }
 
-responses.push(ok({ sources: [
+var overviewPayload = { sources: [
   source('daily-note', 'Prior-day Daily Note', 'missing', [{
     title: '2026-08-31', text: 'No completed Daily Note was found.', state: 'missing',
     time: null, count: null, scope: { path: '/notes/2026-08-31.md' }, actions: ['open_note'],
   }]),
-  source('triggers', 'Scheduled Triggers', 'empty', []),
+  source('triggers', 'Scheduled Triggers', 'ready', [{
+    source_id: 'triggers', item_id: 'trigger:draft-email', title: 'Draft email',
+    text: 'manual · email send', state: 'draft', time: null, count: null,
+    scope: null, actions: ['open_scheduled', 'inspect', 'review', 'run', 'retire'],
+  }]),
   source('project-priority', 'Project priority', 'ready', [{
     title: 'Ora', text: 'Active', state: 'ready', time: null, count: null,
     scope: { project_nexus: 'ora' }, actions: ['open_project'],
@@ -89,7 +97,8 @@ responses.push(ok({ sources: [
     title: 'Review evidence', text: 'Needs a decision', state: 'paused', time: null,
     count: null, scope: { project_nexus: 'ora' }, actions: ['open_conversation', 'discuss'],
   }], { code: 'operating_unavailable', message: 'Operating work could not be read.' }),
-] }));
+] };
+responses.push(ok(overviewPayload));
 
 var controllerSource = fs.readFileSync(
   path.resolve(__dirname, '..', 'js', 'overview-desktop.js'), 'utf8'
@@ -119,7 +128,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
     [
       ['project-priority', 'ready'],
       ['oversight', 'partial'],
-      ['triggers', 'empty'],
+      ['triggers', 'ready'],
       ['daily-note', 'missing'],
     ],
     'the four sources render in canonical order with their distinct states'
@@ -129,9 +138,27 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   assert(mount.textContent.includes('Operating work could not be read.'));
 
   var actions = Array.from(mount.querySelectorAll('[data-overview-action]'));
-  assert.strictEqual(actions.length, 1, 'actions without a sufficient read-only destination are omitted');
-  assert.strictEqual(actions[0].dataset.overviewAction, 'open_project');
-  actions[0].click();
+  assert.strictEqual(actions.length, 2, 'only supported navigation entrances are shown');
+  var scheduledAction = actions.find(function (action) {
+    return action.dataset.overviewAction === 'open_scheduled';
+  });
+  scheduledAction.click();
+  assert.strictEqual(scheduledOpens.length, 1);
+  assert.strictEqual(scheduledOpens[0].trigger_id, 'draft-email');
+  assert.strictEqual(requests.length, 1, 'the handoff makes no Trigger or lifecycle request');
+  assert.strictEqual(mount.hidden, true, 'Scheduled handoff closes Overview');
+  assert.strictEqual(workspace.hasAttribute('inert'), false, 'workspace inert state is restored');
+  assert.strictEqual(workspaceInput.value, 'kept', 'underlying workspace content is preserved');
+  assert.strictEqual(priorSurface.hidden, true, 'underlying workspace visibility is preserved');
+  assert.strictEqual(w.document.activeElement, workspaceInput, 'prior focus is restored before handoff');
+
+  responses.push(ok(overviewPayload));
+  launcher.click();
+  await flush();
+  await flush();
+  var projectAction = Array.from(mount.querySelectorAll('[data-overview-action]'))
+    .find(function (action) { return action.dataset.overviewAction === 'open_project'; });
+  projectAction.click();
   assert.deepStrictEqual(projectOpens, [['ora', 'Ora']]);
   assert.strictEqual(mount.hidden, true, 'project handoff closes Overview');
   assert.strictEqual(workspace.hasAttribute('inert'), false, 'workspace inert state is restored');

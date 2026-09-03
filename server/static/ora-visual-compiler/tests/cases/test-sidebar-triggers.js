@@ -17,6 +17,7 @@
  *  10. The form builds a calendar spec carrying its named zone and reason.
  *  11. The form names the watch roots a file selector must sit inside.
  *  12. Cards and activation review show only server-provided routine facts.
+ *  13. An Overview handoff opens Scheduled and focuses the exact Trigger.
  */
 
 'use strict';
@@ -154,11 +155,16 @@ module.exports = {
     const savedBody   = doc.body.innerHTML;
     const savedSetInt = win.setInterval;
     const savedAlert  = win.alert;
+    const savedOraSidebar = win.OraSidebar;
+    let sidebarExpanded = false;
 
     // The module installs a 12s poll on load. Neutralise the scheduler for
     // the duration of the suite so it cannot outlive this case.
     win.setInterval = () => 0;
     win.alert = () => {};
+    win.OraSidebar = {
+      setExpanded: (expanded) => { sidebarExpanded = expanded; },
+    };
 
     win.fetch = function (url, opts) {
       if (opts && opts.method === 'POST') {
@@ -255,6 +261,19 @@ module.exports = {
       // rather than held across a click.
       const cardFor = (id) => [...doc.querySelectorAll('.trigger-card')]
         .find(c => c.dataset.triggerId === id);
+
+      doc.dispatchEvent(new win.CustomEvent('ora:scheduled-trigger-open-requested', {
+        detail: { trigger_id: 'on-brief' },
+      }));
+      await tick(); await tick(); await tick();
+      record('handoff: Overview opens Scheduled and focuses the exact Trigger',
+             sidebarExpanded
+             && doc.querySelector('.sidebar-accordion').dataset.activeSuper === 'processes'
+             && doc.querySelector('[data-super="processes"]').dataset.expanded === 'true'
+             && cardFor('on-brief').querySelector('.oversight-detail')
+             && doc.activeElement === cardFor('on-brief'));
+      cardFor('on-brief').click();
+      await tick();
 
       // 9. A failed firing reads as failed.
       record('history: a failed firing is badged failed',
@@ -420,6 +439,7 @@ module.exports = {
       win.fetch = savedFetch;
       win.setInterval = savedSetInt;
       win.alert = savedAlert;
+      win.OraSidebar = savedOraSidebar;
       const overlay = doc.querySelector('#triggerFormOverlay');
       if (overlay) overlay.remove();
       doc.body.innerHTML = savedBody;
