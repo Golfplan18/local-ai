@@ -316,6 +316,16 @@ If you pick Free, expect the trade-off up front: free models are rate-limited an
 
 ---
 
+## Choose Persona, Output Style, and values
+
+Ora keeps three controls separate. **Persona** is the speaking identity — who is answering. **Output Style** controls delivery and form, such as tone, arrangement, diction, and genre. **`mind.md`** supplies your values and personal context; it does not choose the Persona or Output Style.
+
+For ordinary work, Persona resolution follows this order: the active project's Persona, then your global default, then packaged Ora.
+
+Scheduled email drafts are the exception. They use the global default Persona unless you explicitly choose another available Persona, and the saved draft records and displays the resolved identity. If that explicit choice is unavailable, Ora refuses to create the draft rather than substitute another identity. Creating a draft does not activate or approve a Trigger, contact an email provider, send email, or grant permission to send.
+
+---
+
 ## Do work
 
 1. Open Ora at the exact reported URL (port 5000–5010), type your question or task in the Inquiry pane, and submit.
@@ -533,7 +543,7 @@ If **Trace** is disabled or absent, the turn has no trace reference. Common caus
 - **Vault** — `~/Documents/vault/`. Put files here that you want Ora to search: notes, documents, project files.
 - **Dialogues** — `~/Documents/conversations/`. Raw session logs are saved automatically here. Lifecycle envelopes and retrieval caches are Ora-managed companions; use the interface rather than editing any of them by hand.
 - **System prompt** — `~/ora/boot/boot.md`. Ora reads this as its operating instructions.
-- **Your values/voice** — `~/ora/mind.md`. Customizable from **Settings → Output Styles**, or via `/framework mindspec-interview`.
+- **Your values and context** — `~/ora/mind.md`. Customize this separate values layer from **Settings → Output Styles**.
 - **Model configuration** — `~/ora/config/routing-config.json` (routing and slots) and `~/ora/config/model-registry.json` (model inventory). Edit these through the Models pane, not by hand.
 
 On Windows, read `~/...` as `%USERPROFILE%\...`.
