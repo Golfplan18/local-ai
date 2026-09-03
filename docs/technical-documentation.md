@@ -1433,6 +1433,8 @@ tombstone capture, import, preview, render, and library work; after the purge,
 Lifecycle errors are logged and collected without falsely claiming that an
 optional callback succeeded.
 
+Transcript and suggestion routes hold the existing conversation read scope from entry lookup through transcript file I/O, JSON parsing and normalization, optional suggestion derivation, and final response construction; Delete Forever therefore waits for an admitted read to finish, while a Dialogue it has made unavailable returns `410` without transcript or suggestion content.
+
 **Failure and removal.** A missing source or an import, registration,
 descriptor, provider, or route-install failure logs a specific error, skips that
 source, and continues loading later explicit sources. An unexpected mid-route-loop
