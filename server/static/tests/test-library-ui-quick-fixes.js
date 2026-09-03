@@ -205,6 +205,8 @@ var queuedLibraryResponses = [];
 var queuedPreviewResponses = [];
 var queuedEditResponses = [];
 var editRequests = [];
+var queuedRevealResponses = [];
+var revealRequests = [];
 var sidebarListRequests = 0;
 var queuedSidebarListResponses = [];
 var sidebarListInFlight = 0;
@@ -347,6 +349,12 @@ function deferredResponse() {
 
 w.fetch = function (url, opts) {
   var decoded = decodeURIComponent(String(url));
+  if (decoded === '/api/fs/reveal') {
+    revealRequests.push({ url: decoded, method: opts.method, body: JSON.parse(opts.body) });
+    var queuedReveal = queuedRevealResponses.shift() || { payload: { ok: true } };
+    return response(queuedReveal.ok !== false,
+      queuedReveal.payload || queuedReveal, queuedReveal.status);
+  }
   if (decoded.indexOf('/api/library/edit') === 0) {
     editRequests.push({
       url: decoded,
@@ -813,6 +821,7 @@ async function run() {
       metadata: { item_type: 'Engram', tags: ['reference'] },
     }
   );
+  var contextFilePath = '/Users/oracle/Documents/vault/Projects/Ora/Project image.png';
   var contextFile = libraryRow(
     'files:project-image', 'files', 'Project image.png', {
       metadata: { item_type: 'File', privacy: 'private', content_type: 'image/png' },
@@ -1504,6 +1513,48 @@ async function run() {
       && preservedFinding.parentElement === w.document.querySelector('.output-content')
       && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
 
+  record('a File without a provider locator exposes no Reveal action',
+    !w.document.querySelector('[data-library-action="reveal"]'));
+  contextFile.preview.locator = { path: contextFilePath };
+  imageCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var fileRevealAction = w.document.querySelector('[data-library-action="reveal"]');
+  var stateBeforeReveal = w.OraLibraryWorkspace.getState();
+  queuedRevealResponses.push({ payload: { ok: true, path: contextFilePath } });
+  fileRevealAction.click();
+  await flush();
+  await flush();
+  var revealRequest = revealRequests[revealRequests.length - 1];
+  var stateAfterReveal = w.OraLibraryWorkspace.getState();
+  record('Reveal posts only the authoritative File locator and reports success without changing Library state',
+    fileRevealAction.textContent === 'Reveal in Finder'
+      && revealRequest.url === '/api/fs/reveal'
+      && revealRequest.method === 'POST'
+      && Object.keys(revealRequest.body).join(',') === 'path'
+      && revealRequest.body.path === contextFilePath
+      && w.document.getElementById('libraryWorkspaceNotice').textContent === 'Revealed in Finder.'
+      && w.document.getElementById('libraryWorkspaceNotice').dataset.tone === 'success'
+      && stateAfterReveal.projectId === stateBeforeReveal.projectId
+      && stateAfterReveal.selectedIds.join(',') === stateBeforeReveal.selectedIds.join(',')
+      && stateAfterReveal.pinnedId === stateBeforeReveal.pinnedId
+      && w.document.querySelector('.library-preview-image') === exhibitImage
+      && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
+      && inquiryDraft.value === 'Composer draft survives Library preview'
+      && preservedFinding.parentElement === w.document.querySelector('.output-content')
+      && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
+
+  queuedRevealResponses.push({
+    ok: false,
+    status: 403,
+    payload: { ok: false, error: 'path is outside the allowed folders' },
+  });
+  fileRevealAction.click();
+  await flush();
+  await flush();
+  record('Reveal surfaces the endpoint refusal through the current Library notice',
+    w.document.getElementById('libraryWorkspaceNotice').textContent
+      .indexOf('path is outside the allowed folders') !== -1
+      && w.document.getElementById('libraryWorkspaceNotice').dataset.tone === 'error');
+
   exhibitImage.dispatchEvent(new w.Event('error'));
   record('a browser decoder rejection becomes the current image preview\'s honest unavailable state',
     w.OraLibraryWorkspace.getState().pinnedId === contextFile.id
@@ -1619,7 +1670,7 @@ async function run() {
   record('readable Dialogue keeps its existing contextual actions',
     ['related', 'continue', 'fork', 'contributor', 'archive'].every(function (id) {
       return !!w.document.querySelector('[data-library-action="' + id + '"]');
-    }));
+    }) && !w.document.querySelector('[data-library-action="reveal"]'));
   w.document.querySelector('[data-library-view="visual"]').click();
   await new Promise(function (resolve) { w.requestAnimationFrame(resolve); });
   var relatedParams = new w.URL(

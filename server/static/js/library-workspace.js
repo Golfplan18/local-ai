@@ -1382,6 +1382,28 @@
   function builtinActions(row) {
     const actions = [];
     if (row) actions.push({ id: 'related', label: 'Show relationships', run: activatePinned });
+    const revealLocator = row && row.source === 'files' && row.preview && row.preview.locator;
+    const revealPath = revealLocator && typeof revealLocator.path === 'string'
+      && revealLocator.path.trim() ? revealLocator.path : '';
+    if (revealPath) {
+      actions.push({
+        id: 'reveal',
+        label: 'Reveal in Finder',
+        run: async () => {
+          const response = await fetch('/api/fs/reveal', {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: revealPath }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok || payload.ok !== true) {
+            throw new Error(payload.error || `Reveal request failed (HTTP ${response.status})`);
+          }
+          state.actionNotice = '';
+          setNotice('Revealed in Finder.', 'success');
+        },
+      });
+    }
     const id = dialogueId(row);
     if (id) {
       actions.push({ id: 'continue', label: 'Continue Dialogue', run: () => window.OraSidebar && window.OraSidebar.continueLibraryDialogue(row) });
