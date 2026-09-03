@@ -13773,6 +13773,14 @@ _LIBRARY_VISUAL_SUFFIXES = {
     ".avif", ".bmp", ".gif", ".heic", ".jpeg", ".jpg", ".png",
     ".svg", ".tif", ".tiff", ".webp",
 }
+_LIBRARY_IMAGE_PREVIEW_TYPES = {
+    ".jpeg": ("image/jpeg", "JPEG"),
+    ".jpg": ("image/jpeg", "JPEG"),
+    ".png": ("image/png", "PNG"),
+    ".webp": ("image/webp", "WEBP"),
+}
+_LIBRARY_IMAGE_PREVIEW_MAX_BYTES = 16 * 1024 * 1024
+_LIBRARY_IMAGE_PREVIEW_MAX_PIXELS = 40_000_000
 _LIBRARY_DIALOGUE_DIRECTIONS = {
     "direct-child": "outgoing",
     "sibling": "peer",
@@ -13812,6 +13820,56 @@ def _library_path_preview(
             "this file type has no Library preview route"
         ),
     }
+
+
+def _library_read_image_preview(path: str) -> tuple[bytes, str]:
+    """Read one stable, static raster without following a symlink."""
+    import stat
+
+    accepted = _LIBRARY_IMAGE_PREVIEW_TYPES.get(Path(path).suffix.lower())
+    if accepted is None:
+        raise PermissionError("this visual type has no safe Library image preview")
+    before = os.lstat(path)
+    if (stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode)
+            or before.st_size < 1
+            or before.st_size > _LIBRARY_IMAGE_PREVIEW_MAX_BYTES):
+        raise PermissionError("the image is not a supported bounded regular file")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        opened = os.fstat(descriptor)
+        with os.fdopen(descriptor, "rb", closefd=False) as stream:
+            data = stream.read(_LIBRARY_IMAGE_PREVIEW_MAX_BYTES + 1)
+        after = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    current = os.lstat(path)
+    identity = lambda item: (
+        item.st_dev, item.st_ino, item.st_size, item.st_mtime_ns,
+    )
+    if (identity(before) != identity(opened)
+            or identity(opened) != identity(after)
+            or identity(after) != identity(current)
+            or len(data) != after.st_size
+            or len(data) > _LIBRARY_IMAGE_PREVIEW_MAX_BYTES):
+        raise PermissionError("the image changed while its authority was validated")
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(data)) as image:
+            width, height = image.size
+            if (image.format != accepted[1] or width < 1 or height < 1
+                    or width * height > _LIBRARY_IMAGE_PREVIEW_MAX_PIXELS
+                    or getattr(image, "n_frames", 1) != 1):
+                raise ValueError
+            image.verify()
+        with Image.open(io.BytesIO(data)) as image:
+            image.load()
+    except Exception as exc:
+        raise PermissionError(
+            "the file is not an authenticated static PNG, JPEG, or WebP image"
+        ) from exc
+    return data, accepted[0]
 
 
 def _library_dialogue_provider(query: str = "") -> dict:
@@ -15005,6 +15063,32 @@ def library_preview():
         _library_hydrate_returned_engram_access([row])
     preview = row["preview"]
     identity = str(raw.get("identity") or "").strip()
+    if preview.get("kind") == "visual":
+        if (source != "files" or preview.get("available") is not True
+                or not identity):
+            return _json_response({
+                "error": preview.get("reason")
+                or "image preview is unavailable for the current Library item",
+            }, status=409)
+        try:
+            import base64
+
+            image, mime_type = _library_read_image_preview(identity)
+        except (OSError, PermissionError, ValueError):
+            return _json_response({
+                "error": (
+                    "image preview is unavailable after current authority, "
+                    "type, and size validation"
+                ),
+            }, status=409)
+        return _json_response({
+            "id": item_id,
+            "source": source,
+            "image": {
+                "mime_type": mime_type,
+                "data": base64.b64encode(image).decode("ascii"),
+            },
+        })
     if (preview.get("kind") != "text" or preview.get("available") is not True
             or not identity):
         return _json_response({

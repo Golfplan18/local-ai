@@ -482,6 +482,12 @@ body.library-workspace-open .visual-pane-shell > .right-pane {
   overflow-wrap: anywhere;
   font: inherit;
 }
+.library-preview-image {
+  display: block;
+  width: 100%;
+  max-height: calc(100% - 72px);
+  object-fit: contain;
+}
 .library-edit-textarea {
   box-sizing: border-box;
   width: 100%;

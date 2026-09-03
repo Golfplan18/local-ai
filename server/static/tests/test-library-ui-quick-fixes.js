@@ -814,8 +814,12 @@ async function run() {
     }
   );
   var contextFile = libraryRow(
-    'files:planning-brief', 'files', 'Planning brief.pdf', {
-      metadata: { item_type: 'File', privacy: 'private' },
+    'files:project-image', 'files', 'Project image.png', {
+      metadata: { item_type: 'File', privacy: 'private', content_type: 'image/png' },
+      preview: {
+        kind: 'visual', route: 'visual-pane', available: true, reason: null,
+        locator: {},
+      },
     }
   );
   queuedLibraryResponses.push(libraryPayload([visibleDialogue], {
@@ -1166,7 +1170,7 @@ async function run() {
     w.document.querySelector('.conversation-create-overlay').classList.contains('is-open')
       && w.document.querySelector('#conversationCreateHeading').textContent === 'New Private Dialogue'
       && w.document.querySelector('.conversation-create-status').textContent.indexOf('metadata-only Dialogue') !== -1
-      && w.document.querySelector('.conversation-create-status').textContent.indexOf('Planning brief.pdf (File)') !== -1
+      && w.document.querySelector('.conversation-create-status').textContent.indexOf('Project image.png (File)') !== -1
       && w.document.querySelector('.conversation-create-status').textContent.indexOf('Reference Engram (non-atomic Engram)') !== -1);
   var creationDescription = w.document.querySelector('.conversation-create-description');
   creationDescription.value = 'Use the checked grounded context to plan this new dialogue.';
@@ -1467,6 +1471,73 @@ async function run() {
       && unavailablePreviewText.indexOf('cannot be read here') !== -1
       && unavailablePreviewText.indexOf('STALE BODY MUST NOT APPEAR') === -1
       && !w.document.querySelector('.library-preview-body'));
+
+  var imageRow = w.document.querySelector('[data-library-row-id="files:project-image"]');
+  var imageCheck = imageRow.querySelector('input[type="checkbox"]');
+  imageCheck.checked = true;
+  imageCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  queuedPreviewResponses.push({
+    id: contextFile.id,
+    source: 'files',
+    image: { mime_type: 'image/png', data: 'AQID' },
+  });
+  w.document.querySelector(
+    '[data-library-row-id="files:project-image"] .library-list-row__pin'
+  ).click();
+  await flush();
+  await flush();
+  var exhibitImage = w.document.querySelector(
+    '.library-preview-layer--exhibits .library-preview-image'
+  );
+  record('an admitted project image renders only in the Library Exhibits layer without changing state or owners',
+    !!exhibitImage
+      && exhibitImage.tagName === 'IMG'
+      && exhibitImage.alt === 'Project image.png'
+      && exhibitImage.src === 'data:image/png;base64,AQID'
+      && !w.document.querySelector('.library-preview-layer--findings img')
+      && w.document.querySelector('.library-preview-layer--findings').textContent
+        .indexOf('Metadata and relationships remain in Findings') !== -1
+      && w.OraLibraryWorkspace.getState().pinnedId === contextFile.id
+      && w.OraLibraryWorkspace.getState().selectedIds.includes(contextFile.id)
+      && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
+      && inquiryDraft.value === 'Composer draft survives Library preview'
+      && preservedFinding.parentElement === w.document.querySelector('.output-content')
+      && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
+
+  exhibitImage.dispatchEvent(new w.Event('error'));
+  record('a browser decoder rejection becomes the current image preview\'s honest unavailable state',
+    w.OraLibraryWorkspace.getState().pinnedId === contextFile.id
+      && !w.document.querySelector('.library-preview-image')
+      && w.document.querySelector('.library-preview-layer--findings').textContent
+        .indexOf('The browser could not decode the current image.') !== -1
+      && w.document.querySelector('.library-preview-layer--exhibits').textContent
+        .indexOf('Image preview unavailable.') !== -1);
+
+  var staleImagePreview = deferredResponse();
+  queuedPreviewResponses.push(staleImagePreview);
+  w.document.querySelector(
+    '[data-library-row-id="files:project-image"] .library-list-row__pin'
+  ).click();
+  await flush();
+  w.document.querySelector(
+    '[data-library-row-id="dialogues:metadata-only"] .library-list-row__pin'
+  ).click();
+  staleImagePreview.resolve({
+    id: contextFile.id,
+    source: 'files',
+    image: { mime_type: 'image/png', data: 'U1RBTEU=' },
+  });
+  await flush();
+  await flush();
+  record('a newer pin aborts and generation-discards a late Exhibits image',
+    staleImagePreview.options.signal.aborted
+      && w.OraLibraryWorkspace.getState().pinnedId === metadataDialogue.id
+      && !w.document.querySelector('.library-preview-image'));
+  imageCheck = w.document.querySelector(
+    '[data-library-row-id="files:project-image"] input[type="checkbox"]'
+  );
+  imageCheck.checked = false;
+  imageCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
 
   var extensionActionRuns = 0;
   w.document.addEventListener('ora:library-actions-requested', function appendProofAction(event) {
