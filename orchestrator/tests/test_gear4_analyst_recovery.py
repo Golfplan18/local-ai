@@ -202,7 +202,8 @@ class TestGear4AnalystRecovery(unittest.TestCase):
     def test_primary_fails_recovers_on_fallback_and_proceeds(self):
         h = _Harness(health={"depth-primary": False})
         fb = {"depth": {"name": "depth-fallback"}, "breadth": {"name": "breadth-fallback"}}
-        with _patched(h, fb_mapping=fb):
+        with _patched(h, fb_mapping=fb), \
+             mock.patch("pipeline_health.record") as warning:
             result = boot.run_gear4(_ctx(), {}, execution_context="interactive")
         self.assertNotEqual(result, GEAR3_SENTINEL)        # recovered -> proceeded
         names = h.analyst_calls()
@@ -210,6 +211,8 @@ class TestGear4AnalystRecovery(unittest.TestCase):
         self.assertIn("depth-fallback", names)             # fallback was tried
         self.assertTrue(_stream_order(h.calls, "depth-primary", "depth-fallback"),
                         "primary must be attempted before the fallback")
+        warning.assert_called_once()
+        self.assertEqual(warning.call_args.args[0], "model_substitution")
 
     def test_primary_and_fallback_both_fail_falls_back_to_gear3(self):
         h = _Harness(health={"depth-primary": False, "depth-fallback": False})
