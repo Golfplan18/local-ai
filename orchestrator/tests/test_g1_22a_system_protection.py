@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from contextlib import nullcontext
 from dataclasses import replace
 from pathlib import Path
 from unittest import mock
@@ -26,6 +27,9 @@ import oversight_queue  # noqa: E402
 import system_protection as protection  # noqa: E402
 import tool_events  # noqa: E402
 from tools import credential_store as credential_tool  # noqa: E402
+from orchestrator import active_configuration as active_configuration  # noqa: E402
+from orchestrator import system_protection as package_protection  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 class SystemProtectionBase(unittest.TestCase):
@@ -1220,6 +1224,325 @@ class TestCredentialBoundary(SystemProtectionBase):
         resolver.assert_called_once_with(registry.by_id.return_value)
         with mock.patch.object(boot, "_provider_registry", None):
             self.assertEqual(boot._canonical_provider_key("openai"), "")
+
+
+class TestProtectedServerPlans(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        server.app.config.update(TESTING=True)
+        cls.client = server.app.test_client()
+
+    def setUp(self):
+        with server._reembed_lock:
+            server._reembed_state.update({
+                "in_progress": False,
+                "started_at": 0.0,
+                "completed_at": 0.0,
+                "profile_id": "",
+                "progress": "",
+                "last_summary": None,
+            })
+
+    def test_vector_rebuild_rejects_unexecutable_plan_before_review(self):
+        retrieval = mock.Mock()
+        retrieval.snapshot.return_value = {"active_embedding": {"id": "old"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "rebuild.py"
+            script.write_text("print('ok')\n", encoding="utf-8")
+            with (
+                mock.patch.object(server, "_retrieval_config", retrieval),
+                mock.patch.object(server, "_REEMBED_SCRIPT", str(script)),
+                mock.patch.object(server, "_resolve_reembed_profile", return_value={
+                    "provider": "ollama", "model": "embed", "dimensions": "1024",
+                }),
+                mock.patch.object(
+                    package_protection, "authorize_server_action",
+                ) as authorize,
+            ):
+                response = self.client.post(
+                    "/api/retrieval/rebuild/start",
+                    json={"embedding_profile_id": "candidate"},
+                )
+
+            self.assertEqual(response.status_code, 400, response.get_json())
+            self.assertIn("positive integer", response.get_json()["error"])
+
+            with (
+                mock.patch.object(server, "_retrieval_config", retrieval),
+                mock.patch.object(
+                    server, "_REEMBED_SCRIPT", str(Path(tmp) / "missing.py"),
+                ),
+                mock.patch.object(server, "_resolve_reembed_profile", return_value={
+                    "provider": "ollama", "model": "embed", "dimensions": 1024,
+                }),
+                mock.patch.object(
+                    package_protection, "authorize_server_action",
+                ) as missing_authorize,
+            ):
+                missing = self.client.post(
+                    "/api/retrieval/rebuild/start",
+                    json={"embedding_profile_id": "candidate"},
+                )
+
+            self.assertEqual(missing.status_code, 400, missing.get_json())
+            self.assertIn("regular file", missing.get_json()["error"])
+            authorize.assert_not_called()
+            missing_authorize.assert_not_called()
+
+    def test_vector_rebuild_binds_script_and_executes_only_approved_plan(self):
+        class ImmediateThread:
+            def __init__(self, *, target, daemon):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        class SuccessfulProcess:
+            stdout = ()
+            returncode = 0
+
+            def wait(self):
+                return 0
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            script = root / "rebuild.py"
+            script.write_text("print('approved')\n", encoding="utf-8")
+            config = root / "chromadb.json"
+            config.write_text("{}", encoding="utf-8")
+            retrieval = mock.Mock(CHROMADB_CONFIG_PATH=config)
+            retrieval.snapshot.return_value = {
+                "active_embedding": {"id": "old"},
+            }
+            option = {
+                "provider": " OpenRouter ",
+                "model": " approved/model ",
+                "dimensions": 1536,
+            }
+            with (
+                mock.patch.object(server, "_retrieval_config", retrieval),
+                mock.patch.object(server, "_REEMBED_SCRIPT", str(script)),
+                mock.patch.object(server, "_resolve_reembed_profile", return_value=option),
+            ):
+                plan = server._build_reembed_plan("candidate")
+
+            self.assertEqual(plan.provider, "openrouter")
+            self.assertEqual(plan.model, "approved/model")
+            self.assertEqual(plan.dimension, 1536)
+            self.assertEqual(plan.script_path, str(script))
+            self.assertTrue(plan.script_content_digest.startswith("sha256:"))
+
+            vector_dir = root / "chroma"
+            vector_dir.mkdir()
+            with (
+                mock.patch.object(server, "_retrieval_config", retrieval),
+                mock.patch.object(server, "_REEMBED_SCRIPT", str(script)),
+                mock.patch.object(server, "_resolve_reembed_profile", return_value=option),
+                mock.patch.object(server.rp, "CHROMADB_DIR", vector_dir),
+                mock.patch.object(
+                    package_protection, "authorize_server_action",
+                    return_value="approved",
+                ) as authorize,
+                mock.patch.object(
+                    server, "_spawn_reembed",
+                    return_value=({"status": "started", "profile_id": "candidate"}, 200),
+                ) as spawn,
+            ):
+                response = self.client.post(
+                    "/api/retrieval/rebuild/start",
+                    json={"embedding_profile_id": "candidate"},
+                )
+
+            self.assertEqual(response.status_code, 200, response.get_json())
+            authorization = authorize.call_args.kwargs
+            self.assertEqual(
+                authorization["params"],
+                {"execution_plan": plan.approval_parameters()},
+            )
+            self.assertIn(
+                package_protection.path_selector(script),
+                authorization["selectors"],
+            )
+            spawn.assert_called_once_with(plan, protection_execution="approved")
+
+            with (
+                mock.patch.object(server, "_build_reembed_plan", return_value=plan),
+                mock.patch.object(server, "_reembed_post_state", return_value=[]),
+                mock.patch.object(server.threading, "Thread", ImmediateThread),
+                mock.patch.object(package_protection, "protected_effect", return_value=nullcontext()),
+                mock.patch.object(package_protection, "complete_execution") as complete,
+                mock.patch("subprocess.Popen", return_value=SuccessfulProcess()) as popen,
+            ):
+                body, status = server._spawn_reembed(
+                    plan, protection_execution=object(),
+                )
+
+            self.assertEqual((body, status), (
+                {"status": "started", "profile_id": "candidate"}, 200,
+            ))
+            argv = popen.call_args.args[0]
+            self.assertEqual(argv[argv.index("--target-provider") + 1], "openrouter")
+            self.assertEqual(argv[argv.index("--target-embedder") + 1], "approved/model")
+            self.assertEqual(argv[argv.index("--target-dim") + 1], "1536")
+            self.assertEqual(argv[1], str(script))
+            complete.assert_called_once()
+
+    def test_vector_rebuild_postapproval_busy_claim_has_one_winner(self):
+        class DormantThread:
+            def __init__(self, *, target, daemon):
+                self.target = target
+
+            def start(self):
+                return None
+
+        plan = server._ReembedExecutionPlan(
+            profile_id="candidate",
+            provider="ollama",
+            model="approved-model",
+            dimension=1024,
+            script_path="/tmp/rebuild.py",
+            script_bytes=1,
+            script_content_digest="sha256:content",
+            script_identity_digest="sha256:identity",
+        )
+        with (
+            mock.patch.object(server, "_build_reembed_plan", return_value=plan),
+            mock.patch.object(server, "_reembed_post_state", return_value=[]),
+            mock.patch.object(server.threading, "Thread", DormantThread),
+            mock.patch.object(package_protection, "complete_execution") as complete,
+        ):
+            first = server._spawn_reembed(plan, protection_execution="first")
+            second = server._spawn_reembed(plan, protection_execution="second")
+
+        self.assertEqual(first[1], 200)
+        self.assertEqual(second[1], 409)
+        self.assertEqual(second[0]["status"], "in_progress")
+        complete.assert_called_once()
+        self.assertEqual(complete.call_args.args[0], "second")
+
+    def test_model_profile_delete_rejects_invalid_preflight_before_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            configurations = root / "configurations"
+            configurations.mkdir()
+            target = configurations / "candidate.json"
+            target.write_text("{}", encoding="utf-8")
+            pointer = root / "active.json"
+            pointer.write_text("not-json", encoding="utf-8")
+            with (
+                mock.patch.object(active_configuration, "CONFIGURATIONS_DIR", configurations),
+                mock.patch.object(active_configuration, "ACTIVE_POINTER_PATH", pointer),
+                mock.patch.object(active_configuration, "DATA_DIR", root),
+                mock.patch.object(package_protection, "authorize_server_action") as authorize,
+            ):
+                reserved = self.client.delete("/api/configurations/free")
+                missing = self.client.delete("/api/configurations/missing")
+                (configurations / "directory.json").mkdir()
+                non_regular = self.client.delete("/api/configurations/directory")
+                malformed = self.client.delete("/api/configurations/candidate")
+                pointer.write_text(json.dumps({"name": "candidate"}), encoding="utf-8")
+                (configurations / "free.json").write_text("not-json", encoding="utf-8")
+                unreadable_fallback = self.client.delete(
+                    "/api/configurations/candidate"
+                )
+
+            for response in (reserved, missing, non_regular, malformed):
+                self.assertEqual(response.status_code, 400, response.get_json())
+            self.assertEqual(
+                unreadable_fallback.status_code, 400,
+                unreadable_fallback.get_json(),
+            )
+            self.assertTrue(target.is_file())
+            authorize.assert_not_called()
+
+    def test_model_profile_delete_locked_recheck_preserves_target(self):
+        class DriftApprovedFile:
+            def __init__(self, path, replacement):
+                self.path = path
+                self.replacement = replacement
+
+            def __enter__(self):
+                self.path.write_text(self.replacement, encoding="utf-8")
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+        cases = (
+            ("target", '{"changed": true}'),
+            ("pointer", '{\n  "name": "candidate"\n}'),
+            ("fallback", '{"changed": true}'),
+        )
+        for drift_name, replacement in cases:
+            with self.subTest(drift=drift_name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                configurations = root / "configurations"
+                configurations.mkdir()
+                target = configurations / "candidate.json"
+                target.write_text("{}", encoding="utf-8")
+                fallback = configurations / "free.json"
+                fallback.write_text("{}", encoding="utf-8")
+                pointer = root / "active.json"
+                pointer.write_text(
+                    json.dumps({"name": "candidate"}), encoding="utf-8",
+                )
+                paths = {
+                    "target": target,
+                    "pointer": pointer,
+                    "fallback": fallback,
+                }
+                approved_bytes = {
+                    key: path.read_text(encoding="utf-8")
+                    for key, path in paths.items()
+                }
+                with (
+                    mock.patch.object(active_configuration, "CONFIGURATIONS_DIR", configurations),
+                    mock.patch.object(active_configuration, "ACTIVE_POINTER_PATH", pointer),
+                    mock.patch.object(active_configuration, "DATA_DIR", root),
+                    mock.patch.object(
+                        active_configuration, "validate_profile_allocation",
+                        return_value={},
+                    ),
+                    mock.patch.object(
+                        package_protection, "authorize_server_action",
+                        return_value="approved",
+                    ) as authorize,
+                    mock.patch.object(
+                        package_protection, "protected_effect",
+                        return_value=DriftApprovedFile(
+                            paths[drift_name], replacement,
+                        ),
+                    ),
+                    mock.patch.object(
+                        package_protection, "complete_execution",
+                    ) as complete,
+                ):
+                    response = self.client.delete(
+                        "/api/configurations/candidate"
+                    )
+
+                self.assertEqual(response.status_code, 400, response.get_json())
+                self.assertTrue(target.is_file())
+                for key, path in paths.items():
+                    expected = replacement if key == drift_name else approved_bytes[key]
+                    self.assertEqual(path.read_text(encoding="utf-8"), expected)
+                authorization = authorize.call_args.kwargs
+                self.assertEqual(
+                    set(authorization["selectors"]),
+                    {
+                        package_protection.path_selector(path)
+                        for path in paths.values()
+                    },
+                )
+                self.assertEqual(
+                    [state["selector"] for state in authorization["pre_state"]],
+                    [
+                        package_protection.path_selector(target),
+                        package_protection.path_selector(pointer),
+                        package_protection.path_selector(fallback),
+                    ],
+                )
+                complete.assert_called_once()
+                self.assertFalse(complete.call_args.kwargs["ok"])
 
 
 class TestSystemProtectionDocumentation(unittest.TestCase):
