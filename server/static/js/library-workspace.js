@@ -37,6 +37,7 @@
   const groupButton = mount.querySelector('[data-library-popover="group"]');
   const groupSelect = mount.querySelector('[data-library-group]');
   const folderGroupOption = groupSelect && groupSelect.querySelector('option[value="folder"]');
+  const contentTypeGroupOption = groupSelect && groupSelect.querySelector('option[value="content-type"]');
   const filterButton = mount.querySelector('[data-library-popover="filters"]');
   const typeFilter = mount.querySelector('[data-library-filter="type"]');
   const projectScope = mount.querySelector('[data-library-project]');
@@ -218,17 +219,18 @@
     return parts.join('/');
   }
 
-  function folderGroupingAvailable() {
+  function fileGroupingAvailable() {
     return state.sources.size === 1 && state.sources.has('files');
   }
 
   function syncGroupAvailability() {
-    const folderAvailable = folderGroupingAvailable();
-    if (folderGroupOption) {
-      folderGroupOption.hidden = !folderAvailable;
-      folderGroupOption.disabled = !folderAvailable;
-    }
-    if (!folderAvailable && state.group === 'folder') state.group = 'none';
+    const fileGroupsAvailable = fileGroupingAvailable();
+    [folderGroupOption, contentTypeGroupOption].forEach((option) => {
+      if (!option) return;
+      option.hidden = !fileGroupsAvailable;
+      option.disabled = !fileGroupsAvailable;
+    });
+    if (!fileGroupsAvailable && ['folder', 'content-type'].includes(state.group)) state.group = 'none';
     if (groupSelect) groupSelect.value = state.group;
   }
 
@@ -611,6 +613,10 @@
   function groupValue(row) {
     if (state.group === 'source') return sourceLabels[row.source] || row.source;
     if (state.group === 'type') return rowType(row);
+    if (state.group === 'content-type') {
+      const value = row.metadata && row.metadata.content_type;
+      return value === undefined || value === null || String(value).trim() === '' ? '' : String(value);
+    }
     if (state.group === 'project') return rowProject(row);
     if (state.group === 'folder') return rowFolder(row);
     return '';
@@ -716,7 +722,9 @@
     if (state.group !== 'none') {
       const groupState = document.createElement('p');
       groupState.className = 'library-visual-group-state';
-      const label = { source: 'source', type: 'type', project: 'project', folder: 'folder' }[state.group] || state.group;
+      const label = {
+        source: 'source', type: 'type', 'content-type': 'content type', project: 'project', folder: 'folder',
+      }[state.group] || state.group;
       groupState.textContent = qualificationAvailable()
         ? `Grouped by ${label}; inventory nodes are ordered by their visible group labels around the measured arc.`
         : `Grouping by ${label} is unavailable until every query-qualified inventory page is loaded.`;
@@ -977,7 +985,9 @@
 
   function updateControlSummaries() {
     if (groupButton) {
-      const group = { none: 'None', source: 'Source', type: 'Type', project: 'Project', folder: 'Folder' }[state.group] || state.group;
+      const group = {
+        none: 'None', source: 'Source', type: 'Type', 'content-type': 'Content type', project: 'Project', folder: 'Folder',
+      }[state.group] || state.group;
       const sort = state.sort === 'title' ? 'Title' : 'Most recent';
       groupButton.textContent = `Group: ${group}`;
       groupButton.setAttribute('aria-label', `Group and sort Library results. Current group: ${group}. Current sort: ${sort}.`);
@@ -1708,9 +1718,7 @@
   });
 
   groupSelect.addEventListener('change', (event) => {
-    state.group = event.target.value === 'folder' && !folderGroupingAvailable()
-      ? 'none'
-      : event.target.value;
+    state.group = event.target.value;
     syncGroupAvailability();
     render();
   });
