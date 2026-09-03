@@ -203,6 +203,8 @@ var queuedBrowserResponses = [];
 var libraryRequestUrls = [];
 var queuedLibraryResponses = [];
 var queuedPreviewResponses = [];
+var queuedEditResponses = [];
+var editRequests = [];
 var sidebarListRequests = 0;
 var queuedSidebarListResponses = [];
 var sidebarListInFlight = 0;
@@ -345,12 +347,31 @@ function deferredResponse() {
 
 w.fetch = function (url, opts) {
   var decoded = decodeURIComponent(String(url));
+  if (decoded.indexOf('/api/library/edit') === 0) {
+    editRequests.push({
+      url: decoded,
+      method: (opts && opts.method) || 'GET',
+      body: opts && opts.body ? JSON.parse(opts.body) : null,
+    });
+    var queuedEdit = queuedEditResponses.shift() || {};
+    if (queuedEdit.promise) {
+      queuedEdit.options = opts || {};
+      return queuedEdit.promise;
+    }
+    if (queuedEdit.ok === false) {
+      return response(false, queuedEdit.payload, queuedEdit.status);
+    }
+    return response(true, queuedEdit.payload || queuedEdit, queuedEdit.status);
+  }
   if (decoded.indexOf('/api/library/preview?') === 0) {
     if (queuedPreviewResponses.length) {
       var queuedPreview = queuedPreviewResponses.shift();
       if (queuedPreview && queuedPreview.promise) {
         queuedPreview.options = opts || {};
         return queuedPreview.promise;
+      }
+      if (queuedPreview && queuedPreview.ok === false) {
+        return response(false, queuedPreview.payload, queuedPreview.status);
       }
       return response(true, queuedPreview);
     }
@@ -1256,7 +1277,7 @@ async function run() {
   var inquiryDraft = w.document.querySelector('.input-pane textarea');
   inquiryDraft.value = 'Composer draft survives Library preview';
   var activeDialogueBeforePreview = w.OraConversation.getActiveConversationId();
-  var visibleBody = '# Atomic Claim Title\n**literal Markdown**\n<em>literal HTML</em>';
+  var visibleBody = '# Atomic Claim Title\n**older pin preview**\n<em>literal HTML</em>';
   queuedPreviewResponses.push({
     id: contextEngram.id,
     source: 'engrams',
@@ -1277,6 +1298,104 @@ async function run() {
       && inquiryDraft.value === 'Composer draft survives Library preview'
       && preservedFinding.parentElement === w.document.querySelector('.output-content')
       && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
+
+  var currentBody = '# Atomic Claim Title\n**newer current Markdown**\n<em>literal HTML</em>';
+  var rawMarkdownLf = '---\ntype: engram\ntags:\n  - atomic\n---\n' + currentBody;
+  var rawMarkdown = rawMarkdownLf.replace(/\n/g, '\r\n');
+  var editDigest = 'a'.repeat(64);
+  queuedEditResponses.push({
+    id: contextEngram.id, source: 'engrams', text: rawMarkdown, digest: editDigest,
+  });
+  w.document.querySelector('[data-library-edit="start"]').click();
+  await flush();
+  await flush();
+  var editDraft = w.document.querySelector('[data-library-edit-draft]');
+  var putsBeforeCancel = editRequests.filter(function (item) { return item.method === 'PUT'; }).length;
+  record('eligible Markdown preview exposes Edit and a plain textarea with Save and Cancel',
+    !!editDraft
+      && editDraft.tagName === 'TEXTAREA'
+      && editDraft.value === rawMarkdownLf
+      && !!w.document.querySelector('[data-library-edit="save"]')
+      && !!w.document.querySelector('[data-library-edit="cancel"]')
+      && new w.URL(editRequests[editRequests.length - 1].url, w.location.href)
+        .searchParams.get('id') === contextEngram.id);
+  editDraft.value = 'Cancelled draft';
+  editDraft.dispatchEvent(new w.Event('input', { bubbles: true }));
+  queuedPreviewResponses.push({
+    id: contextEngram.id, source: 'engrams', text: currentBody,
+  });
+  w.document.querySelector('[data-library-edit="cancel"]').click();
+  await flush();
+  await flush();
+  record('Cancel refetches the current preview without writing or restoring the older pin text',
+    !w.document.querySelector('[data-library-edit-draft]')
+      && w.document.querySelector('.library-preview-body').textContent === currentBody
+      && queuedPreviewResponses.length === 0
+      && editRequests.filter(function (item) { return item.method === 'PUT'; }).length
+        === putsBeforeCancel);
+
+  queuedEditResponses.push({
+    id: contextEngram.id, source: 'engrams', text: rawMarkdown, digest: editDigest,
+  });
+  w.document.querySelector('[data-library-edit="start"]').click();
+  await flush();
+  await flush();
+  editDraft = w.document.querySelector('[data-library-edit-draft]');
+  var savedRawMarkdown = rawMarkdownLf.replace('newer current Markdown', 'edited Markdown');
+  editDraft.value = savedRawMarkdown;
+  editDraft.dispatchEvent(new w.Event('input', { bubbles: true }));
+  queuedEditResponses.push({
+    ok: false,
+    status: 409,
+    payload: { error: 'The Markdown item changed after editing began', code: 'conflict', saved: false },
+  });
+  w.document.querySelector('[data-library-edit="save"]').click();
+  await flush();
+  await flush();
+  var conflictedDraft = w.document.querySelector('[data-library-edit-draft]');
+  var conflictRequest = editRequests[editRequests.length - 1];
+  record('a save conflict retains the complete draft and exact digest contract',
+    !!conflictedDraft
+      && conflictedDraft.value === savedRawMarkdown
+      && w.document.querySelector('[data-library-edit-status]').textContent
+        .indexOf('draft is still here') !== -1
+      && Object.keys(conflictRequest.body).sort().join(',') === 'expected_digest,id,text'
+      && conflictRequest.body.id === contextEngram.id
+      && conflictRequest.body.expected_digest === editDigest
+      && conflictRequest.body.text
+        === savedRawMarkdown.replace(/\n/g, '\r\n'));
+
+  var savedBody = currentBody.replace('newer current Markdown', 'edited Markdown');
+  queuedEditResponses.push({
+    id: contextEngram.id,
+    source: 'engrams',
+    saved: true,
+    index_refreshed: false,
+    index_error: 'simulated refresh failure',
+  });
+  queuedPreviewResponses.push({
+    ok: false,
+    status: 404,
+    payload: { error: 'the failed reindex left no current preview row' },
+  });
+  w.document.querySelector('[data-library-edit="save"]').click();
+  await flush();
+  await flush();
+  var savedStatus = w.document.querySelector('[data-library-edit-status]');
+  record('a completed file save reports a failed Engram index refresh separately',
+    !w.document.querySelector('[data-library-edit-draft]')
+      && !!savedStatus
+      && savedStatus.textContent.indexOf('File saved') !== -1
+      && savedStatus.textContent.indexOf('index refresh failed') !== -1
+      && w.document.querySelector('.library-preview-layer--findings').textContent
+        .indexOf('failed reindex left no current preview row') !== -1);
+  visibleBody = savedBody;
+  queuedPreviewResponses.push({ id: contextEngram.id, source: 'engrams', text: savedBody });
+  Array.from(w.document.querySelectorAll('.library-list-row__pin')).find(function (button) {
+    return button.textContent.indexOf('Atomic Claim Title') !== -1;
+  }).click();
+  await flush();
+  await flush();
 
   var failedBodyRefresh = deferredResponse();
   queuedLibraryResponses.push(failedBodyRefresh);

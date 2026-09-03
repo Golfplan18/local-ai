@@ -35,6 +35,8 @@ from typing import Optional
 
 import yaml
 
+from orchestrator.runtime_hygiene import mutation_path_locks
+
 
 VAULT_ROOT = os.path.expanduser("~/Documents/vault")
 ENGRAMS_DIR = os.path.join(VAULT_ROOT, "Engrams")
@@ -263,10 +265,21 @@ def yaml_escape(s: str) -> str:
 
 
 def apply_changed_mind(survivor_slug: str, archived_slug: str,
-                       archived_h1: str, dry_run: bool) -> dict:
+                       archived_h1: str, dry_run: bool, *,
+                       already_locked: bool = False) -> dict:
     """survivor's frontmatter gets a supersedes→archived relationship;
-    archived's frontmatter gets an archived tag.
+    archived's frontmatter gets an archived tag. Writers lock the complete
+    read-through-write interval unless their caller already holds both locks.
     """
+    if not dry_run and not already_locked:
+        with mutation_path_locks([
+            os.path.join(ENGRAMS_DIR, f"{survivor_slug}.md"),
+            os.path.join(ENGRAMS_DIR, f"{archived_slug}.md"),
+        ]):
+            return apply_changed_mind(
+                survivor_slug, archived_slug, archived_h1, dry_run,
+                already_locked=True,
+            )
     out = {"mutated_files": [], "errors": []}
 
     survivor = read_engram(survivor_slug)
@@ -300,8 +313,14 @@ def apply_changed_mind(survivor_slug: str, archived_slug: str,
     return out
 
 
-def apply_wrong(slug: str, dry_run: bool) -> dict:
-    """Add archived tag to the named engram."""
+def apply_wrong(slug: str, dry_run: bool, *,
+                already_locked: bool = False) -> dict:
+    """Add an archived tag while holding the Engram's mutation lock."""
+    if not dry_run and not already_locked:
+        with mutation_path_locks([
+            os.path.join(ENGRAMS_DIR, f"{slug}.md"),
+        ]):
+            return apply_wrong(slug, dry_run, already_locked=True)
     out = {"mutated_files": [], "errors": []}
     target = read_engram(slug)
     if target is None:

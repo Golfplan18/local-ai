@@ -482,6 +482,22 @@ body.library-workspace-open .visual-pane-shell > .right-pane {
   overflow-wrap: anywhere;
   font: inherit;
 }
+.library-edit-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 260px;
+  margin-top: 12px;
+  padding: 10px;
+  resize: vertical;
+  font: inherit;
+  color: var(--text-normal);
+  background: var(--background-primary-alt);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+}
+.library-edit-controls { display: flex; gap: 8px; margin-top: 10px; }
+[data-library-edit-status].is-error { color: var(--text-error); }
+[data-library-edit-status].is-success { color: var(--text-success); }
 .library-relationships {
   margin-top: 16px;
   border-top: 1px solid var(--background-modifier-border);
