@@ -385,7 +385,7 @@ def _trigger_source(stamp: str) -> dict[str, Any]:
 
 
 def _trigger_actions(state: str, action_kind: str) -> list[str]:
-    actions: list[str] = []
+    actions = ["open_scheduled"]
     if action_kind == "email send":
         actions.append("inspect")
     if state == "draft":

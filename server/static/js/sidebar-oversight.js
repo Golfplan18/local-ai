@@ -78,8 +78,9 @@
     }
     // Expanding Oversight refreshes the existing queues.
     if (name === 'processes') {
-      refreshAll();
+      return refreshAll();
     }
+    return Promise.resolve();
   };
 
   for (const sg of supers) {
@@ -1313,6 +1314,29 @@
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
+
+  document.addEventListener('ora:scheduled-trigger-open-requested', async (event) => {
+    const triggerId = event && event.detail && event.detail.trigger_id;
+    if (typeof triggerId !== 'string'
+        || !/^[a-z0-9][a-z0-9._:-]{0,127}$/.test(triggerId)) return;
+    if (!triggerList) return;
+
+    if (window.OraSidebar && typeof window.OraSidebar.setExpanded === 'function') {
+      window.OraSidebar.setExpanded(true);
+    }
+    state.triggerExpanded = triggerId;
+    state.triggerReview = null;
+    await setActiveSuper('processes');
+
+    const card = [...triggerList.querySelectorAll('.trigger-card')]
+      .find((candidate) => candidate.dataset.triggerId === triggerId);
+    if (!card) return;
+    card.tabIndex = -1;
+    if (typeof card.scrollIntoView === 'function') {
+      card.scrollIntoView({ block: 'nearest' });
+    }
+    card.focus();
+  });
 
   const ageOf = (isoTimestamp) => {
     if (!isoTimestamp) return '';

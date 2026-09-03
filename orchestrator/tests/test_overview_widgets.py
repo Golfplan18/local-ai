@@ -184,7 +184,9 @@ date: 2026-08-31
         )
         trigger = by_id["triggers"]["items"][0]
         self.assertEqual(trigger["scope"], {"project_nexus": "zeta"})
-        self.assertEqual(trigger["actions"], ["run", "pause", "retire"])
+        self.assertEqual(trigger["actions"], [
+            "open_scheduled", "run", "pause", "retire",
+        ])
         self.assertEqual(trigger["time"], "2026-09-02T15:00:00+00:00")
         note = by_id["daily-note"]["items"][0]
         self.assertEqual(note["item_id"], "daily-note:2026-08-31")
@@ -359,7 +361,9 @@ date: 2026-08-31
         }]
         sources, _calls = self._load(trigger_records=trigger_records)
         trigger = self._by_id(sources)["triggers"]["items"][0]
-        self.assertEqual(trigger["actions"], ["inspect", "review", "run", "retire"])
+        self.assertEqual(trigger["actions"], [
+            "open_scheduled", "inspect", "review", "run", "retire",
+        ])
         self.assertEqual(trigger["text"], "manual · email send")
 
 
