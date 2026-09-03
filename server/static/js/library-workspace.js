@@ -35,6 +35,8 @@
   const actionHost = mount.querySelector('[data-library-actions]');
   const actionButton = mount.querySelector('[data-library-popover="actions"]');
   const groupButton = mount.querySelector('[data-library-popover="group"]');
+  const groupSelect = mount.querySelector('[data-library-group]');
+  const folderGroupOption = groupSelect && groupSelect.querySelector('option[value="folder"]');
   const filterButton = mount.querySelector('[data-library-popover="filters"]');
   const typeFilter = mount.querySelector('[data-library-filter="type"]');
   const projectScope = mount.querySelector('[data-library-project]');
@@ -203,6 +205,31 @@
   function rowProject(row) {
     const projects = row.metadata.project_ids;
     return Array.isArray(projects) && projects.length ? projects[0] : 'Unassigned';
+  }
+
+  function rowFolder(row) {
+    if (!row || row.source !== 'files') return '';
+    const details = row.provenance && row.provenance.details;
+    const relativePath = String((details && details.relative_path) || '').trim();
+    if (!relativePath) return '';
+    const parts = relativePath.replace(/\\/g, '/').split('/').filter(Boolean);
+    if (parts.length <= 1) return 'Project root';
+    parts.pop();
+    return parts.join('/');
+  }
+
+  function folderGroupingAvailable() {
+    return state.sources.size === 1 && state.sources.has('files');
+  }
+
+  function syncGroupAvailability() {
+    const folderAvailable = folderGroupingAvailable();
+    if (folderGroupOption) {
+      folderGroupOption.hidden = !folderAvailable;
+      folderGroupOption.disabled = !folderAvailable;
+    }
+    if (!folderAvailable && state.group === 'folder') state.group = 'none';
+    if (groupSelect) groupSelect.value = state.group;
   }
 
   function pinnedRow() {
@@ -585,6 +612,7 @@
     if (state.group === 'source') return sourceLabels[row.source] || row.source;
     if (state.group === 'type') return rowType(row);
     if (state.group === 'project') return rowProject(row);
+    if (state.group === 'folder') return rowFolder(row);
     return '';
   }
 
@@ -688,7 +716,7 @@
     if (state.group !== 'none') {
       const groupState = document.createElement('p');
       groupState.className = 'library-visual-group-state';
-      const label = { source: 'source', type: 'type', project: 'project' }[state.group] || state.group;
+      const label = { source: 'source', type: 'type', project: 'project', folder: 'folder' }[state.group] || state.group;
       groupState.textContent = qualificationAvailable()
         ? `Grouped by ${label}; inventory nodes are ordered by their visible group labels around the measured arc.`
         : `Grouping by ${label} is unavailable until every query-qualified inventory page is loaded.`;
@@ -833,6 +861,7 @@
 
   function render() {
     if (!state.open) return;
+    syncGroupAvailability();
     const generation = ++state.renderGeneration;
     results.replaceChildren();
     sourceCount.textContent = String(state.sources.size);
@@ -948,7 +977,7 @@
 
   function updateControlSummaries() {
     if (groupButton) {
-      const group = { none: 'None', source: 'Source', type: 'Type', project: 'Project' }[state.group] || state.group;
+      const group = { none: 'None', source: 'Source', type: 'Type', project: 'Project', folder: 'Folder' }[state.group] || state.group;
       const sort = state.sort === 'title' ? 'Title' : 'Most recent';
       groupButton.textContent = `Group: ${group}`;
       groupButton.setAttribute('aria-label', `Group and sort Library results. Current group: ${group}. Current sort: ${sort}.`);
@@ -1671,14 +1700,18 @@
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) state.sources.add(checkbox.value);
       else state.sources.delete(checkbox.value);
+      syncGroupAvailability();
       sourceCount.textContent = String(state.sources.size);
       closePopover('sources');
       fetchPage({ append: false });
     });
   });
 
-  mount.querySelector('[data-library-group]').addEventListener('change', (event) => {
-    state.group = event.target.value;
+  groupSelect.addEventListener('change', (event) => {
+    state.group = event.target.value === 'folder' && !folderGroupingAvailable()
+      ? 'none'
+      : event.target.value;
+    syncGroupAvailability();
     render();
   });
   mount.querySelector('[data-library-sort]').addEventListener('change', (event) => {
