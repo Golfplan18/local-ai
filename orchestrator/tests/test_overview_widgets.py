@@ -64,7 +64,9 @@ class OverviewWidgetSourceTests(unittest.TestCase):
         )
         service = SimpleNamespace(list_triggers=trigger_reader)
         with (
-            mock.patch.object(widgets.project_meta, "list_project_meta", project_reader),
+            mock.patch.object(
+                widgets.operation_matrix, "list_active_project_meta", project_reader,
+            ),
             mock.patch.object(widgets.oversight_queue, "list_paused", paused_reader),
             mock.patch.object(widgets.oversight_queue, "list_operating", operating_reader),
             mock.patch.object(
@@ -98,20 +100,21 @@ class OverviewWidgetSourceTests(unittest.TestCase):
     def test_normalizes_all_sources_and_preserves_project_order(self):
         projects = [
             {
-                "nexus": "commons", "name": "Commons", "is_default": True,
-                "status": "active", "priority": None, "last_accessed_at": None,
-            },
-            {
                 "nexus": "zeta", "name": "Zeta", "is_default": False,
                 "status": "active", "priority": 0,
                 "last_accessed_at": "2026-08-31T09:00:00+00:00",
             },
             {
                 "nexus": "alpha", "name": "Alpha", "is_default": False,
-                "status": "inactive", "priority": 1,
+                "status": "active", "priority": None,
                 "last_accessed_at": "2026-08-30T09:00:00+00:00",
             },
         ]
+
+        def active_projects(*, skipped_authority):
+            skipped_authority.append("broken.json")
+            return projects
+
         paused = [SimpleNamespace(
             id="pause-1", name="Review evidence", queued_at="2026-08-31T08:00:00+00:00",
             forced_reason="Needs a decision", event={"project_nexus": "zeta"},
@@ -152,7 +155,7 @@ date: 2026-08-31
         )
 
         sources, calls = self._load(
-            projects=projects, paused=paused, operating=operating,
+            project_side_effect=active_projects, paused=paused, operating=operating,
             trigger_records=trigger_records,
         )
         self.assertEqual(
@@ -161,9 +164,17 @@ date: 2026-08-31
         by_id = self._by_id(sources)
         self.assertEqual(
             [item["item_id"] for item in by_id["project-priority"]["items"]],
-            ["project:commons", "project:zeta", "project:alpha"],
+            ["project:zeta", "project:alpha"],
         )
-        self.assertEqual(by_id["project-priority"]["items"][2]["state"], "inactive")
+        self.assertTrue(all(
+            item["state"] == "active"
+            for item in by_id["project-priority"]["items"]
+        ))
+        self.assertEqual(by_id["project-priority"]["state"], "partial")
+        self.assertEqual(
+            by_id["project-priority"]["error"]["code"],
+            "project_records_skipped",
+        )
         self.assertEqual(
             [item["item_id"] for item in by_id["oversight"]["items"]],
             ["paused:pause-1", "operating:run-1"],
@@ -186,7 +197,11 @@ date: 2026-08-31
                 "last_success_at": "2026-09-01T12:30:00+00:00",
             },
         )
-        calls["project"].assert_called_once_with(skipped_authority=[])
+        calls["project"].assert_called_once()
+        self.assertEqual(
+            calls["project"].call_args.kwargs["skipped_authority"],
+            ["broken.json"],
+        )
 
         required_item_fields = {
             "source_id", "item_id", "title", "text", "state", "count",

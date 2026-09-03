@@ -14,12 +14,12 @@ from pathlib import Path
 from typing import Any
 
 try:
+    import operation_matrix
     import oversight_queue
-    import project_meta
     import triggers
     from tools import daily_note
 except ImportError:  # pragma: no cover - package-qualified import context
-    from orchestrator import oversight_queue, project_meta, triggers
+    from orchestrator import operation_matrix, oversight_queue, triggers
     from orchestrator.tools import daily_note
 
 
@@ -120,7 +120,9 @@ def _project_priority_source(stamp: str) -> dict[str, Any]:
     source_id = "project-priority"
     skipped: list[str] = []
     try:
-        records = project_meta.list_project_meta(skipped_authority=skipped)
+        records = operation_matrix.list_active_project_meta(
+            skipped_authority=skipped,
+        )
         items = []
         for record in records:
             nexus = _required_id(record.get("nexus"), "project nexus")
@@ -131,8 +133,6 @@ def _project_priority_source(stamp: str) -> dict[str, Any]:
                 if isinstance(priority, int) and priority >= 0
                 else "Unranked"
             )
-            if record.get("is_default"):
-                position = "All projects"
             state = _text(record.get("status")) or "active"
             items.append(_item(
                 source_id,
