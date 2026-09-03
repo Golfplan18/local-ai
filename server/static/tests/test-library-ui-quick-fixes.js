@@ -274,7 +274,9 @@ function libraryRow(id, source, title, options) {
       item_type: source === 'dialogues' ? 'Dialogue' : 'note',
     }, options.metadata || {}),
     unavailable_fields: options.unavailable_fields || [],
-    provenance: { available: true, kind: source, identity: id, reason: null },
+    provenance: options.provenance || {
+      available: true, kind: source, identity: id, reason: null,
+    },
     relationships: options.relationships || {
       state: 'fresh',
       updated_at: '2026-08-31T10:00:00Z',
@@ -840,6 +842,33 @@ async function run() {
       preview: {
         kind: 'visual', route: 'visual-pane', available: true, reason: null,
         locator: {},
+      },
+    }
+  );
+  var nestedFolderFile = libraryRow(
+    'files:research-brief', 'files', 'Research brief.md', {
+      metadata: { item_type: 'File' },
+      provenance: {
+        available: true, kind: 'files', identity: 'files:research-brief', reason: null,
+        details: { relative_path: 'Research/2026/Research brief.md' },
+      },
+    }
+  );
+  var windowsFolderFile = libraryRow(
+    'files:archive-memo', 'files', 'Archive memo.md', {
+      metadata: { item_type: 'File' },
+      provenance: {
+        available: true, kind: 'files', identity: 'files:archive-memo', reason: null,
+        details: { relative_path: 'Notes\\Archive\\Archive memo.md' },
+      },
+    }
+  );
+  var projectRootFile = libraryRow(
+    'files:readme', 'files', 'README.md', {
+      metadata: { item_type: 'File' },
+      provenance: {
+        available: true, kind: 'files', identity: 'files:readme', reason: null,
+        details: { relative_path: 'README.md' },
       },
     }
   );
@@ -1908,8 +1937,90 @@ async function run() {
   record('dense Visual consolidation does not remove canonical List rows',
     w.document.querySelectorAll('.library-list-row').length === 100);
 
-  // Return to List before source changes.
+  var dialogueToggle = w.document.querySelector('[data-library-source][value="dialogues"]');
+  var engramToggle = w.document.querySelector('[data-library-source][value="engrams"]');
   var filesToggle = w.document.querySelector('[data-library-source][value="files"]');
+  var folderOption = groupSelect.querySelector('option[value="folder"]');
+  var folderWasInitiallyHidden = folderOption.hidden;
+
+  queuedLibraryResponses.push(libraryPayload([contextEngram, nestedFolderFile], {
+    sources: ['engrams', 'files'], total: 2,
+    source_counts: { dialogues: 0, engrams: 1, files: 1 },
+    item_type_counts: { Engram: 1, File: 1 },
+  }));
+  dialogueToggle.checked = false;
+  dialogueToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  queuedLibraryResponses.push(libraryPayload([
+    nestedFolderFile, windowsFolderFile, projectRootFile,
+  ], {
+    sources: ['files'], total: 3,
+    source_counts: { dialogues: 0, engrams: 0, files: 3 },
+    item_type_counts: { File: 3 },
+  }));
+  engramToggle.checked = false;
+  engramToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  groupSelect.value = 'folder';
+  groupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  var folderHeadings = Array.from(w.document.querySelectorAll('.library-result-group h2'))
+    .map(function (heading) { return heading.textContent; });
+  var folderListIds = Array.from(w.document.querySelectorAll('.library-list-row'))
+    .map(function (row) { return row.dataset.libraryRowId; }).sort();
+  w.document.querySelector('[data-library-view="visual"]').click();
+  var folderVisualIds = Array.from(w.document.querySelectorAll(
+    '.library-visual-node:not(.library-visual-node--related)'
+  )).map(function (row) { return row.dataset.libraryNodeId; }).sort();
+  var folderVisualLabels = Array.from(w.document.querySelectorAll('.library-visual-node__group'))
+    .map(function (label) { return label.textContent; });
+  record('Files-only Folder grouping shares full relative and root labels across List and Visual',
+    folderWasInitiallyHidden
+      && !folderOption.hidden
+      && !folderOption.disabled
+      && w.OraLibraryWorkspace.getState().sources.join(',') === 'files'
+      && w.OraLibraryWorkspace.getState().group === 'folder'
+      && groupLauncher.textContent.indexOf('Folder') !== -1
+      && folderHeadings.indexOf('Research/2026 (1)') !== -1
+      && folderHeadings.indexOf('Notes/Archive (1)') !== -1
+      && folderHeadings.indexOf('Project root (1)') !== -1
+      && folderVisualIds.join(',') === folderListIds.join(',')
+      && folderVisualLabels.indexOf('Research/2026') !== -1
+      && folderVisualLabels.indexOf('Notes/Archive') !== -1
+      && folderVisualLabels.indexOf('Project root') !== -1,
+    folderHeadings.join(', '));
+
+  queuedLibraryResponses.push(libraryPayload([
+    visibleDialogue, nestedFolderFile, windowsFolderFile, projectRootFile,
+  ], {
+    sources: ['dialogues', 'files'], total: 4,
+    source_counts: { dialogues: 1, engrams: 0, files: 3 },
+    item_type_counts: { Dialogue: 1, File: 3 },
+  }));
+  dialogueToggle.checked = true;
+  dialogueToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  record('changing Folder grouping to a mixed source inventory repairs it to None',
+    folderOption.hidden
+      && folderOption.disabled
+      && w.OraLibraryWorkspace.getState().group === 'none'
+      && groupSelect.value === 'none'
+      && groupLauncher.textContent.indexOf('None') !== -1);
+
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue, contextEngram, contextFile], {
+    sources: ['dialogues', 'engrams', 'files'], total: 3,
+    source_counts: { dialogues: 1, engrams: 1, files: 1 },
+    item_type_counts: { Dialogue: 1, Engram: 1, File: 1 },
+  }));
+  engramToggle.checked = true;
+  engramToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  w.document.querySelector('[data-library-view="list"]').click();
+
+  // Return to List before source changes.
   queuedLibraryResponses.push(libraryPayload([visibleDialogue, metadataDialogue], {
     sources: ['dialogues', 'engrams'], total: 2,
   }));
@@ -2000,8 +2111,6 @@ async function run() {
       && w.OraLibraryWorkspace.getState().requestGeneration > 0
       && w.OraLibraryWorkspace.getState().renderGeneration > 0);
 
-  var dialogueToggle = w.document.querySelector('[data-library-source][value="dialogues"]');
-  var engramToggle = w.document.querySelector('[data-library-source][value="engrams"]');
   queuedLibraryResponses.push(libraryPayload([
     libraryRow('engrams:only', 'engrams', 'Engram only'),
   ], { sources: ['engrams'], source_counts: { dialogues: 0, engrams: 1, files: 0 } }));
