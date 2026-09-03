@@ -680,6 +680,39 @@
       + `for itself${kinds ? ' (' + kinds + ')' : ''}.`;
   };
 
+  const appendRoutineFacts = (parent, routine, rowClass) => {
+    if (!routine || typeof routine !== 'object') return;
+    const lines = [];
+    if (routine.execution_target === 'local') {
+      lines.push('Execution target: local');
+    }
+    if (routine.remote_execution_supported === false) {
+      lines.push('Remote execution: unavailable');
+    }
+    const sleep = routine.active_run_sleep_protection;
+    if (sleep && typeof sleep === 'object') {
+      if (sleep.available === false) {
+        lines.push('Idle-sleep protection: unavailable on this host');
+      } else if (sleep.available === true
+                 && sleep.scope === 'active_action_only'
+                 && sleep.prevents === 'idle_system_sleep') {
+        lines.push('Idle sleep: prevented on this host while the action is actively running');
+        if (sleep.release_boundary === 'action_scope_exit') {
+          lines.push('Idle-sleep protection: ends with the action');
+        }
+      }
+    }
+    if (routine.wake_from_sleep_supported === false) {
+      lines.push('Wake from sleep: unavailable — Ora cannot wake a sleeping computer');
+    }
+    for (const line of lines) {
+      const row = document.createElement('div');
+      row.className = `${rowClass} trigger-routine-fact`;
+      row.textContent = line;
+      parent.appendChild(row);
+    }
+  };
+
   const buildTriggerCard = (t) => {
     const spec = t.spec || {};
     const card = document.createElement('div');
@@ -761,6 +794,7 @@
       row.textContent = `${label}: ${value}`;
       det.appendChild(row);
     }
+    appendRoutineFacts(det, t.routine, 'oversight-detail-reasoning');
     if (spec.action && spec.action.kind === 'email_send') {
       const inspect = document.createElement('button');
       inspect.type = 'button';
@@ -870,6 +904,7 @@
       row.textContent = line;
       box.appendChild(row);
     }
+    appendRoutineFacts(box, review.routine, 'trigger-review-line');
 
     const actions = document.createElement('div');
     actions.className = 'oversight-detail-actions';
