@@ -833,7 +833,12 @@ class TestLibraryBrowser(unittest.TestCase):
                 "modified_at", missing_engram["unavailable_fields"],
             )
             self.assertFalse(missing_engram["preview"]["available"])
-            self.assertFalse(missing_engram["editability"]["available"])
+            self.assertTrue(missing_engram["editability"]["available"])
+            self.assertFalse(missing_engram["editability"]["editable"])
+            self.assertIn(
+                "provider is incomplete",
+                missing_engram["editability"]["reason"],
+            )
             self.assertEqual(
                 engram["metadata"]["modified_at"],
                 server.datetime.fromtimestamp(indexed_mtime).isoformat(
@@ -1236,7 +1241,7 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertTrue(page_payload["pagination"]["has_more"])
             self.assertEqual(
                 page_payload["facets"]["editability"]["counts"],
-                {"editable": 0, "read_only": 1, "unavailable": 2},
+                {"editable": 0, "read_only": 3, "unavailable": 0},
             )
             self.assertEqual(
                 page_payload["facets"]["item_type"]["counts"],
@@ -1253,6 +1258,7 @@ class TestLibraryBrowser(unittest.TestCase):
                 permission_calls,
                 [
                     (str(engram_path.resolve()), server.os.R_OK),
+                    (str(engram_path.resolve()), server.os.W_OK),
                 ],
             )
             self.assertEqual(
@@ -1431,6 +1437,14 @@ class TestLibraryBrowser(unittest.TestCase):
                 "limit": None,
                 "next_offset": None,
             }
+            obsidian_uri = (
+                "obsidian://open?vault=Wisdom%20Nexus&"
+                "file=Projects%2FOra%2Ff0.md"
+            )
+
+            def provider_obsidian_uri(path):
+                return obsidian_uri if path == str(file_paths[0]) else None
+
             with (
                 mock.patch.object(
                     project_meta, "list_project_meta", return_value=[{
@@ -1440,6 +1454,10 @@ class TestLibraryBrowser(unittest.TestCase):
                 mock.patch.object(
                     project_meta, "list_project_files", return_value=inventory,
                 ) as list_files,
+                mock.patch.object(
+                    server, "_obsidian_uri_for",
+                    side_effect=provider_obsidian_uri,
+                ) as obsidian_for,
             ):
                 files = server._library_file_provider()
 
@@ -1454,6 +1472,19 @@ class TestLibraryBrowser(unittest.TestCase):
                 and row["provenance"]["kind"] == "project-file-inventory"
                 for row in files["rows"]
             ))
+            file_rows = {row["identity"]: row for row in files["rows"]}
+            self.assertEqual(
+                file_rows[str(file_paths[0])]["preview"]["locator"],
+                {"path": str(file_paths[0]), "obsidian_uri": obsidian_uri},
+            )
+            self.assertEqual(
+                file_rows[str(file_paths[1])]["preview"]["locator"],
+                {"path": str(file_paths[1])},
+            )
+            self.assertEqual(
+                obsidian_for.call_args_list,
+                [mock.call(str(path)) for path in file_paths],
+            )
             list_files.assert_called_once_with("Ora", max_files=None)
             list_projects.assert_called_once_with(skipped_authority=mock.ANY)
             self.assertEqual(

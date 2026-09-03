@@ -81,6 +81,13 @@ var dom = new jsdom.JSDOM(
 );
 
 var w = dom.window;
+var nativeAnchorHandoffs = [];
+w.HTMLAnchorElement.prototype.click = function () {
+  nativeAnchorHandoffs.push({
+    tagName: this.tagName,
+    href: this.getAttribute('href'),
+  });
+};
 var libraryCssSource = fs.readFileSync(path.resolve(
   __dirname, '..', 'styles', 'components', 'library-workspace.css'
 ), 'utf8');
@@ -811,9 +818,14 @@ async function run() {
   var secondDialogue = libraryRow(
     'dialogues:second-live', 'dialogues', 'Second Dialogue'
   );
+  var contextFileObsidianUri = 'obsidian://open?vault=Wisdom%20Nexus&file=Projects%2FOra%2FProject%20image.png';
   var contextEngram = libraryRow(
     'engrams:claim', 'engrams', 'Atomic Claim Title', {
       metadata: { item_type: 'Engram', tags: ['atomic'] },
+      preview: {
+        kind: 'text', route: 'text-pane', available: true, reason: null,
+        locator: { obsidian_uri: contextFileObsidianUri },
+      },
     }
   );
   var nonAtomicEngram = libraryRow(
@@ -1311,6 +1323,8 @@ async function run() {
       && inquiryDraft.value === 'Composer draft survives Library preview'
       && preservedFinding.parentElement === w.document.querySelector('.output-content')
       && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
+  record('a non-File row exposes no Open in Obsidian action even if its locator carries a URI',
+    !w.document.querySelector('[data-library-action="open-obsidian"]'));
 
   var currentBody = '# Atomic Claim Title\n**newer current Markdown**\n<em>literal HTML</em>';
   var rawMarkdownLf = '---\ntype: engram\ntags:\n  - atomic\n---\n' + currentBody;
@@ -1513,11 +1527,43 @@ async function run() {
       && preservedFinding.parentElement === w.document.querySelector('.output-content')
       && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
 
-  record('a File without a provider locator exposes no Reveal action',
-    !w.document.querySelector('[data-library-action="reveal"]'));
+  record('a File without a provider locator exposes neither physical action',
+    !w.document.querySelector('[data-library-action="reveal"]')
+      && !w.document.querySelector('[data-library-action="open-obsidian"]'));
   contextFile.preview.locator = { path: contextFilePath };
   imageCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
   var fileRevealAction = w.document.querySelector('[data-library-action="reveal"]');
+  record('Reveal remains available independently when a File has a path but no Obsidian URI',
+    !!fileRevealAction
+      && !w.document.querySelector('[data-library-action="open-obsidian"]'));
+  contextFile.preview.locator.obsidian_uri = contextFileObsidianUri;
+  imageCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  fileRevealAction = w.document.querySelector('[data-library-action="reveal"]');
+  var fileObsidianAction = w.document.querySelector('[data-library-action="open-obsidian"]');
+  var stateBeforeObsidian = w.OraLibraryWorkspace.getState();
+  var noticeBeforeObsidian = {
+    hidden: w.document.getElementById('libraryWorkspaceNotice').hidden,
+    text: w.document.getElementById('libraryWorkspaceNotice').textContent,
+    tone: w.document.getElementById('libraryWorkspaceNotice').getAttribute('data-tone'),
+  };
+  fileObsidianAction.click();
+  await flush();
+  var stateAfterObsidian = w.OraLibraryWorkspace.getState();
+  var obsidianHandoff = nativeAnchorHandoffs[nativeAnchorHandoffs.length - 1];
+  record('Open in Obsidian hands the exact provider URI to a native anchor without claiming acceptance or changing workspace state',
+    fileObsidianAction.textContent === 'Open in Obsidian'
+      && !!obsidianHandoff
+      && obsidianHandoff.tagName === 'A'
+      && obsidianHandoff.href === contextFileObsidianUri
+      && JSON.stringify(stateAfterObsidian) === JSON.stringify(stateBeforeObsidian)
+      && w.document.getElementById('libraryWorkspaceNotice').hidden === noticeBeforeObsidian.hidden
+      && w.document.getElementById('libraryWorkspaceNotice').textContent === noticeBeforeObsidian.text
+      && w.document.getElementById('libraryWorkspaceNotice').getAttribute('data-tone') === noticeBeforeObsidian.tone
+      && w.document.querySelector('.library-preview-image') === exhibitImage
+      && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
+      && inquiryDraft.value === 'Composer draft survives Library preview'
+      && preservedFinding.parentElement === w.document.querySelector('.output-content')
+      && preservedExhibit.parentElement === w.document.querySelector('.right-pane'));
   var stateBeforeReveal = w.OraLibraryWorkspace.getState();
   queuedRevealResponses.push({ payload: { ok: true, path: contextFilePath } });
   fileRevealAction.click();
