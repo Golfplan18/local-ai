@@ -14862,6 +14862,9 @@ def _library_file_provider() -> dict:
                                if exists else "the inventoried file is unavailable"),
                 },
             }
+            obsidian_uri = _obsidian_uri_for(path)
+            if obsidian_uri is not None:
+                row["preview"]["locator"]["obsidian_uri"] = obsidian_uri
             if Path(path).suffix.lower() == ".md":
                 row["_relationship_identity"] = Path(path).stem
             else:

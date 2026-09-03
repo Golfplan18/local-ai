@@ -1382,9 +1382,22 @@
   function builtinActions(row) {
     const actions = [];
     if (row) actions.push({ id: 'related', label: 'Show relationships', run: activatePinned });
-    const revealLocator = row && row.source === 'files' && row.preview && row.preview.locator;
-    const revealPath = revealLocator && typeof revealLocator.path === 'string'
-      && revealLocator.path.trim() ? revealLocator.path : '';
+    const fileLocator = row && row.source === 'files' && row.preview && row.preview.locator;
+    const obsidianUri = fileLocator && typeof fileLocator.obsidian_uri === 'string'
+      && fileLocator.obsidian_uri.trim() ? fileLocator.obsidian_uri : '';
+    if (obsidianUri) {
+      actions.push({
+        id: 'open-obsidian',
+        label: 'Open in Obsidian',
+        run: () => {
+          const anchor = document.createElement('a');
+          anchor.href = obsidianUri;
+          anchor.click();
+        },
+      });
+    }
+    const revealPath = fileLocator && typeof fileLocator.path === 'string'
+      && fileLocator.path.trim() ? fileLocator.path : '';
     if (revealPath) {
       actions.push({
         id: 'reveal',
