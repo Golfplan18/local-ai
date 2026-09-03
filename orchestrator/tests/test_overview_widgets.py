@@ -1,6 +1,7 @@
 """Focused behavior tests for the renderer-neutral Overview source adapter."""
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
@@ -8,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
+
+os.environ.setdefault("PYTHON_KEYRING_BACKEND", "keyring.backends.null.Keyring")
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
@@ -343,6 +346,36 @@ date: 2026-08-31
         trigger = self._by_id(sources)["triggers"]["items"][0]
         self.assertEqual(trigger["actions"], ["inspect", "review", "run", "retire"])
         self.assertEqual(trigger["text"], "manual · email send")
+
+
+class OverviewRouteTests(unittest.TestCase):
+    def test_get_route_returns_adapter_sources_and_rejects_post(self):
+        import orchestrator.overview_widgets as overview_module
+        import server.app as server_app
+
+        expected = [{
+            "source_id": "project-priority",
+            "title": "Project priority",
+            "state": "empty",
+            "count": 0,
+            "available": True,
+            "freshness": {
+                "observed_at": "2026-09-01T12:30:00+00:00",
+                "last_success_at": None,
+            },
+            "error": None,
+            "items": [],
+        }]
+        with mock.patch.object(
+            overview_module, "load_overview_widget_sources", return_value=expected,
+        ) as loader:
+            client = server_app.app.test_client()
+            response = client.get("/api/overview")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"sources": expected})
+        loader.assert_called_once_with()
+        self.assertEqual(client.post("/api/overview").status_code, 405)
 
 
 if __name__ == "__main__":

@@ -14973,6 +14973,14 @@ def _library_hydrate_returned_engram_access(rows: list[dict]) -> None:
         row["editability"] = editability
 
 
+@app.route("/api/overview", methods=["GET"])
+def overview_sources():
+    """Return the renderer-neutral Overview sources in their canonical order."""
+    from orchestrator.overview_widgets import load_overview_widget_sources
+
+    return _json_response({"sources": load_overview_widget_sources()})
+
+
 @app.route("/api/library/browser", methods=["GET"])
 def library_browser():
     """Browse a complete, renderer-neutral Dialogue/Engram/File universe."""
