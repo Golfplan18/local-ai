@@ -22,8 +22,10 @@ from pathlib import Path
 
 try:
     import runtime_paths as _rp
+    from runtime_hygiene import mutation_path_locks
 except ImportError:
     from orchestrator import runtime_paths as _rp
+    from orchestrator.runtime_hygiene import mutation_path_locks
 
 if __package__:
     from orchestrator.tools.relationship_graph import RelationshipGraph
@@ -314,6 +316,8 @@ def update_note_relationships(
     archived_targets: set[str] | None = None,
     known_paths: dict[str, list[str]] | None = None,
     return_count: bool = False,
+    *,
+    already_locked: bool = False,
 ) -> bool | int:
     """
     Write discovered relationships into a note's YAML frontmatter.
@@ -324,6 +328,21 @@ def update_note_relationships(
     """
     if vault_path is None:
         vault_path = str(_rp.vault_dir())
+
+    if not already_locked:
+        if archived_targets is None or known_paths is not None:
+            scanned_targets, _ = RelationshipGraph.scan_archived_targets(
+                vault_path,
+                {str(rel["target"]) for rel in relationships},
+                resolve_statement_claims=False,
+                known_paths=known_paths,
+            )
+            archived_targets = set(archived_targets or ()) | scanned_targets
+        with mutation_path_locks([note_path]):
+            return update_note_relationships(
+                note_path, relationships, vault_path, archived_targets,
+                known_paths, return_count, already_locked=True,
+            )
 
     with open(note_path, "r") as f:
         content = f.read()
@@ -336,14 +355,7 @@ def update_note_relationships(
 
     # Find new relationships to add
     new_rels = []
-    if archived_targets is None or known_paths is not None:
-        scanned_targets, _ = RelationshipGraph.scan_archived_targets(
-            vault_path,
-            {str(rel["target"]) for rel in relationships},
-            resolve_statement_claims=False,
-            known_paths=known_paths,
-        )
-        archived_targets = set(archived_targets or ()) | scanned_targets
+    archived_targets = set(archived_targets or ())
     for rel in relationships:
         key = (rel["type"], rel["target"])
         if str(rel["target"]) in archived_targets:

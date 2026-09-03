@@ -103,7 +103,7 @@ The `wrong:source` and `wrong:target` markers retain `archived` semantics in new
 
 specification.
 
-Manual campaigns run in two decoupled phases: detection and resolver. Runtime mode receives one exact Resource write, evaluates at most six neighbors, completes every judgment before mutation, and applies the result as one rollback-protected transaction. An error causes no mutation and no clock fallback.
+Manual campaigns run in two decoupled phases: detection and resolver. Runtime mode receives one exact Resource write, evaluates at most six neighbors, completes every judgment before the mutation lock, then reauthenticates exact identities and applies the file/log changes as one rollback-protected transaction. A pre-commit error causes no mutation and no clock fallback; the separate post-lock index refresh reports its own failure without undoing a successful file mutation.
 
 ---
 
@@ -112,9 +112,9 @@ Manual campaigns run in two decoupled phases: detection and resolver. Runtime mo
 - ☑ The manual candidate-pair corpus can be sampled into a tractable triage queue.
 - ☑ The manual resolver applies user-marked resolutions.
 - ☑ Exact Resource writes can trigger bounded autonomous judgment with no per-pair human triage.
-- ☑ All judgments finish before mutation; errors restore the snapshotted state.
+- ☑ All judgments finish before mutation; judgment, identity, or file/log mutation errors before commit restore the snapshotted state.
 - ☑ Resolution and runtime event evidence are append-only, and explicit rollback is drift-safe.
-- ☑ ChromaDB metadata is refreshed inside the governed transaction.
+- ☑ ChromaDB metadata is refreshed after the governed file transaction releases its mutation locks; refresh failure is reported separately.
 
 ---
 
@@ -251,7 +251,7 @@ The resolver appends each completed resolution to `Projects/MSI/Working — News
 
 ## LAYER 5: CHROMADB METADATA REFRESH
 
-After mutations land, the resolver pushes the updated YAML metadata into the ChromaDB `knowledge` collection for affected files — same pattern as Engram Cleaning. The `superseded` tag must flow to retrieval immediately so the weight-modifier takes effect on subsequent queries; otherwise queries continue to use stale (un-superseded) weight until next refresh.
+For an exact-write runtime event, after the file/log mutation lands and its exact-path locks are released, the resolver reads the current affected files and pushes their YAML metadata into the ChromaDB `knowledge` collection — the same pattern as Engram Cleaning. If a newer writer wins after release, that newer file is the authority indexed. A refresh failure is reported separately and does not undo the already successful file mutation; until a later successful refresh, retrieval may retain stale weight.
 
 ---
 
@@ -300,7 +300,7 @@ python3 ~/ora/orchestrator/historical/run_news_supersession_resolver.py [--dry-r
 
 ### Runtime trigger and campaign boundary
 
-An exact top-level Resource write automatically evaluates at most six semantic neighbors. Model judgment is autonomous and bounded; there is no per-pair human triage. All judgments finish before mutation. The runtime records append-only event, judgment, before/after, and rollback evidence; any error restores subject state and has no clock-driven retry.
+An exact top-level Resource write automatically evaluates at most six semantic neighbors. Model judgment is autonomous and bounded; there is no per-pair human triage. All judgments finish before mutation. The runtime records append-only event, judgment, before/after, and rollback evidence; a pre-commit error restores subject state and has no clock-driven retry, while a post-commit index error is reported without reversing the successful file change.
 
 The CLI above is a historical-backlog campaign surface. A deep or corpus-wide pass requires an explicit campaign identity and command provenance. Weekly and quarterly sweeps are prohibited.
 

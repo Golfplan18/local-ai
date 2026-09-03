@@ -56,6 +56,7 @@ from .conversation_memory import (
     read_conversation_history_envelope,
     set_conversation_closed,
 )
+from .runtime_hygiene import mutation_path_locks
 
 
 # Purge-target roots flow from runtime_paths (ORA_HOME / ORA_VAULT /
@@ -1648,8 +1649,9 @@ def _update_runtime_derivative_privacy(
     updated_files: list[str] = []
     for path in paths:
         try:
-            if _set_private_frontmatter_tag(path, private):
-                updated_files.append(str(path))
+            with mutation_path_locks([path]):
+                if _set_private_frontmatter_tag(path, private):
+                    updated_files.append(str(path))
         except Exception as exc:
             _record_error(errors, f"runtime derivative privacy {path}", exc)
 
@@ -1832,12 +1834,13 @@ def _delete_runtime_derivatives(
                 )
 
     removed_files: list[str] = []
-    for path in paths:
-        try:
-            if _unlink_without_following(path):
-                removed_files.append(str(path))
-        except Exception as exc:
-            _record_error(errors, f"runtime derivative file {path}", exc)
+    with mutation_path_locks(paths):
+        for path in paths:
+            try:
+                if _unlink_without_following(path):
+                    removed_files.append(str(path))
+            except Exception as exc:
+                _record_error(errors, f"runtime derivative file {path}", exc)
 
     removed_logs: list[str] = []
     log_root = Path(_rp.DATA_DIR_STR) / "session-logs"
@@ -2737,16 +2740,17 @@ def _update_conversation_turn_privacy_unlocked(
     derivative_files: list[str] = []
     for path in derivative_paths:
         try:
-            _set_exact_turn_privacy_file(
-                path,
-                turn_privacy,
-                artifact_kind="conversation_runtime_derivative",
-                conversation_id=cid,
-                chunk_id=canonical_chunk_id,
-                turn_index=turn_index,
-                previous_turn_privacy=previous_turn_privacy,
-            )
-            derivative_files.append(str(path))
+            with mutation_path_locks([path]):
+                _set_exact_turn_privacy_file(
+                    path,
+                    turn_privacy,
+                    artifact_kind="conversation_runtime_derivative",
+                    conversation_id=cid,
+                    chunk_id=canonical_chunk_id,
+                    turn_index=turn_index,
+                    previous_turn_privacy=previous_turn_privacy,
+                )
+                derivative_files.append(str(path))
         except Exception as exc:
             _record_error(errors, f"turn privacy derivative {path}", exc)
 

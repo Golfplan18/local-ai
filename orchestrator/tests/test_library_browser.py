@@ -798,10 +798,10 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertEqual(engram["metadata"]["item_type"], "engram")
             self.assertFalse(engram["preview"]["available"])
             self.assertIn("returned Library rows", engram["preview"]["reason"])
-            self.assertFalse(engram["editability"]["available"])
-            self.assertIsNone(engram["editability"]["editable"])
+            self.assertTrue(engram["editability"]["available"])
+            self.assertFalse(engram["editability"]["editable"])
             self.assertIn(
-                "returned Library rows", engram["editability"]["reason"],
+                "unique direct source", engram["editability"]["reason"],
             )
             self.assertEqual(engram["provenance"]["details"], {
                 "index": "knowledge",
@@ -1236,7 +1236,7 @@ class TestLibraryBrowser(unittest.TestCase):
             self.assertTrue(page_payload["pagination"]["has_more"])
             self.assertEqual(
                 page_payload["facets"]["editability"]["counts"],
-                {"editable": 0, "read_only": 0, "unavailable": 3},
+                {"editable": 0, "read_only": 1, "unavailable": 2},
             )
             self.assertEqual(
                 page_payload["facets"]["item_type"]["counts"],
@@ -1253,7 +1253,6 @@ class TestLibraryBrowser(unittest.TestCase):
                 permission_calls,
                 [
                     (str(engram_path.resolve()), server.os.R_OK),
-                    (str(engram_path.resolve()), server.os.W_OK),
                 ],
             )
             self.assertEqual(
@@ -1823,6 +1822,272 @@ class TestLibraryBrowser(unittest.TestCase):
                 self.assertTrue(reader.called)
                 self.assertTrue(all(call.kwargs == {"target_tag": ""}
                                     for call in reader.call_args_list))
+
+    def test_markdown_edit_revalidates_authority_and_conflicts(self):
+        from contextlib import contextmanager
+        import stat
+        import tempfile
+        from pathlib import Path
+
+        from orchestrator import project_meta
+        from orchestrator.tools import knowledge_index
+
+        server = _server_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir).resolve()
+            project_file = root / "project.md"
+            malformed_file = root / "malformed.md"
+            engram = root / "engram.md"
+            private_engram = root / "private-engram.md"
+            ambiguous_engram = root / "ambiguous-engram.md"
+            project_file.write_bytes(b"Original project file\r\n")
+            project_file.chmod(0o640)
+            malformed_claim = "---\ntype: engram\nbroken: [\n"
+            malformed_file.write_text(malformed_claim, encoding="utf-8")
+            standard = (
+                "---\nnexus:\n  - ora\ntype: engram\ntags:\n  - atomic\n"
+                "date created: 2026-09-02\ndate modified: 2026-09-02\n---\n\n"
+                "# Engram\n\nOriginal Standard body long enough for indexing.\n"
+            )
+            engram.write_text(standard, encoding="utf-8")
+            private = standard.replace("  - atomic", "  - private")
+            private_engram.write_text(private, encoding="utf-8")
+            ambiguous_engram.write_text(standard, encoding="utf-8")
+            inventory = {
+                "exists": True, "complete": True, "files": [{
+                    "abs_path": str(engram), "name": engram.name,
+                    "rel_path": engram.name, "mtime": None,
+                    "size": engram.stat().st_size,
+                }],
+                "total": 1, "offset": 0, "next_offset": None,
+            }
+            with (
+                mock.patch.object(project_meta, "list_project_meta", return_value=[{
+                    "nexus": "ora", "is_default": True,
+                }]),
+                mock.patch.object(project_meta, "list_project_files", return_value=inventory),
+            ):
+                provider_row = server._library_file_provider()["rows"][0]
+                inventory["files"][0] = {
+                    "abs_path": str(malformed_file), "name": malformed_file.name,
+                    "rel_path": malformed_file.name, "mtime": None,
+                    "size": malformed_file.stat().st_size,
+                }
+                malformed_provider_row = (
+                    server._library_file_provider()["rows"][0]
+                )
+            self.assertFalse(provider_row["editability"]["editable"])
+            self.assertFalse(
+                malformed_provider_row["editability"]["editable"],
+            )
+            self.assertIn(
+                "frontmatter",
+                malformed_provider_row["editability"]["reason"],
+            )
+            preview = {"kind": "text", "available": True}
+            file_rows = {"complete": True, "rows": [
+                {
+                    "identity": str(path),
+                    "metadata": {"content_type": "text/markdown"},
+                    "preview": preview,
+                }
+                for path in (
+                    project_file, engram, private_engram, malformed_file,
+                )
+            ]}
+            engram_rows = {"complete": True, "rows": [
+                {"identity": str(engram), "_unique_direct_authority": True},
+                {"identity": str(ambiguous_engram),
+                 "_unique_direct_authority": False},
+            ]}
+            file_id = stable_item_id("files", str(project_file))
+            engram_id = stable_item_id("engrams", str(engram))
+            ambiguous_id = stable_item_id("engrams", str(ambiguous_engram))
+            file_engram_id = stable_item_id("files", str(engram))
+            private_file_engram_id = stable_item_id("files", str(private_engram))
+            malformed_file_id = stable_item_id("files", str(malformed_file))
+            lock_state = {"paths": None, "entries": 0}
+            drift_authority = [False]
+            drift_provider_calls = [0]
+            engram_complete = [True]
+
+            def current_file_rows():
+                self.assertIsNone(lock_state["paths"])
+                if drift_authority[0]:
+                    drift_provider_calls[0] += 1
+                    if drift_provider_calls[0] > 1:
+                        return {
+                            "complete": True, "rows": file_rows["rows"][1:],
+                        }
+                return file_rows
+
+            def current_engram_rows():
+                self.assertIsNone(lock_state["paths"])
+                return {**engram_rows, "complete": engram_complete[0]}
+
+            @contextmanager
+            def observed_path_locks(paths):
+                requested = tuple(paths)
+                self.assertEqual(len(requested), 1)
+                lock_state["entries"] += 1
+                lock_state["paths"] = set(requested)
+                try:
+                    yield requested
+                finally:
+                    lock_state["paths"] = None
+
+            with (
+                mock.patch.object(
+                    server, "_library_file_provider", side_effect=current_file_rows,
+                ),
+                mock.patch.object(
+                    server, "_library_engram_provider",
+                    side_effect=current_engram_rows,
+                ),
+                mock.patch.object(
+                    server, "mutation_path_locks", side_effect=observed_path_locks,
+                ),
+                server.app.test_client() as client,
+            ):
+                def open_digest(item_id):
+                    response = client.get("/api/library/edit", query_string={"id": item_id})
+                    self.assertEqual(response.status_code, 200)
+                    return response.get_json()["digest"]
+
+                def replace(item_id, digest, text):
+                    return client.put("/api/library/edit", json={
+                        "id": item_id, "expected_digest": digest, "text": text,
+                    })
+
+                saved = replace(
+                    file_id, open_digest(file_id), "Saved project file\r\n",
+                )
+                self.assertEqual(saved.status_code, 200)
+                self.assertTrue(saved.get_json()["saved"])
+                self.assertIsNone(saved.get_json()["index_refreshed"])
+                self.assertEqual(
+                    project_file.read_bytes(), b"Saved project file\r\n",
+                )
+                self.assertEqual(stat.S_IMODE(project_file.stat().st_mode), 0o640)
+
+                for label, unsafe_text in (
+                    ("changed to LF", "Saved project file\n"),
+                    ("mixed endings", "Mixed\r\nendings\n"),
+                    ("lone CR", "Lone\rending"),
+                ):
+                    with self.subTest(label):
+                        unsafe = replace(
+                            file_id, open_digest(file_id), unsafe_text,
+                        )
+                        self.assertEqual(unsafe.status_code, 409)
+                        self.assertEqual(
+                            project_file.read_bytes(), b"Saved project file\r\n",
+                        )
+
+                stale_digest = open_digest(file_id)
+                project_file.write_text("Concurrent replacement\n", encoding="utf-8")
+                conflict = replace(file_id, stale_digest, "Stale draft must not land\n")
+                self.assertEqual(conflict.status_code, 409)
+                self.assertEqual(conflict.get_json()["code"], "conflict")
+                self.assertEqual(project_file.read_text(), "Concurrent replacement\n")
+
+                converted = replace(file_id, open_digest(file_id), standard)
+                self.assertEqual(converted.status_code, 409)
+                self.assertEqual(project_file.read_text(), "Concurrent replacement\n")
+
+                malformed_replacement = replace(
+                    file_id, open_digest(file_id), malformed_claim,
+                )
+                self.assertEqual(malformed_replacement.status_code, 409)
+                self.assertEqual(project_file.read_text(), "Concurrent replacement\n")
+                project_file.write_text(malformed_claim, encoding="utf-8")
+                self.assertEqual(client.get(
+                    "/api/library/edit", query_string={"id": file_id},
+                ).status_code, 409)
+                self.assertEqual(
+                    replace(file_id, "0" * 64, "Must not land\n").status_code,
+                    409,
+                )
+                self.assertEqual(project_file.read_text(), malformed_claim)
+                project_file.write_text("Concurrent replacement\n", encoding="utf-8")
+
+                drift_digest = open_digest(file_id)
+                lock_entries = lock_state["entries"]
+                drift_provider_calls[0] = 0
+                drift_authority[0] = True
+                drifted = replace(file_id, drift_digest, "Authority moved\n")
+                drift_authority[0] = False
+                self.assertEqual(drifted.status_code, 409)
+                self.assertEqual(drift_provider_calls[0], 2)
+                self.assertEqual(lock_state["entries"], lock_entries)
+                self.assertEqual(project_file.read_text(), "Concurrent replacement\n")
+
+                refused = replace(engram_id, open_digest(engram_id), private)
+                self.assertEqual(refused.status_code, 409)
+                self.assertFalse(refused.get_json()["saved"])
+                self.assertEqual(engram.read_text(), standard)
+
+                blocked = replace(ambiguous_id, "0" * 64, standard + "blocked")
+                self.assertEqual(blocked.status_code, 409)
+                self.assertEqual(ambiguous_engram.read_text(), standard)
+
+                incomplete_digest = open_digest(engram_id)
+                engram_complete[0] = False
+                incomplete = replace(
+                    engram_id, incomplete_digest, standard + "incomplete",
+                )
+                engram_complete[0] = True
+                self.assertEqual(incomplete.status_code, 409)
+                self.assertEqual(engram.read_text(), standard)
+
+                self.assertEqual(client.get(
+                    "/api/library/edit", query_string={"id": file_engram_id},
+                ).status_code, 409)
+                standard_preview = client.get(
+                    "/api/library/preview",
+                    query_string={"id": file_engram_id},
+                )
+                self.assertEqual(standard_preview.status_code, 409)
+                self.assertNotIn(
+                    "Original Standard body", standard_preview.get_data(as_text=True),
+                )
+                private_preview = client.get(
+                    "/api/library/preview",
+                    query_string={"id": private_file_engram_id},
+                )
+                self.assertEqual(private_preview.status_code, 409)
+                self.assertNotIn(
+                    "Original Standard body", private_preview.get_data(as_text=True),
+                )
+                malformed_preview = client.get(
+                    "/api/library/preview",
+                    query_string={"id": malformed_file_id},
+                )
+                self.assertEqual(malformed_preview.status_code, 409)
+                self.assertNotIn(
+                    "broken", malformed_preview.get_data(as_text=True),
+                )
+
+                replacement = standard.replace("Original Standard body", "Saved Standard body")
+
+                def failed_refresh(target, **_kwargs):
+                    self.assertIsNone(lock_state["paths"])
+                    self.assertEqual(Path(target).read_text(), replacement)
+                    return {"indexed": 0, "skipped": 0, "errors": 1}
+
+                with mock.patch.object(
+                    knowledge_index, "index_single_file",
+                    side_effect=failed_refresh,
+                ) as refresh:
+                    partial = replace(
+                        engram_id, open_digest(engram_id), replacement,
+                    )
+                self.assertEqual(partial.status_code, 200)
+                self.assertTrue(partial.get_json()["saved"])
+                self.assertFalse(partial.get_json()["index_refreshed"])
+                self.assertIn("not refreshed", partial.get_json()["index_error"])
+                self.assertEqual(engram.read_text(), replacement)
+                refresh.assert_called_once_with(str(engram), force=True, verbose=False)
 
     def test_http_endpoint_accepts_multiple_sources_and_pages_combined_rows(self):
         server = _server_module()

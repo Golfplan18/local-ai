@@ -57,6 +57,7 @@ sys.path.insert(0, WORKSPACE.rstrip("/\\") or WORKSPACE)
 import runtime_paths as rp
 import network_policy
 from orchestrator.help_retrieval import get_help_context, refresh_help_index
+from orchestrator.runtime_hygiene import mutation_path_locks
 
 # Conversation roots come from the single cross-platform source (honors
 # ORA_CONVERSATIONS / a relocation), not a hardcoded ~/Documents path. They are
@@ -14023,6 +14024,17 @@ def _library_dialogue_provider(query: str = "") -> dict:
     }
 
 
+def _library_same_filesystem_path(left: str, right: str) -> bool:
+    """Compare absolute paths with the host platform's path normalization."""
+    left_key = os.path.normcase(
+        os.path.normpath(os.path.abspath(left))
+    )
+    right_key = os.path.normcase(
+        os.path.normpath(os.path.abspath(right))
+    )
+    return left_key == right_key
+
+
 def _library_engram_provider(query: str = "") -> dict:
     query = str(query or "").strip()
     connection = None
@@ -14565,6 +14577,15 @@ def _library_engram_provider(query: str = "") -> dict:
 
     rows = []
     for path in sorted(grouped):
+        source_paths = {
+            source_path for source_path, _row_id, _metadata in grouped[path]
+        }
+        unique_direct_authority = bool(
+            len(source_paths) == 1
+            and _library_same_filesystem_path(
+                _browser_resolve_path(next(iter(source_paths))), path,
+            )
+        )
         records = [
             metadata
             for _source_path, _row_id, metadata in sorted(
@@ -14605,6 +14626,7 @@ def _library_engram_provider(query: str = "") -> dict:
             source_meta["modified_at"] = modified_at
         rows.append({
             "identity": path, "title": _browser_source_title(records[0]),
+            "_unique_direct_authority": unique_direct_authority,
             "metadata": source_meta,
             "unavailable_fields": (["privacy"] if privacy is None else [])
             + (["modified_at"] if modified_at is None else []),
@@ -14614,16 +14636,25 @@ def _library_engram_provider(query: str = "") -> dict:
             "preview": _library_path_preview(
                 path, is_file=exists, inspect_access=False,
             ),
-            "editability": {
-                "available": False,
-                "editable": None,
-                "surface": "external-file",
-                "reason": (
-                    "exact Engram editability is resolved only for returned "
-                    "Library rows"
-                    if exists else "the indexed source file is unavailable"
-                ),
-            },
+            "editability": (
+                {
+                    "available": False,
+                    "editable": None,
+                    "surface": "external-file",
+                    "reason": (
+                        "exact Engram editability is resolved only for returned "
+                        "Library rows"
+                        if exists else "the indexed source file is unavailable"
+                    ),
+                }
+                if unique_direct_authority else
+                {
+                    "available": True,
+                    "editable": False,
+                    "surface": "external-file",
+                    "reason": "the indexed Engram has no unique direct source authority",
+                }
+            ),
         })
     if query:
         search_errors: list[str] = []
@@ -14657,6 +14688,18 @@ def _library_engram_provider(query: str = "") -> dict:
             complete = False
             search_reason = "one or more Engram exact/fuzzy keyword search paths were unavailable"
             reason = f"{reason}; {search_reason}" if reason else search_reason
+    if complete is not True:
+        for row in rows:
+            row["_unique_direct_authority"] = False
+            row["editability"] = {
+                "available": True,
+                "editable": False,
+                "surface": "external-file",
+                "reason": (
+                    "the Engram provider is incomplete, so unique direct "
+                    "source authority is unavailable"
+                ),
+            }
     return {"rows": rows, "complete": complete, "reason": reason}
 
 
@@ -14712,6 +14755,24 @@ def _library_file_provider() -> dict:
                 continue
             seen_paths.add(path)
             exists = os.path.isfile(path)
+            markdown_editable = bool(
+                exists and Path(path).suffix.lower() == ".md"
+                and not os.path.islink(path)
+                and os.access(path, os.R_OK | os.W_OK)
+                and os.access(os.path.dirname(path), os.W_OK | os.X_OK)
+            )
+            file_declares_engram = False
+            file_frontmatter_valid = True
+            if markdown_editable:
+                metadata = _browser_read_frontmatter_metadata(path)
+                file_frontmatter_valid = metadata is not None
+                file_declares_engram = bool(
+                    metadata is not None
+                    and str(metadata.get("type") or "").lower() == "engram"
+                )
+                markdown_editable = bool(
+                    file_frontmatter_valid and not file_declares_engram
+                )
             row = {
                 "identity": path, "title": item.get("name") or Path(path).name,
                 "metadata": {
@@ -14732,10 +14793,15 @@ def _library_file_provider() -> dict:
                 "preview": _library_path_preview(path),
                 "editability": {
                     "available": exists,
-                    "editable": os.access(path, os.W_OK) if exists else None,
+                    "editable": markdown_editable if exists else None,
                     "surface": "external-file",
-                    "reason": ("editing is outside the Library adapter" if exists
-                               else "the inventoried file is unavailable"),
+                    "reason": (None if markdown_editable else
+                               "the Markdown frontmatter authority is malformed"
+                               if not file_frontmatter_valid else
+                               "Engrams must be edited through an eligible Engrams row"
+                               if file_declares_engram else
+                               "only readable, writable regular Markdown files are editable"
+                               if exists else "the inventoried file is unavailable"),
                 },
             }
             if Path(path).suffix.lower() == ".md":
@@ -14772,7 +14838,7 @@ def _library_hydrate_returned_engram_access(rows: list[dict]) -> None:
         )
         path = str(locator.get("path") or "").strip()
         try:
-            path_stat = os.stat(path)
+            path_stat = os.lstat(path)
         except (OSError, TypeError, ValueError):
             path_stat = None
         exists = bool(
@@ -14788,7 +14854,10 @@ def _library_hydrate_returned_engram_access(rows: list[dict]) -> None:
             except (OSError, TypeError, ValueError):
                 pass
             try:
-                writable = bool(os.access(path, os.W_OK))
+                writable = bool(
+                    os.access(path, os.W_OK)
+                    and os.access(os.path.dirname(path), os.W_OK | os.X_OK)
+                )
             except (OSError, TypeError, ValueError):
                 pass
 
@@ -14819,11 +14888,17 @@ def _library_hydrate_returned_engram_access(rows: list[dict]) -> None:
             row.get("editability")
             if isinstance(row.get("editability"), dict) else {}
         )
-        if isinstance(writable, bool):
+        known_read_only = bool(
+            editability.get("available") is True
+            and editability.get("editable") is False
+        )
+        if known_read_only:
+            pass
+        elif isinstance(writable, bool):
             editability.update({
                 "available": True,
                 "editable": writable,
-                "reason": "editing is outside the Library adapter",
+                "reason": None if writable else "the source file is not writable",
             })
         else:
             editability.update({
@@ -14885,36 +14960,47 @@ def library_browser():
     return _json_response(payload)
 
 
+def _library_current_item(
+        item_id: str, *, require_complete: bool = False) -> tuple[str, dict]:
+    """Resolve one stable Engram/File id through its current provider."""
+    from orchestrator.library_browser import normalize_row
+
+    source, separator, encoded = str(item_id or "").partition(":")
+    if not separator or not encoded or source not in {"engrams", "files"}:
+        raise ValueError
+    provider = (_library_engram_provider() if source == "engrams"
+                else _library_file_provider())
+    if require_complete and provider.get("complete") is not True:
+        raise PermissionError
+    matches = [raw for raw in provider.get("rows", [])
+               if normalize_row(source, raw)["id"] == item_id]
+    if len(matches) != 1:
+        raise LookupError
+    return source, matches[0]
+
+
 @app.route("/api/library/preview", methods=["GET"])
 def library_preview():
     """Return one currently authorized Engram or project-file text body."""
-    from orchestrator.library_browser import normalize_row
-
     item_ids = request.args.getlist("id")
-    item_id = str(item_ids[0] or "").strip() if len(item_ids) == 1 else ""
-    source, separator, encoded_identity = item_id.partition(":")
-    if (set(request.args) != {"id"} or not separator or not encoded_identity
-            or source not in {"engrams", "files"}):
+    if set(request.args) != {"id"} or len(item_ids) != 1:
         return _json_response({
             "error": "a valid Engram or File Library item id is required",
         }, status=400)
-
+    item_id = str(item_ids[0] or "").strip()
     try:
-        provider = (_library_engram_provider() if source == "engrams"
-                    else _library_file_provider())
-        normalized_rows = [
-            (raw, normalize_row(source, raw))
-            for raw in provider.get("rows", [])
-        ]
+        source, raw = _library_current_item(item_id)
+    except ValueError:
+        return _json_response({
+            "error": "a valid Engram or File Library item id is required",
+        }, status=400)
     except Exception:
-        normalized_rows = []
-    matches = [pair for pair in normalized_rows if pair[1]["id"] == item_id]
-    if len(matches) != 1:
         return _json_response({
             "error": "the Library item is not present in the current source inventory",
         }, status=404)
 
-    raw, row = matches[0]
+    from orchestrator.library_browser import normalize_row
+    row = normalize_row(source, raw)
     if source == "engrams":
         _library_hydrate_returned_engram_access([row])
     preview = row["preview"]
@@ -14963,7 +15049,14 @@ def library_preview():
             text = None
     else:
         try:
-            text = Path(identity).read_text(encoding="utf-8")
+            with open(identity, "r", encoding="utf-8", newline="") as stream:
+                candidate = stream.read()
+            metadata = _browser_frontmatter_metadata(candidate, path=identity)
+            if metadata is None:
+                raise ValueError("Markdown frontmatter authority is malformed")
+            if str(metadata.get("type") or "").lower() == "engram":
+                raise ValueError("Engram is not Standard-readable")
+            text = candidate
         except (OSError, UnicodeError, ValueError):
             text = None
 
@@ -14973,6 +15066,189 @@ def library_preview():
         }, status=409)
 
     return _json_response({"id": item_id, "source": source, "text": text})
+
+
+def _library_edit_target(item_id: str) -> tuple[str, str]:
+    """Resolve one stable Library id to its current provider-owned path."""
+    source, raw = _library_current_item(item_id, require_complete=True)
+    if (source == "engrams"
+            and raw.get("_unique_direct_authority") is not True):
+        raise PermissionError
+    path = _browser_resolve_path(raw.get("identity"))
+    return source, path
+
+
+def _library_line_ending_style(text: str) -> str | None:
+    """Return one uniform newline style, no-newline, or invalid."""
+    without_crlf = text.replace("\r\n", "")
+    if "\r" in without_crlf:
+        return None
+    has_crlf = "\r\n" in text
+    has_lf = "\n" in without_crlf
+    if has_crlf and has_lf:
+        return None
+    return "crlf" if has_crlf else "lf" if has_lf else ""
+
+
+def _library_edit_read(path: str, source: str) -> tuple[str, str, int]:
+    """Read one still-eligible Markdown file and authenticate Engram bytes."""
+    import stat
+
+    info = os.lstat(path)
+    if (Path(path).suffix.lower() != ".md" or stat.S_ISLNK(info.st_mode)
+            or not stat.S_ISREG(info.st_mode)
+            or not os.access(path, os.R_OK | os.W_OK)
+            or not os.access(os.path.dirname(path), os.W_OK | os.X_OK)):
+        raise PermissionError
+    with open(path, "r", encoding="utf-8", newline="") as stream:
+        text = stream.read()
+    if not _library_edit_content_allowed(text, path, source):
+        raise PermissionError
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return text, digest, stat.S_IMODE(info.st_mode)
+
+
+def _library_edit_content_allowed(text: str, path: str, source: str) -> bool:
+    """Keep Engram bytes on the uniquely authorized Standard Engram route."""
+    metadata = _browser_frontmatter_metadata(text, path=path)
+    declares_engram = bool(
+        metadata is not None
+        and str(metadata.get("type") or "").lower() == "engram"
+    )
+    if source == "files":
+        return metadata is not None and not declares_engram
+    return bool(not text.startswith("\ufeff") and declares_engram
+                and _browser_knowledge_metadata_allowed(metadata, ""))
+
+
+@app.route("/api/library/edit", methods=["GET", "PUT"])
+def library_edit():
+    """Read or safely replace one currently authorized Markdown Library item."""
+    if request.method == "PUT":
+        cross_site = _cross_site_mutation_response()
+        if cross_site is not None:
+            return cross_site
+        body = request.get_json(silent=True)
+        if (request.args or not isinstance(body, dict)
+                or set(body) != {"id", "expected_digest", "text"}
+                or not isinstance(body.get("id"), str)
+                or not isinstance(body.get("expected_digest"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", body["expected_digest"])
+                or not isinstance(body.get("text"), str)):
+            return _json_response({
+                "error": "PUT requires only id, expected_digest, and complete text",
+            }, status=400)
+        item_id = body["id"].strip()
+    else:
+        item_ids = request.args.getlist("id")
+        if set(request.args) != {"id"} or len(item_ids) != 1:
+            return _json_response({
+                "error": "a valid Engram or File Library item id is required",
+            }, status=400)
+        item_id = str(item_ids[0] or "").strip()
+
+    try:
+        source, path = _library_edit_target(item_id)
+    except ValueError:
+        return _json_response({"error": "a valid Library item id is required"}, 400)
+    except LookupError:
+        return _json_response({"error": "the Library item is not current and unique"}, 404)
+    except Exception:
+        return _json_response({
+            "error": "the Markdown item is not editable after current authority validation",
+        }, status=409)
+
+    if request.method == "GET":
+        try:
+            current_text, current_digest, _mode = (
+                _library_edit_read(path, source)
+            )
+            if _library_line_ending_style(current_text) is None:
+                raise PermissionError
+        except (OSError, UnicodeError, PermissionError):
+            return _json_response({"error": "the Markdown item is not editable"}, 409)
+        return _json_response({
+            "id": item_id,
+            "source": source,
+            "text": current_text,
+            "digest": current_digest,
+        })
+
+    replacement = body["text"]
+    index_refreshed = None
+    index_error = None
+    try:
+        try:
+            revalidated_source, revalidated_path = _library_edit_target(item_id)
+        except (ValueError, LookupError) as exc:
+            raise PermissionError from exc
+        if (revalidated_source != source
+                or not _library_same_filesystem_path(revalidated_path, path)):
+            raise PermissionError
+        source, path = revalidated_source, revalidated_path
+        with mutation_path_locks([path]):
+            locked_text, locked_digest, mode = _library_edit_read(path, source)
+            if locked_digest != body["expected_digest"]:
+                return _json_response({
+                    "error": "the Markdown item changed after editing began",
+                    "code": "conflict",
+                    "saved": False,
+                }, status=409)
+            locked_ending = _library_line_ending_style(locked_text)
+            replacement_ending = _library_line_ending_style(replacement)
+            if (locked_ending is None or replacement_ending is None
+                    or (locked_ending and replacement_ending
+                        and locked_ending != replacement_ending)):
+                return _json_response({
+                    "error": "Markdown line endings must remain uniformly LF or CRLF",
+                    "saved": False,
+                }, status=409)
+            if not _library_edit_content_allowed(replacement, path, source):
+                return _json_response({
+                    "error": (
+                        "Engrams must remain valid and Standard and be edited "
+                        "through an eligible Engrams row"
+                    ),
+                    "saved": False,
+                }, status=409)
+            rp.atomic_write_bytes(
+                path, replacement.encode("utf-8"), mode=mode,
+            )
+    except PermissionError:
+        return _json_response({"error": "the Markdown item is not editable", "saved": False}, 409)
+    except (OSError, UnicodeError, TimeoutError):
+        return _json_response({
+            "error": "the Markdown item could not be saved after current validation",
+            "saved": False,
+        }, status=500)
+
+    if source == "engrams":
+        try:
+            from orchestrator.tools import knowledge_index
+            stats = knowledge_index.index_single_file(
+                path, force=True, verbose=False,
+            )
+            index_refreshed = bool(
+                isinstance(stats, dict)
+                and stats.get("errors", 0) == 0
+                and stats.get("indexed", 0) > 0
+            )
+            if not index_refreshed:
+                index_error = "the saved Engram was not refreshed in the knowledge index"
+        except Exception:
+            print("[library-edit] saved Engram index refresh failed", file=sys.stderr, flush=True)
+            index_refreshed = False
+            index_error = "the saved Engram could not be refreshed in the knowledge index"
+
+    result = {
+        "id": item_id,
+        "source": source,
+        "saved": True,
+        "index_refreshed": index_refreshed,
+    }
+    if index_error:
+        result["index_error"] = index_error
+    return _json_response(result)
 
 
 @app.route("/api/conversations/browser", methods=["GET"])

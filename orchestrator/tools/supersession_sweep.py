@@ -413,8 +413,9 @@ def process_artifact_write(path: str, *, event_id: str | None = None) -> dict:
     """Autonomously evaluate one exact written Resource or Engram.
 
     No per-pair human triage occurs. All model judgments finish before any
-    subject file or resolution log changes. A judge, resolver, audit, or index
-    error restores every snapshotted file. Duplicate delivery returns the
+    subject file or resolution log changes. A judge, resolver, or audit error
+    restores every snapshotted file. Index errors are reported after commit.
+    Duplicate delivery returns the
     original event state and cannot repeat mutation.
     """
     exact = os.path.realpath(os.path.abspath(os.path.expanduser(path)))
@@ -461,120 +462,122 @@ def process_artifact_write(path: str, *, event_id: str | None = None) -> dict:
         transaction_paths = {exact, log_file}
         for newer, older, _hint in pairs:
             transaction_paths.update({newer["path"], older["path"]})
+        bound_snapshots = _bind_judgment_inputs(subject, exact, pairs)
+        bound_inputs = [
+            snapshot.identity()
+            for snapshot in bound_snapshots.values()
+        ]
+        ledger.append_evidence(
+            resolved_event_id, "judgment_inputs_bound",
+            identities=bound_inputs,
+        )
+        judgments = []
+        for newer, older, hint in pairs:
+            newer_snapshot = bound_snapshots[os.path.realpath(newer["path"])]
+            older_snapshot = bound_snapshots[os.path.realpath(older["path"])]
+            jr = judge.judge_pair(
+                newer_snapshot.h1,
+                newer_snapshot.date_created,
+                newer_snapshot.body,
+                older_snapshot.h1,
+                older_snapshot.date_created,
+                older_snapshot.body,
+                kind="news" if kind == "news_supersession" else "engram",
+                hint=json.dumps(hint, sort_keys=True),
+            )
+            if jr.decision not in {"supersede", "skip"}:
+                raise RuntimeError(
+                    f"model judgment failed for {newer['slug']}→{older['slug']}: "
+                    f"{jr.reason}"
+                )
+            judgments.append((newer, older, jr, hint))
+
+        ledger.append_evidence(
+            resolved_event_id, "bounded_neighborhood_judged",
+            candidate_count=len(judgments),
+            ceiling=(MAX_EVENT_NEWS_PAIRS if kind == "news_supersession"
+                     else MAX_EVENT_ENGRAM_PAIRS),
+            judgments=[{
+                "source": newer["slug"], "target": older["slug"],
+                "hint": hint, **_judgment_evidence(jr),
+            } for newer, older, jr, hint in judgments],
+            human_triage=False,
+        )
+        if not judgments:
+            return ledger.transition(
+                resolved_event_id, {"claimed"}, "completed",
+                mutation_count=0, candidates=0,
+                completed_at=datetime.now().isoformat(),
+            )
+
+        mutated: list[str] = []
+        affected: set[str] = set()
         with mutation_path_locks(transaction_paths):
-            bound_snapshots = _bind_judgment_inputs(subject, exact, pairs)
-            bound_inputs = [
-                snapshot.identity()
-                for snapshot in bound_snapshots.values()
-            ]
-            ledger.append_evidence(
-                resolved_event_id, "judgment_inputs_bound",
-                identities=bound_inputs,
-            )
-            judgments = []
-            for newer, older, hint in pairs:
-                newer_snapshot = bound_snapshots[os.path.realpath(newer["path"])]
-                older_snapshot = bound_snapshots[os.path.realpath(older["path"])]
-                jr = judge.judge_pair(
-                    newer_snapshot.h1,
-                    newer_snapshot.date_created,
-                    newer_snapshot.body,
-                    older_snapshot.h1,
-                    older_snapshot.date_created,
-                    older_snapshot.body,
-                    kind="news" if kind == "news_supersession" else "engram",
-                    hint=json.dumps(hint, sort_keys=True),
-                )
-                if jr.decision not in {"supersede", "skip"}:
-                    raise RuntimeError(
-                        f"model judgment failed for {newer['slug']}→{older['slug']}: "
-                        f"{jr.reason}"
-                    )
-                judgments.append((newer, older, jr, hint))
-
-            ledger.append_evidence(
-                resolved_event_id, "bounded_neighborhood_judged",
-                candidate_count=len(judgments),
-                ceiling=(MAX_EVENT_NEWS_PAIRS if kind == "news_supersession"
-                         else MAX_EVENT_ENGRAM_PAIRS),
-                judgments=[{
-                    "source": newer["slug"], "target": older["slug"],
-                    "hint": hint, **_judgment_evidence(jr),
-                } for newer, older, jr, hint in judgments],
-                human_triage=False,
-            )
             _reauthenticate_judgment_inputs(bound_inputs)
-            if not judgments:
-                return ledger.transition(
-                    resolved_event_id, {"claimed"}, "completed",
-                    mutation_count=0, candidates=0,
-                    completed_at=datetime.now().isoformat(),
+            with MutationTransaction(
+                ledger, resolved_event_id, transaction_paths,
+                expected_identities=bound_inputs,
+            ) as tx:
+                for newer, older, jr, _hint in judgments:
+                    if jr.decision == "supersede":
+                        if kind == "news_supersession":
+                            outcome = news_res.apply_supersession(
+                                newer["slug"], older["slug"],
+                                bound_snapshots[
+                                    os.path.realpath(older["path"])
+                                ].h1,
+                                dry_run=False,
+                            )
+                            header = _news_log_header()
+                        else:
+                            outcome = eng_res.apply_changed_mind(
+                                newer["slug"], older["slug"],
+                                bound_snapshots[
+                                    os.path.realpath(older["path"])
+                                ].h1,
+                                dry_run=False,
+                                already_locked=True,
+                            )
+                            header = _engram_log_header()
+                        if outcome.get("errors"):
+                            raise RuntimeError(str(outcome["errors"]))
+                        mutated.extend(outcome.get("mutated_files", []))
+                        affected.update({newer["slug"], older["slug"]})
+                        resolution = "changed-mind:source-supersedes-target"
+                    else:
+                        header = (_news_log_header() if kind == "news_supersession"
+                                  else _engram_log_header())
+                        outcome = {"mutated_files": [], "errors": []}
+                        resolution = "skip"
+                    _append_judged_log(
+                        log_file, header,
+                        source_slug=newer["slug"], target_slug=older["slug"],
+                        resolution=resolution, judge_result=jr,
+                        mutated_files=outcome["mutated_files"], errors=[],
+                    )
+                result = tx.commit(
+                    mutation_count=len(mutated), mutated_files=mutated,
+                    autonomous_judgment=True, human_triage=False,
+                    judgment_input_identities=bound_inputs,
                 )
 
-            mutated: list[str] = []
-            affected: set[str] = set()
-            index_refresh_attempted = False
-            try:
-                with MutationTransaction(
-                    ledger, resolved_event_id, transaction_paths,
-                    expected_identities=bound_inputs,
-                ) as tx:
-                    for newer, older, jr, _hint in judgments:
-                        if jr.decision == "supersede":
-                            if kind == "news_supersession":
-                                outcome = news_res.apply_supersession(
-                                    newer["slug"], older["slug"],
-                                    bound_snapshots[
-                                        os.path.realpath(older["path"])
-                                    ].h1,
-                                    dry_run=False,
-                                )
-                                header = _news_log_header()
-                            else:
-                                outcome = eng_res.apply_changed_mind(
-                                    newer["slug"], older["slug"],
-                                    bound_snapshots[
-                                        os.path.realpath(older["path"])
-                                    ].h1,
-                                    dry_run=False,
-                                )
-                                header = _engram_log_header()
-                            if outcome.get("errors"):
-                                raise RuntimeError(str(outcome["errors"]))
-                            mutated.extend(outcome.get("mutated_files", []))
-                            affected.update({newer["slug"], older["slug"]})
-                            resolution = "changed-mind:source-supersedes-target"
-                        else:
-                            header = (_news_log_header() if kind == "news_supersession"
-                                      else _engram_log_header())
-                            outcome = {"mutated_files": [], "errors": []}
-                            resolution = "skip"
-                        _append_judged_log(
-                            log_file, header,
-                            source_slug=newer["slug"], target_slug=older["slug"],
-                            resolution=resolution, judge_result=jr,
-                            mutated_files=outcome["mutated_files"], errors=[],
-                        )
-
-                    if affected:
-                        index_refresh_attempted = True
-                        refresh = (news_res.refresh_chromadb(affected)
-                                   if kind == "news_supersession"
-                                   else eng_res.refresh_chromadb(affected))
-                        if isinstance(refresh, dict) and refresh.get("errors"):
-                            raise RuntimeError(f"index refresh failed: {refresh}")
-                    return tx.commit(
-                        mutation_count=len(mutated), mutated_files=mutated,
-                        autonomous_judgment=True, human_triage=False,
-                        judgment_input_identities=bound_inputs,
-                    )
-            except Exception as mutation_exc:
-                if index_refresh_attempted:
-                    return _restore_index_after_rollback(
-                        ledger=ledger, event_id=resolved_event_id, kind=kind,
-                        affected=affected, original_error=mutation_exc,
-                    )
-                raise
+        if not affected:
+            return result
+        try:
+            refresh = (news_res.refresh_chromadb(affected)
+                       if kind == "news_supersession"
+                       else eng_res.refresh_chromadb(affected))
+            if isinstance(refresh, dict) and refresh.get("errors"):
+                raise RuntimeError(f"index refresh failed: {refresh}")
+        except Exception as refresh_exc:
+            return ledger.transition(
+                resolved_event_id, {"completed"}, "completed",
+                index_refreshed=False, index_error=str(refresh_exc),
+            )
+        return ledger.transition(
+            resolved_event_id, {"completed"}, "completed",
+            index_refreshed=True,
+        )
     except Exception as exc:
         current = ledger.get(resolved_event_id)
         if current and current.get("status") == "claimed":
@@ -842,12 +845,16 @@ def task_engram_cleaning(*, campaign_id: str) -> SweepResult:
             for newer, older, _jr, _hint in judgments:
                 transaction_paths.update({newer["path"], older["path"]})
             mutated: list[str] = []
-            with MutationTransaction(ledger, event_id, transaction_paths) as tx:
+            with (
+                mutation_path_locks(transaction_paths),
+                MutationTransaction(ledger, event_id, transaction_paths) as tx,
+            ):
                 for newer, older, jr, _hint in judgments:
                     if jr.decision == "supersede":
                         outcome = eng_res.apply_changed_mind(
                             survivor_slug=newer["slug"], archived_slug=older["slug"],
                             archived_h1=older["h1"], dry_run=False,
+                            already_locked=True,
                         )
                         if outcome.get("errors"):
                             raise RuntimeError(str(outcome["errors"]))
@@ -865,12 +872,12 @@ def task_engram_cleaning(*, campaign_id: str) -> SweepResult:
                         resolution=resolution, judge_result=jr,
                         mutated_files=outcome["mutated_files"], errors=[],
                     )
-                if affected:
-                    refreshed = eng_res.refresh_chromadb(affected)
-                    if isinstance(refreshed, dict) and refreshed.get("errors"):
-                        raise RuntimeError(f"index refresh failed: {refreshed}")
                 tx.commit(stats=stats, mutation_count=len(mutated),
                           autonomous_judgment=True, human_triage=False)
+            if affected:
+                refreshed = eng_res.refresh_chromadb(affected)
+                if isinstance(refreshed, dict) and refreshed.get("errors"):
+                    raise RuntimeError(f"index refresh failed: {refreshed}")
         result = SweepResult(True, (
             f"engram campaign {campaign_id}: {stats['judged']} judged "
             f"({stats['superseded']} superseded, {stats['skipped']} skipped, "

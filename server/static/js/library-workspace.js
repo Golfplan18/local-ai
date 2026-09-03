@@ -67,6 +67,7 @@
     relationshipGeneration: 0,
     renderGeneration: 0,
     textPreview: { id: null, loading: false, error: '', text: null },
+    edit: { id: null, text: '', digest: '', crlf: false, busy: false, error: '', notice: '' },
     related: {
       anchorId: null,
       locator: '',
@@ -274,6 +275,92 @@
     && row.preview && row.preview.kind === 'text'
     && row.preview.available === true);
 
+  const markdownEditEligible = (row) => Boolean(textPreviewEligible(row)
+    && row.metadata && row.metadata.content_type === 'text/markdown'
+    && row.editability && row.editability.available === true
+    && row.editability.editable === true);
+
+  function resetEdit(notice) {
+    state.edit = { id: null, text: '', digest: '', crlf: false, busy: false, error: '', notice: notice || '' };
+  }
+
+  async function libraryEditRequest(url, options) {
+    const response = await fetch(url, options);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.error || `Library edit failed (HTTP ${response.status})`);
+      error.conflict = payload.code === 'conflict';
+      throw error;
+    }
+    return payload;
+  }
+
+  async function startMarkdownEdit(row) {
+    resetEdit();
+    const edit = state.edit;
+    edit.id = row.id;
+    edit.busy = true;
+    renderPreview();
+    try {
+      const params = new URLSearchParams({ id: row.id });
+      const payload = await libraryEditRequest(`/api/library/edit?${params.toString()}`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (edit !== state.edit || state.pinnedId !== row.id) return;
+      if (payload.id !== row.id || typeof payload.text !== 'string'
+          || !/^[0-9a-f]{64}$/.test(payload.digest || '')) {
+        throw new Error('The edit response did not match the pinned Library item.');
+      }
+      const withoutCrlf = payload.text.replace(/\r\n/g, '');
+      edit.crlf = payload.text.includes('\r\n');
+      if (withoutCrlf.includes('\r') || (edit.crlf && withoutCrlf.includes('\n'))) {
+        throw new Error('Mixed or lone-carriage-return line endings cannot be edited safely.');
+      }
+      edit.text = edit.crlf ? payload.text.replace(/\r\n/g, '\n') : payload.text;
+      edit.digest = payload.digest;
+    } catch (error) {
+      if (edit === state.edit) edit.error = error.message || String(error);
+    } finally {
+      if (edit === state.edit) { edit.busy = false; renderPreview(); }
+    }
+  }
+
+  async function saveMarkdownEdit(row) {
+    const edit = state.edit;
+    edit.busy = true;
+    edit.error = '';
+    renderPreview();
+    try {
+      if (edit.text.includes('\r')) throw new Error('The edit draft contains unsupported carriage returns.');
+      const payload = await libraryEditRequest('/api/library/edit', {
+        method: 'PUT',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: row.id,
+          expected_digest: edit.digest,
+          text: edit.crlf ? edit.text.replace(/\n/g, '\r\n') : edit.text,
+        }),
+      });
+      if (edit !== state.edit || state.pinnedId !== row.id) return;
+      if (payload.id !== row.id || payload.saved !== true) throw new Error('The save response was incomplete.');
+      const message = payload.index_refreshed === false
+        ? `File saved, but the Engram index refresh failed. ${payload.index_error || ''}`.trim()
+        : payload.index_refreshed === true
+          ? 'File saved and the Engram index refreshed.'
+          : 'File saved. Files remain inventory-only.';
+      resetEdit(message);
+      renderPreview();
+      fetchTextPreview(row);
+    } catch (error) {
+      if (edit === state.edit) {
+        edit.error = (error.message || String(error))
+          + (error.conflict ? ' Your draft is still here.' : '');
+      }
+    } finally {
+      if (edit === state.edit) { edit.busy = false; renderPreview(); }
+    }
+  }
+
   function invalidateTextPreviewRequest() {
     ++state.previewGeneration;
     if (previewController) previewController.abort();
@@ -439,6 +526,7 @@
   }
 
   function pinRow(row) {
+    if (!row || state.edit.id !== row.id) resetEdit();
     state.pinnedId = row ? row.id : null;
     resetRelated(row);
     fetchTextPreview(row);
@@ -862,6 +950,7 @@
       if (!state.rowsById.has(id)) state.selectedIds.delete(id);
     });
     if (state.pinnedId && !state.rowsById.has(state.pinnedId)) state.pinnedId = null;
+    if (state.edit.id && state.edit.id !== state.pinnedId) resetEdit();
     updateLogo();
     renderPreview();
     renderActions();
@@ -873,6 +962,7 @@
     state.retryAppend = false;
     state.error = '';
     state.actionNotice = '';
+    resetEdit();
     state.rows = [];
     state.rowsById.clear();
     state.selectedIds.clear();
@@ -903,6 +993,7 @@
     state.loadingAll = false;
     state.retryAppend = false;
     state.error = '';
+    resetEdit();
     state.rows = [];
     state.rowsById.clear();
     state.total = 0;
@@ -1124,6 +1215,67 @@
     }
   }
 
+  function appendMarkdownEditor(host, row, previewText) {
+    const edit = state.edit.id === row.id ? state.edit : null;
+    const active = Boolean(edit && edit.digest);
+    const body = document.createElement(active ? 'textarea' : 'pre');
+    body.className = active ? 'library-edit-textarea' : 'library-preview-body';
+    if (active) {
+      body.dataset.libraryEditDraft = '';
+      body.setAttribute('aria-label', `Edit complete Markdown for ${row.title}`);
+      body.value = edit.text;
+      body.disabled = edit.busy;
+      body.addEventListener('input', () => { edit.text = body.value; });
+    } else {
+      body.textContent = previewText;
+    }
+    host.appendChild(body);
+
+    if (active || markdownEditEligible(row)) {
+      const controls = document.createElement('div');
+      controls.className = 'library-edit-controls';
+      if (active) {
+        ['Save', 'Cancel'].forEach((label) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.libraryEdit = label.toLowerCase();
+          button.textContent = label === 'Save' && edit.busy ? 'Saving…' : label;
+          button.disabled = edit.busy;
+          button.addEventListener('click', () => {
+            if (label === 'Save') saveMarkdownEdit(row);
+            else {
+              resetEdit();
+              fetchTextPreview(row);
+              renderPreview();
+            }
+          });
+          controls.appendChild(button);
+        });
+      } else {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.libraryEdit = 'start';
+        button.textContent = edit && edit.busy ? 'Opening editor…' : 'Edit';
+        button.disabled = Boolean(edit && edit.busy);
+        button.addEventListener('click', () => startMarkdownEdit(row));
+        controls.appendChild(button);
+      }
+      host.appendChild(controls);
+    }
+  }
+
+  function appendEditStatus(host, row) {
+    const edit = state.edit.id === row.id ? state.edit : null;
+    const message = (edit && edit.error) || state.edit.notice;
+    if (message) {
+      const editStatus = document.createElement('p');
+      editStatus.dataset.libraryEditStatus = '';
+      editStatus.className = edit && edit.error ? 'is-error' : 'is-success';
+      editStatus.textContent = message;
+      host.appendChild(editStatus);
+    }
+  }
+
   function renderPreview() {
     if (!state.open) return;
     ensurePreviewLayers();
@@ -1158,15 +1310,16 @@
     } else if (currentTextPreview && currentTextPreview.error) {
       previewMessage.textContent = `Preview unavailable. ${currentTextPreview.error}`;
     } else if (currentTextPreview && typeof currentTextPreview.text === 'string') {
-      previewMessage.textContent = 'Text preview';
-      previewBody = document.createElement('pre');
-      previewBody.className = 'library-preview-body';
-      previewBody.textContent = currentTextPreview.text;
+      previewMessage.textContent = state.edit.id === row.id && state.edit.digest
+        ? 'Edit complete Markdown'
+        : 'Text preview';
+      previewBody = currentTextPreview.text;
     } else {
       previewMessage.textContent = 'Preview unavailable. The current text body has not been loaded.';
     }
     previewTextLayer.append(heading, badges, previewMessage);
-    if (previewBody) previewTextLayer.appendChild(previewBody);
+    if (previewBody !== null) appendMarkdownEditor(previewTextLayer, row, previewBody);
+    appendEditStatus(previewTextLayer, row);
     appendRelationshipDisclosure(previewTextLayer, row);
 
     const visualHeading = document.createElement('h2');
@@ -1368,6 +1521,7 @@
     if (requestController) requestController.abort();
     requestController = null;
     resetTextPreview(null);
+    resetEdit();
     resetRelated(null);
     state.loading = false;
     state.loadingAll = false;
