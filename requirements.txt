@@ -46,5 +46,14 @@ keyring
 # Browser automation
 playwright
 
+# Keyless web-search tier. NOT optional despite the cascade being able to
+# skip a provider: DuckDuckGo is the only tier that needs no API key, so on
+# a deployment running without paid search it is the ONLY provider. Its
+# absence is silent — the cascade logs a provider error and returns an
+# empty result, which callers treat as an ordinary coverage gap — so a venv
+# rebuilt without it loses web search entirely and says nothing. MSI ran
+# that way for weeks before it was noticed.
+ddgs
+
 # Local MLX inference — Apple Silicon only
 mlx-lm; sys_platform == "darwin" and platform_machine == "arm64"
