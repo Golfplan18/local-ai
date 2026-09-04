@@ -2,6 +2,7 @@
 
 import fnmatch
 import os
+import stat
 
 # Roots come from the single cross-platform source (runtime_paths), so a Windows
 # install or an ORA_HOME/ORA_VAULT relocation is honored — not the old hardcoded
@@ -117,11 +118,14 @@ def file_write(path: str, content: str) -> str:
     allowed, reason = _validate_path(path)
     if not allowed:
         return f"BLOCKED: {reason}"
-    path = os.path.expanduser(path)
+    path = os.path.realpath(os.path.expanduser(path))
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
+        try:
+            mode = stat.S_IMODE(os.stat(path, follow_symlinks=False).st_mode)
+        except FileNotFoundError:
+            mode = 0o600
+        _rp.atomic_write_text(path, content, mode=mode)
         return f"Written: {path} ({len(content)} characters)"
     except Exception as e:
         return f"Write error: {str(e)}"

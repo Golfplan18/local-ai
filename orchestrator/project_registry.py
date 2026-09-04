@@ -23,6 +23,7 @@ import hmac
 import os
 import re
 import shutil
+import stat
 import subprocess
 import threading
 from dataclasses import dataclass, field
@@ -954,6 +955,51 @@ def _read_pointer_for_mutation(path: Path) -> dict[str, Any]:
     return data
 
 
+def prepare_pointer_mutation(
+    nexus: str, pointer_dir: str = POINTER_DIR, *, require_registered: bool,
+) -> tuple[Path, dict[str, Any]]:
+    """Resolve and strictly read the exact pointer before seeking approval.
+
+    Registration may create an absent pointer or extend a valid container-only
+    pointer. Unregistration requires an existing regular pointer with a live
+    plugin binding. Both callers and the mutation sink use this same preflight
+    so malformed, symlinked, or already-unregistered targets fail before an
+    approval can be consumed.
+    """
+
+    pointer = _pointer_path(nexus, pointer_dir)
+    if pointer.is_symlink():
+        raise ProjectError(f"project pointer must not be a symlink: {pointer}")
+    try:
+        before = pointer.stat(follow_symlinks=False)
+    except FileNotFoundError:
+        if require_registered:
+            raise ProjectNotFoundError(
+                f"No project registered with nexus {nexus!r}"
+            )
+        return pointer, {}
+    if not stat.S_ISREG(before.st_mode):
+        raise ProjectError(f"project pointer must be a regular file: {pointer}")
+    data = _read_pointer_for_mutation(pointer)
+    try:
+        after = pointer.stat(follow_symlinks=False)
+    except FileNotFoundError as exc:
+        raise ProjectError(f"project pointer changed during preflight: {pointer}") from exc
+    identity = lambda value: (
+        value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns,
+    )
+    if identity(before) != identity(after):
+        raise ProjectError(f"project pointer changed during preflight: {pointer}")
+    root = data.get("root")
+    if require_registered and (
+        not isinstance(root, str) or not root.strip()
+    ):
+        raise ProjectNotFoundError(
+            f"No project registered with nexus {nexus!r}"
+        )
+    return pointer, data
+
+
 def _load_registered_project(pointer_data: dict, pointer_path: Path) -> Project:
     """Resolve one pointer only when its issued manifest bytes still match."""
 
@@ -1061,7 +1107,9 @@ def register_project(
     pf = _pointer_path(project.nexus, pointer_dir)
     try:
         with _rp.locked_file(pf):
-            data = _read_pointer_for_mutation(pf)
+            pf, data = prepare_pointer_mutation(
+                project.nexus, pointer_dir, require_registered=False,
+            )
             data["nexus"] = project.nexus
             data["root"] = str(project.root)
             data["manifest_sha256"] = snapshot.manifest_sha256
@@ -1079,14 +1127,13 @@ def unregister_project(nexus: str, pointer_dir: str = POINTER_DIR) -> bool:
     plugin binding was removed, otherwise ``False``.
     """
     pf = _pointer_path(nexus, pointer_dir)
-    if not pf.is_file():
-        return False
     try:
         with _rp.locked_file(pf):
-            if not pf.is_file():
-                return False
-            data = _read_pointer_for_mutation(pf)
-            if not data.get("root"):
+            try:
+                pf, data = prepare_pointer_mutation(
+                    nexus, pointer_dir, require_registered=True,
+                )
+            except ProjectNotFoundError:
                 return False
             try:
                 from project_meta import pointer_has_container_metadata
@@ -1144,6 +1191,8 @@ def _resolve_executable_identity(
         executable = executable.resolve(strict=True)
         if not executable.is_file():
             raise OSError("executable is not a regular file")
+        if not os.access(executable, os.X_OK):
+            raise PermissionError("executable has no execute permission")
         digest = hashlib.sha256(executable.read_bytes()).hexdigest()
     except OSError as exc:
         raise ProjectExecutionBindingError(
@@ -1153,20 +1202,17 @@ def _resolve_executable_identity(
     script_path = ""
     script_identity = "sha256:" + hashlib.sha256(b"no-declared-script").hexdigest()
     if len(command) > 1:
-        candidate = Path(command[1]).expanduser().resolve()
-        script_path = str(candidate)
         try:
-            if candidate.is_file():
-                script_bytes = candidate.read_bytes()
-                script_identity = "sha256:" + hashlib.sha256(script_bytes).hexdigest()
-            else:
-                script_identity = "sha256:" + hashlib.sha256(
-                    f"not-a-regular-file:{candidate}".encode("utf-8")
-                ).hexdigest()
-        except OSError as exc:
+            candidate = Path(command[1]).expanduser().resolve(strict=True)
+            if not candidate.is_file():
+                raise OSError("declared script is not a regular file")
+            script_bytes = candidate.read_bytes()
+        except (OSError, RuntimeError) as exc:
             raise ProjectExecutionBindingError(
-                f"project script {candidate} cannot be authenticated: {exc}"
+                f"project script {command[1]} cannot be authenticated: {exc}"
             ) from exc
+        script_path = str(candidate)
+        script_identity = "sha256:" + hashlib.sha256(script_bytes).hexdigest()
     executable_identity = "sha256:" + hashlib.sha256(json.dumps(
         {
             "interpreter_path": interpreter_path,

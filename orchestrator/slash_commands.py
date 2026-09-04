@@ -505,7 +505,9 @@ def _cmd_project_register(args: list[str]) -> str:
     try:
         manifest_snapshot = _pr.load_project_snapshot(args[0])
         project = manifest_snapshot.project
-        pointer = _pr._pointer_path(project.nexus)
+        pointer, _pointer_data = _pr.prepare_pointer_mutation(
+            project.nexus, require_registered=False,
+        )
         manifest = manifest_snapshot.manifest_path
         pointer_state = _sp.capture_path_identity(pointer)
         manifest_state = _sp.capture_path_identity(manifest)
@@ -525,7 +527,7 @@ def _cmd_project_register(args: list[str]) -> str:
         )
         with _sp.protected_effect(protection):
             project = _pr.register_project(
-                args[0],
+                str(project.root),
                 expected_manifest_sha256=manifest_snapshot.manifest_sha256,
             )
         _sp.complete_execution(
@@ -579,7 +581,9 @@ def _cmd_project_unregister(args: list[str]) -> str:
     nexus = args[0]
     protection = None
     try:
-        pointer = _pr._pointer_path(nexus)
+        pointer, _pointer_data = _pr.prepare_pointer_mutation(
+            nexus, require_registered=True,
+        )
         pre_state = _sp.capture_path_identity(pointer)
         protection = _sp.authorize_server_action(
             "project_unregister", selectors=[_sp.path_selector(pointer)],
@@ -596,6 +600,8 @@ def _cmd_project_unregister(args: list[str]) -> str:
         return exc.args[0]
     except _sp.SystemProtectionError as exc:
         return f"[SYSTEM PROTECTION — {exc}]"
+    except _pr.ProjectNotFoundError as exc:
+        return f"[/project-unregister: {exc}]"
     except Exception as exc:
         if protection is not None:
             try:

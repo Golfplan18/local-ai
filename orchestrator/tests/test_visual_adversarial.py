@@ -443,15 +443,123 @@ class TestContract(unittest.TestCase):
         self.assertEqual(d["suggestion"], "s")
 
     def test_numeric_grounding_is_hard_block_when_final_prose_is_present(self):
-        env = _load("comparison.valid.json")
-        review = review_envelope(env, prose="Category A is 10; category B is 14.")
-        self.assertTrue(any(b.rule == "grounding.numeric" for b in review.blocks))
+        cases = [
+            ("Category A is 10; category B is 14.", [("A", 10), ("B", 15)]),
+            ("The total is 1,200.", [("A", 1201)]),
+            ("The total is 1,234,567,890,123.", [("A", 1234567890124)]),
+            ("The total is 1234567890123.", [("Total 1,234,567,890,124", 1234567890123)]),
+            ("The total is 9,007,199,254,740,993.", [("A", 9007199254740992)]),
+            ("The total is -1,200.", [("A", 1200)]),
+            ("The change is 1,250%.", [("A", 12.51)]),
+            # Neither fragment of a grouped number is a separate source value.
+            ("The total is 1,200.", [("A", 1)]),
+            ("The total is 1,200.", [("A", 200)]),
+            # A visual label is a numeric claim too, even if its mark is right.
+            ("The total is 1250.", [("Total 1,200", 1250)]),
+            ("The total is 1200.", [("Groups 1, 200", 1200)]),
+            ("The change is 12.5.", [("Change 1,251%", 12.5)]),
+            ("The change is 12.5.", [("Change 1251%", 12.5)]),
+            ("The change is 12.5.", [("Change 1,250", 12.5)]),
+            ("The change is 12.5.", [("Change 1250", 12.5)]),
+            ("The change is 12.5.", [("A", 1250)]),
+            ("The change is 0.125.", [("Change 1,250%", 0.125)]),
+            ("The change is 12.5%.", [("Change 1,250%", 0.125)]),
+            ("The change is 125,000%.", [("Change 1,250%", 1250)]),
+            ("The change is 1250.", [("Change 1,250%", 1250)]),
+            # Short exponent spellings stay exact without enormous allocation
+            # or underflow to zero, including percent provenance and diagnostics.
+            ("The counts are 1 and 1e999999999.", [("Count 2e999999999", 1)]),
+            ("The counts are 1 and 1e-999999999.", [("Count 2e-999999999", 1)]),
+            ("The count is 0.", [("Count 1e-999999999", 0)]),
+            ("The counts are 1 and 1e999999999.", [("Change 1e999999999%", 1)]),
+            ("The counts are 1 and 1e999999999%.", [("Change 1e999999997%", 1)]),
+            ("The count is 1.",
+             [("Counts -1e999999999, -1e-999999999, 1e-999999999, 1e999999999", 1)]),
+            ("The counts are 1 and 0.1234567890123456789012345678901.",
+             [("Change 12.34567890123456789012345678902%", 1)]),
+        ]
+        for separate in ("1, 200", "1 20", "1,20", "1\n200", "1\t200",
+                         "1,2000", "1 2000", "1,200,00", "1 200 00"):
+            cases.append((f"The separate counts are {separate}.", [("A", 1200)]))
+        for separator in (",", " ", "\u00a0", "\u2009", "\u202f", "'", "’"):
+            separate = f"1{separator}20{separator}300"
+            # A well-formed suffix cannot turn these separate values into 20300.
+            cases.append((f"The separate counts are {separate}.", [("A", 20300)]))
+            cases.append(("The counts are 1 and 20300.", [(f"Counts {separate}", 1)]))
+        for prose, rows in cases:
+            with self.subTest(prose=prose, rows=rows):
+                env = _load("comparison.valid.json")
+                env["spec"]["data"]["values"] = [{"c": label, "v": value}
+                                                   for label, value in rows]
+                review = review_envelope(env, prose=prose)
+                self.assertTrue(any(b.rule == "grounding.numeric" for b in review.blocks))
+                # Observers without final prose retain structural-only review.
+                self.assertFalse(any(b.rule == "grounding.numeric"
+                                     for b in review_envelope(env).blocks))
+                response = prose + "\n\n```ora-visual\n" + json.dumps(env) + "\n```\n\nProse after the visual."
+                output, diagnostics = process_response(response, prose=prose)
+                self.assertNotIn("```ora-visual", output)
+                self.assertTrue(output.startswith(prose + "\n\n"))
+                self.assertTrue(output.endswith("\n\nProse after the visual."))
+                self.assertTrue(diagnostics["visuals"][0]["blocked"])
+                self.assertTrue(any(b["rule"] == "grounding.numeric"
+                                    for b in diagnostics["visuals"][0]["adversarial"]["blocks"]))
 
     def test_numeric_grounding_accepts_percent_decimal_equivalence(self):
-        env = _load("comparison.valid.json")
-        env["spec"]["data"]["values"] = [{"c": "A", "v": 0.1}, {"c": "B", "v": 0.15}]
-        review = review_envelope(env, prose="Category A is 10% and category B is 15%.")
-        self.assertFalse(any(b.rule == "grounding.numeric" for b in review.blocks))
+        cases = [
+            ("Category A is 10% and category B is 15%.", [("A", 0.1), ("B", 0.15)]),
+            ("Category A is 0.1 and category B is .15.", [("A", 10), ("B", 15)]),
+            ("The total is 1,234,567,890,123.", [("Total 1,234,567,890,123", 1234567890123)]),
+            ("The total is 9,007,199,254,740,993.", [("Total 9,007,199,254,740,993", 9007199254740993)]),
+            ("The change is 14%.", [("Change 14%", 0.14)]),
+            ("The change is 0.14.", [("Change 14%", 14)]),
+            ("The separate counts are 1, 200.", [("A", 1), ("B", 200)]),
+            ("The separate counts are 10 20.", [("A", 10), ("B", 20)]),
+            ("The separate counts are 10 2,300.", [("A", 10), ("B", 2300)]),
+            ("The separate counts are 10, 2 300.", [("A", 10), ("B", 2300)]),
+            ("The change is 12.5.", [("Change 1250%", 12.5)]),
+            ("The change is 125,000%.", [("Change 125,000%", 1250)]),
+            ("The counts are 1 and 1e999999999.", [("Count 10e999999998", 1)]),
+            ("The counts are 1 and -1e999999999.", [("Count -10e999999998", 1)]),
+            ("The counts are 1 and 1e-999999999.", [("Count 10e-1000000000", 1)]),
+            ("The counts are 1 and -1e-999999999.", [("Count -10e-1000000000", 1)]),
+            ("The counts are 1 and 1e999999999%.", [("Change 1e999999997", 1)]),
+            ("The counts are 1 and 1e999999999.", [("Change 1e1000000001%", 1)]),
+            ("The counts are 1 and 1e-999999999.", [("Change 1e-999999997%", 1)]),
+            ("The counts are 1 and -1e-999999999%.", [("Change -1e-1000000001", 1)]),
+            ("The count is 0.", [("Counts 0e999999999 and -0e-999999999", 0)]),
+            ("The counts are 1 and 0.1234567890123456789012345678901.",
+             [("Change 12.34567890123456789012345678901%", 1)]),
+        ]
+        for separator in (",", " ", "\u00a0", "\u2009", "\u202f", "'", "’"):
+            separate = f"1{separator}20{separator}300"
+            cases.append((f"The separate counts are {separate}.",
+                          [("A", 1), ("B", 20), ("C", 300)]))
+            cases.append(("The separate counts are 1, 20, and 300.",
+                          [(f"Counts {separate}", 1)]))
+            for formatted, value in (
+                (f"1{separator}234{separator}567", 1234567),
+                (f"-1{separator}234.5", -1234.5),
+                (f"+1{separator}234.5", 1234.5),
+                (f"1{separator}250%", 12.5),
+            ):
+                cases.append((f"The value is {formatted}.", [("A", value)]))
+                # Exercise grouped labels against ungrouped accepted prose.
+                plain = formatted.replace(separator, "")
+                cases.append((f"The value is {plain}.", [(f"Value {formatted}", value)]))
+                if formatted.endswith("%"):
+                    cases.append((f"The change is {value}.", [(f"Change {formatted}", value)]))
+        for prose, rows in cases:
+            with self.subTest(prose=prose, rows=rows):
+                env = _load("comparison.valid.json")
+                env["spec"]["data"]["values"] = [{"c": label, "v": value}
+                                                   for label, value in rows]
+                review = review_envelope(env, prose=prose)
+                self.assertEqual([], review.blocks)
+                response = prose + "\n\n```ora-visual\n" + json.dumps(env) + "\n```\n\nProse after the visual."
+                output, diagnostics = process_response(response, prose=prose)
+                self.assertEqual(response, output)
+                self.assertFalse(diagnostics["visuals"][0]["blocked"])
 
     def test_concept_map_fallback_uses_source_relations_and_is_schema_valid(self):
         env = build_concept_map(

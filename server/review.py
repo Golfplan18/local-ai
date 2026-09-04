@@ -28,12 +28,19 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from orchestrator import runtime_paths as _rp
+from server import browser_origin_guard_response as _browser_origin_guard_response
 
 REVIEW_DIR = str(Path(_rp.DATA_DIR_STR) / "review-queue")
 STAGING_DIR = str(Path(_rp.DATA_DIR_STR) / "extraction-staging")
 REJECTED_DIR = str(Path(_rp.DATA_DIR_STR) / "review-rejected")
 
 app = Flask(__name__)
+
+
+@app.before_request
+def _central_browser_origin_guard():
+    """Apply the shared browser-origin decision before any review view."""
+    return _browser_origin_guard_response(request)
 
 # ---------------------------------------------------------------------------
 # HTML template (single file — ~200 lines as specified)

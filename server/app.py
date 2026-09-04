@@ -10,6 +10,7 @@ This file handles Flask routing, SSE streaming, conversation persistence, and UI
 
 import os, sys, json, re, threading, time, uuid, shutil, io, zipfile, hashlib, copy, queue
 from contextlib import ExitStack, contextmanager, nullcontext
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -158,6 +159,8 @@ try:
 except ImportError:
     print("Flask not installed. Run: pip install flask")
     sys.exit(1)
+
+from server import browser_origin_guard_response as _browser_origin_guard_response
 
 # Stdlib queue used by remaining SSE plumbing (chat pipeline, document
 # processing). The capture/transcribe/render/jobs SSE fan-outs that
@@ -1321,15 +1324,22 @@ def styles_custom_delete(sid):
     cross_site = _cross_site_mutation_response()
     if cross_site is not None:
         return cross_site
+    if not _HAS_USER_SETTINGS or _user_settings is None:
+        return _json_response({"error": "settings module unavailable"}, status=503)
     protection = None
     try:
         from orchestrator import system_protection as _sp
         store = _style_store_mod()
+        required_store = (
+            store.get_custom_profile, store.delete_custom_profile,
+        )
+        required_settings = (
+            _user_settings.load_settings, _user_settings.save_settings,
+        )
+        if not all(callable(item) for item in required_store + required_settings):
+            raise RuntimeError("style deletion handlers are unavailable")
         store_path = store.STORE_PATH
         settings_path = _user_settings._SETTINGS_PATH
-        current = store.get_custom_profile(sid)
-        if current is None:
-            return _json_response({"ok": False})
         selectors = [
             _sp.path_selector(store_path),
             _sp.path_selector(settings_path),
@@ -1338,17 +1348,42 @@ def styles_custom_delete(sid):
             _sp.capture_path_identity(store_path),
             _sp.capture_path_identity(settings_path),
         ]
+        if pre_state[0].get("kind") != "file" or pre_state[1].get("kind") not in {
+            "file", "absent",
+        }:
+            raise ValueError("style store/settings targets are not regular files")
+        try:
+            profiles = json.loads(
+                Path(store_path).read_bytes().decode("utf-8")
+            )
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError(f"style store is unreadable: {exc}") from exc
+        if not isinstance(profiles, dict) or not all(
+            isinstance(profile_id, str) and isinstance(entry, dict)
+            for profile_id, entry in profiles.items()
+        ):
+            raise ValueError("style store has an invalid profile map")
+        current = profiles.get(sid)
+        if current is None:
+            return _json_response({"ok": False})
+        settings = _user_settings.load_settings() or {}
+        if not isinstance(settings, dict) or not isinstance(
+            settings.get("styles", {}), dict,
+        ):
+            raise ValueError("style settings are malformed")
         protection = _sp.authorize_server_action(
             "style_profile_delete", selectors=selectors,
-            params={"style_id": sid, "profile_digest": _sp.params_digest(current)},
+            params={
+                "style_id": sid,
+                "profile_digest": _sp.params_digest(current),
+                "default_id": (settings.get("styles") or {}).get("default_id", ""),
+            },
             pre_state=pre_state,
         )
         with _sp.protected_effect(protection):
             existed = store.delete_custom_profile(sid)
-            if existed and _HAS_USER_SETTINGS and _user_settings is not None:
-                st = (_user_settings.load_settings() or {}).get("styles") or {}
-                if st.get("default_id") == sid:
-                    _user_settings.save_settings({"styles": {"default_id": ""}})
+            if existed and (settings.get("styles") or {}).get("default_id") == sid:
+                _user_settings.save_settings({"styles": {"default_id": ""}})
         _sp.complete_execution(
             protection, ok=existed,
             result={"deleted": existed, "style_id": sid},
@@ -1467,6 +1502,32 @@ _reembed_lock = threading.Lock()
 _REEMBED_PROGRESS_RE = re.compile(r"progress:\s*(\d+)/(\d+)\s*\(([\d.]+)%\)")
 
 
+@dataclass(frozen=True)
+class _ReembedExecutionPlan:
+    """One locally validated vector-rebuild plan bound to approval."""
+
+    profile_id: str
+    provider: str
+    model: str
+    dimension: int
+    script_path: str
+    script_bytes: int
+    script_content_digest: str
+    script_identity_digest: str
+
+    def approval_parameters(self) -> dict:
+        return {
+            "embedding_profile_id": self.profile_id,
+            "target_provider": self.provider,
+            "target_embedder": self.model,
+            "target_dimension": self.dimension,
+            "script_path": self.script_path,
+            "script_bytes": self.script_bytes,
+            "script_content_digest": self.script_content_digest,
+            "script_identity_digest": self.script_identity_digest,
+        }
+
+
 def _resolve_reembed_profile(profile_id: str):
     """Return the embedding-option dict for ``profile_id`` or None.
 
@@ -1479,63 +1540,146 @@ def _resolve_reembed_profile(profile_id: str):
         _retrieval_config.list_embedding_options(), profile_id)
 
 
-def _spawn_reembed(profile_id: str, *, protection_execution) -> tuple:
-    """Start the background re-embed for ``profile_id``.
+def _build_reembed_plan(profile_id: str) -> _ReembedExecutionPlan:
+    """Resolve and validate every input that can affect a rebuild process."""
+    from orchestrator import system_protection as _sp
+
+    opt = _resolve_reembed_profile(profile_id)
+    if opt is None:
+        raise ValueError("unknown embedding profile")
+
+    raw_dimension = opt.get("dimensions")
+    if type(raw_dimension) is not int or raw_dimension <= 0:
+        raise ValueError(
+            "embedding dimension must be an exact positive integer — "
+            "probe this profile before rebuilding"
+        )
+
+    provider = str(opt.get("provider") or "ollama").strip().lower()
+    if provider not in {"ollama", "openrouter"}:
+        raise ValueError("embedding profile has an unsupported provider")
+    raw_model = opt.get("model") or profile_id
+    if not isinstance(raw_model, str) or not raw_model.strip():
+        raise ValueError("embedding profile has no executable model identity")
+    model = raw_model.strip()
+
+    snapshot = _retrieval_config.snapshot()
+    if not isinstance(snapshot, dict):
+        raise ValueError("active retrieval configuration is malformed")
+    active = snapshot.get("active_embedding") or {}
+    if not isinstance(active, dict):
+        raise ValueError("active embedding configuration is malformed")
+    if str(active.get("id")) == str(profile_id):
+        raise ValueError("this profile is already active")
+
+    script = Path(_REEMBED_SCRIPT)
+    if script.is_symlink() or not script.is_file():
+        raise ValueError("vector rebuild script is not a regular file")
+    script_identity = _sp.capture_path_identity(script)
+    if script_identity.get("kind") != "file":
+        raise ValueError("vector rebuild script is not a regular file")
+
+    return _ReembedExecutionPlan(
+        profile_id=str(profile_id),
+        provider=provider,
+        model=model,
+        dimension=raw_dimension,
+        script_path=str(script),
+        script_bytes=int(script_identity["bytes"]),
+        script_content_digest=str(script_identity["content_digest"]),
+        script_identity_digest=str(script_identity["digest"]),
+    )
+
+
+def _reembed_command(plan: _ReembedExecutionPlan) -> tuple[str, ...]:
+    """Build the exact argv before the job claims shared running state."""
+    if type(plan.dimension) is not int or plan.dimension <= 0:
+        raise ValueError("embedding dimension must be an exact positive integer")
+    return (
+        sys.executable, plan.script_path,
+        "--target-provider", plan.provider,
+        "--target-embedder", plan.model,
+        "--target-dim", str(plan.dimension),
+        "--target-profile-id", plan.profile_id,
+        "--activate-on-success",
+    )
+
+
+def _reembed_post_state(plan: _ReembedExecutionPlan, _sp) -> list[dict]:
+    return [
+        _sp.capture_path_identity(rp.CHROMADB_DIR),
+        _sp.capture_path_identity(_retrieval_config.CHROMADB_CONFIG_PATH),
+        _sp.capture_path_identity(plan.script_path),
+    ]
+
+
+def _spawn_reembed(plan: _ReembedExecutionPlan, *, protection_execution) -> tuple:
+    """Start the background re-embed for one already approved plan.
 
     Returns ``(payload, http_status)``. Refuses when a job is already
-    running, when the profile is unknown, already active, or has no
-    known vector dimension (the script requires --target-dim; a probe
-    must fill it in first).
+    running or when any executable plan input drifted after approval.
     """
     import subprocess
+    from orchestrator import system_protection as _sp
 
     if protection_execution is None:
         return {"error": "system-protection authorization required"}, 403
 
-    opt = _resolve_reembed_profile(profile_id)
-    if opt is None:
-        return {"error": "unknown embedding profile"}, 400
-    if not opt.get("dimensions"):
-        return {"error": "embedding dimension unknown for this profile — "
-                         "probe it before rebuilding"}, 400
+    claimed = False
     try:
-        active = (_retrieval_config.snapshot() or {}).get("active_embedding") or {}
-        if str(active.get("id")) == str(profile_id):
-            return {"error": "this profile is already active"}, 400
-    except Exception:
-        pass  # snapshot is best-effort; the rebuild itself is idempotent
+        with _reembed_lock:
+            if _reembed_state["in_progress"]:
+                body = {
+                    "status": "in_progress",
+                    "profile_id": _reembed_state["profile_id"],
+                    "progress": _reembed_state["progress"],
+                }
+                _sp.complete_execution(
+                    protection_execution, ok=False, result=body,
+                    post_state=_reembed_post_state(plan, _sp),
+                )
+                return body, 409
 
-    provider = "openrouter" if opt.get("provider") == "openrouter" else "ollama"
-
-    with _reembed_lock:
-        if _reembed_state["in_progress"]:
+            current_plan = _build_reembed_plan(plan.profile_id)
+            if current_plan != plan:
+                raise ValueError(
+                    "vector rebuild plan changed after approval; review it again"
+                )
+            cmd = _reembed_command(plan)
+            _reembed_state["in_progress"] = True
+            _reembed_state["started_at"] = time.time()
+            _reembed_state["completed_at"] = 0.0
+            _reembed_state["profile_id"] = plan.profile_id
+            _reembed_state["progress"] = "starting…"
+            _reembed_state["last_summary"] = None
+            claimed = True
+    except Exception as exc:
+        if claimed:
+            with _reembed_lock:
+                _reembed_state["in_progress"] = False
+                _reembed_state["completed_at"] = time.time()
+                _reembed_state["last_summary"] = {
+                    "ok": False, "error": str(exc),
+                }
+        try:
+            _sp.complete_execution(
+                protection_execution, ok=False,
+                result={"profile_id": plan.profile_id,
+                        "error": type(exc).__name__},
+                post_state=_reembed_post_state(plan, _sp),
+            )
+        except Exception as receipt_error:
             return {
-                "status": "in_progress",
-                "profile_id": _reembed_state["profile_id"],
-                "progress": _reembed_state["progress"],
-            }, 409
-        _reembed_state["in_progress"] = True
-        _reembed_state["started_at"] = time.time()
-        _reembed_state["completed_at"] = 0.0
-        _reembed_state["profile_id"] = profile_id
-        _reembed_state["progress"] = "starting…"
-        _reembed_state["last_summary"] = None
-
-    cmd = [
-        sys.executable, _REEMBED_SCRIPT,
-        "--target-provider", provider,
-        "--target-embedder", str(opt.get("model") or profile_id),
-        "--target-dim", str(int(opt["dimensions"])),
-        "--target-profile-id", str(profile_id),
-        "--activate-on-success",
-    ]
+                "status": "system_protection_unavailable",
+                "error": str(receipt_error),
+            }, 503
+        return {"error": str(exc)}, 409
 
     def _run_in_background():
-        from orchestrator import system_protection as _sp
         try:
             with _sp.protected_effect(protection_execution):
                 proc = subprocess.Popen(
-                    cmd, cwd=WORKSPACE,
+                    list(cmd), cwd=WORKSPACE,
                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                     bufsize=1,
                 )
@@ -1566,13 +1710,9 @@ def _spawn_reembed(profile_id: str, *, protection_execution) -> tuple:
                 }
             _sp.complete_execution(
                 protection_execution, ok=ok,
-                result={"profile_id": profile_id, "returncode": proc.returncode},
-                post_state=[
-                    _sp.capture_path_identity(rp.CHROMADB_DIR),
-                    _sp.capture_path_identity(
-                        _retrieval_config.CHROMADB_CONFIG_PATH,
-                    ),
-                ],
+                result={"profile_id": plan.profile_id,
+                        "returncode": proc.returncode},
+                post_state=_reembed_post_state(plan, _sp),
             )
         except Exception as exc:
             with _reembed_lock:
@@ -1582,14 +1722,9 @@ def _spawn_reembed(profile_id: str, *, protection_execution) -> tuple:
             try:
                 _sp.complete_execution(
                     protection_execution, ok=False,
-                    result={"profile_id": profile_id,
+                    result={"profile_id": plan.profile_id,
                             "error": type(exc).__name__},
-                    post_state=[
-                        _sp.capture_path_identity(rp.CHROMADB_DIR),
-                        _sp.capture_path_identity(
-                            _retrieval_config.CHROMADB_CONFIG_PATH,
-                        ),
-                    ],
+                    post_state=_reembed_post_state(plan, _sp),
                 )
             except Exception as receipt_error:
                 with _reembed_lock:
@@ -1601,8 +1736,27 @@ def _spawn_reembed(profile_id: str, *, protection_execution) -> tuple:
                         ),
                     }
 
-    threading.Thread(target=_run_in_background, daemon=True).start()
-    return {"status": "started", "profile_id": profile_id}, 200
+    try:
+        threading.Thread(target=_run_in_background, daemon=True).start()
+    except Exception as exc:
+        with _reembed_lock:
+            _reembed_state["in_progress"] = False
+            _reembed_state["completed_at"] = time.time()
+            _reembed_state["last_summary"] = {"ok": False, "error": str(exc)}
+        try:
+            _sp.complete_execution(
+                protection_execution, ok=False,
+                result={"profile_id": plan.profile_id,
+                        "error": type(exc).__name__},
+                post_state=_reembed_post_state(plan, _sp),
+            )
+        except Exception as receipt_error:
+            return {
+                "status": "system_protection_unavailable",
+                "error": str(receipt_error),
+            }, 503
+        return {"error": str(exc)}, 500
+    return {"status": "started", "profile_id": plan.profile_id}, 200
 
 
 @app.route("/api/retrieval/rebuild/start", methods=["POST"])
@@ -1612,24 +1766,12 @@ def retrieval_rebuild_start():
     profile_id = (payload.get("embedding_profile_id") or "").strip()
     if not profile_id:
         return _json_response({"error": "embedding_profile_id required"}, status=400)
-    option = _resolve_reembed_profile(profile_id)
-    if option is None:
-        return _json_response({"error": "unknown embedding profile"}, status=400)
-    if not option.get("dimensions"):
-        return _json_response({
-            "error": (
-                "embedding dimension unknown for this profile — probe it "
-                "before rebuilding"
-            ),
-        }, status=400)
     try:
-        active = (_retrieval_config.snapshot() or {}).get("active_embedding") or {}
-        if str(active.get("id")) == str(profile_id):
-            return _json_response({
-                "error": "this profile is already active",
-            }, status=400)
-    except Exception:
-        pass
+        plan = _build_reembed_plan(profile_id)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    except Exception as exc:
+        return _json_response({"error": str(exc)}, status=500)
     with _reembed_lock:
         if _reembed_state["in_progress"]:
             return _json_response({
@@ -1646,14 +1788,17 @@ def retrieval_rebuild_start():
         selectors = [
             _sp.path_selector(rp.CHROMADB_DIR),
             _sp.path_selector(_retrieval_config.CHROMADB_CONFIG_PATH),
+            _sp.path_selector(plan.script_path),
         ]
         pre_state = [
             _sp.capture_path_identity(rp.CHROMADB_DIR),
             _sp.capture_path_identity(_retrieval_config.CHROMADB_CONFIG_PATH),
+            _sp.capture_path_identity(plan.script_path),
         ]
         protection_execution = _sp.authorize_server_action(
             "vector_store_rebuild", selectors=selectors,
-            params={"embedding_profile_id": profile_id}, pre_state=pre_state,
+            params={"execution_plan": plan.approval_parameters()},
+            pre_state=pre_state,
         )
     except Exception as exc:
         try:
@@ -1663,17 +1808,7 @@ def retrieval_rebuild_start():
         except Exception:
             pass
         return _json_response({"error": str(exc)}, status=500)
-    body, status = _spawn_reembed(
-        profile_id, protection_execution=protection_execution,
-    )
-    if status != 200:
-        try:
-            from orchestrator import system_protection as _sp
-            _sp.complete_execution(
-                protection_execution, ok=False, result=body, post_state=pre_state,
-            )
-        except Exception as exc:
-            return _system_protection_error_response(exc)
+    body, status = _spawn_reembed(plan, protection_execution=protection_execution)
     return _json_response(body, status=status)
 
 
@@ -1720,12 +1855,13 @@ def settings_set_api_key():
     if not _HAS_USER_SETTINGS or _user_settings is None:
         return _json_response({"error": "settings module unavailable"}, status=503)
     payload = request.get_json(silent=True) or {}
-    provider = (payload.get("provider") or "").strip()
+    provider_value = payload.get("provider")
+    provider = provider_value.strip() if isinstance(provider_value, str) else ""
     value = payload.get("value")
     if not provider:
         return _json_response({"error": "provider required"}, status=400)
-    if value is None or value == "":
-        return _json_response({"error": "value required"}, status=400)
+    if not isinstance(value, str) or not value.strip():
+        return _json_response({"error": "value must be a non-empty string"}, status=400)
     cross_site = _cross_site_mutation_response()
     if cross_site is not None:
         return cross_site
@@ -6518,8 +6654,10 @@ def api_projects_register():
         from orchestrator import system_protection as _sp
         manifest_snapshot = _pr.load_project_snapshot(root)
         project = manifest_snapshot.project
-        pointer = _pr._pointer_path(project.nexus)
-        manifest = Path(project.root) / _pr.MANIFEST_FILENAME
+        pointer, _pointer_data = _pr.prepare_pointer_mutation(
+            project.nexus, require_registered=False,
+        )
+        manifest = manifest_snapshot.manifest_path
         pointer_state = _sp.capture_path_identity(pointer)
         manifest_state = _sp.capture_path_identity(manifest)
         if manifest_state.get("content_digest") != manifest_snapshot.manifest_sha256:
@@ -6540,7 +6678,7 @@ def api_projects_register():
         )
         with _sp.protected_effect(protection):
             project = _pr.register_project(
-                root,
+                str(project.root),
                 expected_manifest_sha256=manifest_snapshot.manifest_sha256,
             )
         _sp.complete_execution(
@@ -6583,7 +6721,9 @@ def api_projects_unregister(nexus):
     protection = None
     try:
         from orchestrator import system_protection as _sp
-        pointer = _pr._pointer_path(nexus)
+        pointer, _pointer_data = _pr.prepare_pointer_mutation(
+            nexus, require_registered=True,
+        )
         pre_state = _sp.capture_path_identity(pointer)
         protection = _sp.authorize_server_action(
             "project_unregister", selectors=[_sp.path_selector(pointer)],
@@ -6607,7 +6747,8 @@ def api_projects_unregister(nexus):
                 )
         except Exception as receipt_error:
             return _system_protection_error_response(receipt_error)
-        return _json_response({"ok": False, "error": str(exc)}, 500)
+        status = 404 if isinstance(exc, _pr.ProjectNotFoundError) else 400
+        return _json_response({"ok": False, "error": str(exc)}, status)
     if removed:
         return _json_response({"ok": True})
     return _json_response({"ok": False, "error": "project not registered"}, 404)
@@ -7249,25 +7390,14 @@ def _configured_conversation_chromadb_path() -> str:
 
 
 def _cross_site_mutation_response():
-    """Reject browser cross-site mutation attempts against localhost APIs.
+    """Apply the shared browser-origin decision to the active request."""
+    return _browser_origin_guard_response(request)
 
-    Headerless local CLI/tests remain supported. Browsers send either Origin
-    or Sec-Fetch-Site on form/fetch POSTs, so an unrelated web page cannot
-    trigger permanent deletion merely by guessing a conversation id.
-    """
-    fetch_site = (request.headers.get("Sec-Fetch-Site") or "").lower()
-    if fetch_site == "cross-site":
-        return json.dumps({"error": "cross-site lifecycle request rejected"}), 403
-    origin = (request.headers.get("Origin") or "").strip()
-    if not origin:
-        return None
-    try:
-        parsed = urlparse(origin)
-        if parsed.scheme not in {"http", "https"} or parsed.netloc != request.host:
-            return json.dumps({"error": "cross-origin lifecycle request rejected"}), 403
-    except Exception:
-        return json.dumps({"error": "invalid Origin header"}), 403
-    return None
+
+@app.before_request
+def _central_browser_origin_guard():
+    """Apply the single browser-origin decision before any view runs."""
+    return _cross_site_mutation_response()
 
 
 def _effective_conversation_tag(conversation_id: str, requested_tag="") -> str:
@@ -17211,7 +17341,9 @@ def _assert_stealth_permanent_delete(conversation_id: str) -> None:
         )
 
 
-def _delete_conversation_runtime(conversation_id: str) -> dict:
+def _delete_conversation_runtime(
+    conversation_id: str, *, expected_state: dict | None = None,
+) -> dict:
     """Tombstone, quiesce, purge, and clear one Stealth conversation."""
     if not _valid_existing_conversation_id(conversation_id):
         raise ValueError("invalid conversation_id")
@@ -17221,6 +17353,13 @@ def _delete_conversation_runtime(conversation_id: str) -> dict:
     # this block observes the tombstone and cannot create new residue.
     with lifecycle_lock:
         _assert_stealth_permanent_delete(conversation_id)
+        if expected_state is not None:
+            from orchestrator import system_protection as _sp
+            current_state = _conversation_protection_state(conversation_id)
+            if current_state != expected_state:
+                raise _sp.ProtectionDenied(
+                    "Dialogue state changed after approval"
+                )
         with _conversation_lifecycle_guard:
             _deleted_conversations.add(
                 _conversation_storage_identity(conversation_id)
@@ -17338,7 +17477,7 @@ def _protected_delete_conversation_runtime(conversation_id: str) -> dict:
     from orchestrator import system_protection as _sp
     with _conversation_lifecycle_lock(conversation_id):
         _assert_stealth_permanent_delete(conversation_id)
-    pre_state = _conversation_protection_state(conversation_id)
+        pre_state = _conversation_protection_state(conversation_id)
     protection = _sp.authorize_server_action(
         "dialogue_delete",
         selectors=[pre_state["selector"]],
@@ -17347,7 +17486,9 @@ def _protected_delete_conversation_runtime(conversation_id: str) -> dict:
     )
     try:
         with _sp.protected_effect(protection):
-            result = _delete_conversation_runtime(conversation_id)
+            result = _delete_conversation_runtime(
+                conversation_id, expected_state=pre_state,
+            )
     except Exception as exc:
         try:
             _sp.complete_execution(
@@ -19427,6 +19568,31 @@ def v3_themes_delete_api(theme_id):
     try:
         from orchestrator import system_protection as _sp
         theme_dir = _v3_theme_dir(theme_id)
+        index_path = Path(V3_THEMES_INDEX)
+        theme_path = Path(theme_dir)
+        if index_path.is_symlink() or not index_path.is_file():
+            raise FileNotFoundError("theme index is not a regular file")
+        try:
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"theme index is unreadable: {exc}") from exc
+        entries = index.get("themes") if isinstance(index, dict) else None
+        if not isinstance(entries, list) or not all(
+            isinstance(item, dict) for item in entries
+        ):
+            raise ValueError("theme index has an invalid themes list")
+        matches = [item for item in entries if item.get("id") == theme_id]
+        if len(matches) != 1:
+            raise FileNotFoundError(f"theme is not uniquely indexed: {theme_id}")
+        entry = matches[0]
+        if entry.get("bundled"):
+            raise ValueError(f"bundled theme cannot be deleted: {theme_id}")
+        if str(entry.get("origin") or "").startswith("project:"):
+            raise ValueError(f"project theme cannot be deleted: {theme_id}")
+        if entry.get("directory") != theme_id:
+            raise ValueError(f"theme is not an exact local install: {theme_id}")
+        if theme_path.is_symlink() or not theme_path.is_dir():
+            raise FileNotFoundError(f"theme directory is unavailable: {theme_id}")
         selectors = [
             _sp.path_selector(theme_dir),
             _sp.path_selector(V3_THEMES_INDEX),
@@ -19442,7 +19608,6 @@ def v3_themes_delete_api(theme_id):
         with _sp.protected_effect(protection):
             if os.path.isdir(theme_dir):
                 shutil.rmtree(theme_dir)
-            index = _v3_read_index()
             index["themes"] = [
                 t for t in index.get("themes", []) if t.get("id") != theme_id
             ]
@@ -19470,7 +19635,10 @@ def v3_themes_delete_api(theme_id):
                 )
         except Exception as receipt_error:
             return _system_protection_error_response(receipt_error)
-        return json.dumps({"error": str(e)}), 500
+        status = 404 if isinstance(e, FileNotFoundError) else (
+            400 if isinstance(e, ValueError) else 500
+        )
+        return json.dumps({"error": str(e)}), status
 
 
 @app.route("/api/v3-themes/<theme_id>/export")
@@ -22540,47 +22708,56 @@ def configurations_delete(name):
     if cross_site is not None:
         return cross_site
     protection = None
+    config_path = None
+    preflight = None
     try:
         from orchestrator import system_protection as _sp
         from orchestrator import active_configuration as ac
-        config_path = ac._config_path(name)
-        selectors = [
-            _sp.path_selector(config_path),
-            _sp.path_selector(ac.ACTIVE_POINTER_PATH),
-        ]
-        pre_state = [
-            _sp.capture_path_identity(config_path),
-            _sp.capture_path_identity(ac.ACTIVE_POINTER_PATH),
-        ]
+        preflight = ac.preflight_delete_configuration(name)
+        config_path = preflight.target_path
+        selectors = [identity["selector"] for identity in preflight.identities]
         protection = _sp.authorize_server_action(
             "model_profile_delete", selectors=selectors,
-            params={"name": name}, pre_state=pre_state,
+            params={"name": name}, pre_state=preflight.identities,
         )
         with _sp.protected_effect(protection):
-            ac.delete_configuration(name)
+            ac.delete_configuration(name, expected_preflight=preflight)
         _sp.complete_execution(
             protection, ok=True, result={"deleted": name},
             post_state=[
-                _sp.capture_path_identity(config_path),
-                _sp.capture_path_identity(ac.ACTIVE_POINTER_PATH),
+                _sp.capture_path_identity(path)
+                for path in preflight.identity_paths
             ],
         )
         return _json_response({"deleted": name})
     except (ValueError, FileNotFoundError) as exc:
+        if protection is not None:
+            try:
+                from orchestrator import system_protection as _sp
+                _sp.complete_execution(
+                    protection, ok=False,
+                    result={"error": type(exc).__name__},
+                    post_state=[
+                        _sp.capture_path_identity(path)
+                        for path in preflight.identity_paths
+                    ],
+                )
+            except Exception as receipt_error:
+                return _system_protection_error_response(receipt_error)
         return _json_response({"error": str(exc)}, status=400)
     except Exception as exc:
         try:
             from orchestrator import system_protection as _sp
-            if isinstance(exc, _sp.SystemProtectionError):
-                return _system_protection_error_response(exc)
             if protection is not None:
                 _sp.complete_execution(
                     protection, ok=False, result={"error": type(exc).__name__},
                     post_state=[
-                        _sp.capture_path_identity(config_path),
-                        _sp.capture_path_identity(ac.ACTIVE_POINTER_PATH),
+                        _sp.capture_path_identity(path)
+                        for path in preflight.identity_paths
                     ],
                 )
+            if isinstance(exc, _sp.SystemProtectionError):
+                return _system_protection_error_response(exc)
         except Exception as receipt_error:
             return _system_protection_error_response(receipt_error)
         return _json_response({"error": f"delete-failed: {exc}"}, status=500)
@@ -23889,13 +24066,7 @@ def api_session_export():
 
         {
           "conversation_id": "<required>",
-          "session_title":   "<optional — derived from first user message otherwise>",
-
-          # Test-only dependency injection (leave unset in production calls):
-          "_vault_root":            "<override vault root>",
-          "_sessions_root":         "<override ~/ora/sessions root>",
-          "_raw_conversations_dir": "<override ~/Documents/conversations/raw>",
-          "_node_cli":              "<override Node CLI path>"
+          "session_title":   "<optional — derived from first user message otherwise>"
         }
 
     Response::
@@ -23916,7 +24087,14 @@ def api_session_export():
     The UI hook is deferred to WP-6.2; this endpoint is consumed directly by
     tests and (until WP-6.2 ships) by ``curl``.
     """
-    data = request.json or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = {}
+    private_overrides = {
+        "_vault_root", "_sessions_root", "_raw_conversations_dir", "_node_cli",
+    }
+    if any(field in data for field in private_overrides):
+        return json.dumps({"error": "private dependency overrides are not accepted"}), 400
     conversation_id = (data.get("conversation_id") or "").strip()
     if not conversation_id:
         return json.dumps({"error": "conversation_id required"}), 400
@@ -23932,21 +24110,8 @@ def api_session_export():
     if data.get("session_title"):
         kwargs["session_title"] = data["session_title"]
 
-    # Dependency-injection overrides for tests.
-    if data.get("_vault_root"):
-        kwargs["vault_root"] = data["_vault_root"]
-    if data.get("_sessions_root"):
-        kwargs["sessions_root"] = data["_sessions_root"]
-    if data.get("_raw_conversations_dir"):
-        kwargs["raw_conversations_dir"] = data["_raw_conversations_dir"]
-    if data.get("_node_cli"):
-        kwargs["node_cli"] = data["_node_cli"]
-
     try:
-        with _full_dialogue_export_lifecycle_scope(
-            conversation_id,
-            sessions_root=kwargs.get("sessions_root"),
-        ):
+        with _full_dialogue_export_lifecycle_scope(conversation_id):
             result: ExportResult = export_session_to_vault(
                 conversation_id=conversation_id,
                 **kwargs,

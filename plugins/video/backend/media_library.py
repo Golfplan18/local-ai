@@ -35,7 +35,7 @@ Public API
 ``library.add_entry(source_path, **)``  — register a file; generates thumb
 ``library.list_entries()``              — current entries
 ``library.rename(entry_id, new_name)``
-``library.remove(entry_id)``            — removes from library (and thumb)
+``library.remove(entry_id, expected_entry=entry)`` — removes the matching entry
 ``library.get_entry(entry_id)``
 ``library.get_thumbnail_path(entry_id)``
 """
@@ -289,21 +289,28 @@ class MediaLibrary:
                     return dict(e)
         return None
 
-    def remove(self, entry_id: str) -> bool:
-        """Remove the library entry. Does NOT delete the source file."""
+    def remove(self, entry_id: str, *, expected_entry: dict | None = None) -> bool:
+        """Remove the matching library entry. Does NOT delete the source file."""
         with self._lock:
             if self._deleted:
                 raise RuntimeError("conversation was permanently deleted")
-            new_entries = []
-            removed = None
-            for e in self._entries:
-                if e.get("id") == entry_id:
-                    removed = e
-                    continue
-                new_entries.append(e)
+            removed = next(
+                (e for e in self._entries if e.get("id") == entry_id), None,
+            )
             if removed is None:
                 return False
-            self._entries = new_entries
+            if expected_entry is not None and json.dumps(
+                removed, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+            ) != json.dumps(
+                expected_entry,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ):
+                return False
+            self._entries = [
+                e for e in self._entries if e.get("id") != entry_id
+            ]
             self._save()
         # Outside the lock: clean up the thumbnail file. Failure is non-fatal
         # (a stray thumbnail just wastes a few KB of disk).

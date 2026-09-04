@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from dataclasses import dataclass, field
 
@@ -25,15 +26,21 @@ from dataclasses import dataclass, field
 # 14.1 — KV Cache Release
 # ---------------------------------------------------------------------------
 
-def get_available_ram_gb() -> float:
-    """Get available RAM in GB on macOS."""
+def get_available_ram_gb() -> float | None:
+    """Get available RAM in GB on macOS, or ``None`` when unknown."""
     try:
-        # macOS: use vm_stat to estimate available memory
         result = subprocess.run(
             ["vm_stat"], capture_output=True, text=True, timeout=5
         )
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
         lines = result.stdout.strip().split('\n')
-        page_size = 16384  # Apple Silicon default
+        page_size_match = re.search(
+            r"page size of\s+(\d+)\s+bytes", lines[0], re.IGNORECASE,
+        )
+        if page_size_match is None:
+            return None
+        page_size = int(page_size_match.group(1))
 
         free_pages = 0
         inactive_pages = 0
@@ -43,83 +50,128 @@ def get_available_ram_gb() -> float:
             elif 'Pages inactive' in line:
                 inactive_pages = int(line.split(':')[1].strip().rstrip('.'))
 
+        if free_pages <= 0 and inactive_pages <= 0:
+            return None
         available_bytes = (free_pages + inactive_pages) * page_size
         return available_bytes / (1024 ** 3)
-    except Exception:
-        return 128.0  # Conservative default for M4 Max
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        return None
 
 
-def get_total_ram_gb() -> float:
-    """Get total system RAM in GB."""
+def get_total_ram_gb() -> float | None:
+    """Get total system RAM in GB, or ``None`` when unsupported/failed."""
     try:
         result = subprocess.run(
             ["sysctl", "-n", "hw.memsize"],
             capture_output=True, text=True, timeout=5
         )
-        return int(result.stdout.strip()) / (1024 ** 3)
-    except Exception:
-        return 128.0
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        total = int(result.stdout.strip()) / (1024 ** 3)
+        return total if total > 0 else None
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
 
 
-def should_release_kv_cache(config: dict) -> bool:
+def _resident_ram_gb(endpoint: dict | None) -> float | None:
+    """Read the current endpoint RAM fields without legacy slot estimates."""
+    if not isinstance(endpoint, dict):
+        return None
+    try:
+        resident = float(endpoint.get("ram_resident_gb"))
+        overhead = float(endpoint.get("ram_overhead_gb") or 0)
+    except (TypeError, ValueError):
+        return None
+    total = resident + overhead
+    return total if total > 0 else None
+
+
+def _selected_model_identity(endpoint: dict | None) -> str:
+    if not isinstance(endpoint, dict):
+        return ""
+    return str(
+        endpoint.get("model_id")
+        or endpoint.get("model")
+        or endpoint.get("model_path")
+        or endpoint.get("id")
+        or endpoint.get("name")
+        or ""
+    )
+
+
+def should_release_kv_cache(
+    config: dict,
+    depth_endpoint: dict | None = None,
+    breadth_endpoint: dict | None = None,
+) -> bool:
     """
     Determine if KV cache should be released between sequential Gear 4 model calls.
 
     Returns True when hardware cannot hold two large models simultaneously in RAM.
     On the M4 Max with 128GB, this is unlikely unless running very large models.
     """
-    total_ram = get_total_ram_gb()
-
-    # Check if two models are assigned to Gear 4 slots
-    slot_assignments = config.get("slot_assignments", {})
-    depth_model = slot_assignments.get("depth", "")
-    breadth_model = slot_assignments.get("breadth", "")
-
-    if depth_model == breadth_model:
-        return False  # Same model, no need to release
-
-    # Estimate combined RAM requirement from endpoint configs
-    endpoints = config.get("endpoints", [])
-    depth_ram = 0
-    breadth_ram = 0
-
-    for ep in endpoints:
-        name = ep.get("name", "")
-        ram = ep.get("ram_required_gb", 0)
-        if name == depth_model:
-            depth_ram = ram
-        if name == breadth_model:
-            breadth_ram = ram
-
-    combined = depth_ram + breadth_ram
+    # The old caller supplied only ``config`` before the router had selected
+    # the real endpoints.  That path is intentionally a no-op now: profile
+    # declarations are not execution facts.
+    if not isinstance(depth_endpoint, dict) or not isinstance(breadth_endpoint, dict):
+        return False
+    if depth_endpoint.get("type") != "local" or breadth_endpoint.get("type") != "local":
+        return False
+    depth_model = _selected_model_identity(depth_endpoint)
+    breadth_model = _selected_model_identity(breadth_endpoint)
+    if not depth_model or not breadth_model or depth_model == breadth_model:
+        return False
+    depth_ram = _resident_ram_gb(depth_endpoint)
+    breadth_ram = _resident_ram_gb(breadth_endpoint)
     available = get_available_ram_gb()
 
-    # Release KV cache if combined requirement exceeds 80% of available RAM
-    if combined > 0 and combined > available * 0.8:
-        return True
-
-    # Also release if total RAM is under 32GB (low-end hardware)
-    if total_ram < 32:
-        return True
-
-    return False
+    # Unknown probe/model facts never become a fabricated capacity decision.
+    # The scheduler remains conservative via ``can_parallel=False`` below;
+    # destructive cache action requires a known threshold crossing.
+    if depth_ram is None or breadth_ram is None or available is None:
+        return False
+    return (depth_ram + breadth_ram) > available * 0.8
 
 
-def release_kv_cache(model_name: str):
+def release_kv_cache(endpoint: dict, *, mlx_evictor=None) -> bool:
     """
     Release KV cache for a model via Ollama API.
     This allows the next model to use the freed memory.
     """
+    if not isinstance(endpoint, dict) or endpoint.get("type") != "local":
+        return False
+    engine = str(endpoint.get("engine") or "ollama").lower()
+    if engine == "auto":
+        import platform
+        engine = (
+            "mlx"
+            if platform.system() == "Darwin" and platform.machine() == "arm64"
+            else "ollama"
+        )
+    if engine == "mlx":
+        model_path = endpoint.get("model_path") or endpoint.get("model")
+        if not model_path or mlx_evictor is None:
+            return False
+        try:
+            return bool(mlx_evictor(model_path))
+        except Exception:
+            return False
+    if engine != "ollama":
+        return False
+    model_name = endpoint.get("model") or endpoint.get("model_id")
+    if not model_name:
+        return False
     try:
         import requests
-        # Ollama: unload model to free memory
-        requests.post(
-            "http://localhost:11434/api/generate",
+        response = requests.post(
+            str(endpoint.get("url") or "http://localhost:11434").rstrip("/")
+            + "/api/generate",
             json={"model": model_name, "keep_alive": 0},
             timeout=10,
         )
+        return bool(response.ok)
     except Exception:
-        pass  # Best-effort cache release
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +199,10 @@ def check_hardware_constraints(config: dict) -> dict:
     """
     total_ram = get_total_ram_gb()
     available_ram = get_available_ram_gb()
-    ram_pressure = available_ram < (total_ram * 0.3)  # <30% available = pressure
+    ram_known = total_ram is not None and available_ram is not None
+    ram_pressure = (
+        available_ram < (total_ram * 0.3) if ram_known else True
+    )
 
     # Count active models (check Ollama)
     models_loaded = 0
@@ -161,11 +216,16 @@ def check_hardware_constraints(config: dict) -> dict:
         pass
 
     return {
-        "ram_available_gb": round(available_ram, 1),
-        "ram_total_gb": round(total_ram, 1),
+        "ram_available_gb": (
+            round(available_ram, 1) if available_ram is not None else None
+        ),
+        "ram_total_gb": round(total_ram, 1) if total_ram is not None else None,
+        "ram_known": ram_known,
         "ram_pressure": ram_pressure,
         "models_loaded": models_loaded,
-        "can_parallel": not ram_pressure and available_ram > 20,
+        "can_parallel": bool(
+            ram_known and not ram_pressure and available_ram > 20
+        ),
     }
 
 
@@ -190,6 +250,14 @@ def get_degradation_path(gear: int, config: dict) -> DegradationState:
     state = DegradationState(gear=gear)
 
     if gear >= 4:
+        if not constraints["ram_known"]:
+            state.degradation_level = 1
+            state.reason = (
+                "RAM capacity is unknown because the system probe failed or "
+                "is unsupported. Using conservative serialized execution."
+            )
+            state.signals = [1]
+            return state
         if not constraints["can_parallel"]:
             if constraints["ram_pressure"]:
                 state.degradation_level = 1
@@ -225,6 +293,16 @@ def get_degradation_path(gear: int, config: dict) -> DegradationState:
             state.fallback_gear = 3
 
     elif gear == 3:
+        if not constraints["ram_known"]:
+            state.degradation_level = 1
+            state.reason = (
+                "RAM capacity is unknown because the system probe failed or "
+                "is unsupported. Keeping the sequential pipeline and using "
+                "conservative context handling."
+            )
+            state.signals = [1]
+            state.context_reduction_pct = 20
+            return state
         if constraints["ram_pressure"]:
             state.degradation_level = 1
             state.reason = "Reduced context per step due to RAM pressure"
@@ -274,8 +352,12 @@ if __name__ == "__main__":
     # Show current hardware state
     total = get_total_ram_gb()
     available = get_available_ram_gb()
-    print(f"Hardware: {total:.0f}GB total RAM, {available:.1f}GB available")
-    print(f"RAM pressure: {'YES' if available < total * 0.3 else 'no'}")
+    if total is None or available is None:
+        print("Hardware: RAM capacity unknown (probe failed or unsupported)")
+        print("RAM pressure: UNKNOWN — conservative scheduling applies")
+    else:
+        print(f"Hardware: {total:.0f}GB total RAM, {available:.1f}GB available")
+        print(f"RAM pressure: {'YES' if available < total * 0.3 else 'no'}")
     print()
 
     print("Gear 4 degradation levels:")

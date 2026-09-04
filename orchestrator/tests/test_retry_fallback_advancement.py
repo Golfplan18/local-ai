@@ -39,8 +39,11 @@ for p in (HERE, WORKTREE_ROOT):
         sys.path.insert(0, p)
 
 from boot import (
+    ModelInvocationFailure,
     _call_with_retry,
     _resolve_fallback_endpoint,
+    resolve_single_pass_endpoint,
+    run_single_pass_with_tools,
 )
 
 
@@ -301,6 +304,139 @@ class TestCallWithRetryUsesFallback(unittest.TestCase):
         resolve_mock.assert_not_called()
         self.assertTrue(ok)
         self.assertEqual(text, good)
+
+    def test_gear2_accepts_one_word_primary_answer(self):
+        primary = _ep("primary-endpoint", "primary-model")
+        context = {}
+        with patch("boot._resolve_fallback_endpoint") as resolve_mock, \
+             patch("boot._run_model_with_tools", return_value="Yes"), \
+             patch("pipeline_health.record") as warning:
+            result = run_single_pass_with_tools(
+                self._messages(), primary, slot="fast", gear=2,
+                config_name="user-pipeline", history=[], context_pkg=context,
+            )
+
+        self.assertEqual(result, "Yes")
+        resolve_mock.assert_not_called()
+        warning.assert_not_called()
+
+    def test_gear2_same_model_retry_emits_no_substitution_warning(self):
+        primary = _ep("primary-endpoint", "same-model")
+        responses = iter(("", "Recovered"))
+        with patch("boot._resolve_fallback_endpoint") as resolve_mock, \
+             patch("boot._run_model_with_tools",
+                   side_effect=lambda *_a, **_k: next(responses)), \
+             patch("pipeline_health.record") as warning:
+            result = run_single_pass_with_tools(
+                self._messages(), primary, slot="fast", gear=2,
+                config_name="user-pipeline", history=[], context_pkg={},
+            )
+
+        self.assertEqual(result, "Recovered")
+        self.assertFalse(result.substituted)
+        resolve_mock.assert_not_called()
+        warning.assert_not_called()
+
+    def test_gear2_alternate_model_repairs_request_with_one_warning(self):
+        primary = _ep("primary-endpoint", "primary-model")
+        fallback = _ep("fallback-endpoint", "fallback-model")
+        calls = []
+
+        def invoke(_messages, endpoint, images=None):
+            calls.append(endpoint["name"])
+            return "" if endpoint["name"] == "primary-endpoint" else "Recovered"
+
+        with patch("boot._resolve_fallback_endpoint", return_value=fallback), \
+             patch("boot._run_model_with_tools", side_effect=invoke), \
+             patch("pipeline_health.record") as warning:
+            result = run_single_pass_with_tools(
+                self._messages(), primary, slot="fast", gear=2,
+                config_name="user-pipeline", history=[], context_pkg={},
+            )
+
+        self.assertEqual(calls, [
+            "primary-endpoint", "primary-endpoint", "fallback-endpoint",
+        ])
+        self.assertEqual(result, "Recovered")
+        self.assertTrue(result.substituted)
+        self.assertEqual(result.selected_endpoint_id, "fallback-endpoint")
+        warning.assert_called_once()
+        self.assertEqual(warning.call_args.args[0], "model_substitution")
+
+    def test_gear2_alternate_endpoint_for_same_model_emits_no_warning(self):
+        primary = _ep("primary-provider", "shared-model")
+        retry_endpoint = _ep("backup-provider", "shared-model")
+
+        def invoke(_messages, endpoint, images=None):
+            return "" if endpoint["name"] == "primary-provider" else "Recovered"
+
+        with patch("boot._resolve_fallback_endpoint",
+                   return_value=retry_endpoint), \
+             patch("boot._run_model_with_tools", side_effect=invoke), \
+             patch("pipeline_health.record") as warning:
+            result = run_single_pass_with_tools(
+                self._messages(), primary, slot="fast", gear=2,
+                config_name="user-pipeline", history=[], context_pkg={},
+            )
+
+        self.assertEqual(result.selected_endpoint_id, "backup-provider")
+        self.assertFalse(result.substituted)
+        warning.assert_not_called()
+
+    def test_gear2_exhaustion_raises_typed_failure_without_candidate_text(self):
+        primary = _ep("primary-endpoint", "primary-model")
+        fallback = _ep("fallback-endpoint", "fallback-model")
+        with patch("boot._resolve_fallback_endpoint",
+                   side_effect=(fallback, None)), \
+             patch("boot._run_model_with_tools", return_value=""):
+            with self.assertRaises(ModelInvocationFailure) as raised:
+                run_single_pass_with_tools(
+                    self._messages(), primary, slot="fast", gear=2,
+                    config_name="user-pipeline", history=[], context_pkg={},
+                )
+
+        self.assertEqual(raised.exception.kind, "exhausted_chain")
+        self.assertIsNone(raised.exception.selected_endpoint_id)
+        self.assertIn("primary-endpoint",
+                      raised.exception.attempted_endpoint_ids)
+        self.assertIn("fallback-endpoint",
+                      raised.exception.attempted_endpoint_ids)
+
+    def test_gear2_legacy_cell_advances_its_own_configured_chain(self):
+        primary = _ep("legacy-primary", "legacy-primary-model")
+        fallback = _ep("legacy-fallback", "legacy-fallback-model")
+
+        def configured_endpoint(_config, slot, **_kwargs):
+            if slot == "fast":
+                return None
+            if slot == "step1_cleanup":
+                return primary
+            self.fail(f"unexpected cell lookup: {slot}")
+
+        with patch("boot.get_slot_endpoint", side_effect=configured_endpoint):
+            endpoint, selected_cell = resolve_single_pass_endpoint(
+                {}, 2, config_name="legacy-profile")
+
+        self.assertEqual(endpoint, primary)
+        self.assertEqual(selected_cell, "step1_cleanup")
+
+        def invoke(_messages, selected_endpoint, images=None):
+            if selected_endpoint["name"] == "legacy-primary":
+                return ""
+            return "Recovered from the legacy cell fallback"
+
+        with patch("boot._run_model_with_tools", side_effect=invoke), \
+             patch("boot._resolve_fallback_endpoint",
+                   return_value=fallback) as advance:
+            result = run_single_pass_with_tools(
+                self._messages(), endpoint, slot=selected_cell, gear=2,
+                config_name="legacy-profile", history=[], context_pkg={},
+            )
+
+        self.assertEqual(result, "Recovered from the legacy cell fallback")
+        self.assertEqual(advance.call_args.args[:3], (
+            "step1_cleanup", 2, primary,
+        ))
 
 
 if __name__ == "__main__":

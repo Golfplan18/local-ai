@@ -372,6 +372,112 @@ def validate_path(file_path: str, operation: str = "read") -> tuple[bool, str]:
     return False, f"Path outside allowed locations: {resolved}"
 
 
+def _prepare_file_call(tool_name: str, parameters: dict) -> dict:
+    """Validate one exact file-tool target and handler contract before review."""
+
+    if tool_name == "file_edit":
+        supplied = [
+            parameters[key] for key in ("file_path", "path")
+            if key in parameters
+        ]
+        if len(supplied) > 1 and supplied[0] != supplied[1]:
+            raise ValueError("file edit has conflicting target paths")
+        raw_path = supplied[0] if supplied else None
+    else:
+        raw_path = parameters.get("path")
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        raise ValueError("file path must be a non-empty string")
+
+    operation = "read" if tool_name == "file_read" else "write"
+    valid, reason = validate_path(raw_path, operation)
+    if not valid:
+        raise ValueError(reason)
+    handler_valid, handler_reason = _validate_path(raw_path)
+    if not handler_valid:
+        raise ValueError(handler_reason)
+
+    canonical = os.path.realpath(os.path.expanduser(raw_path))
+    if tool_name == "file_read":
+        if model_read_blocked(canonical):
+            raise ValueError("archived MindSpec self-spec is not model-readable")
+        if not os.path.isfile(canonical):
+            raise ValueError("file read target must be an existing regular file")
+        try:
+            with open(canonical, "r", encoding="utf-8") as stream:
+                stream.read()
+        except (OSError, UnicodeError) as exc:
+            raise ValueError(f"file read target is not readable UTF-8: {exc}") from exc
+        parameters["path"] = canonical
+    elif tool_name == "file_write":
+        if not isinstance(parameters.get("content"), str):
+            raise ValueError("file content must be a string")
+        if os.path.exists(canonical) and not os.path.isfile(canonical):
+            raise ValueError("file write target must be absent or a regular file")
+        parent = os.path.dirname(canonical)
+        while not os.path.lexists(parent):
+            parent = os.path.dirname(parent)
+        if not os.path.isdir(parent):
+            raise ValueError("file write target has a non-directory ancestor")
+        parameters["path"] = canonical
+    else:
+        old_string = parameters.get("old_string")
+        if not isinstance(old_string, str) or not old_string:
+            raise ValueError("file edit old_string must be a non-empty string")
+        if not isinstance(parameters.get("new_string"), str):
+            raise ValueError("file edit new_string must be a string")
+        if not os.path.isfile(canonical):
+            raise ValueError("file edit target must be an existing regular file")
+        try:
+            with open(canonical, "r", encoding="utf-8") as stream:
+                current_content = stream.read()
+        except (OSError, UnicodeError) as exc:
+            raise ValueError(f"file edit target is not readable UTF-8: {exc}") from exc
+        occurrences = current_content.count(old_string)
+        if occurrences != 1:
+            raise ValueError(
+                "file edit old_string must occur exactly once in the target"
+            )
+        parameters.pop("path", None)
+        parameters["file_path"] = canonical
+    return system_protection.capture_path_identity(canonical)
+
+
+def _prepare_credential_call(parameters: dict) -> None:
+    """Validate and normalize the credential handler's exact public contract."""
+
+    action = parameters.get("action", "status")
+    service = parameters.get("service")
+    username = parameters.get("username")
+    if not isinstance(action, str) or action.strip().lower() not in {
+        "status", "store", "delete",
+    }:
+        raise ValueError("credential action must be status, store, or delete")
+    if service != "ora":
+        raise ValueError("credential service must be 'ora'")
+    if not isinstance(username, str) or not username.strip():
+        raise ValueError("credential username must be a non-empty string")
+    try:
+        import provider_registry as _provider_registry
+    except ImportError:  # pragma: no cover - package-qualified import context
+        from orchestrator import provider_registry as _provider_registry
+    try:
+        declared_usernames = set(
+            _provider_registry.keyring_username_map().values()
+        )
+    except Exception as exc:
+        raise ValueError("provider registry is unavailable") from exc
+    if username.strip() not in declared_usernames:
+        raise ValueError("credential username is not declared by the provider registry")
+    normalized_action = action.strip().lower()
+    if normalized_action == "store":
+        value = parameters.get("value")
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("credential value must be a non-empty string")
+    parameters["action"] = normalized_action
+    parameters["service"] = "ora"
+    parameters["username"] = username.strip()
+
+
 # ── Audit logging ─────────────────────────────────────────────────────────
 
 # ``tool_events`` is the canonical, conversation-correlated dispatch sink.
@@ -818,16 +924,58 @@ def dispatch(tool_name: str, parameters: dict,
             tool_events.record(refusal_event)
             return f"[SYSTEM PROTECTION — {exc}]"
 
+    prepared_mcp = None
+    prepared_mcp_client = None
     if is_mcp:
         try:
             resolved_mcp = tool_events.mcp_policy(tool_name, parameters)
             parameters = dict(resolved_mcp["parameters"])
+            if tool_name == "mcp_github_create_repository" or (
+                tool_name == "mcp_github_fork_repository"
+                and not parameters.get("organization")
+            ):
+                prepared_mcp_client = _mcp_client
+                if prepared_mcp_client is None:
+                    raise ValueError("MCP client is unavailable")
+                prepared_mcp = prepared_mcp_client.prepare_mcp_tool(
+                    tool_name, parameters,
+                )
         except Exception as exc:
             tool_events.record({
                 "event": "gate", "action": tool_name, "category": "execute",
                 **tool_events.FAIL_CLOSED,
                 "gate": {"decision": "blocked", "why": str(exc)},
                 "exit": {"ok": False, "reason": "invalid MCP authority scope"},
+                "enforcement_model": "in_harness",
+            })
+            return f"[SYSTEM PROTECTION — {exc}]"
+
+    file_pre_state = None
+    if tool_name in {"file_read", "file_write", "file_edit"}:
+        try:
+            file_pre_state = _prepare_file_call(tool_name, parameters)
+        except (OSError, ValueError) as exc:
+            tool_events.record({
+                "event": "gate", "action": tool_name,
+                "category": entry.get("category", "execute"),
+                "mutability": entry.get("mutability", "irreversible"),
+                "sensitivity": entry.get("sensitivity", "private"),
+                "egress": entry.get("egress", "none"),
+                "gate": {"decision": "blocked", "why": str(exc)},
+                "exit": {"ok": False, "reason": "invalid file target"},
+                "enforcement_model": "in_harness",
+            })
+            return f"[Path validation failed: {exc}]"
+    elif tool_name == "credential_store":
+        try:
+            _prepare_credential_call(parameters)
+        except ValueError as exc:
+            tool_events.record({
+                "event": "gate", "action": tool_name,
+                "category": "write", "mutability": "irreversible",
+                "sensitivity": "secret", "egress": "none",
+                "gate": {"decision": "blocked", "why": str(exc)},
+                "exit": {"ok": False, "reason": "invalid credential request"},
                 "enforcement_model": "in_harness",
             })
             return f"[SYSTEM PROTECTION — {exc}]"
@@ -842,10 +990,21 @@ def dispatch(tool_name: str, parameters: dict,
 
     axes, classification, shell_profile = _resolve_call_axes(
         tool_name, entry, parameters, prepared_command)
+    if tool_name == "file_edit" or (
+        tool_name == "file_write"
+        and file_pre_state is not None
+        and file_pre_state.get("kind") != "absent"
+    ):
+        axes["mutability"] = "irreversible"
 
     gate_parameters = dict(parameters)
     if prepared_command is not None:
         gate_parameters["_prepared_command"] = prepared_command.binding()
+    protection_parameters = dict(gate_parameters)
+    if prepared_mcp is not None:
+        # Keep the raw gate identity stable so a replacement child invalidates
+        # the existing approval as stale, including after an ABA restoration.
+        protection_parameters["_mcp_child_launch"] = prepared_mcp.launch_id
 
     # G1.22A: classification at the same pre-effect boundary as the existing
     # execution gate.  The generic capability axes cannot express absolute
@@ -885,7 +1044,7 @@ def dispatch(tool_name: str, parameters: dict,
             review_request, review_digest = (
                 system_protection.prepare_protection_request(
                     protection_policy,
-                    params_digest=system_protection.params_digest(gate_parameters),
+                    params_digest=system_protection.params_digest(protection_parameters),
                     pre_state=protection_pre_state,
                     surface="tool_dispatcher",
                     command_binding=(
@@ -956,6 +1115,17 @@ def dispatch(tool_name: str, parameters: dict,
             revalidate_prepared_command(prepared_command)
         except CommandPreparationError as exc:
             return f"[SYSTEM PROTECTION — {exc}]"
+    if file_pre_state is not None:
+        current_file_state = system_protection.capture_selector_identity(
+            file_pre_state["selector"],
+        )
+        if current_file_state != file_pre_state:
+            return "[SYSTEM PROTECTION — file target changed after validation]"
+    if prepared_mcp is not None:
+        try:
+            prepared_mcp_client.revalidate_prepared_call(prepared_mcp)
+        except Exception as exc:
+            return f"[SYSTEM PROTECTION — {exc}]"
 
     decision = tool_events.gate(
         tool_name, gate_axes, params=gate_parameters,
@@ -982,7 +1152,7 @@ def dispatch(tool_name: str, parameters: dict,
                 approval_args_hash=tool_events.normalize_args_hash(
                     tool_name, gate_parameters,
                 ),
-                params_digest=system_protection.params_digest(gate_parameters),
+                params_digest=system_protection.params_digest(protection_parameters),
                 pre_state=protection_pre_state,
                 surface="tool_dispatcher",
                 command_binding=(
@@ -1021,24 +1191,6 @@ def dispatch(tool_name: str, parameters: dict,
     else:
         permission_status = "auto-approved"
 
-    # Path validation for file operations
-    if tool_name in ("file_write", "file_edit"):
-        file_path = parameters.get("path", parameters.get("file_path", ""))
-        valid, reason = validate_path(file_path, "write")
-        if not valid:
-            duration = int((time.time() - start) * 1000)
-            _log_dispatch(tool_name, parameters, classification, "path-blocked",
-                          reason, duration)
-            return f"[Path validation failed: {reason}]"
-    elif tool_name == "file_read":
-        file_path = parameters.get("path", "")
-        valid, reason = validate_path(file_path, "read")
-        if not valid:
-            duration = int((time.time() - start) * 1000)
-            _log_dispatch(tool_name, parameters, classification, "path-blocked",
-                          reason, duration)
-            return f"[Path validation failed: {reason}]"
-
     # Pre-tool hooks
     pre_hook_outputs = fire_hooks(
         "pre_tool", {"tool_name": tool_name, "parameters": parameters}
@@ -1055,8 +1207,20 @@ def dispatch(tool_name: str, parameters: dict,
             else contextlib.nullcontext()
         )
         with effect_context:
+            if file_pre_state is not None:
+                current_file_state = system_protection.capture_selector_identity(
+                    file_pre_state["selector"],
+                )
+                if current_file_state != file_pre_state:
+                    raise system_protection.ProtectionDenied(
+                        "file target changed immediately before effect"
+                    )
             if is_mcp:
-                if _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
+                if prepared_mcp is not None:
+                    result = prepared_mcp_client.call_mcp_tool(
+                        tool_name, parameters, prepared_call=prepared_mcp,
+                    )
+                elif _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
                     result = _mcp_client.call_mcp_tool(tool_name, parameters)
                 else:
                     result = f"[MCP unavailable — no client for {tool_name}]"
@@ -1076,6 +1240,14 @@ def dispatch(tool_name: str, parameters: dict,
             structured_result_valid = True
         else:
             result_str = str(result)
+        if tool_name == "file_write" and result_str.startswith((
+            "BLOCKED:", "Write error:",
+        )):
+            execution_error = True
+        elif tool_name == "file_edit" and isinstance(result, dict) and not bool(
+            result.get("success")
+        ):
+            execution_error = True
         if is_mcp:
             result_str, execution_error = _normalize_mcp_result(
                 result, result_str,

@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from contextlib import nullcontext
 from dataclasses import replace
 from pathlib import Path
 from unittest import mock
@@ -26,11 +27,14 @@ import oversight_queue  # noqa: E402
 import system_protection as protection  # noqa: E402
 import tool_events  # noqa: E402
 from tools import credential_store as credential_tool  # noqa: E402
+from orchestrator import active_configuration as active_configuration  # noqa: E402
+from orchestrator import system_protection as package_protection  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 class SystemProtectionBase(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(dir=str(Path.home()))
+        self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.actions = str(self.root / "actions.jsonl")
         self.approvals = str(self.root / "approvals.json")
@@ -48,9 +52,11 @@ class SystemProtectionBase(unittest.TestCase):
             conversation_id="g1-22a-test", surface="test",
         )
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
 
     def tearDown(self):
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         tool_events.reset_turn_context(self.turn_token)
         for patcher in reversed(self._patches):
             patcher.stop()
@@ -143,12 +149,100 @@ class TestPolicyFloor(SystemProtectionBase):
         self.assertEqual(decision.outcome, "allow")
 
     def test_dedicated_path_builders_reject_traversal_before_review(self):
-        from orchestrator import active_configuration, project_registry
+        from orchestrator import active_configuration, project_registry, slash_commands
 
         with self.assertRaises(ValueError):
             active_configuration._config_path("../../authority")
         with self.assertRaises(project_registry.ProjectError):
             project_registry._pointer_path("../../authority")
+        pointer_dir = self.root / "project-pointers"
+        pointer_dir.mkdir()
+        with self.assertRaises(project_registry.ProjectNotFoundError):
+            project_registry.prepare_pointer_mutation(
+                "missing", str(pointer_dir), require_registered=True,
+            )
+        outside = self.root / "outside-pointer.json"
+        outside.write_text('{"root": "/tmp/project"}', encoding="utf-8")
+        (pointer_dir / "linked.json").symlink_to(outside)
+        with self.assertRaises(project_registry.ProjectError):
+            project_registry.prepare_pointer_mutation(
+                "linked", str(pointer_dir), require_registered=True,
+            )
+        script_dir = self.root / "declared-script-directory"
+        script_dir.mkdir()
+        for declared_script in (self.root / "missing-script.py", script_dir):
+            with self.subTest(declared_script=declared_script):
+                with self.assertRaises(
+                    project_registry.ProjectExecutionBindingError
+                ):
+                    project_registry._resolve_executable_identity(
+                        [sys.executable, str(declared_script)]
+                    )
+        unreadable_script = self.root / "unreadable-script.py"
+        unreadable_script.write_text("pass\n", encoding="utf-8")
+        original_read_bytes = Path.read_bytes
+
+        def reject_unreadable(path):
+            if path == unreadable_script.resolve():
+                raise PermissionError("declared script is unreadable")
+            return original_read_bytes(path)
+
+        with mock.patch.object(
+            project_registry.Path, "read_bytes", reject_unreadable,
+        ):
+            with self.assertRaises(project_registry.ProjectExecutionBindingError):
+                project_registry._resolve_executable_identity(
+                    [sys.executable, str(unreadable_script)]
+                )
+
+        launcher = self.root / "launch.py"
+        launcher.write_text("#!/usr/bin/env python3\nprint('{}')\n", encoding="utf-8")
+        manifest = self.root / project_registry.MANIFEST_FILENAME
+        manifest.write_text(json.dumps({
+            "nexus": "test-project", "name": "Test project",
+            "tools": [{"name": "launch", "command": [str(launcher)]}],
+            "slash_commands": [{"name": "launch", "command": [str(launcher)]}],
+        }), encoding="utf-8")
+        snapshot = project_registry.load_project_snapshot(self.root)
+        registered = self.root / "registered-projects"
+        registered.mkdir()
+        (registered / "test-project.json").write_text(json.dumps({
+            "nexus": "test-project", "root": str(self.root),
+            "manifest_sha256": snapshot.manifest_sha256,
+        }), encoding="utf-8")
+        callers = (
+            lambda: slash_commands._cmd_project_tool(
+                ["test-project", "launch", "direct"],
+            ),
+            lambda: slash_commands._cmd_projects(
+                ["tool", "test-project", "launch", "grouped"],
+            ),
+            lambda: slash_commands._try_project_slash_command("/launch", []),
+        )
+        with mock.patch.object(project_registry, "POINTER_DIR", str(registered)), \
+                mock.patch.object(project_registry.subprocess, "run") as spawn:
+            for invoke in callers:
+                with self.subTest(caller=invoke):
+                    launcher.chmod(0o700)
+                    invoke()
+                    self._approve_latest()
+                    approval_bytes = Path(self.approvals).read_bytes()
+                    launcher.chmod(0o600)
+                    with mock.patch.object(
+                        slash_commands._sp, "authorize_project_action",
+                        wraps=protection.authorize_project_action,
+                    ) as authorize:
+                        result = invoke()
+                    self.assertIn("execute permission", result)
+                    authorize.assert_not_called()
+                    self.assertEqual(Path(self.approvals).read_bytes(), approval_bytes)
+                    self.assertFalse(Path(self.actions).exists())
+            spawn.assert_not_called()
+        # An interpreter reads its script; only the launched program needs X_OK.
+        identity = project_registry._resolve_executable_identity(
+            [sys.executable, str(launcher)],
+        )
+        self.assertEqual(identity[2], str(launcher.resolve()))
 
     def test_whole_roots_raw_drives_and_channels_are_absolute_denials(self):
         roots = protection._critical_roots()
@@ -756,6 +850,190 @@ class TestApprovalAndReceipts(SystemProtectionBase):
             )
         self.assertEqual(protection.verify_audit(), [])
 
+        import dispatcher
+        import mcp_client
+
+        def new_child():
+            # Exercise actual launch-ID assignment without a subprocess,
+            # credential, reader thread, provider, or browser transport.
+            child = mcp_client.MCPConnection(
+                "github", "unused", env_from_parent=["GITHUB_PERSONAL_ACCESS_TOKEN"],
+            )
+            process = mock.Mock()
+            process.poll.return_value = None
+            with mock.patch.object(mcp_client.subprocess, "Popen", return_value=process), \
+                 mock.patch.object(child, "_start_reader"), \
+                 mock.patch.object(child, "_start_stderr_reader"), \
+                 mock.patch.object(child, "_request", return_value={}), \
+                 mock.patch.object(child, "_notify"):
+                self.assertTrue(child.connect())
+            child._request = mock.Mock(return_value={"content": [{"text": "sent once"}]})
+            return child
+
+        def dispatch(action, params):
+            dispatcher.reset_consecutive()
+            return dispatcher.dispatch(action, params)
+
+        manager = mcp_client.MCPClientManager()
+        with mock.patch.object(dispatcher, "_mcp_client", manager), \
+             mock.patch.object(dispatcher, "_permission_mode", "auto-approve"), \
+             mock.patch.object(dispatcher, "fire_hooks", return_value=[]), \
+             mock.patch.object(dispatcher, "_retire_legacy_session_logs_once"), \
+             mock.patch.object(mcp_client.subprocess, "Popen", side_effect=AssertionError("no real MCP child")), \
+             mock.patch.object(manager, "_recover_server", side_effect=AssertionError("no post-approval recovery")) as recover, \
+             mock.patch.dict(os.environ, {"GITHUB_PERSONAL_ACCESS_TOKEN": "synthetic-test-account"}):
+            for tool, params in (
+                ("create_repository", {"name": "new-repository"}),
+                ("fork_repository", {"owner": "source", "repo": "repository"}),
+            ):
+                with self.subTest(tool=tool):
+                    action = "mcp_github_" + tool
+                    binding = ("github", tool)
+                    manager.all_tools[action] = binding
+                    manager._authorized_tools[action] = binding
+                    child_a = new_child()
+                    child_b = new_child()
+                    self.assertNotEqual(child_a.launch_id, child_b.launch_id)
+                    manager.connections["github"] = child_a
+                    audit_before = protection.verify_audit()
+                    dispatch(action, params)
+                    review_a = self._approve_latest()
+                    token_a = tool_events._load_approvals()["tokens"][-1]
+                    raw_hash = tool_events.normalize_args_hash(action, params)
+                    self.assertEqual(token_a["args_hash"], raw_hash)
+
+                    # Same arguments, fresh child even with the same inherited
+                    # environment: stale review invalidates, not a raw-hash miss.
+                    manager.connections["github"] = child_b
+                    with mock.patch.object(protection, "begin_execution", wraps=protection.begin_execution) as begin:
+                        dispatch(action, params)
+                    begin.assert_not_called()
+                    review_b = self._queue_records()[-1]
+                    self.assertNotEqual(review_a["event"]["review_request_digest"], review_b["event"]["review_request_digest"])
+                    current = next(item for item in tool_events._load_approvals()["tokens"] if item["id"] == token_a["id"])
+                    self.assertTrue(current["used"])
+                    self.assertEqual(current["invalidation_reason"], "review-request-digest-mismatch")
+                    self.assertEqual(protection.verify_audit(), audit_before)
+                    child_a._request.assert_not_called()
+                    child_b._request.assert_not_called()
+                    recover.assert_not_called()
+                    manager.connections["github"] = child_a
+                    dispatch(action, params)
+                    self.assertEqual(protection.verify_audit(), audit_before)
+                    child_a._request.assert_not_called()
+
+                    # An unchanged held child remains valid when only the
+                    # parent's environment changes; only one send is allowed.
+                    self.assertIn("Denied", tool_events.resolve_gate_entry(review_b, approve=False))
+                    dispatch(action, params)
+                    approved = self._approve_latest()
+
+                    def alter_hook_arguments(_event, context):
+                        if _event == "pre_tool":
+                            context["parameters"]["description"] = "not reviewed"
+                        return []
+
+                    with mock.patch.dict(os.environ, {"GITHUB_PERSONAL_ACCESS_TOKEN": "different-parent-only"}), \
+                         mock.patch.object(dispatcher, "fire_hooks", side_effect=alter_hook_arguments):
+                        result = dispatch(action, params)
+                    self.assertIn("sent once", result)
+                    child_a._request.assert_called_once()
+                    self.assertEqual(child_a._request.call_args.args[1]["arguments"], params)
+                    receipts = protection.verify_audit()[len(audit_before):]
+                    self.assertEqual([item["event_type"] for item in receipts], [
+                        "protected_action_started", "protected_action_completed",
+                    ])
+                    self.assertEqual(receipts[0]["request_digest"], approved["event"]["review_request_digest"])
+                    self.assertEqual(receipts[0]["approval_args_hash"], raw_hash)
+                    dispatch(action, params)
+                    child_a._request.assert_called_once()
+                    self.assertEqual(protection.verify_audit()[len(audit_before):], receipts)
+
+                    # A child lost during deterministic preflight preserves
+                    # the issued token and reaches neither gate nor start.
+                    pre_gate_params = {**params, "description": "pre-gate loss"}
+                    dispatch(action, pre_gate_params)
+                    self._approve_latest()
+                    issued = tool_events._load_approvals()["tokens"][-1]
+                    check_child = manager.revalidate_prepared_call
+                    checks = 0
+
+                    def lose_before_gate(prepared):
+                        nonlocal checks
+                        checks += 1
+                        if checks == 2:
+                            child_a.process.poll.return_value = 1
+                        return check_child(prepared)
+
+                    with mock.patch.object(manager, "revalidate_prepared_call", side_effect=lose_before_gate), \
+                         mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+                         mock.patch.object(protection, "begin_execution", wraps=protection.begin_execution) as begin:
+                        result = dispatch(action, pre_gate_params)
+                    self.assertIn("unavailable or changed", result)
+                    gate.assert_not_called()
+                    begin.assert_not_called()
+                    self.assertFalse(next(item for item in tool_events._load_approvals()["tokens"] if item["id"] == issued["id"])["used"])
+                    child_a.process.poll.return_value = None
+
+                    # Loss or replacement after a real start receipt is a
+                    # failed effect, never permission to recover or substitute.
+                    for failure in ("lost", "replaced"):
+                        failure_params = {**params, "description": failure}
+                        child_a._request.reset_mock()
+                        manager.connections["github"] = child_a
+                        dispatch(action, failure_params)
+                        self._approve_latest()
+                        audit_before_failure = protection.verify_audit()
+
+                        def after_start(*_args):
+                            if failure == "lost":
+                                child_a.process.poll.return_value = 1
+                            else:
+                                manager.connections["github"] = child_b
+                            return []
+
+                        with mock.patch.object(dispatcher, "fire_hooks", side_effect=after_start):
+                            result = dispatch(action, failure_params)
+                        self.assertIn("unavailable or changed", result)
+                        child_a._request.assert_not_called()
+                        child_b._request.assert_not_called()
+                        recover.assert_not_called()
+                        failure_receipts = protection.verify_audit()[len(audit_before_failure):]
+                        self.assertEqual([item["event_type"] for item in failure_receipts], [
+                            "protected_action_started", "protected_action_failed",
+                        ])
+                        child_a.process.poll.return_value = None
+
+            # An explicitly named organization is not an implicit account.
+            action = "mcp_github_fork_repository"
+            manager.connections["github"] = child_b
+            params = {"owner": "source", "repo": "repository", "organization": "named-org"}
+            with mock.patch.object(manager, "prepare_mcp_tool", side_effect=AssertionError("explicit organization is not implicit")):
+                dispatch(action, params)
+                self._approve_latest()
+                self.assertIn("sent once", dispatch(action, params))
+            child_b._request.assert_called_once()
+
+            # A dead, not-yet-closed child can still recover before review.
+            # This does not authorize recovery inside a prepared execution.
+            child_a.process.poll.return_value = 1
+            manager.connections["github"] = child_a
+            action = "mcp_github_create_repository"
+
+            def recover_before_review(server_name):
+                self.assertEqual(server_name, "github")
+                self.assertTrue(child_a._closed)
+                manager.connections["github"] = child_b
+                manager.all_tools[action] = ("github", "create_repository")
+                return child_b, ""
+
+            with mock.patch.object(manager, "_recover_server", side_effect=recover_before_review) as pre_recovery, \
+                 mock.patch.object(protection, "begin_execution", wraps=protection.begin_execution) as begin:
+                dispatch(action, {"name": "preapproval-recovery"})
+            pre_recovery.assert_called_once_with("github")
+            begin.assert_not_called()
+            child_b._request.assert_called_once()
+
     def test_drift_after_write_ahead_is_rejected_before_effect_scope(self):
         target = self.root / "profile.json"
         target.write_text("before", encoding="utf-8")
@@ -927,6 +1205,63 @@ class TestApprovalAndReceipts(SystemProtectionBase):
             )
 
 
+class TestMediaReferenceBoundary(SystemProtectionBase):
+    def test_media_reference_delete_refuses_substituted_cached_entry(self):
+        from server import app as server  # configures the built-in video plugin
+        from plugins.video import routes as video_routes
+        from plugins.video.backend import media_library
+
+        entry_id = "entry-1"
+        approved_entry = {
+            "id": entry_id,
+            "display_name": "approved.mov",
+            "source_path": str(self.root / "approved.mov"),
+        }
+        substituted_entry = {
+            "id": entry_id,
+            "display_name": "substituted.mov",
+            "source_path": str(self.root / "substituted.mov"),
+        }
+        library = object.__new__(media_library.MediaLibrary)
+        library.conversation_id = "media-race"
+        library._lock = threading.Lock()
+        library._deleted = False
+        library.state_path = self.root / "media-library.json"
+        library.thumbnails_dir = self.root / "thumbnails"
+        library._entries = [dict(approved_entry)]
+
+        context = mock.Mock()
+        context.valid_live_conversation_id.return_value = True
+        context.cross_site_mutation_response.return_value = None
+        context.conversation_lifecycle_lock.side_effect = (
+            lambda _conversation_id: server._conversation_lifecycle_guard
+        )
+        context.is_conversation_deleted.return_value = False
+
+        def substitute_before_effect(**kwargs):
+            self.assertEqual(kwargs["entry"], approved_entry)
+            with library._lock:
+                library._entries = [dict(substituted_entry)]
+            return kwargs["effect"]()
+
+        context.protected_media_reference_delete.side_effect = (
+            substitute_before_effect
+        )
+        with mock.patch.object(video_routes, "_context", context), \
+                mock.patch.object(
+                    video_routes.media_library, "get_library",
+                    return_value=library,
+                ):
+            response = video_routes._library_remove("media-race", entry_id)
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.get_json(),
+            {"error": "entry changed before deletion"},
+        )
+        self.assertEqual(library.get_entry(entry_id), substituted_entry)
+
+
 class TestCredentialBoundary(SystemProtectionBase):
     @mock.patch.object(credential_tool.provider_registry, "keyring_username_map")
     @mock.patch.object(credential_tool.keyring, "get_password")
@@ -1073,6 +1408,325 @@ class TestCredentialBoundary(SystemProtectionBase):
         resolver.assert_called_once_with(registry.by_id.return_value)
         with mock.patch.object(boot, "_provider_registry", None):
             self.assertEqual(boot._canonical_provider_key("openai"), "")
+
+
+class TestProtectedServerPlans(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        server.app.config.update(TESTING=True)
+        cls.client = server.app.test_client()
+
+    def setUp(self):
+        with server._reembed_lock:
+            server._reembed_state.update({
+                "in_progress": False,
+                "started_at": 0.0,
+                "completed_at": 0.0,
+                "profile_id": "",
+                "progress": "",
+                "last_summary": None,
+            })
+
+    def test_vector_rebuild_rejects_unexecutable_plan_before_review(self):
+        retrieval = mock.Mock()
+        retrieval.snapshot.return_value = {"active_embedding": {"id": "old"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "rebuild.py"
+            script.write_text("print('ok')\n", encoding="utf-8")
+            with (
+                mock.patch.object(server, "_retrieval_config", retrieval),
+                mock.patch.object(server, "_REEMBED_SCRIPT", str(script)),
+                mock.patch.object(server, "_resolve_reembed_profile", return_value={
+                    "provider": "ollama", "model": "embed", "dimensions": "1024",
+                }),
+                mock.patch.object(
+                    package_protection, "authorize_server_action",
+                ) as authorize,
+            ):
+                response = self.client.post(
+                    "/api/retrieval/rebuild/start",
+                    json={"embedding_profile_id": "candidate"},
+                )
+
+            self.assertEqual(response.status_code, 400, response.get_json())
+            self.assertIn("positive integer", response.get_json()["error"])
+
+            with (
+                mock.patch.object(server, "_retrieval_config", retrieval),
+                mock.patch.object(
+                    server, "_REEMBED_SCRIPT", str(Path(tmp) / "missing.py"),
+                ),
+                mock.patch.object(server, "_resolve_reembed_profile", return_value={
+                    "provider": "ollama", "model": "embed", "dimensions": 1024,
+                }),
+                mock.patch.object(
+                    package_protection, "authorize_server_action",
+                ) as missing_authorize,
+            ):
+                missing = self.client.post(
+                    "/api/retrieval/rebuild/start",
+                    json={"embedding_profile_id": "candidate"},
+                )
+
+            self.assertEqual(missing.status_code, 400, missing.get_json())
+            self.assertIn("regular file", missing.get_json()["error"])
+            authorize.assert_not_called()
+            missing_authorize.assert_not_called()
+
+    def test_vector_rebuild_binds_script_and_executes_only_approved_plan(self):
+        class ImmediateThread:
+            def __init__(self, *, target, daemon):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        class SuccessfulProcess:
+            stdout = ()
+            returncode = 0
+
+            def wait(self):
+                return 0
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            script = root / "rebuild.py"
+            script.write_text("print('approved')\n", encoding="utf-8")
+            config = root / "chromadb.json"
+            config.write_text("{}", encoding="utf-8")
+            retrieval = mock.Mock(CHROMADB_CONFIG_PATH=config)
+            retrieval.snapshot.return_value = {
+                "active_embedding": {"id": "old"},
+            }
+            option = {
+                "provider": " OpenRouter ",
+                "model": " approved/model ",
+                "dimensions": 1536,
+            }
+            with (
+                mock.patch.object(server, "_retrieval_config", retrieval),
+                mock.patch.object(server, "_REEMBED_SCRIPT", str(script)),
+                mock.patch.object(server, "_resolve_reembed_profile", return_value=option),
+            ):
+                plan = server._build_reembed_plan("candidate")
+
+            self.assertEqual(plan.provider, "openrouter")
+            self.assertEqual(plan.model, "approved/model")
+            self.assertEqual(plan.dimension, 1536)
+            self.assertEqual(plan.script_path, str(script))
+            self.assertTrue(plan.script_content_digest.startswith("sha256:"))
+
+            vector_dir = root / "chroma"
+            vector_dir.mkdir()
+            with (
+                mock.patch.object(server, "_retrieval_config", retrieval),
+                mock.patch.object(server, "_REEMBED_SCRIPT", str(script)),
+                mock.patch.object(server, "_resolve_reembed_profile", return_value=option),
+                mock.patch.object(server.rp, "CHROMADB_DIR", vector_dir),
+                mock.patch.object(
+                    package_protection, "authorize_server_action",
+                    return_value="approved",
+                ) as authorize,
+                mock.patch.object(
+                    server, "_spawn_reembed",
+                    return_value=({"status": "started", "profile_id": "candidate"}, 200),
+                ) as spawn,
+            ):
+                response = self.client.post(
+                    "/api/retrieval/rebuild/start",
+                    json={"embedding_profile_id": "candidate"},
+                )
+
+            self.assertEqual(response.status_code, 200, response.get_json())
+            authorization = authorize.call_args.kwargs
+            self.assertEqual(
+                authorization["params"],
+                {"execution_plan": plan.approval_parameters()},
+            )
+            self.assertIn(
+                package_protection.path_selector(script),
+                authorization["selectors"],
+            )
+            spawn.assert_called_once_with(plan, protection_execution="approved")
+
+            with (
+                mock.patch.object(server, "_build_reembed_plan", return_value=plan),
+                mock.patch.object(server, "_reembed_post_state", return_value=[]),
+                mock.patch.object(server.threading, "Thread", ImmediateThread),
+                mock.patch.object(package_protection, "protected_effect", return_value=nullcontext()),
+                mock.patch.object(package_protection, "complete_execution") as complete,
+                mock.patch("subprocess.Popen", return_value=SuccessfulProcess()) as popen,
+            ):
+                body, status = server._spawn_reembed(
+                    plan, protection_execution=object(),
+                )
+
+            self.assertEqual((body, status), (
+                {"status": "started", "profile_id": "candidate"}, 200,
+            ))
+            argv = popen.call_args.args[0]
+            self.assertEqual(argv[argv.index("--target-provider") + 1], "openrouter")
+            self.assertEqual(argv[argv.index("--target-embedder") + 1], "approved/model")
+            self.assertEqual(argv[argv.index("--target-dim") + 1], "1536")
+            self.assertEqual(argv[1], str(script))
+            complete.assert_called_once()
+
+    def test_vector_rebuild_postapproval_busy_claim_has_one_winner(self):
+        class DormantThread:
+            def __init__(self, *, target, daemon):
+                self.target = target
+
+            def start(self):
+                return None
+
+        plan = server._ReembedExecutionPlan(
+            profile_id="candidate",
+            provider="ollama",
+            model="approved-model",
+            dimension=1024,
+            script_path="/tmp/rebuild.py",
+            script_bytes=1,
+            script_content_digest="sha256:content",
+            script_identity_digest="sha256:identity",
+        )
+        with (
+            mock.patch.object(server, "_build_reembed_plan", return_value=plan),
+            mock.patch.object(server, "_reembed_post_state", return_value=[]),
+            mock.patch.object(server.threading, "Thread", DormantThread),
+            mock.patch.object(package_protection, "complete_execution") as complete,
+        ):
+            first = server._spawn_reembed(plan, protection_execution="first")
+            second = server._spawn_reembed(plan, protection_execution="second")
+
+        self.assertEqual(first[1], 200)
+        self.assertEqual(second[1], 409)
+        self.assertEqual(second[0]["status"], "in_progress")
+        complete.assert_called_once()
+        self.assertEqual(complete.call_args.args[0], "second")
+
+    def test_model_profile_delete_rejects_invalid_preflight_before_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            configurations = root / "configurations"
+            configurations.mkdir()
+            target = configurations / "candidate.json"
+            target.write_text("{}", encoding="utf-8")
+            pointer = root / "active.json"
+            pointer.write_text("not-json", encoding="utf-8")
+            with (
+                mock.patch.object(active_configuration, "CONFIGURATIONS_DIR", configurations),
+                mock.patch.object(active_configuration, "ACTIVE_POINTER_PATH", pointer),
+                mock.patch.object(active_configuration, "DATA_DIR", root),
+                mock.patch.object(package_protection, "authorize_server_action") as authorize,
+            ):
+                reserved = self.client.delete("/api/configurations/free")
+                missing = self.client.delete("/api/configurations/missing")
+                (configurations / "directory.json").mkdir()
+                non_regular = self.client.delete("/api/configurations/directory")
+                malformed = self.client.delete("/api/configurations/candidate")
+                pointer.write_text(json.dumps({"name": "candidate"}), encoding="utf-8")
+                (configurations / "free.json").write_text("not-json", encoding="utf-8")
+                unreadable_fallback = self.client.delete(
+                    "/api/configurations/candidate"
+                )
+
+            for response in (reserved, missing, non_regular, malformed):
+                self.assertEqual(response.status_code, 400, response.get_json())
+            self.assertEqual(
+                unreadable_fallback.status_code, 400,
+                unreadable_fallback.get_json(),
+            )
+            self.assertTrue(target.is_file())
+            authorize.assert_not_called()
+
+    def test_model_profile_delete_locked_recheck_preserves_target(self):
+        class DriftApprovedFile:
+            def __init__(self, path, replacement):
+                self.path = path
+                self.replacement = replacement
+
+            def __enter__(self):
+                self.path.write_text(self.replacement, encoding="utf-8")
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+        cases = (
+            ("target", '{"changed": true}'),
+            ("pointer", '{\n  "name": "candidate"\n}'),
+            ("fallback", '{"changed": true}'),
+        )
+        for drift_name, replacement in cases:
+            with self.subTest(drift=drift_name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                configurations = root / "configurations"
+                configurations.mkdir()
+                target = configurations / "candidate.json"
+                target.write_text("{}", encoding="utf-8")
+                fallback = configurations / "free.json"
+                fallback.write_text("{}", encoding="utf-8")
+                pointer = root / "active.json"
+                pointer.write_text(
+                    json.dumps({"name": "candidate"}), encoding="utf-8",
+                )
+                paths = {
+                    "target": target,
+                    "pointer": pointer,
+                    "fallback": fallback,
+                }
+                approved_bytes = {
+                    key: path.read_text(encoding="utf-8")
+                    for key, path in paths.items()
+                }
+                with (
+                    mock.patch.object(active_configuration, "CONFIGURATIONS_DIR", configurations),
+                    mock.patch.object(active_configuration, "ACTIVE_POINTER_PATH", pointer),
+                    mock.patch.object(active_configuration, "DATA_DIR", root),
+                    mock.patch.object(
+                        active_configuration, "validate_profile_allocation",
+                        return_value={},
+                    ),
+                    mock.patch.object(
+                        package_protection, "authorize_server_action",
+                        return_value="approved",
+                    ) as authorize,
+                    mock.patch.object(
+                        package_protection, "protected_effect",
+                        return_value=DriftApprovedFile(
+                            paths[drift_name], replacement,
+                        ),
+                    ),
+                    mock.patch.object(
+                        package_protection, "complete_execution",
+                    ) as complete,
+                ):
+                    response = self.client.delete(
+                        "/api/configurations/candidate"
+                    )
+
+                self.assertEqual(response.status_code, 400, response.get_json())
+                self.assertTrue(target.is_file())
+                for key, path in paths.items():
+                    expected = replacement if key == drift_name else approved_bytes[key]
+                    self.assertEqual(path.read_text(encoding="utf-8"), expected)
+                authorization = authorize.call_args.kwargs
+                self.assertEqual(
+                    set(authorization["selectors"]),
+                    {
+                        package_protection.path_selector(path)
+                        for path in paths.values()
+                    },
+                )
+                self.assertEqual(
+                    [state["selector"] for state in authorization["pre_state"]],
+                    [
+                        package_protection.path_selector(target),
+                        package_protection.path_selector(pointer),
+                        package_protection.path_selector(fallback),
+                    ],
+                )
+                complete.assert_called_once()
+                self.assertFalse(complete.call_args.kwargs["ok"])
 
 
 class TestSystemProtectionDocumentation(unittest.TestCase):
