@@ -2199,7 +2199,9 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     marker so the client's error channel can surface it while prose
     continues to flow. Diagnostics are stashed on the context_pkg (which
     the server reads for SSE event emission) when possible — never mutated
-    invasively; always fail-open.
+    invasively. Processor failures preserve prose while withholding the
+    unreviewed candidate; a failed optional improvement retains the previously
+    reviewed visual and discloses the failed attempt.
 
     The diagnostics are also persisted to the per-turn trace as
     ``step-visual-hook.json`` (fix for silent failure #11: previously the
@@ -2270,18 +2272,39 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
                 mode=mode,
                 prose=review_prose,
             )
-        except Exception as exc:  # fail-open: never block legitimate prose on a hook bug
-            print(f"[visual hook] skipped due to error: {exc}")
+        except Exception as exc:  # preserve prose, but never release an unreviewed visual
+            detail = str(exc).strip()[:350] or "unknown processor error"
+            print(f"[visual hook] visual rejected due to processor error: {detail}")
+            failure_diag = {
+                "blocked": True,
+                "validator": {"errors": [{
+                    "code": "visual_processor_exception",
+                    "message": detail,
+                }]},
+            }
+            if isinstance(context_pkg, dict):
+                context_pkg["visual_diagnostics"] = {"visuals": [failure_diag]}
+                context_pkg["_visual_outcome"] = {
+                    "state": "failed",
+                    "stage": "visual_hook",
+                    "reason": f"Visual review failed: {detail}",
+                }
+                if trace_dir:
+                    context_pkg["_visual_outcome"]["trace_ref"] = str(trace_dir)
             if PIPELINE_TRACE_AVAILABLE and trace_dir:
                 pipeline_trace.write_step(trace_dir, "step-visual-hook", {
-                    "status": "hook_exception",
-                    "error": str(exc),
+                    "status": "processor_exception",
+                    "error": detail,
                     "response_contained_ora_visual_block": True,
+                    "diagnostics": {"visuals": [failure_diag]},
                 }, markdown=(
                     "# Visual Hook — exception\n\n"
-                    f"`{exc}` — visual hook fail-open; response prose continues unchanged.\n"
+                    f"`{detail}` — the unreviewed visual was removed; response prose continues.\n"
                 ))
-            return response
+            # The shared stripper deliberately leaves unterminated fences
+            # intact to protect following prose/code. On processor failure,
+            # remove only those residual openers, without consuming the body.
+            return re.sub(r"```ora-visual[ \t]*(?=\n|$)", "", review_prose)
 
     visuals = (diagnostics or {}).get("visuals") or []
 
@@ -2290,10 +2313,11 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     # candidate, keep the already-reviewed visual rather than looping or
     # silently dropping it.
     redundant_visual = any(
-        any((warning or {}).get("rule") == "clarity.redundant"
+        not visual.get("blocked") and any((warning or {}).get("rule") == "clarity.redundant"
             for warning in ((visual.get("adversarial") or {}).get("warns") or []))
         for visual in visuals
     )
+    improvement_failure = None
     if redundant_visual:
         try:
             improved_text, improved_diag = _maybe_synthesize_visual(
@@ -2322,7 +2346,13 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
                 # is recorded in the terminal trace below when tracing exists.
                 pass
         except Exception as _redundancy_exc:
-            print(f"[visual redundancy improvement] skipped: {_redundancy_exc}")
+            improvement_failure = (
+                str(_redundancy_exc).strip()[:350] or "unknown processor error"
+            )
+            print(
+                "[visual redundancy improvement] discarded; approved visual "
+                f"retained: {improvement_failure}"
+            )
 
     # Phase 1 — repair-on-miss synthesis. If the mode EXPECTED a visual and the
     # turn rendered zero valid envelopes (none emitted, or every one
@@ -2398,6 +2428,13 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
         new_text, noninteractive_render_error = _materialize_noninteractive_visual(
             new_text, context_pkg,
         )
+    if improvement_failure:
+        # A successful visual's reason is metadata, not a visible UI notice.
+        # Append after materialization so headless output keeps the notice too.
+        new_text += (
+            "\n\nThe optional visual improvement failed. "
+            "The previously approved visual was retained."
+        )
 
     # Client-facing diagnostics: if a visual was recovered, synthesized, or
     # schema-repaired in place, don't alarm the user about the superseded
@@ -2405,6 +2442,17 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     repaired_ok = any((v.get("synthesized") or v.get("recovered") or v.get("repaired"))
                       and not v.get("blocked") for v in visuals)
     client_visuals = [v for v in visuals if not v.get("blocked")] if repaired_ok else visuals
+    if improvement_failure:
+        failure_diag = {
+            "id": "optional-improvement",
+            "blocked": True,
+            "validator": {"errors": [{
+                "code": "visual_improvement_exception",
+                "message": improvement_failure,
+            }]},
+        }
+        visuals = visuals + [failure_diag]
+        client_visuals = client_visuals + [failure_diag]
     if context_pkg is not None:
         context_pkg["visual_diagnostics"] = {"visuals": client_visuals}
         if noninteractive and rendered_ok and not noninteractive_render_error:
@@ -2455,6 +2503,17 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
                     "was not positively established as relationship-free."
                 ),
             }
+        if improvement_failure:
+            outcome = context_pkg["_visual_outcome"]
+            outcome.setdefault("stage", "visual_improvement")
+            existing_reason = outcome.get("reason")
+            outcome["reason"] = (
+                (existing_reason + " " if existing_reason else "")
+                + "The approved visual was retained after its optional "
+                + f"improvement failed: {improvement_failure}"
+            )[:500]
+            if trace_dir:
+                outcome["trace_ref"] = str(trace_dir)
         if context_pkg.get("_visual_fallback_origin"):
             context_pkg["_visual_outcome"]["origin"] = context_pkg[
                 "_visual_fallback_origin"
@@ -2465,13 +2524,16 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     if PIPELINE_TRACE_AVAILABLE and trace_dir and visuals:
         suppressed = [v for v in visuals if v.get("blocked")]
         synth = [v for v in visuals if v.get("synthesized")]
-        pipeline_trace.write_step(trace_dir, "step-visual-hook", {
-            "status": "ok",
+        trace_payload = {
+            "status": "improvement_exception" if improvement_failure else "ok",
             "visuals_seen": len(visuals),
             "visuals_suppressed": len(suppressed),
             "synthesized": len(synth),
             "diagnostics": {"visuals": visuals},
-        }, markdown=(
+        }
+        if improvement_failure:
+            trace_payload["improvement_failure"] = improvement_failure
+        pipeline_trace.write_step(trace_dir, "step-visual-hook", trace_payload, markdown=(
             "# Visual Hook\n\n"
             f"**Visuals seen:** {len(visuals)}  \n"
             f"**Visuals suppressed (Critical findings):** {len(suppressed)}  \n"
