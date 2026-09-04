@@ -6,6 +6,7 @@ Step 2 (Context Assembly) → Gear-appropriate analysis → Output routing.
 All behavioral decisions live in natural language specs. This file is mechanical plumbing.
 """
 from __future__ import annotations
+from contextlib import contextmanager, nullcontext
 
 import os
 import time
@@ -14661,6 +14662,7 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
                           slot: str | None = None,
                           gear: int | None = None,
                           config_name: str | None = None,
+                          endpoint_admission=None,
                           ) -> tuple[str, bool, str]:
     """Repack unseen deferred units for model-declared evidence gaps.
 
@@ -14678,7 +14680,8 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
                                 min_chars=min_chars,
                                 retry_hint=retry_hint, images=images,
                                 slot=slot, gear=gear,
-                                config_name=config_name)
+                                config_name=config_name,
+                                endpoint_admission=endpoint_admission)
 
     trace_dir = context_pkg.get("trace_dir") if context_pkg else None
     original = [dict(message) for message in (messages or [])]
@@ -14730,6 +14733,7 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
             min_chars=min_chars, retry_hint=retry_hint, images=images,
             slot=slot, gear=gear, config_name=config_name,
             allow_supplement_request=True,
+            endpoint_admission=endpoint_admission,
         )
         text, ok, reason = outcome
         while True:
@@ -14796,6 +14800,7 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
                 min_chars=min_chars, retry_hint=retry_hint, images=images,
                 slot=slot, gear=gear, config_name=config_name,
                 allow_supplement_request=True,
+                endpoint_admission=endpoint_admission,
             )
             next_text, next_ok, next_reason = next_outcome
             next_coverage = _LAST_CONTEXT_COVERAGE_CV.get() or {}
@@ -14843,6 +14848,7 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
                      gear: int | None = None,
                      config_name: str | None = None,
                      allow_supplement_request: bool = False,
+                     endpoint_admission=None,
                      ) -> tuple[str, bool, str]:
     """Run a model call with one retry on unhealthy output.
 
@@ -14869,10 +14875,11 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     _call_meta_token = _CALL_METADATA_CV.set(_call_meta)
     attempts: list[ModelInvocationOutcome] = []
     try:
-        first = _as_invocation_outcome(
-            _run_model_with_tools(list(messages), endpoint, images=images),
-            endpoint,
-        )
+        with endpoint_admission(endpoint) if endpoint_admission else nullcontext():
+            first = _as_invocation_outcome(
+                _run_model_with_tools(list(messages), endpoint, images=images),
+                endpoint,
+            )
     except TerminalInputAbort:
         raise
     except ModelInvocationFailure as exc:
@@ -14977,10 +14984,11 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
         **_call_meta, "step": f"{step_name}:retry",
     })
     try:
-        second = _as_invocation_outcome(
-            _run_model_with_tools(retry_msgs, target_endpoint, images=images),
-            target_endpoint,
-        )
+        with endpoint_admission(target_endpoint) if endpoint_admission else nullcontext():
+            second = _as_invocation_outcome(
+                _run_model_with_tools(retry_msgs, target_endpoint, images=images),
+                target_endpoint,
+            )
     except TerminalInputAbort:
         raise
     except ModelInvocationFailure as exc:
@@ -16608,14 +16616,23 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         context_pkg, slot="breadth", step="analyst", framework_name=None
     )
 
-    # Only these two analyst streams share this short-lived guard. The local
-    # transport still owns its existing machine mutex; do not acquire it twice.
+    # The local transport still owns its machine mutex; do not acquire it twice.
+    # After failed eviction, retain this call-local guard for later Gear-4
+    # attempts too: a configured retry must not re-enter the blocked local pair.
     import threading
     analyst_condition = threading.Condition()
-    active_analysts: dict[str, dict] = {}
+    active_analysts: dict[int, dict] = {}
     local_attempts: list[dict] = []
+    analysts_complete = False
+    cache_release_failure: ModelInvocationFailure | None = None
 
-    def _analyst_call(msgs, endpoint, slot):
+    @contextmanager
+    def _endpoint_admission(endpoint):
+        nonlocal cache_release_failure
+        if analysts_complete and cache_release_failure is None:
+            yield
+            return
+        call_id = threading.get_ident()
         with analyst_condition:
             while RESILIENCE_AVAILABLE:
                 releases = [
@@ -16629,22 +16646,27 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     analyst_condition.wait()
                     continue
                 for previous in releases:
-                    if release_kv_cache(previous, mlx_evictor=evict_mlx_model):
-                        local_attempts.remove(previous)
+                    if not release_kv_cache(previous, mlx_evictor=evict_mlx_model):
+                        cache_release_failure = ModelInvocationFailure(
+                            f"Gear 4 cannot start {_endpoint_identity(endpoint)}: "
+                            f"required cache release of {_endpoint_identity(previous)} failed",
+                            kind="resource_release_failed",
+                            attempted_endpoint_ids=(_endpoint_identity(endpoint),),
+                            attempted_model_ids=(_endpoint_model_identity(endpoint),),
+                        )
+                        raise cache_release_failure
+                    local_attempts.remove(previous)
                 break
             # Failed local attempts can still leave a cache behind. Retain
             # only actual attempts, even if the lane later recovers on an API.
             if endpoint.get("type") == "local" and endpoint not in local_attempts:
                 local_attempts.append(endpoint)
-            active_analysts[slot] = endpoint
+            active_analysts[call_id] = endpoint
         try:
-            return _call_with_supplement(
-                msgs, endpoint, "analyst", 30, None, images, context_pkg,
-                slot=slot, gear=None, config_name=config_name,
-            )
+            yield
         finally:
             with analyst_condition:
-                active_analysts.pop(slot, None)
+                active_analysts.pop(call_id, None)
                 analyst_condition.notify_all()
 
     # Per-stream analyst recovery (2026-06-29): a refusing/empty model must not
@@ -16663,7 +16685,11 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": cleaned_prompt},
         ]
-        primary_call = _analyst_call(msgs, primary_endpoint, slot)
+        primary_call = _call_with_supplement(
+            msgs, primary_endpoint, "analyst", 30, None, images, context_pkg,
+            slot=slot, gear=None, config_name=config_name,
+            endpoint_admission=_endpoint_admission,
+        )
         text, ok, reason = primary_call
         primary_outcome = _as_invocation_outcome(
             text, primary_endpoint, failure=getattr(text, "failure", None),
@@ -16684,7 +16710,11 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 "", False, f"no-fallback-available ({reason})",
                 "no-fallback", primary_outcome, primary_endpoint,
             )
-        fallback_call = _analyst_call(msgs, fb, slot)
+        fallback_call = _call_with_supplement(
+            msgs, fb, "analyst", 30, None, images, context_pkg,
+            slot=slot, gear=None, config_name=config_name,
+            endpoint_admission=_endpoint_admission,
+        )
         fb_text, fb_ok, fb_reason = fallback_call
         fallback_outcome = _as_invocation_outcome(
             fb_text, fb, failure=getattr(fb_text, "failure", None),
@@ -16698,9 +16728,15 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 merged, True, f"recovered-on-fallback ({fb_reason})",
                 "fallback", merged, fb,
             )
+        resource_failure = next((
+            outcome.failure for outcome in (primary_outcome, fallback_outcome)
+            if outcome.failure is not None
+            and outcome.failure.kind == "resource_release_failed"
+        ), None)
         failure = ModelInvocationFailure(
-            f"Gear 4 {slot} analyst exhausted primary and fallback: {fb_reason}",
-            kind="exhausted_chain",
+            f"Gear 4 {slot} analyst exhausted primary and fallback: "
+            f"{resource_failure or fb_reason}",
+            kind="resource_release_failed" if resource_failure else "exhausted_chain",
             attempted_endpoint_ids=(
                 primary_outcome.attempted_endpoint_ids
                 + fallback_outcome.attempted_endpoint_ids
@@ -16752,6 +16788,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
              breadth_invocation, breadth_used_endpoint) = _failed_analyst(
                 e, breadth_endpoint, "breadth")
+    analysts_complete = True
     # Worker-local Pipeline Health state is not visible to the request thread.
     # Aggregate the outcomes after joining, then record the one turn warning.
     _record_model_substitution_warning(depth_invocation, context_pkg)
@@ -16782,6 +16819,16 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     # continued with the degraded stream's error string standing in for a real
     # analysis; both-degraded already fell back to Gear 3.)
     if not depth_ok or not breadth_ok:
+        # A lower gear does not remove the cache that could not be evicted.
+        # Do not bypass failed admission by starting another local model there.
+        if cache_release_failure is not None:
+            context_pkg["_trace_terminal_status"] = "error"
+            _framework_execution_fail(context_pkg, str(cache_release_failure))
+            raise next((
+                invocation.failure for invocation in (depth_invocation, breadth_invocation)
+                if invocation.failure is not None
+                and invocation.failure.kind == "resource_release_failed"
+            ), cache_release_failure)
         failed = [s for s, ok in (("depth", depth_ok), ("breadth", breadth_ok))
                   if not ok]
         print(
@@ -16881,6 +16928,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             breadth_endpoint, "evaluator", 30, None,
             _images_for_endpoint(images, breadth_endpoint), context_pkg,
             slot="breadth", gear=4, config_name=config_name,
+            endpoint_admission=_endpoint_admission,
         )
         eval_b_future = _submit_with_context(executor,
             _call_with_supplement,
@@ -16889,6 +16937,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             depth_endpoint, "evaluator", 30, None,
             _images_for_endpoint(images, depth_endpoint), context_pkg,
             slot="depth", gear=4, config_name=config_name,
+            endpoint_admission=_endpoint_admission,
         )
         try:
             breadth_eval_of_depth, eval_a_ok, eval_a_reason = eval_a_future.result()
@@ -17064,6 +17113,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             depth_endpoint, "reviser", 30, None,
             _images_for_endpoint(images, depth_endpoint), context_pkg,
             slot="depth", gear=4, config_name=config_name,
+            endpoint_admission=_endpoint_admission,
         )
         breadth_revise_future = _submit_with_context(executor,
             _call_with_supplement,
@@ -17072,6 +17122,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             breadth_endpoint, "reviser", 30, None,
             _images_for_endpoint(images, breadth_endpoint), context_pkg,
             slot="breadth", gear=4, config_name=config_name,
+            endpoint_admission=_endpoint_admission,
         )
         try:
             revised_depth, depth_rev_ok, depth_rev_reason = depth_revise_future.result()
@@ -17358,6 +17409,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 breadth_endpoint, "verifier", 20, None,
                 _images_for_endpoint(images, breadth_endpoint), context_pkg,
                 slot="breadth", gear=4, config_name=config_name,
+                endpoint_admission=_endpoint_admission,
             )
             verify_breadth_future = _submit_with_context(executor,
                 _call_with_supplement,
@@ -17366,6 +17418,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 depth_endpoint, "verifier", 20, None,
                 _images_for_endpoint(images, depth_endpoint), context_pkg,
                 slot="depth", gear=4, config_name=config_name,
+                endpoint_admission=_endpoint_admission,
             )
             try:
                 depth_verdict, depth_verify_ok, depth_verify_reason = (
@@ -17585,6 +17638,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                      {"role": "user", "content": rerevise_users["depth"]}],
                     depth_endpoint, "reviser", 30, None, None, context_pkg,
                     slot="depth", gear=4, config_name=config_name,
+                    endpoint_admission=_endpoint_admission,
                 )
             if not breadth_unblocks:
                 rerevise_users["breadth"] = (
@@ -17599,6 +17653,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                      {"role": "user", "content": rerevise_users["breadth"]}],
                     breadth_endpoint, "reviser", 30, None, None, context_pkg,
                     slot="breadth", gear=4, config_name=config_name,
+                    endpoint_admission=_endpoint_admission,
                 )
             if "depth" in futures:
                 _depth_rerev_ok, _depth_rerev_reason = True, "ok"
@@ -17839,6 +17894,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         images=_images_for_endpoint(images, consolidator_endpoint),
         context_pkg=context_pkg,
         slot="consolidation", gear=4, config_name=config_name,
+        endpoint_admission=_endpoint_admission,
     )
     _record_model_substitution_warning(consolidated, context_pkg)
     _record("step7-consolidated", consol_ok, consol_reason)
@@ -17954,6 +18010,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         format_messages, formatter_endpoint, "formatter",
         min_chars=30, retry_hint=None, images=None,
         slot="formatter", gear=4, config_name=config_name,
+        endpoint_admission=_endpoint_admission,
     )
     _record_model_substitution_warning(formatted, context_pkg)
     _record("step8-formatted", format_ok, format_reason)
@@ -17999,6 +18056,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 _retry_msgs, formatter_endpoint, "formatter-leak-retry",
                 min_chars=30, retry_hint=None, images=None,
                 slot="formatter", gear=4, config_name=config_name,
+                endpoint_admission=_endpoint_admission,
             )
             _record_model_substitution_warning(_re_fmt, context_pkg)
             _require_model_success(
@@ -18142,6 +18200,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 min_chars=30, retry_hint=None,
                 images=_images_for_endpoint(images, gate_endpoint),
                 slot="verification", gear=4, config_name=config_name,
+                endpoint_admission=_endpoint_admission,
             )
         except Exception as e:
             failure = (
@@ -18226,6 +18285,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 _qg_fmt_msgs, formatter_endpoint, "formatter-quality-redo",
                 min_chars=30, retry_hint=None, images=None,
                 slot="formatter", gear=4, config_name=config_name,
+                endpoint_admission=_endpoint_admission,
             )
             _record_model_substitution_warning(_qg_re_fmt, context_pkg)
             _trace_step("step8_6-quality-gate-formatting-redo", {
@@ -18286,6 +18346,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 images=_images_for_endpoint(images, consolidator_endpoint),
                 context_pkg=context_pkg,
                 slot="consolidation", gear=4, config_name=config_name,
+                endpoint_admission=_endpoint_admission,
             )
             _record_model_substitution_warning(_qg_re_consol, context_pkg)
             _trace_step("step8_6-quality-gate-reconsolidate", {
@@ -18337,6 +18398,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     "formatter-after-reconsolidate",
                     min_chars=30, retry_hint=None, images=None,
                     slot="formatter", gear=4, config_name=config_name,
+                    endpoint_admission=_endpoint_admission,
                 )
                 _record_model_substitution_warning(_qg_re_fmt2, context_pkg)
                 _trace_step("step8_6-quality-gate-reformat", {
@@ -19843,14 +19905,15 @@ _mlx_cache: dict = {}  # {model_path: (model_obj, tokenizer)}
 
 
 def evict_mlx_model(model_path: str | os.PathLike) -> bool:
-    """Evict every cached MLX entry resolving to ``model_path``.
+    """Ensure no cached MLX entry resolves to ``model_path``; return success.
+
+    An already-absent entry is successful release, not an eviction failure.
 
     Callers performing filesystem mutation must hold the model's machine mutex
     while invoking this helper so no inference can retain or recreate the cache
     entry between eviction and the mutation.
     """
     canonical = os.path.realpath(os.path.expanduser(os.fspath(model_path)))
-    removed = False
     for cached_path in list(_mlx_cache):
         try:
             cached_canonical = os.path.realpath(
@@ -19860,8 +19923,7 @@ def evict_mlx_model(model_path: str | os.PathLike) -> bool:
             continue
         if cached_canonical == canonical:
             _mlx_cache.pop(cached_path, None)
-            removed = True
-    return removed
+    return True
 
 
 def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> str:

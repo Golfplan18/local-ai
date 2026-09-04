@@ -109,23 +109,30 @@ class TestGear4NoShortCircuit(unittest.TestCase):
                 "ram_resident_gb": ram, "ram_overhead_gb": 0,
             }
 
-        for failed_slot, depth_ram, breadth_ram, fallback, available, expected_releases in (
-            (None, 55, 40, None, 100, ["depth"]),
-            (None, 10, 10, None, 100, []),
-            ("depth", 55, 40, local("small", 10), 100, ["depth"]),
-            ("depth", 55, 40, {"id": "api", "name": "api", "type": "api"}, 100, ["depth"]),
-            ("depth", 55, 40, local("breadth", 40), 100, ["depth"]),
-            ("breadth", 35, 10, local("large", 50, "ollama"), 100, ["depth"]),
+        api = {"id": "api", "name": "api", "type": "api"}
+        for failed_slot, depth_ram, breadth_ram, fallback, available, expected_releases, release_ok, terminal_failure in (
+            (None, 55, 40, None, 100, ["depth"], True, False),
+            (None, 10, 10, None, 100, [], True, False),
+            ("depth", 55, 40, local("small", 10), 100, ["depth"], True, False),
+            ("depth", 55, 40, api, 100, ["depth"], True, False),
+            ("depth", 55, 40, local("breadth", 40), 100, ["depth"], True, False),
+            ("breadth", 35, 10, local("large", 50, "ollama"), 100, ["depth"], True, False),
             ("both", 0, 0, {
                 "depth": local("local-depth", 35),
                 "breadth": local("large", 50, "ollama"),
-            }, 100, ["local-depth"]),
+            }, 100, ["local-depth"], True, False),
             ("both", 0, 0, {
                 "depth": local("local-depth", 35),
                 "breadth": local("large", 50, "ollama"),
-            }, None, []),
+            }, None, [], True, False),
+            (None, 55, 40, None, 100, ["depth"], False, True),
+            (None, 55, 40, api, 100, ["depth"], False, False),
+            ("api", 55, 40, api, 100, ["depth"], False, True),
+            ("breadth", 35, 10, local("large", 50, "ollama"), 100, ["depth"], False, True),
+            (None, 55, 40, local("large", 50), 100, ["depth", "depth"], False, True),
+            ("formatter-api", 55, 40, api, 100, ["depth"], False, True),
         ):
-            with self.subTest(failed_slot=failed_slot, fallback=fallback):
+            with self.subTest(failed_slot=failed_slot, fallback=fallback, release_ok=release_ok):
                 depth, breadth = local("depth", depth_ram), local("breadth", breadth_ram)
                 if failed_slot == "both":
                     depth["type"] = breadth["type"] = "api"
@@ -135,10 +142,15 @@ class TestGear4NoShortCircuit(unittest.TestCase):
                 breadth_started = threading.Event()
 
                 def fallback_for(slot, *_args, **_kwargs):
+                    if failed_slot == "formatter-api" and slot == "formatter":
+                        return breadth
                     return fallback[slot] if failed_slot == "both" else fallback
 
                 def supplement(_messages, endpoint, step_name, *args, **kwargs):
                     if step_name != "analyst":
+                        events.append((step_name, endpoint["name"]))
+                        if failed_slot == "formatter-api" and step_name == "formatter":
+                            return ("[Error] API transport failed", False, "transport failure")
                         return ("substantive model output " * 20, True, "ok")
                     name = endpoint["name"]
                     events.append(("call", name))
@@ -169,32 +181,67 @@ class TestGear4NoShortCircuit(unittest.TestCase):
                 def release(endpoint, *, mlx_evictor=None):
                     self.assertNotIn(endpoint["name"], active)
                     events.append(("release", endpoint["name"]))
-                    return True
+                    if failed_slot == "depth" and fallback == breadth:
+                        # Loading failed before caching the primary. Confirmed
+                        # absence must allow its configured 40 GB fallback.
+                        self.assertNotIn(endpoint["model_path"], boot._mlx_cache)
+                        return memory.release_kv_cache(endpoint, mlx_evictor=mlx_evictor)
+                    return release_ok
+
+                def model_call(messages, endpoint, images=None):
+                    step_name = boot._CALL_METADATA_CV.get()["step"].split(":")[0]
+                    return supplement(messages, endpoint, step_name)[0]
 
                 with mock.patch.object(
                     boot, "resolve_gear4_endpoints",
                     return_value=boot.Gear4EndpointResolution(depth, breadth, True, 4),
                 ), mock.patch.object(memory, "get_available_ram_gb", return_value=available), \
                      mock.patch.object(memory, "get_total_ram_gb", return_value=128), \
+                     mock.patch.object(boot, "_mlx_cache", {}), \
                      mock.patch.object(boot, "release_kv_cache", side_effect=release), \
                      mock.patch.object(boot, "_resolve_fallback_endpoint", side_effect=fallback_for), \
+                     mock.patch.object(boot, "get_slot_endpoint", return_value=api), \
                      mock.patch.object(boot, "_assemble_step_prompt", return_value="system"), \
-                     mock.patch.object(boot, "_call_with_supplement", side_effect=supplement), \
-                     mock.patch.object(boot, "_call_with_retry", return_value=("output " * 50, True, "ok")), \
+                     mock.patch.object(boot, "_run_model_with_tools", side_effect=model_call), \
                      mock.patch.object(boot, "_extract_structured_verdict", return_value="PASS"), \
-                     mock.patch.object(boot, "run_gear3") as gear3:
-                    result = boot.run_gear4({"cleaned_prompt": "test", "trace_dir": None}, {})
+                     mock.patch.object(boot, "run_gear3") as gear3, \
+                     mock.patch.object(boot, "_framework_mark_success") as mark_success:
+                    context_pkg = {"cleaned_prompt": "test", "trace_dir": None}
+                    if terminal_failure:
+                        with self.assertRaises(boot.ModelInvocationFailure) as raised:
+                            boot.run_gear4(context_pkg, {})
+                        self.assertEqual(raised.exception.kind, "resource_release_failed")
+                        self.assertIn("depth", str(raised.exception))
+                        mark_success.assert_not_called()
+                        if failed_slot != "formatter-api":
+                            self.assertEqual(context_pkg.get("_trace_terminal_status"), "error")
+                            self.assertFalse(any(kind not in {"call", "done", "release"} for kind, _ in events))
+                        else:
+                            self.assertIn(("formatter", "api"), events)
+                    else:
+                        result = boot.run_gear4(context_pkg, {})
+                        self.assertIsInstance(result, str)
+                        self.assertTrue(result.strip())
 
-                self.assertIsInstance(result, str)
                 gear3.assert_not_called()
-                self.assertEqual([name for kind, name in events if kind == "release"], expected_releases)
                 self.assertFalse(any(overlap), events)
-                if failed_slot is None and expected_releases:
+                if not release_ok:
+                    self.assertTrue(any(kind == "release" for kind, _ in events))
+                    self.assertEqual(set(name for kind, name in events if kind == "release"), {"depth"})
+                    blocked = "large" if failed_slot == "breadth" else "breadth"
+                    self.assertFalse(any(name == blocked for kind, name in events if kind != "release"), events)
+                    if fallback is api:
+                        self.assertIn(("call", "api"), events)
+                    if terminal_failure and fallback is not None and fallback["type"] == "local":
+                        self.assertNotIn(("call", "large"), events)
+                else:
+                    self.assertEqual([name for kind, name in events if kind == "release"], expected_releases)
+                if release_ok and failed_slot is None and expected_releases:
                     self.assertEqual(events[:4], [
                         ("call", "depth"), ("done", "depth"),
                         ("release", "depth"), ("call", "breadth"),
                     ])
-                elif failed_slot is None:
+                elif release_ok and failed_slot is None:
                     self.assertLess(events.index(("call", "breadth")), events.index(("done", "depth")))
 
     def test_missing_gear4_endpoints_are_an_explicit_typed_failure(self):
