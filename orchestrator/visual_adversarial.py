@@ -179,9 +179,16 @@ def _template_trap_hits(envelope: dict) -> list[tuple[str, str]]:
 
 QUANT_TYPES = {"comparison", "time_series", "distribution", "scatter", "heatmap", "tornado"}
 
-_PROSE_NUMBER_RE = re.compile(
-    r"(?<![A-Za-z0-9_])[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:\s*%)?"
+# Group only complete three-digit runs with one consistent separator. Do not
+# join comma-separated lists, line breaks, or a prefix/suffix of malformed groups.
+_NUMBER_RE = re.compile(
+    r"(?<![A-Za-z0-9_])[-+]?"
+    r"(?:(?:(?=\d{1,3}(?P<group>[, \u00a0\u2009\u202f'’]))"
+    r"(?<!\d(?P=group))\d{1,3}(?P=group)\d{3}"
+    r"(?:(?P=group)\d{3})*(?!\d|(?P=group)\d)|\d+)(?:\.\d+)?|\.\d+)"
+    r"(?:[eE][-+]?\d+)?(?:\s*%)?"
 )
+_NUMBER_TRANSLATION = str.maketrans("", "", ", \t\r\n\u00a0\u2009\u202f'’%")
 
 
 def _t1_lie_factor(envelope: dict, vtype: str) -> list[Finding]:
@@ -318,7 +325,7 @@ def _numeric_grounding(envelope: dict, vtype: str,
     """
     if not prose or not vtype or vtype == "annotated_image":
         return []
-    values: list[float] = []
+    values: list[tuple[str, bool]] = []
     structural_keys = {
         "id", "node_id", "edge_id", "source", "target", "from", "to",
         "source_id", "target_id", "parent_id", "semantic_element_id",
@@ -334,8 +341,8 @@ def _numeric_grounding(envelope: dict, vtype: str,
         if key and key.lower().replace("-", "_") in structural_keys:
             return
         if isinstance(value, (int, float)):
-            if math.isfinite(float(value)):
-                values.append(float(value))
+            if isinstance(value, int) or math.isfinite(value):
+                values.append((str(value), False))
             return
         if isinstance(value, str):
             # Structural references such as ``node-1`` and ``edge:2`` are
@@ -343,14 +350,10 @@ def _numeric_grounding(envelope: dict, vtype: str,
             # valid parsed DAG/C4/Mermaid relationship fail grounding.
             if re.fullmatch(r"[A-Za-z_]+[-_:][A-Za-z0-9_.:-]+", value.strip()):
                 return
-            for token in re.findall(
-                r"(?<![A-Za-z0-9_])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?%?",
-                value,
-            ):
-                try:
-                    values.append(float(token.rstrip("%")))
-                except ValueError:
-                    pass
+            for match in _NUMBER_RE.finditer(value):
+                token = match.group()
+                values.append((token.translate(_NUMBER_TRANSLATION),
+                               token.rstrip().endswith("%")))
             return
         if isinstance(value, dict):
             for child_key, child in value.items():
@@ -372,35 +375,75 @@ def _numeric_grounding(envelope: dict, vtype: str,
             })
         else:
             collect((spec.get("data") or {}).get("values") or [])
-        values.extend(_numeric_series(spec))
+        # Preserve the original plotted value even when its field name would
+        # otherwise be treated as a structural reference. Do not round to float.
+        yfield = ((spec.get("encoding") or {}).get("y") or {}).get("field")
+        for row in (spec.get("data") or {}).get("values") or []:
+            if yfield and isinstance(row, dict):
+                collect(row.get(yfield))
     else:
         collect(spec)
     if not values:
         return []
 
-    def norm(value: float) -> str:
-        return f"{value:.12g}"
+    def norm(value: str, shift: int = 0) -> tuple[int, int, str]:
+        # Keep sign, decimal-point position, and significant digits separate.
+        # Neither exact comparison nor percent conversion expands the exponent.
+        coefficient, _, power = value.lower().partition("e")
+        whole, _, fraction = coefficient.lstrip("+-").partition(".")
+        digits = "".join(str(int(digit)) for digit in whole + fraction).lstrip("0")
+        if not digits:
+            return (0, 0, "")
+        exponent = 0
+        for digit in power.lstrip("+-"):
+            exponent = exponent * 10 + int(digit)
+        if power.startswith("-"):
+            exponent = -exponent
+        return (-1 if coefficient.startswith("-") else 1,
+                exponent + len(digits) - len(fraction) + shift,
+                digits.rstrip("0"))
 
     prose_numbers = set()
-    for match in _PROSE_NUMBER_RE.findall(prose):
-        token = match.replace(" ", "").rstrip("%")
+    prose_unmarked_numbers = set()
+    prose_percent_numbers = set()
+    for match in _NUMBER_RE.finditer(prose):
+        token = match.group()
         try:
-            number = float(token)
-            prose_numbers.add(norm(number))
-            if match.rstrip().endswith("%"):
-                prose_numbers.add(norm(number / 100.0))
-            elif 0 < abs(number) < 1:
-                prose_numbers.add(norm(number * 100.0))
+            value = token.translate(_NUMBER_TRANSLATION)
+            number = norm(value)
+            prose_numbers.add(number)
+            if token.rstrip().endswith("%"):
+                prose_percent_numbers.add(number)
+                prose_numbers.add(norm(value, -2))
+            else:
+                prose_unmarked_numbers.add(number)
+                if number[0] and number[1] <= 0:
+                    prose_numbers.add(norm(value, 2))
         except ValueError:
             continue
 
-    missing = [value for value in sorted(set(values)) if norm(value) not in prose_numbers]
+    # Explicit percentages must match the original unit: a converted 1250
+    # from prose 125000% cannot ground a label claiming 1250%.
+    missing = set()
+    for value, is_percent in values:
+        number = norm(value)
+        if is_percent:
+            grounded = (number in prose_percent_numbers
+                        or norm(value, -2) in prose_unmarked_numbers)
+        else:
+            grounded = number in prose_numbers
+        if not grounded:
+            missing.add(value)
+    # The compact magnitude order reverses for negatives; zero sorts between
+    # the negative and positive values without padding significant digits.
+    missing = (sorted((v for v in missing if norm(v)[0] < 0), key=norm, reverse=True)
+               + sorted((v for v in missing if norm(v)[0] >= 0), key=norm))
     if not missing:
         return []
     return [Finding(
         rule="grounding.numeric",
         severity="Critical",
-        message=("quantitative values " + ", ".join(norm(v) for v in missing)
+        message=("quantitative values " + ", ".join(missing)
                  + " are not present in the accepted prose"),
         path="spec.data.values",
         suggestion="Ground every plotted value in the final prose or omit the unsupported mark.",
