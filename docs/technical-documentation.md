@@ -1439,7 +1439,7 @@ new-Dialogue or Dialogue-selection events. With no descriptor, the placeholder
 is empty and none of those registrations execute.
 
 **Media and render flow.** The plugin library records conversation-owned
-references and metadata. Timeline state is normalized on read and write, and
+references and metadata. Protected media-reference removal compares the approved entry with the current cached entry under the existing media-library lock and returns `409` without removing a substituted entry, while the route retains core state-file reauthentication immediately before the protected effect. Timeline state is normalized on read and write, and
 render receives a snapshot of the timeline and library rather than reading a
 moving edit. FFmpeg performs trimming, padding, overlays, watermarking, mixing,
 encoding, preview frames/proxies, waveform work, and capture where the host

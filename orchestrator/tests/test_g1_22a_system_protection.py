@@ -1017,6 +1017,63 @@ class TestApprovalAndReceipts(SystemProtectionBase):
             )
 
 
+class TestMediaReferenceBoundary(SystemProtectionBase):
+    def test_media_reference_delete_refuses_substituted_cached_entry(self):
+        from server import app as server  # configures the built-in video plugin
+        from plugins.video import routes as video_routes
+        from plugins.video.backend import media_library
+
+        entry_id = "entry-1"
+        approved_entry = {
+            "id": entry_id,
+            "display_name": "approved.mov",
+            "source_path": str(self.root / "approved.mov"),
+        }
+        substituted_entry = {
+            "id": entry_id,
+            "display_name": "substituted.mov",
+            "source_path": str(self.root / "substituted.mov"),
+        }
+        library = object.__new__(media_library.MediaLibrary)
+        library.conversation_id = "media-race"
+        library._lock = threading.Lock()
+        library._deleted = False
+        library.state_path = self.root / "media-library.json"
+        library.thumbnails_dir = self.root / "thumbnails"
+        library._entries = [dict(approved_entry)]
+
+        context = mock.Mock()
+        context.valid_live_conversation_id.return_value = True
+        context.cross_site_mutation_response.return_value = None
+        context.conversation_lifecycle_lock.side_effect = (
+            lambda _conversation_id: server._conversation_lifecycle_guard
+        )
+        context.is_conversation_deleted.return_value = False
+
+        def substitute_before_effect(**kwargs):
+            self.assertEqual(kwargs["entry"], approved_entry)
+            with library._lock:
+                library._entries = [dict(substituted_entry)]
+            return kwargs["effect"]()
+
+        context.protected_media_reference_delete.side_effect = (
+            substitute_before_effect
+        )
+        with mock.patch.object(video_routes, "_context", context), \
+                mock.patch.object(
+                    video_routes.media_library, "get_library",
+                    return_value=library,
+                ):
+            response = video_routes._library_remove("media-race", entry_id)
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.get_json(),
+            {"error": "entry changed before deletion"},
+        )
+        self.assertEqual(library.get_entry(entry_id), substituted_entry)
+
+
 class TestCredentialBoundary(SystemProtectionBase):
     @mock.patch.object(credential_tool.provider_registry, "keyring_username_map")
     @mock.patch.object(credential_tool.keyring, "get_password")

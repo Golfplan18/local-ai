@@ -293,7 +293,9 @@ def _library_remove(conversation_id, entry_id):
                 entry_id=entry_id,
                 entry=entry,
                 state_path=library.state_path,
-                effect=lambda: library.remove(entry_id),
+                effect=lambda: library.remove(
+                    entry_id, expected_entry=entry,
+                ),
             )
             if not removed:
                 return _json({"error": "entry changed before deletion"}, 409)
