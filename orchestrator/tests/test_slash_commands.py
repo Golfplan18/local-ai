@@ -499,6 +499,12 @@ class TestDispatcherBehavior(unittest.TestCase):
             load_project_snapshot=real_registry.load_project_snapshot,
             _pointer_path=lambda nexus: real_registry._pointer_path(
                 nexus, pointer_dir=str(pointer_dir)),
+            prepare_pointer_mutation=lambda nexus, *, require_registered:
+                real_registry.prepare_pointer_mutation(
+                    nexus,
+                    pointer_dir=str(pointer_dir),
+                    require_registered=require_registered,
+                ),
             register_project=register,
         )
         return temporary, project_root, manifest, pointer_dir, registry, register
