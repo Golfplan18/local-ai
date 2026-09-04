@@ -1,6 +1,12 @@
 """Targeted file editing — replace a unique string in a file."""
 
 import os
+import stat
+
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
 
 def edit_file(file_path: str, old_string: str, new_string: str) -> dict:
@@ -21,7 +27,7 @@ def edit_file(file_path: str, old_string: str, new_string: str) -> dict:
         return {"success": False,
                 "error": "BLOCKED: authority classification unavailable"}
 
-    file_path = os.path.expanduser(file_path)
+    file_path = os.path.realpath(os.path.expanduser(file_path))
 
     if not os.path.isfile(file_path):
         return {"success": False, "error": f"File not found: {file_path}"}
@@ -42,8 +48,10 @@ def edit_file(file_path: str, old_string: str, new_string: str) -> dict:
     new_content = content.replace(old_string, new_string, 1)
 
     try:
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(new_content)
+        mode = stat.S_IMODE(
+            os.stat(file_path, follow_symlinks=False).st_mode
+        )
+        _rp.atomic_write_text(file_path, new_content, mode=mode)
     except Exception as e:
         return {"success": False, "error": f"Write error: {e}"}
 

@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -24,6 +25,7 @@ from server.feature_plugins import (  # noqa: E402
     PluginRoute,
     load_feature_plugins,
 )
+from plugins.video import routes as video_routes  # noqa: E402
 from plugins.video.backend import media_library  # noqa: E402
 
 
@@ -534,13 +536,13 @@ class MovedRouteTests(unittest.TestCase):
         media_library.SESSIONS_ROOT = self.old_sessions
         server.rp.ORA_HOME = self.old_ora_home
 
-    def test_moved_transcript_route_returns_normalized_segments(self):
-        conversation_id = "plugin-route"
+    def _add_transcript_entry(self, conversation_id):
         session = self.sessions / conversation_id
         session.mkdir()
-        source = self.root / "clip.wav"
+        source = self.root / f"{conversation_id}.wav"
         source.write_bytes(b"fixture")
-        source.with_suffix(".whisper.json").write_text(json.dumps({
+        transcript_path = source.with_suffix(".whisper.json")
+        transcript_path.write_text(json.dumps({
             "result": {"language": "en"},
             "transcription": [{
                 "offsets": {"from": 120, "to": 780},
@@ -553,6 +555,11 @@ class MovedRouteTests(unittest.TestCase):
             "source_path": str(source),
             "kind": "audio",
         }]
+        return transcript_path
+
+    def test_moved_transcript_route_returns_normalized_segments(self):
+        conversation_id = "plugin-route"
+        self._add_transcript_entry(conversation_id)
 
         response = server.app.test_client().get(
             f"/api/media-library/{conversation_id}/entry-1/transcript"
@@ -561,6 +568,167 @@ class MovedRouteTests(unittest.TestCase):
         self.assertEqual(response.get_json()["segments"], [{
             "start_ms": 120, "end_ms": 780, "text": "hello",
         }])
+
+    def test_delete_waits_through_transcript_io_and_suggestion_response(self):
+        conversation_id = "suggestion-race"
+        transcript_path = self._add_transcript_entry(conversation_id)
+        identity = server._conversation_storage_identity(conversation_id)
+        transcript_read_started = threading.Event()
+        release_transcript_read = threading.Event()
+        suggestion_started = threading.Event()
+        release_suggestion = threading.Event()
+        response_build_started = threading.Event()
+        release_response_build = threading.Event()
+        purge_called = threading.Event()
+        observed = {}
+        suggestion_payload = {"suggestions": []}
+        original_read_text = Path.read_text
+        original_json = video_routes._json
+
+        def clear_tombstone():
+            with server._conversation_lifecycle_guard:
+                server._deleted_conversations.discard(identity)
+
+        def blocking_read_text(path, *args, **kwargs):
+            if path == transcript_path:
+                transcript_read_started.set()
+                if not release_transcript_read.wait(timeout=3):
+                    raise RuntimeError("transcript read was not released")
+            return original_read_text(path, *args, **kwargs)
+
+        def blocking_suggestion(*_args, **_kwargs):
+            suggestion_started.set()
+            if not release_suggestion.wait(timeout=3):
+                raise RuntimeError("suggestion derivation was not released")
+            return suggestion_payload
+
+        def blocking_json(payload, status=200):
+            if payload is suggestion_payload:
+                response_build_started.set()
+                if not release_response_build.wait(timeout=3):
+                    raise RuntimeError("suggestion response was not released")
+            return original_json(payload, status)
+
+        def fake_purge(cid, **_kwargs):
+            purge_called.set()
+            return {
+                "conversation_id": cid,
+                "action": "delete_forever",
+                "deleted": {},
+                "retained": {"explicit_vault_exports": True},
+                "errors": [],
+            }
+
+        def request_suggestions():
+            try:
+                observed["response"] = server.app.test_client().post(
+                    f"/api/media-library/{conversation_id}/entry-1/suggest-edits",
+                    json={"goals": "tighten"},
+                )
+            except BaseException as exc:
+                observed["request_error"] = exc
+
+        def delete_conversation():
+            try:
+                observed["delete"] = server._delete_conversation_runtime(
+                    conversation_id,
+                )
+            except BaseException as exc:
+                observed["delete_error"] = exc
+
+        clear_tombstone()
+        self.addCleanup(clear_tombstone)
+        request_thread = threading.Thread(target=request_suggestions)
+        delete_thread = None
+        with (
+            mock.patch.object(
+                video_routes.Path,
+                "read_text",
+                autospec=True,
+                side_effect=blocking_read_text,
+            ),
+            mock.patch.object(
+                video_routes.video_suggestions,
+                "generate_suggestions_heuristic",
+                side_effect=blocking_suggestion,
+            ),
+            mock.patch.object(video_routes, "_json", side_effect=blocking_json),
+            mock.patch.object(
+                server, "_assert_stealth_permanent_delete", return_value=None,
+            ),
+            mock.patch.object(
+                server,
+                "_quiesce_conversation_workers",
+                return_value={"cleaned": {}, "errors": []},
+            ),
+            mock.patch.object(
+                server,
+                "_clear_conversation_runtime_state",
+                return_value={"cleared": {}, "errors": []},
+            ),
+            mock.patch(
+                "orchestrator.conversation_closeout.delete_conversation_forever",
+                side_effect=fake_purge,
+            ),
+        ):
+            try:
+                request_thread.start()
+                self.assertTrue(transcript_read_started.wait(timeout=2))
+                delete_thread = threading.Thread(target=delete_conversation)
+                delete_thread.start()
+                self.assertFalse(purge_called.wait(timeout=0.1))
+
+                release_transcript_read.set()
+                self.assertTrue(suggestion_started.wait(timeout=2))
+                self.assertFalse(purge_called.wait(timeout=0.1))
+
+                release_suggestion.set()
+                self.assertTrue(response_build_started.wait(timeout=2))
+                self.assertFalse(purge_called.wait(timeout=0.1))
+                release_response_build.set()
+            finally:
+                release_transcript_read.set()
+                release_suggestion.set()
+                release_response_build.set()
+                request_thread.join(timeout=3)
+                if delete_thread is not None:
+                    delete_thread.join(timeout=3)
+
+        self.assertFalse(request_thread.is_alive())
+        self.assertIsNotNone(delete_thread)
+        self.assertFalse(delete_thread.is_alive())
+        self.assertNotIn("request_error", observed)
+        self.assertNotIn("delete_error", observed)
+        self.assertTrue(purge_called.is_set())
+        self.assertEqual(observed["response"].status_code, 200)
+        self.assertEqual(observed["response"].get_json(), suggestion_payload)
+
+    def test_deleted_dialogue_returns_410_without_suggestions(self):
+        conversation_id = "deleted-suggestion"
+        self._add_transcript_entry(conversation_id)
+        identity = server._conversation_storage_identity(conversation_id)
+
+        def clear_tombstone():
+            with server._conversation_lifecycle_guard:
+                server._deleted_conversations.discard(identity)
+
+        clear_tombstone()
+        self.addCleanup(clear_tombstone)
+        with server._conversation_lifecycle_guard:
+            server._deleted_conversations.add(identity)
+
+        with mock.patch.object(
+            video_routes.video_suggestions,
+            "generate_suggestions_heuristic",
+        ) as generate:
+            response = server.app.test_client().post(
+                f"/api/media-library/{conversation_id}/entry-1/suggest-edits",
+                json={"goals": "tighten"},
+            )
+
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(response.get_json(), {"status": "deleted"})
+        generate.assert_not_called()
 
 if __name__ == "__main__":
     unittest.main()

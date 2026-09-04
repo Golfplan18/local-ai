@@ -124,6 +124,213 @@ _LAST_CONTEXT_COVERAGE_CV: ContextVar[dict | None] = ContextVar(
     "last_context_coverage", default=None,
 )
 
+
+class ModelInvocationFailure(RuntimeError):
+    """Typed terminal failure for a model invocation chain.
+
+    Error strings returned by provider adapters are transport diagnostics, not
+    candidate prose.  This exception carries the identities needed to explain
+    an exhausted chain without letting those diagnostics enter output routing.
+    """
+
+    def __init__(
+        self,
+        reason: str,
+        *,
+        kind: str = "invocation_failed",
+        attempted_endpoint_ids: tuple[str, ...] = (),
+        selected_endpoint_id: str | None = None,
+        attempted_model_ids: tuple[str, ...] = (),
+        selected_model_id: str | None = None,
+    ) -> None:
+        super().__init__(reason)
+        self.kind = kind
+        self.attempted_endpoint_ids = tuple(attempted_endpoint_ids)
+        self.selected_endpoint_id = selected_endpoint_id
+        self.attempted_model_ids = tuple(attempted_model_ids)
+        self.selected_model_id = selected_model_id
+        self.substituted = bool(
+            selected_model_id
+            and attempted_model_ids
+            and selected_model_id != attempted_model_ids[0]
+        )
+
+
+class ModelInvocationOutcome(str):
+    """String-compatible successful text plus exact invocation identity.
+
+    Existing model consumers accept text, so this deliberately remains a
+    ``str``.  Required call boundaries can additionally inspect the attempted
+    and selected endpoint identities and a typed failure without a parallel
+    result framework or changes to protected consumers.
+    """
+
+    def __new__(
+        cls,
+        text: str,
+        *,
+        attempted_endpoint_ids: tuple[str, ...] = (),
+        selected_endpoint_id: str | None = None,
+        attempted_model_ids: tuple[str, ...] = (),
+        selected_model_id: str | None = None,
+        failure: ModelInvocationFailure | None = None,
+    ):
+        obj = super().__new__(cls, text)
+        obj.attempted_endpoint_ids = tuple(attempted_endpoint_ids)
+        obj.selected_endpoint_id = selected_endpoint_id
+        obj.attempted_model_ids = tuple(attempted_model_ids)
+        obj.selected_model_id = selected_model_id
+        obj.failure = failure
+        obj.substituted = bool(
+            selected_model_id
+            and attempted_model_ids
+            and selected_model_id != attempted_model_ids[0]
+        )
+        return obj
+
+
+def _endpoint_identity(endpoint: dict | None) -> str:
+    """Return the stable configured identity used for fallback disclosure."""
+    if not isinstance(endpoint, dict):
+        return "unknown"
+    return str(
+        endpoint.get("id")
+        or endpoint.get("name")
+        or endpoint.get("model_id")
+        or endpoint.get("model")
+        or "unknown"
+    )
+
+
+def _endpoint_model_identity(endpoint: dict | None) -> str:
+    """Return the effective model identity, independent of provider channel."""
+    if not isinstance(endpoint, dict):
+        return "unknown"
+    value = (
+        endpoint.get("model_id")
+        or endpoint.get("model")
+        or endpoint.get("model_path")
+        or endpoint.get("id")
+        or endpoint.get("name")
+        or "unknown"
+    )
+    return str(value)
+
+
+def _as_invocation_outcome(
+    value,
+    endpoint: dict | None,
+    *,
+    failure: ModelInvocationFailure | None = None,
+) -> ModelInvocationOutcome:
+    """Normalize mocked/legacy text while preserving outcome metadata."""
+    if isinstance(value, ModelInvocationOutcome):
+        return value
+    identity = _endpoint_identity(endpoint)
+    model_identity = _endpoint_model_identity(endpoint)
+    text = value if isinstance(value, str) else ""
+    return ModelInvocationOutcome(
+        text,
+        attempted_endpoint_ids=(identity,),
+        selected_endpoint_id=None if failure else identity,
+        attempted_model_ids=(model_identity,),
+        selected_model_id=None if failure else model_identity,
+        failure=failure,
+    )
+
+
+def _merge_invocation_outcomes(
+    outcomes: list[ModelInvocationOutcome],
+    selected: ModelInvocationOutcome | None = None,
+    failure: ModelInvocationFailure | None = None,
+) -> ModelInvocationOutcome:
+    """Combine bounded attempts into the one outcome exposed to a caller."""
+    attempted = tuple(
+        endpoint_id
+        for outcome in outcomes
+        for endpoint_id in outcome.attempted_endpoint_ids
+    )
+    attempted_models = tuple(
+        model_id
+        for outcome in outcomes
+        for model_id in outcome.attempted_model_ids
+    )
+    chosen = selected or (outcomes[-1] if outcomes else None)
+    return ModelInvocationOutcome(
+        "" if failure is not None else str(chosen or ""),
+        attempted_endpoint_ids=attempted,
+        selected_endpoint_id=(
+            chosen.selected_endpoint_id if selected is not None else None
+        ),
+        attempted_model_ids=attempted_models,
+        selected_model_id=(
+            chosen.selected_model_id if selected is not None else None
+        ),
+        failure=failure,
+    )
+
+
+def _record_model_substitution_warning(
+    outcome: object,
+    context_pkg: dict | None,
+) -> None:
+    """Emit at most one request-thread warning for an identity change."""
+    if not getattr(outcome, "substituted", False):
+        return
+    if isinstance(context_pkg, dict):
+        if context_pkg.get("_model_substitution_warning_emitted"):
+            return
+        context_pkg["_model_substitution_warning_emitted"] = True
+    attempted = tuple(getattr(outcome, "attempted_endpoint_ids", ()) or ())
+    selected = getattr(outcome, "selected_endpoint_id", None)
+    attempted_models = tuple(getattr(outcome, "attempted_model_ids", ()) or ())
+    selected_model = getattr(outcome, "selected_model_id", None)
+    try:
+        try:
+            import pipeline_health
+        except ImportError:
+            from orchestrator import pipeline_health
+        pipeline_health.record(
+            "model_substitution",
+            "The configured model did not return usable output; Ora completed "
+            f"this request with {selected_model!r} instead of "
+            f"{attempted_models[0]!r}.",
+            attempted_endpoint_ids=list(attempted),
+            selected_endpoint_id=selected,
+            attempted_model_ids=list(attempted_models),
+            selected_model_id=selected_model,
+        )
+    except Exception as exc:
+        print(
+            f"[pipeline-health] model substitution warning unavailable: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
+def _require_model_success(
+    outcome: object,
+    ok: bool,
+    reason: str,
+    step_name: str,
+) -> None:
+    """Stop a required stage before its failed value can become candidate text."""
+    if ok:
+        return
+    failure = getattr(outcome, "failure", None)
+    if isinstance(failure, ModelInvocationFailure):
+        raise failure
+    raise ModelInvocationFailure(
+        f"{step_name} exhausted its configured model attempts: {reason}",
+        kind="exhausted_chain",
+        attempted_endpoint_ids=tuple(
+            getattr(outcome, "attempted_endpoint_ids", ()) or ()
+        ),
+        attempted_model_ids=tuple(
+            getattr(outcome, "attempted_model_ids", ()) or ()
+        ),
+    )
+
 # User-selected ceiling for historical input.  It is a maximum, never a fill
 # target; the endpoint window and the current call's required payload normally
 # make the actual allowance smaller.
@@ -3274,13 +3481,18 @@ def resolve_single_pass_endpoint(config: dict, gear: int,
             "classification",
         )
     if gear == 2:
-        endpoint = (
-            get_slot_endpoint(config, "fast", config_name=config_name)
-            or get_slot_endpoint(
-                config, "step1_cleanup", config_name=config_name)
-            or (get_active_endpoint(config) if config_name is None else None)
+        endpoint = get_slot_endpoint(
+            config, "fast", config_name=config_name)
+        if endpoint is not None:
+            return endpoint, "gear2_rag_lookup"
+        endpoint = get_slot_endpoint(
+            config, "step1_cleanup", config_name=config_name)
+        if endpoint is not None:
+            return endpoint, "step1_cleanup"
+        return (
+            get_active_endpoint(config) if config_name is None else None,
+            "gear2_rag_lookup",
         )
-        return endpoint, "gear2_rag_lookup"
     raise ValueError("single-pass endpoint resolution only supports Gear 1 or 2")
 
 
@@ -3336,11 +3548,32 @@ def list_interactive_endpoints() -> list[dict]:
     ]
 
 
+@dataclass(frozen=True)
+class Gear4EndpointResolution:
+    """Gear-4 endpoints plus independent execution and scheduling facts.
+
+    Iteration intentionally preserves the historical three-value contract for
+    external test/extension callers.  ``effective_gear`` is separate from the
+    ``parallel_safe`` scheduling hint so serialized local Gear 4 is never
+    mistaken for a real router downgrade.
+    """
+
+    depth_endpoint: dict | None
+    breadth_endpoint: dict | None
+    parallel_safe: bool
+    effective_gear: int
+
+    def __iter__(self):
+        yield self.depth_endpoint
+        yield self.breadth_endpoint
+        yield self.parallel_safe
+
+
 def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive",
-                            config_name: str | None = None) -> tuple:
+                            config_name: str | None = None) -> Gear4EndpointResolution:
     """Resolve Gear 4 endpoints with bucket-based routing.
 
-    Returns (depth_endpoint, breadth_endpoint, parallel_safe: bool).
+    Returns selected endpoints, their scheduling safety, and effective gear.
     Uses v2 router if available, otherwise falls back to v1 logic.
 
     ``config_name`` (install Chunk 2c) selects a named configuration from
@@ -3355,15 +3588,17 @@ def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive"
         if result.gear == 4:
             depth_ep = result.assignments.get("depth")
             breadth_ep = result.assignments.get("breadth")
-            return depth_ep, breadth_ep, result.parallel_safe
+            return Gear4EndpointResolution(
+                depth_ep, breadth_ep, result.parallel_safe, 4,
+            )
         elif result.gear == 3:
-            # Router downgraded to Gear 3 — return the endpoints but mark as not parallel safe
-            # The caller (run_gear4) will fall back to run_gear3
             depth_ep = result.assignments.get("depth")
             breadth_ep = result.assignments.get("breadth")
-            return depth_ep, breadth_ep, False
+            return Gear4EndpointResolution(
+                depth_ep, breadth_ep, result.parallel_safe, 3,
+            )
         else:
-            return None, None, False
+            return Gear4EndpointResolution(None, None, False, result.gear)
 
     # V1 fallback
     depth_ep = get_slot_endpoint(config, "depth", config_name=config_name)
@@ -3395,7 +3630,9 @@ def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive"
     breadth_local = (breadth_ep or {}).get("type") == "local"
     parallel_safe = not (depth_local and breadth_local)
 
-    return depth_ep, breadth_ep, parallel_safe
+    return Gear4EndpointResolution(
+        depth_ep, breadth_ep, parallel_safe, 4,
+    )
 
 
 # --- WP-4.2 — capability-conditional vision routing ---------------------
@@ -12829,11 +13066,6 @@ def _run_pipeline_impl(user_input: str, history: list = None,
 
     elif gear >= 4:
         # Gear 4+: Parallel independent analysis
-        # KV cache release check for sequential fallback
-        if RESILIENCE_AVAILABLE and should_release_kv_cache(config):
-            depth_model = config.get("slot_assignments", {}).get("depth", "")
-            if depth_model:
-                release_kv_cache(depth_model)
         response = run_gear4(context_pkg, config, history,
                              execution_context=execution_context,
                              config_name=config_name)
@@ -12943,10 +13175,38 @@ def _run_model_with_tools(messages: list, endpoint: dict,
     stage_tokens = set_model_stage_context(step_name)
     try:
         with tool_loop_context():
-            return _run_model_with_tools_impl(
-                messages, endpoint, max_iterations=max_iterations,
-                images=images, trace_dir=trace_dir, step_name=step_name,
+            try:
+                raw = _run_model_with_tools_impl(
+                    messages, endpoint, max_iterations=max_iterations,
+                    images=images, trace_dir=trace_dir, step_name=step_name,
+                )
+            except (TerminalInputAbort, ModelInvocationFailure):
+                raise
+            except Exception as exc:
+                identity = _endpoint_identity(endpoint)
+                model_identity = _endpoint_model_identity(endpoint)
+                raise ModelInvocationFailure(
+                    f"{step_name or 'model invocation'} raised: {exc}",
+                    kind="transport_exception",
+                    attempted_endpoint_ids=(identity,),
+                    attempted_model_ids=(model_identity,),
+                ) from exc
+
+            outcome = _as_invocation_outcome(raw, endpoint)
+            healthy, reason = _step_output_health(
+                str(outcome), step_name or "model-invocation", min_chars=1,
             )
+            if not healthy:
+                identity = _endpoint_identity(endpoint)
+                model_identity = _endpoint_model_identity(endpoint)
+                kind = "empty_output" if not str(outcome).strip() else "error_output"
+                raise ModelInvocationFailure(
+                    f"{step_name or 'model invocation'} failed: {reason}",
+                    kind=kind,
+                    attempted_endpoint_ids=(identity,),
+                    attempted_model_ids=(model_identity,),
+                )
+            return outcome
     finally:
         # Do not restore a stale request-context count after this loop ends;
         # the next dispatcher call in the request must start clean as well.
@@ -13053,8 +13313,74 @@ def run_single_pass_with_tools(messages: list, endpoint: dict, *,
     history_token = set_dialogue_history_context(history)
     optional_token = _set_context_units_from_package(context_pkg)
     try:
-        return _run_model_with_tools(
-            messages, endpoint, images=images, step_name=step_name)
+        current_endpoint = endpoint
+        attempted: list[ModelInvocationOutcome] = []
+        excluded_endpoint_ids: set[str] = set()
+        last_reason = "no endpoint attempt completed"
+
+        while current_endpoint is not None:
+            call_result = _call_with_retry(
+                messages,
+                current_endpoint,
+                step_name,
+                min_chars=1,
+                retry_hint=None,
+                images=images,
+                # A Gear-1/2 endpoint gets one same-model retry before the
+                # exact configured cell advances.  The outer loop owns chain
+                # traversal so exclusions accumulate and a later entry can
+                # never circle back to an earlier model.
+                slot=slot,
+                gear=None,
+                config_name=config_name,
+            )
+            text, ok, last_reason = call_result
+            outcome = _as_invocation_outcome(
+                text,
+                current_endpoint,
+                failure=getattr(text, "failure", None),
+            )
+            attempted.append(outcome)
+            if ok:
+                merged = _merge_invocation_outcomes(
+                    attempted, selected=outcome,
+                )
+                _record_model_substitution_warning(merged, context_pkg)
+                return merged
+
+            excluded_endpoint_ids.update(outcome.attempted_endpoint_ids)
+            next_endpoint = _resolve_fallback_endpoint(
+                slot,
+                gear,
+                current_endpoint,
+                config_name=config_name,
+                require_vision=bool(images),
+                excluded_ids=excluded_endpoint_ids,
+            )
+            if next_endpoint is None:
+                break
+            next_id = _endpoint_identity(next_endpoint)
+            if next_id in excluded_endpoint_ids:
+                break
+            current_endpoint = next_endpoint
+
+        attempted_endpoint_ids = tuple(
+            endpoint_id
+            for outcome in attempted
+            for endpoint_id in outcome.attempted_endpoint_ids
+        )
+        attempted_model_ids = tuple(
+            model_id
+            for outcome in attempted
+            for model_id in outcome.attempted_model_ids
+        )
+        raise ModelInvocationFailure(
+            f"{step_name} exhausted the configured {slot!r} model chain: "
+            f"{last_reason}",
+            kind="exhausted_chain",
+            attempted_endpoint_ids=attempted_endpoint_ids,
+            attempted_model_ids=attempted_model_ids,
+        )
     finally:
         if isinstance(context_pkg, dict):
             context_pkg["context_coverage"] = get_context_coverage()
@@ -14007,6 +14333,7 @@ def _resolve_fallback_endpoint(slot: str, gear: int,
                                config_name: str | None = None,
                                *,
                                require_vision: bool = False,
+                               excluded_ids: set[str] | None = None,
                                ) -> dict | None:
     """Resolve the next endpoint in the slot's fallback chain.
 
@@ -14053,16 +14380,18 @@ def _resolve_fallback_endpoint(slot: str, gear: int,
         except Exception:
             use_vision_chain = False
     try:
+        cumulative_exclusions = set(excluded_ids or ())
+        cumulative_exclusions.add(current_id)
         if use_vision_chain:
             next_ep = router.resolve_vision_fallback(
                 slot, gear, context,
-                excluded_ids={current_id},
+                excluded_ids=cumulative_exclusions,
                 config_name=config_name,
             )
         else:
             next_ep = router.resolve_endpoint(
                 slot, gear, context,
-                excluded_ids={current_id},
+                excluded_ids=cumulative_exclusions,
                 config_name=config_name,
             )
     except Exception:
@@ -14384,15 +14713,25 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
         gap_ok, gap_reason = _step_output_health(
             rewritten, step_name, min_chars=min_chars,
         )
-        return rewritten, gap_ok, gap_reason
+        source = text_value if isinstance(text_value, ModelInvocationOutcome) else None
+        return ModelInvocationOutcome(
+            rewritten,
+            attempted_endpoint_ids=(
+                source.attempted_endpoint_ids if source else ()
+            ),
+            selected_endpoint_id=(source.selected_endpoint_id if source else None),
+            attempted_model_ids=(source.attempted_model_ids if source else ()),
+            selected_model_id=(source.selected_model_id if source else None),
+        ), gap_ok, gap_reason
 
     try:
-        text, ok, reason = _call_with_retry(
+        outcome = _call_with_retry(
             original, endpoint, step_name,
             min_chars=min_chars, retry_hint=retry_hint, images=images,
             slot=slot, gear=gear, config_name=config_name,
             allow_supplement_request=True,
         )
+        text, ok, reason = outcome
         while True:
             coverage = _LAST_CONTEXT_COVERAGE_CV.get() or {}
             selected_now = {
@@ -14402,7 +14741,7 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
             seen_unit_ids.update(selected_now)
             request = _parse_supplemental_request(text)
             if request is None:
-                return text, ok, reason
+                return outcome
 
             gap_key = _supplement_gap_key(request)
             if gap_key in seen_gaps:
@@ -14452,12 +14791,13 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
                     "deferred units exist but none fit the current call budget",
                 )
 
-            next_text, next_ok, next_reason = _call_with_retry(
+            next_outcome = _call_with_retry(
                 original, endpoint, step_name,
                 min_chars=min_chars, retry_hint=retry_hint, images=images,
                 slot=slot, gear=gear, config_name=config_name,
                 allow_supplement_request=True,
             )
+            next_text, next_ok, next_reason = next_outcome
             next_coverage = _LAST_CONTEXT_COVERAGE_CV.get() or {}
             selected_after = [
                 str(unit_id)
@@ -14483,10 +14823,11 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
                         next_text, repeated,
                         "repacked call selected no previously unseen unit",
                     )
-                return next_text, next_ok, next_reason
+                return next_outcome
             seen_unit_ids.update(actual_new)
-            text, ok, reason = next_text, next_ok, next_reason
-        return text, ok, reason
+            outcome = next_outcome
+            text, ok, reason = outcome
+        return outcome
     finally:
         try:
             _PROMOTED_CONTEXT_UNITS_CV.reset(promotion_token)
@@ -14526,21 +14867,50 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
         "config_name": config_name,
     }
     _call_meta_token = _CALL_METADATA_CV.set(_call_meta)
+    attempts: list[ModelInvocationOutcome] = []
     try:
-        text = _run_model_with_tools(list(messages), endpoint, images=images)
-    except Exception as e:
-        text = f"[{step_name} call error: {e}]"
+        first = _as_invocation_outcome(
+            _run_model_with_tools(list(messages), endpoint, images=images),
+            endpoint,
+        )
+    except TerminalInputAbort:
+        raise
+    except ModelInvocationFailure as exc:
+        first = _as_invocation_outcome("", endpoint, failure=exc)
+    except Exception as exc:
+        identity = _endpoint_identity(endpoint)
+        model_identity = _endpoint_model_identity(endpoint)
+        failure = ModelInvocationFailure(
+            f"{step_name} call raised: {exc}",
+            kind="transport_exception",
+            attempted_endpoint_ids=(identity,),
+            attempted_model_ids=(model_identity,),
+        )
+        first = _as_invocation_outcome("", endpoint, failure=failure)
     finally:
         try:
             _CALL_METADATA_CV.reset(_call_meta_token)
         except Exception:
             pass
-    text = _strip_dispatch_noise(text)
-    ok, reason = _step_output_health(text, step_name, min_chars=min_chars)
+    attempts.append(first)
+    text = _strip_dispatch_noise(str(first))
+    if first.failure is not None:
+        ok, reason = False, str(first.failure)
+    else:
+        ok, reason = _step_output_health(
+            text, step_name, min_chars=min_chars,
+        )
     if ok:
-        return text, True, reason
+        selected = ModelInvocationOutcome(
+            text,
+            attempted_endpoint_ids=first.attempted_endpoint_ids,
+            selected_endpoint_id=first.selected_endpoint_id,
+            attempted_model_ids=first.attempted_model_ids,
+            selected_model_id=first.selected_model_id,
+        )
+        return selected, True, reason
     if allow_supplement_request and _parse_supplemental_request(text) is not None:
-        return text, False, reason
+        return first, False, reason
 
     # Diagnostic: when the first attempt fails, dump its endpoint + failure
     # reason + a short signature of the response to the server log. Lets
@@ -14607,21 +14977,46 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
         **_call_meta, "step": f"{step_name}:retry",
     })
     try:
-        text2 = _run_model_with_tools(retry_msgs, target_endpoint, images=images)
-    except Exception as e:
-        text2 = f"[{step_name} retry error: {e}]"
+        second = _as_invocation_outcome(
+            _run_model_with_tools(retry_msgs, target_endpoint, images=images),
+            target_endpoint,
+        )
+    except TerminalInputAbort:
+        raise
+    except ModelInvocationFailure as exc:
+        second = _as_invocation_outcome("", target_endpoint, failure=exc)
+    except Exception as exc:
+        identity = _endpoint_identity(target_endpoint)
+        model_identity = _endpoint_model_identity(target_endpoint)
+        failure = ModelInvocationFailure(
+            f"{step_name} retry raised: {exc}",
+            kind="transport_exception",
+            attempted_endpoint_ids=(identity,),
+            attempted_model_ids=(model_identity,),
+        )
+        second = _as_invocation_outcome(
+            "", target_endpoint, failure=failure,
+        )
     finally:
         try:
             _CALL_METADATA_CV.reset(_retry_meta_token)
         except Exception:
             pass
-    text2 = _strip_dispatch_noise(text2)
-    ok2, reason2 = _step_output_health(text2, step_name, min_chars=min_chars)
+    attempts.append(second)
+    text2 = _strip_dispatch_noise(str(second))
+    if second.failure is not None:
+        ok2, reason2 = False, str(second.failure)
+    else:
+        ok2, reason2 = _step_output_health(
+            text2, step_name, min_chars=min_chars,
+        )
     if (
         allow_supplement_request
         and _parse_supplemental_request(text2) is not None
     ):
-        return text2, False, f"retry: {reason2}"
+        return _merge_invocation_outcomes(
+            attempts, selected=second,
+        ), False, f"retry: {reason2}"
     # Diagnostic: record the retry outcome + which endpoint it hit so
     # ``[retry-diag]`` log entries form an attempt-by-attempt trace.
     try:
@@ -14635,7 +15030,37 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
         )
     except Exception:
         pass
-    return (text2 if ok2 else text2 or text), ok2, f"retry: {reason2}"
+    if ok2:
+        selected = ModelInvocationOutcome(
+            text2,
+            attempted_endpoint_ids=second.attempted_endpoint_ids,
+            selected_endpoint_id=second.selected_endpoint_id,
+            attempted_model_ids=second.attempted_model_ids,
+            selected_model_id=second.selected_model_id,
+        )
+        return _merge_invocation_outcomes(
+            attempts, selected=selected,
+        ), True, f"retry: {reason2}"
+
+    attempted_endpoint_ids = tuple(
+        endpoint_id
+        for attempt in attempts
+        for endpoint_id in attempt.attempted_endpoint_ids
+    )
+    attempted_model_ids = tuple(
+        model_id
+        for attempt in attempts
+        for model_id in attempt.attempted_model_ids
+    )
+    failure = ModelInvocationFailure(
+        f"{step_name} exhausted its bounded attempts: {reason2}",
+        kind=(second.failure.kind if second.failure else "unhealthy_output"),
+        attempted_endpoint_ids=attempted_endpoint_ids,
+        attempted_model_ids=attempted_model_ids,
+    )
+    return _merge_invocation_outcomes(
+        attempts, failure=failure,
+    ), False, f"retry: {reason2}"
 
 
 def _run_claim_verification_preflight(
@@ -15035,7 +15460,10 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
             diagnostic,
             terminal_state="degraded",
         )
-        return diagnostic
+        raise ModelInvocationFailure(
+            diagnostic,
+            kind="endpoint_resolution_failed",
+        )
 
     raw_image_recipients = (
         [depth_endpoint or breadth_endpoint]
@@ -15106,6 +15534,7 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
             min_chars=30, retry_hint=None, images=images,
             slot=slot, gear=3, config_name=config_name,
         )
+        _record_model_substitution_warning(single_result, context_pkg)
         _record("step3-single-analyst-fallback", single_ok, single_reason)
         _trace_step_g3("step3-single-analyst-fallback", {
             "system_prompt": system,
@@ -15125,6 +15554,10 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                 trace_dir, step_health, gear=3,
                 contingencies_fired=contingencies_fired,
             )
+        _require_model_success(
+            single_result, single_ok, single_reason,
+            "Gear 3 single analyst",
+        )
         return single_result
 
     # --- Step 3: Depth Analyst ---
@@ -15147,8 +15580,12 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         context_pkg=context_pkg,
         slot="depth", gear=3, config_name=config_name,
     )
+    _record_model_substitution_warning(depth_analysis, context_pkg)
     _record("step3-depth", depth_ok, depth_reason)
     _framework_require_healthy(context_pkg, "Gear 3 analyst", depth_ok, depth_reason)
+    _require_model_success(
+        depth_analysis, depth_ok, depth_reason, "Gear 3 analyst",
+    )
     _trace_step_g3("step3-depth", {
         "system_prompt": depth_system,
         "user_message": cleaned_prompt,
@@ -15189,8 +15626,12 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         context_pkg=context_pkg,
         slot="breadth", gear=3, config_name=config_name,
     )
+    _record_model_substitution_warning(breadth_evaluation, context_pkg)
     _record("step4-eval", eval_ok, eval_reason)
     _framework_require_healthy(context_pkg, "Gear 3 evaluator", eval_ok, eval_reason)
+    _require_model_success(
+        breadth_evaluation, eval_ok, eval_reason, "Gear 3 evaluator",
+    )
     # Preserve the raw response for the trace BEFORE the empty-eval
     # contingency rewrite, so audits can distinguish what the model
     # actually returned from the [no evaluator feedback...] placeholder.
@@ -15290,6 +15731,7 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         context_pkg=context_pkg,
         slot="depth", gear=3, config_name=config_name,
     )
+    _record_model_substitution_warning(revised_analysis, context_pkg)
     _record("step5-revised", rev_ok, rev_reason)
     _framework_require_healthy(context_pkg, "Gear 3 reviser", rev_ok, rev_reason)
     raw_revise_response = revised_analysis
@@ -15428,8 +15870,20 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                 slot="breadth", gear=3, config_name=config_name,
             )
         except Exception as e:
-            verified = f"VERIFIER_EXCEPTION: {e}"
-            verify_retry_ok, verify_retry_reason = False, str(e)
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 3 verifier raised: {e}",
+                    kind="transport_exception",
+                    attempted_endpoint_ids=(_endpoint_identity(breadth_endpoint),),
+                    attempted_model_ids=(
+                        _endpoint_model_identity(breadth_endpoint),
+                    ),
+                )
+            )
+            verified = ModelInvocationOutcome("", failure=failure)
+            verify_retry_ok, verify_retry_reason = False, str(failure)
+        _record_model_substitution_warning(verified, context_pkg)
         verified = _capture_visual_candidates(
             verified, context_pkg, f"gear3-verifier-{cycle + 1}", store=False,
         )
@@ -15549,28 +16003,52 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                 "mirror contract."
             )},
         ]
-        revised_analysis, _re_rev_ok, _re_rev_reason = _call_with_supplement(
-            re_revise_messages, depth_endpoint, "reviser",
-            min_chars=30, retry_hint=None,
-            images=_images_for_endpoint(images, depth_endpoint),
-            context_pkg=context_pkg,
-            slot="depth", gear=3, config_name=config_name,
-        )
+        try:
+            _revised_candidate, _re_rev_ok, _re_rev_reason = (
+                _call_with_supplement(
+                    re_revise_messages, depth_endpoint, "reviser",
+                    min_chars=30, retry_hint=None,
+                    images=_images_for_endpoint(images, depth_endpoint),
+                    context_pkg=context_pkg,
+                    slot="depth", gear=3, config_name=config_name,
+                )
+            )
+        except Exception as e:
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 3 re-reviser raised: {e}",
+                    kind="transport_exception",
+                    attempted_endpoint_ids=(_endpoint_identity(depth_endpoint),),
+                    attempted_model_ids=(_endpoint_model_identity(depth_endpoint),),
+                )
+            )
+            _revised_candidate = ModelInvocationOutcome("", failure=failure)
+            _re_rev_ok, _re_rev_reason = False, str(failure)
+        _record_model_substitution_warning(_revised_candidate, context_pkg)
         _framework_require_healthy(
             context_pkg,
             "Gear 3 re-reviser",
             _re_rev_ok,
             _re_rev_reason,
         )
-        revised_analysis = _capture_visual_candidates(
-            revised_analysis, context_pkg,
-            f"gear3-reviser-rerevision-{cycle + 1}", replace=True,
-        )
+        if _re_rev_ok:
+            revised_analysis = _capture_visual_candidates(
+                _revised_candidate, context_pkg,
+                f"gear3-reviser-rerevision-{cycle + 1}", replace=True,
+            )
+        else:
+            contingencies_fired.append(
+                f"step6-cycle{cycle + 1}-re-reviser-failed-candidate-retained"
+            )
         _trace_step_g3(f"step6-cycle-{cycle + 1}-re-revision", {
             "cycle": cycle + 1,
             "system_prompt": revise_system,
             "user_message": re_revise_messages[1]["content"],
-            "raw_response": revised_analysis,
+            "raw_response": _revised_candidate,
+            "candidate_replaced": _re_rev_ok,
+            "failure_kind": getattr(
+                getattr(_revised_candidate, "failure", None), "kind", None),
             "ok": _re_rev_ok,
             "reason": _re_rev_reason,
             "prior_verifier_verdict": verdict_label,
@@ -15578,7 +16056,7 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         }, markdown=(
             f"# Step 6 — Re-revision after verifier FAIL (Gear 3, cycle {cycle + 1})\n\n"
             f"**Health:** {'ok' if _re_rev_ok else 'DEGRADED'} — {_re_rev_reason}\n\n"
-            f"{revised_analysis}\n"
+            f"{_revised_candidate}\n"
         ))
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
         prior_candidate_digest = candidate_digest
@@ -15672,8 +16150,18 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                 slot="verification", gear=3, config_name=config_name,
             )
         except Exception as e:
-            gate_out = f"QUALITY_GATE_EXCEPTION: {e}"
-            call_ok, call_reason = False, str(e)
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 3 final quality gate raised: {e}",
+                    kind="transport_exception",
+                    attempted_endpoint_ids=(_endpoint_identity(gate_endpoint),),
+                    attempted_model_ids=(_endpoint_model_identity(gate_endpoint),),
+                )
+            )
+            gate_out = ModelInvocationOutcome("", failure=failure)
+            call_ok, call_reason = False, str(failure)
+        _record_model_substitution_warning(gate_out, context_pkg)
         passed = _verifier_passed(gate_out)
         broken = _verifier_broken(gate_out) or not call_ok
         label = "BROKEN" if broken else ("PASS" if passed else "FAIL")
@@ -15724,44 +16212,74 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                 "independent review before any release."
             )},
         ]
-        revised_analysis, _qg_redo_ok, _qg_redo_reason = _call_with_supplement(
-            gate_redo_messages, depth_endpoint, "reviser",
-            min_chars=30, retry_hint=None,
-            images=_images_for_endpoint(images, depth_endpoint),
-            context_pkg=context_pkg,
-            slot="depth", gear=3, config_name=config_name,
-        )
+        try:
+            _qg_redo_candidate, _qg_redo_ok, _qg_redo_reason = (
+                _call_with_supplement(
+                    gate_redo_messages, depth_endpoint, "reviser",
+                    min_chars=30, retry_hint=None,
+                    images=_images_for_endpoint(images, depth_endpoint),
+                    context_pkg=context_pkg,
+                    slot="depth", gear=3, config_name=config_name,
+                )
+            )
+        except Exception as e:
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 3 final-criterion reviser raised: {e}",
+                    kind="transport_exception",
+                    attempted_endpoint_ids=(_endpoint_identity(depth_endpoint),),
+                    attempted_model_ids=(_endpoint_model_identity(depth_endpoint),),
+                )
+            )
+            _qg_redo_candidate = ModelInvocationOutcome("", failure=failure)
+            _qg_redo_ok, _qg_redo_reason = False, str(failure)
+        _record_model_substitution_warning(_qg_redo_candidate, context_pkg)
         _framework_require_healthy(
             context_pkg,
             "Gear 3 final-criterion reviser",
             _qg_redo_ok,
             _qg_redo_reason,
         )
-        revised_analysis = _capture_visual_candidates(
-            revised_analysis, context_pkg, "gear3-reviser-quality-redo",
-            replace=True,
-        )
+        if _qg_redo_ok:
+            revised_analysis = _capture_visual_candidates(
+                _qg_redo_candidate, context_pkg, "gear3-reviser-quality-redo",
+                replace=True,
+            )
         _trace_step_g3("step6_5-quality-gate-redo", {
             "system_prompt": revise_system,
             "user_message": gate_redo_messages[1]["content"],
-            "raw_response": revised_analysis,
+            "raw_response": _qg_redo_candidate,
+            "candidate_replaced": _qg_redo_ok,
+            "failure_kind": getattr(
+                getattr(_qg_redo_candidate, "failure", None), "kind", None),
             "ok": _qg_redo_ok,
             "reason": _qg_redo_reason,
             "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
         }, markdown=(
             "# Step 6.5 — Quality-gate redo (Gear 3)\n\n"
             f"**Health:** {'ok' if _qg_redo_ok else 'DEGRADED'} — {_qg_redo_reason}\n\n"
-            f"{revised_analysis}\n"
+            f"{_qg_redo_candidate}\n"
         ))
         _record("step6_5-quality-gate-redo", _qg_redo_ok, _qg_redo_reason)
         contingencies_fired.append("step6_5-gear3-quality-gate-FAIL-redo-fired")
-        (gate_out, gate_call_ok, gate_call_reason, gate_passed, gate_broken,
-         gate_verdict_label, gate_user) = (
-            _run_gear3_final_gate(revised_analysis, 2, prior_findings=gate_out)
-        )
-        if not gate_passed:
+        if _qg_redo_ok:
+            (gate_out, gate_call_ok, gate_call_reason, gate_passed, gate_broken,
+             gate_verdict_label, gate_user) = (
+                _run_gear3_final_gate(revised_analysis, 2, prior_findings=gate_out)
+            )
+            if not gate_passed:
+                contingencies_fired.append(
+                    f"step6_5-gear3-quality-gate-reinspection-{gate_verdict_label}"
+                )
+        else:
+            gate_passed = False
+            gate_broken = True
+            gate_call_ok = False
+            gate_call_reason = _qg_redo_reason
+            gate_verdict_label = "BROKEN"
             contingencies_fired.append(
-                f"step6_5-gear3-quality-gate-reinspection-{gate_verdict_label}"
+                "step6_5-gear3-quality-gate-redo-failed-candidate-retained"
             )
     elif not gate_passed:
         contingencies_fired.append(
@@ -15946,9 +16464,8 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                rather than ever cross-evaluating on one model + an error
                string — so a refusing/empty model never silently halves the
                adversarial pair.
-      Step 4 — Cross-eval calls use ``_call_with_retry``. If an eval is
-               unhealthy after retry, the corresponding reviser receives
-               ``[no evaluator feedback — degraded]`` instead.
+      Step 4 — Cross-eval calls use ``_call_with_retry``. Exhaustion is a
+               typed failure; provider diagnostics never become critique.
       Step 5 — Reviser calls use ``_call_with_retry``. If a reviser is
                unhealthy after retry, that stream's original analyst
                output is used as the revised output (better than degraded).
@@ -15962,10 +16479,8 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                data reflects how often verification is actually performed.
                Replaces the retired auto-PASS-on-exception path
                (silent failure #9). Cycle cap remains 2.
-      Step 7 — Consolidator uses ``_call_with_retry`` (min 300 chars). If
-               still unhealthy, returns the longer of revised_depth /
-               revised_breadth with a [degraded — consolidation failed]
-               header so the user sees output and knows it's degraded.
+      Step 7 — Consolidator uses bounded retry/fallback. Exhaustion is a
+               typed failure rather than an unconsolidated completed result.
       Step 8 — Formatter places the corpus into the mode's prescribed form. A
                structural-leak gate retries once on a process-meta leak; step
                8.5 deterministically scrubs residual pipeline-leak lines.
@@ -15980,23 +16495,39 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                withhold the candidate.
 
     Reliability ceiling: this layer protects against transient model
-    misbehaviour (refusal, clarification-loop, brief stub, tool-call leak).
-    It does **not** protect against API rate limits or upstream provider
-    outages. To raise the ceiling further requires cross-provider fallback
-    (claude → gemini), circuit breakers, and result caching.
+    misbehaviour and advances configured endpoint chains. Exhaustion remains
+    explicit; it is not converted into user-facing candidate prose.
 
     execution_context: ``interactive`` | ``autonomous`` | ``agent``.
-    Commercial model overrides apply only when operational context
-    permits. If both resolved endpoints are local MLX (parallel unsafe),
-    falls back to Gear 3.
+    Commercial model overrides apply only when operational context permits.
+    A local pair may be serialized while retaining the Gear-4 contract; only
+    an explicit router-selected effective Gear 3 delegates to ``run_gear3``.
     """
     import concurrent.futures
 
     trace_dir = context_pkg.get("trace_dir")
 
-    depth_endpoint, breadth_endpoint, parallel_safe = resolve_gear4_endpoints(
+    endpoint_resolution = resolve_gear4_endpoints(
         config, execution_context, config_name=config_name
     )
+    depth_endpoint, breadth_endpoint, parallel_safe = endpoint_resolution
+    effective_gear = getattr(endpoint_resolution, "effective_gear", 4)
+
+    if effective_gear == 3:
+        context_pkg["_trace_effective_gear"] = 3
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            try:
+                pipeline_trace.write_step(
+                    trace_dir, "step3-gear4-fallback-to-gear3", {
+                        "reason": "router_effective_gear_3",
+                        "parallel_safe": parallel_safe,
+                    })
+            except Exception:
+                pass
+        return run_gear3(
+            context_pkg, config, history, images=images,
+            config_name=config_name,
+        )
 
     if depth_endpoint is None or breadth_endpoint is None:
         _framework_execution_fail(
@@ -16005,7 +16536,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             "resolution did not provide both lanes",
             terminal_state="degraded",
         )
-        context_pkg["_trace_effective_gear"] = 3
+        context_pkg["_trace_terminal_status"] = "error"
         if PIPELINE_TRACE_AVAILABLE and trace_dir:
             try:
                 pipeline_trace.write_step(
@@ -16016,7 +16547,20 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     })
             except Exception:
                 pass
-        return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
+        raise ModelInvocationFailure(
+            "Gear 4 endpoint routing did not select two analyst endpoints",
+            kind="endpoint_resolution_failed",
+        )
+
+    # Cache protection belongs to the selected execution facts, not the
+    # profile's pre-routing slot declarations. API pairs, same-model pairs,
+    # unknown RAM, and below-threshold local pairs remain parallel no-ops.
+    # A known over-threshold distinct local pair runs only its analyst calls
+    # serially, releasing the model that just completed between the calls.
+    serialize_analysts = bool(
+        RESILIENCE_AVAILABLE
+        and should_release_kv_cache(config, depth_endpoint, breadth_endpoint)
+    )
 
     image_input_error = _prepare_image_routing(
         context_pkg,
@@ -16032,13 +16576,9 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         )
         return image_input_error
 
-    # parallel_safe is now a UI hint, not a control-flow gate. When False
-    # (both analysts resolve to local endpoints on the same machine), the
-    # ThreadPoolExecutor below still submits both calls — the per-machine
-    # MLX mutex inside call_model serializes them naturally. Mode fidelity
-    # is preserved at roughly 2x wall-clock vs. true parallel. The prior
-    # silent fall-back to Gear 3 (which dropped half the mode's adversarial
-    # structure) is retired as of the 2026-05-19 concurrency overhaul.
+    # ``parallel_safe`` remains a scheduling hint, not an effective-Gear gate.
+    # The selected endpoint/RAM facts above decide whether analysts are
+    # explicitly serialized; either way the complete Gear-4 contract runs.
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
     external_consolidation = bool(
@@ -16079,19 +16619,26 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     # same-model retry. A stream that fails both the primary and the fallback is
     # unrecoverable — the caller then falls back to Gear 3 (a complete
     # single-model answer) rather than cross-evaluating an error string.
-    # Returns (text, ok, reason, recovery) where recovery is one of
-    # primary | fallback | no-fallback | fallback-failed.
+    # Returns text, health, recovery, invocation outcome, and the endpoint
+    # that actually ran last; the latter is needed only by serialized release.
     def _analyst_stream(system_prompt, primary_endpoint, slot):
         msgs = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": cleaned_prompt},
         ]
-        text, ok, reason = _call_with_supplement(
+        primary_call = _call_with_supplement(
             msgs, primary_endpoint, "analyst", 30, None, images, context_pkg,
             slot=slot, gear=None, config_name=config_name,
         )
+        text, ok, reason = primary_call
+        primary_outcome = _as_invocation_outcome(
+            text, primary_endpoint, failure=getattr(text, "failure", None),
+        )
         if ok:
-            return text, True, reason, "primary"
+            return (
+                text, True, reason, "primary", primary_outcome,
+                primary_endpoint,
+            )
         # Primary (incl. its same-model retry) failed — advance to the slot's
         # fallback model once, with its own same-model retry.
         fb = _resolve_fallback_endpoint(
@@ -16099,30 +16646,103 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             require_vision=bool(images),
         )
         if fb is None:
-            return text, False, f"no-fallback-available ({reason})", "no-fallback"
-        fb_text, fb_ok, fb_reason = _call_with_supplement(
+            return (
+                "", False, f"no-fallback-available ({reason})",
+                "no-fallback", primary_outcome, primary_endpoint,
+            )
+        fallback_call = _call_with_supplement(
             msgs, fb, "analyst", 30, None, images, context_pkg,
             slot=slot, gear=None, config_name=config_name,
         )
+        fb_text, fb_ok, fb_reason = fallback_call
+        fallback_outcome = _as_invocation_outcome(
+            fb_text, fb, failure=getattr(fb_text, "failure", None),
+        )
         if fb_ok:
-            return fb_text, True, f"recovered-on-fallback ({fb_reason})", "fallback"
-        return fb_text, False, f"primary+fallback-failed ({fb_reason})", "fallback-failed"
+            merged = _merge_invocation_outcomes(
+                [primary_outcome, fallback_outcome],
+                selected=fallback_outcome,
+            )
+            return (
+                merged, True, f"recovered-on-fallback ({fb_reason})",
+                "fallback", merged, fb,
+            )
+        failure = ModelInvocationFailure(
+            f"Gear 4 {slot} analyst exhausted primary and fallback: {fb_reason}",
+            kind="exhausted_chain",
+            attempted_endpoint_ids=(
+                primary_outcome.attempted_endpoint_ids
+                + fallback_outcome.attempted_endpoint_ids
+            ),
+            attempted_model_ids=(
+                primary_outcome.attempted_model_ids
+                + fallback_outcome.attempted_model_ids
+            ),
+        )
+        failed = _merge_invocation_outcomes(
+            [primary_outcome, fallback_outcome], failure=failure,
+        )
+        return (
+            "", False, f"primary+fallback-failed ({fb_reason})",
+            "fallback-failed", failed, fb,
+        )
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        depth_future = _submit_with_context(
-            executor, _analyst_stream, depth_system, depth_endpoint, "depth")
-        breadth_future = _submit_with_context(
-            executor, _analyst_stream, breadth_system, breadth_endpoint, "breadth")
+    def _failed_analyst(exc, endpoint, slot):
+        failure = (
+            exc if isinstance(exc, ModelInvocationFailure)
+            else ModelInvocationFailure(
+                f"Gear 4 {slot} analyst raised: {exc}",
+                kind="transport_exception",
+            )
+        )
+        return (
+            "", False, str(failure), "exception",
+            ModelInvocationOutcome("", failure=failure), endpoint,
+        )
+
+    if serialize_analysts:
         try:
-            depth_analysis, depth_ok, depth_reason, depth_recovery = depth_future.result()
+            (depth_analysis, depth_ok, depth_reason, depth_recovery,
+             depth_invocation, depth_used_endpoint) = _analyst_stream(
+                depth_system, depth_endpoint, "depth")
         except Exception as e:
-            depth_analysis, depth_ok, depth_reason, depth_recovery = (
-                f"[Depth model error: {e}]", False, str(e), "exception")
+            (depth_analysis, depth_ok, depth_reason, depth_recovery,
+             depth_invocation, depth_used_endpoint) = _failed_analyst(
+                e, depth_endpoint, "depth")
+        release_kv_cache(
+            depth_used_endpoint, mlx_evictor=evict_mlx_model)
         try:
-            breadth_analysis, breadth_ok, breadth_reason, breadth_recovery = breadth_future.result()
+            (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
+             breadth_invocation, breadth_used_endpoint) = _analyst_stream(
+                breadth_system, breadth_endpoint, "breadth")
         except Exception as e:
-            breadth_analysis, breadth_ok, breadth_reason, breadth_recovery = (
-                f"[Breadth model error: {e}]", False, str(e), "exception")
+            (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
+             breadth_invocation, breadth_used_endpoint) = _failed_analyst(
+                e, breadth_endpoint, "breadth")
+    else:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            depth_future = _submit_with_context(
+                executor, _analyst_stream, depth_system, depth_endpoint, "depth")
+            breadth_future = _submit_with_context(
+                executor, _analyst_stream, breadth_system, breadth_endpoint, "breadth")
+            try:
+                (depth_analysis, depth_ok, depth_reason, depth_recovery,
+                 depth_invocation, depth_used_endpoint) = depth_future.result()
+            except Exception as e:
+                (depth_analysis, depth_ok, depth_reason, depth_recovery,
+                 depth_invocation, depth_used_endpoint) = _failed_analyst(
+                    e, depth_endpoint, "depth")
+            try:
+                (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
+                 breadth_invocation, breadth_used_endpoint) = breadth_future.result()
+            except Exception as e:
+                (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
+                 breadth_invocation, breadth_used_endpoint) = _failed_analyst(
+                    e, breadth_endpoint, "breadth")
+    # Worker-local Pipeline Health state is not visible to the request thread.
+    # Aggregate the outcomes after joining, then record the one turn warning.
+    _record_model_substitution_warning(depth_invocation, context_pkg)
+    _record_model_substitution_warning(breadth_invocation, context_pkg)
     _record("step3-depth", depth_ok, f"{depth_reason} [{depth_recovery}]")
     _record("step3-breadth", breadth_ok, f"{breadth_reason} [{breadth_recovery}]")
 
@@ -16260,11 +16880,29 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         try:
             breadth_eval_of_depth, eval_a_ok, eval_a_reason = eval_a_future.result()
         except Exception as e:
-            breadth_eval_of_depth, eval_a_ok, eval_a_reason = f"[Evaluation error: {e}]", False, str(e)
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 4 evaluator of depth raised: {e}",
+                    kind="transport_exception",
+                )
+            )
+            breadth_eval_of_depth = ModelInvocationOutcome("", failure=failure)
+            eval_a_ok, eval_a_reason = False, str(failure)
         try:
             depth_eval_of_breadth, eval_b_ok, eval_b_reason = eval_b_future.result()
         except Exception as e:
-            depth_eval_of_breadth, eval_b_ok, eval_b_reason = f"[Evaluation error: {e}]", False, str(e)
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 4 evaluator of breadth raised: {e}",
+                    kind="transport_exception",
+                )
+            )
+            depth_eval_of_breadth = ModelInvocationOutcome("", failure=failure)
+            eval_b_ok, eval_b_reason = False, str(failure)
+    _record_model_substitution_warning(breadth_eval_of_depth, context_pkg)
+    _record_model_substitution_warning(depth_eval_of_breadth, context_pkg)
     _record("step4-eval-of-depth", eval_a_ok, eval_a_reason)
     _record("step4-eval-of-breadth", eval_b_ok, eval_b_reason)
     _framework_require_healthy(
@@ -16272,6 +16910,14 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     )
     _framework_require_healthy(
         context_pkg, "Gear 4 evaluator of breadth", eval_b_ok, eval_b_reason,
+    )
+    _require_model_success(
+        breadth_eval_of_depth, eval_a_ok, eval_a_reason,
+        "Gear 4 evaluator of depth",
+    )
+    _require_model_success(
+        depth_eval_of_breadth, eval_b_ok, eval_b_reason,
+        "Gear 4 evaluator of breadth",
     )
 
     # Preserve the raw model response BEFORE the contingency rewrite so the
@@ -16417,11 +17063,29 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         try:
             revised_depth, depth_rev_ok, depth_rev_reason = depth_revise_future.result()
         except Exception as e:
-            revised_depth, depth_rev_ok, depth_rev_reason = f"[Revision error: {e}]", False, str(e)
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 4 depth reviser raised: {e}",
+                    kind="transport_exception",
+                )
+            )
+            revised_depth = ModelInvocationOutcome("", failure=failure)
+            depth_rev_ok, depth_rev_reason = False, str(failure)
         try:
             revised_breadth, breadth_rev_ok, breadth_rev_reason = breadth_revise_future.result()
         except Exception as e:
-            revised_breadth, breadth_rev_ok, breadth_rev_reason = f"[Revision error: {e}]", False, str(e)
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 4 breadth reviser raised: {e}",
+                    kind="transport_exception",
+                )
+            )
+            revised_breadth = ModelInvocationOutcome("", failure=failure)
+            breadth_rev_ok, breadth_rev_reason = False, str(failure)
+    _record_model_substitution_warning(revised_depth, context_pkg)
+    _record_model_substitution_warning(revised_breadth, context_pkg)
     _record("step5-revised-depth", depth_rev_ok, depth_rev_reason)
     _record("step5-revised-breadth", breadth_rev_ok, breadth_rev_reason)
     _framework_require_healthy(
@@ -16698,16 +17362,22 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     None if depth_verify_ok else depth_verify_reason
                 )
             except Exception as e:
-                # Per failure #9: substitute an explicit VERIFIER_EXCEPTION
-                # marker rather than a fake "VERIFIED" string. The pipeline
-                # still proceeds (we don't block on a broken verifier), but
-                # the trace records the real failure shape. ``_call_with_retry``
-                # catches model exceptions internally, so reaching this branch
-                # means the retry wrapper itself blew up — rare, but worth
-                # surfacing distinctly.
-                depth_verdict = f"VERIFIER_EXCEPTION: {e}"
-                depth_verify_ok, depth_verify_reason = False, str(e)
-                depth_verify_error = str(e)
+                failure = (
+                    e if isinstance(e, ModelInvocationFailure)
+                    else ModelInvocationFailure(
+                        f"Gear 4 depth verifier raised: {e}",
+                        kind="transport_exception",
+                        attempted_endpoint_ids=(
+                            _endpoint_identity(breadth_endpoint),
+                        ),
+                        attempted_model_ids=(
+                            _endpoint_model_identity(breadth_endpoint),
+                        ),
+                    )
+                )
+                depth_verdict = ModelInvocationOutcome("", failure=failure)
+                depth_verify_ok, depth_verify_reason = False, str(failure)
+                depth_verify_error = str(failure)
             try:
                 breadth_verdict, breadth_verify_ok, breadth_verify_reason = (
                     verify_breadth_future.result()
@@ -16716,9 +17386,23 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     None if breadth_verify_ok else breadth_verify_reason
                 )
             except Exception as e:
-                breadth_verdict = f"VERIFIER_EXCEPTION: {e}"
-                breadth_verify_ok, breadth_verify_reason = False, str(e)
-                breadth_verify_error = str(e)
+                failure = (
+                    e if isinstance(e, ModelInvocationFailure)
+                    else ModelInvocationFailure(
+                        f"Gear 4 breadth verifier raised: {e}",
+                        kind="transport_exception",
+                        attempted_endpoint_ids=(_endpoint_identity(depth_endpoint),),
+                        attempted_model_ids=(
+                            _endpoint_model_identity(depth_endpoint),
+                        ),
+                    )
+                )
+                breadth_verdict = ModelInvocationOutcome("", failure=failure)
+                breadth_verify_ok, breadth_verify_reason = False, str(failure)
+                breadth_verify_error = str(failure)
+
+        _record_model_substitution_warning(depth_verdict, context_pkg)
+        _record_model_substitution_warning(breadth_verdict, context_pkg)
 
         # Three-way verdict classification per cycle: PASS / FAIL / BROKEN.
         # BROKEN unblocks the cycle the same way PASS does (re-revision
@@ -16906,26 +17590,45 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             if "depth" in futures:
                 _depth_rerev_ok, _depth_rerev_reason = True, "ok"
                 try:
-                    revised_depth, _depth_rerev_ok, _depth_rerev_reason = futures["depth"].result()
+                    (_depth_rerev_candidate, _depth_rerev_ok,
+                     _depth_rerev_reason) = futures["depth"].result()
                 except Exception as e:
-                    revised_depth = f"[Re-revision error: {e}]"
-                    _depth_rerev_ok, _depth_rerev_reason = False, str(e)
-                _framework_require_healthy(
-                    context_pkg,
-                    "Gear 4 depth re-reviser",
-                    _depth_rerev_ok,
-                    _depth_rerev_reason,
-                )
-                revised_depth = _capture_visual_candidates(
-                    revised_depth, context_pkg,
-                    f"gear4-depth-reviser-rerevision-{cycle + 1}",
-                )
+                    failure = (
+                        e if isinstance(e, ModelInvocationFailure)
+                        else ModelInvocationFailure(
+                            f"Gear 4 depth re-reviser raised: {e}",
+                            kind="transport_exception",
+                            attempted_endpoint_ids=(
+                                _endpoint_identity(depth_endpoint),
+                            ),
+                            attempted_model_ids=(
+                                _endpoint_model_identity(depth_endpoint),
+                            ),
+                        )
+                    )
+                    _depth_rerev_candidate = ModelInvocationOutcome(
+                        "", failure=failure)
+                    _depth_rerev_ok, _depth_rerev_reason = False, str(failure)
+                if _depth_rerev_ok:
+                    revised_depth = _capture_visual_candidates(
+                        _depth_rerev_candidate, context_pkg,
+                        f"gear4-depth-reviser-rerevision-{cycle + 1}",
+                    )
+                else:
+                    contingencies_fired.append(
+                        f"step6-cycle{cycle + 1}-depth-re-reviser-failed-"
+                        "candidate-retained"
+                    )
                 _trace_step(f"step6-cycle-{cycle + 1}-re-revision-depth", {
                     "cycle": cycle + 1,
                     "stream": "depth",
                     "system_prompt": revise_system,
                     "user_message": rerevise_users.get("depth", ""),
-                    "raw_response": revised_depth,
+                    "raw_response": _depth_rerev_candidate,
+                    "candidate_replaced": _depth_rerev_ok,
+                    "failure_kind": getattr(
+                        getattr(_depth_rerev_candidate, "failure", None),
+                        "kind", None),
                     "ok": _depth_rerev_ok,
                     "reason": _depth_rerev_reason,
                     "prior_verifier_verdict": _verdict_label(depth_passed, depth_broken),
@@ -16933,31 +17636,51 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 }, markdown=(
                     f"# Step 6 — Depth re-revision after verifier FAIL (cycle {cycle + 1})\n\n"
                     f"**Health:** {'ok' if _depth_rerev_ok else 'DEGRADED'} — {_depth_rerev_reason}\n\n"
-                    f"{revised_depth}\n"
+                    f"{_depth_rerev_candidate}\n"
                 ))
             if "breadth" in futures:
                 _breadth_rerev_ok, _breadth_rerev_reason = True, "ok"
                 try:
-                    revised_breadth, _breadth_rerev_ok, _breadth_rerev_reason = futures["breadth"].result()
+                    (_breadth_rerev_candidate, _breadth_rerev_ok,
+                     _breadth_rerev_reason) = futures["breadth"].result()
                 except Exception as e:
-                    revised_breadth = f"[Re-revision error: {e}]"
-                    _breadth_rerev_ok, _breadth_rerev_reason = False, str(e)
-                _framework_require_healthy(
-                    context_pkg,
-                    "Gear 4 breadth re-reviser",
-                    _breadth_rerev_ok,
-                    _breadth_rerev_reason,
-                )
-                revised_breadth = _capture_visual_candidates(
-                    revised_breadth, context_pkg,
-                    f"gear4-breadth-reviser-rerevision-{cycle + 1}",
-                )
+                    failure = (
+                        e if isinstance(e, ModelInvocationFailure)
+                        else ModelInvocationFailure(
+                            f"Gear 4 breadth re-reviser raised: {e}",
+                            kind="transport_exception",
+                            attempted_endpoint_ids=(
+                                _endpoint_identity(breadth_endpoint),
+                            ),
+                            attempted_model_ids=(
+                                _endpoint_model_identity(breadth_endpoint),
+                            ),
+                        )
+                    )
+                    _breadth_rerev_candidate = ModelInvocationOutcome(
+                        "", failure=failure)
+                    _breadth_rerev_ok, _breadth_rerev_reason = (
+                        False, str(failure))
+                if _breadth_rerev_ok:
+                    revised_breadth = _capture_visual_candidates(
+                        _breadth_rerev_candidate, context_pkg,
+                        f"gear4-breadth-reviser-rerevision-{cycle + 1}",
+                    )
+                else:
+                    contingencies_fired.append(
+                        f"step6-cycle{cycle + 1}-breadth-re-reviser-failed-"
+                        "candidate-retained"
+                    )
                 _trace_step(f"step6-cycle-{cycle + 1}-re-revision-breadth", {
                     "cycle": cycle + 1,
                     "stream": "breadth",
                     "system_prompt": revise_system,
                     "user_message": rerevise_users.get("breadth", ""),
-                    "raw_response": revised_breadth,
+                    "raw_response": _breadth_rerev_candidate,
+                    "candidate_replaced": _breadth_rerev_ok,
+                    "failure_kind": getattr(
+                        getattr(_breadth_rerev_candidate, "failure", None),
+                        "kind", None),
                     "ok": _breadth_rerev_ok,
                     "reason": _breadth_rerev_reason,
                     "prior_verifier_verdict": _verdict_label(breadth_passed, breadth_broken),
@@ -16965,8 +17688,28 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 }, markdown=(
                     f"# Step 6 — Breadth re-revision after verifier FAIL (cycle {cycle + 1})\n\n"
                     f"**Health:** {'ok' if _breadth_rerev_ok else 'DEGRADED'} — {_breadth_rerev_reason}\n\n"
-                    f"{revised_breadth}\n"
+                    f"{_breadth_rerev_candidate}\n"
                 ))
+        if "depth" in futures:
+            _record_model_substitution_warning(
+                _depth_rerev_candidate, context_pkg)
+        if "breadth" in futures:
+            _record_model_substitution_warning(
+                _breadth_rerev_candidate, context_pkg)
+        if "depth" in futures:
+            _framework_require_healthy(
+                context_pkg,
+                "Gear 4 depth re-reviser",
+                _depth_rerev_ok,
+                _depth_rerev_reason,
+            )
+        if "breadth" in futures:
+            _framework_require_healthy(
+                context_pkg,
+                "Gear 4 breadth re-reviser",
+                _breadth_rerev_ok,
+                _breadth_rerev_reason,
+            )
 
     if not (depth_passed and breadth_passed):
         _framework_execution_fail(
@@ -17084,9 +17827,13 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         context_pkg=context_pkg,
         slot="consolidation", gear=4, config_name=config_name,
     )
+    _record_model_substitution_warning(consolidated, context_pkg)
     _record("step7-consolidated", consol_ok, consol_reason)
     _framework_require_healthy(
         context_pkg, "Gear 4 consolidator", consol_ok, consol_reason,
+    )
+    _require_model_success(
+        consolidated, consol_ok, consol_reason, "Gear 4 consolidator",
     )
 
     # Contingency: if consolidator still degraded after retry, fall back to
@@ -17195,9 +17942,13 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         min_chars=30, retry_hint=None, images=None,
         slot="formatter", gear=4, config_name=config_name,
     )
+    _record_model_substitution_warning(formatted, context_pkg)
     _record("step8-formatted", format_ok, format_reason)
     _framework_require_healthy(
         context_pkg, "Gear 4 formatter", format_ok, format_reason,
+    )
+    _require_model_success(
+        formatted, format_ok, format_reason, "Gear 4 formatter",
     )
 
     # Contingency: if the formatter is still degraded after retry, fall
@@ -17235,6 +17986,11 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 _retry_msgs, formatter_endpoint, "formatter-leak-retry",
                 min_chars=30, retry_hint=None, images=None,
                 slot="formatter", gear=4, config_name=config_name,
+            )
+            _record_model_substitution_warning(_re_fmt, context_pkg)
+            _require_model_success(
+                _re_fmt, _re_ok, _re_reason,
+                "Gear 4 formatter structural retry",
             )
             _re_struct_ok = _formatter_output_structural_check(_re_fmt)[0] if _re_ok else False
             if _re_ok and _re_struct_ok:
@@ -17375,8 +18131,18 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 slot="verification", gear=4, config_name=config_name,
             )
         except Exception as e:
-            gate_out = f"QUALITY_GATE_EXCEPTION: {e}"
-            gate_call_ok, gate_call_reason = False, str(e)
+            failure = (
+                e if isinstance(e, ModelInvocationFailure)
+                else ModelInvocationFailure(
+                    f"Gear 4 final quality gate raised: {e}",
+                    kind="transport_exception",
+                    attempted_endpoint_ids=(_endpoint_identity(gate_endpoint),),
+                    attempted_model_ids=(_endpoint_model_identity(gate_endpoint),),
+                )
+            )
+            gate_out = ModelInvocationOutcome("", failure=failure)
+            gate_call_ok, gate_call_reason = False, str(failure)
+        _record_model_substitution_warning(gate_out, context_pkg)
 
         gate_passed = _verifier_passed(gate_out)
         # A failed gate call is BROKEN. A broken judge cannot justify a content
@@ -17448,6 +18214,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 min_chars=30, retry_hint=None, images=None,
                 slot="formatter", gear=4, config_name=config_name,
             )
+            _record_model_substitution_warning(_qg_re_fmt, context_pkg)
             _trace_step("step8_6-quality-gate-formatting-redo", {
                 "system_prompt": format_system,
                 "user_message": _qg_fmt_msgs[-1]["content"],
@@ -17467,6 +18234,10 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 "Gear 4 final-criterion formatter redo",
                 _qg_fmt_ok,
                 _qg_fmt_reason,
+            )
+            _require_model_success(
+                _qg_re_fmt, _qg_fmt_ok, _qg_fmt_reason,
+                "Gear 4 final-criterion formatter redo",
             )
             contingencies_fired.append("step8_6-quality-gate-FAIL-formatting-redo")
             if _qg_fmt_ok and _qg_re_fmt.strip():
@@ -17503,6 +18274,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 context_pkg=context_pkg,
                 slot="consolidation", gear=4, config_name=config_name,
             )
+            _record_model_substitution_warning(_qg_re_consol, context_pkg)
             _trace_step("step8_6-quality-gate-reconsolidate", {
                 "system_prompt": consolidate_system,
                 "user_message": _qg_recon_msgs[-1]["content"],
@@ -17522,6 +18294,10 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 "Gear 4 final-criterion consolidator redo",
                 _qg_rc_ok,
                 _qg_rc_reason,
+            )
+            _require_model_success(
+                _qg_re_consol, _qg_rc_ok, _qg_rc_reason,
+                "Gear 4 final-criterion consolidator redo",
             )
             contingencies_fired.append("step8_6-quality-gate-FAIL-analysis-redo")
             if _qg_rc_ok and _qg_re_consol.strip():
@@ -17549,6 +18325,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     min_chars=30, retry_hint=None, images=None,
                     slot="formatter", gear=4, config_name=config_name,
                 )
+                _record_model_substitution_warning(_qg_re_fmt2, context_pkg)
                 _trace_step("step8_6-quality-gate-reformat", {
                     "system_prompt": format_system,
                     "user_message": _qg_refmt_msgs[1]["content"],
@@ -17568,6 +18345,10 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     "Gear 4 final-criterion reformatter",
                     _qg_rf_ok,
                     _qg_rf_reason,
+                )
+                _require_model_success(
+                    _qg_re_fmt2, _qg_rf_ok, _qg_rf_reason,
+                    "Gear 4 final-criterion reformatter",
                 )
                 if _qg_rf_ok and _qg_re_fmt2.strip():
                     formatted = _qg_re_fmt2

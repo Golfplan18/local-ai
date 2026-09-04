@@ -76,6 +76,7 @@ class DispatchBase(unittest.TestCase):
         self._orig_permission_mode = dispatcher._permission_mode
         self._orig_approved_categories = set(dispatcher._approved_categories)
         self._orig_queued_hashes = set(tool_events._queued_hashes)
+        self._orig_queue_reservations = set(tool_events._queue_reservations)
         self._orig_mcp_axes_cache = tool_events._mcp_axes_cache
         self._orig_telemetry_health = tool_events.get_telemetry_health()
         tool_events.GLOBAL_SINK_DEFAULT = self.sink
@@ -84,6 +85,7 @@ class DispatchBase(unittest.TestCase):
                                                         "human-queue.jsonl")
         tool_events.reset_telemetry_health()
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         self._orig_te_env = os.environ.pop("ORA_TOOL_EVENTS", None)
         self._orig_te_path_env = os.environ.pop("ORA_TOOL_EVENTS_PATH", None)
         self._turn_token = tool_events.set_turn_context()
@@ -144,6 +146,10 @@ class DispatchBase(unittest.TestCase):
             oversight_queue.HUMAN_QUEUE_PATH = self._orig_queue
             tool_events._queued_hashes.clear()
             tool_events._queued_hashes.update(self._orig_queued_hashes)
+            tool_events._queue_reservations.clear()
+            tool_events._queue_reservations.update(
+                self._orig_queue_reservations
+            )
             tool_events._mcp_axes_cache = self._orig_mcp_axes_cache
             with tool_events._health_lock:
                 tool_events._telemetry_failures = \
@@ -290,6 +296,164 @@ class TestGateBeforeExecution(DispatchBase):
             tool_events.check_and_consume_approval("bash_execute", args_hash),
             token,
         )
+
+    def test_invalid_file_target_preserves_approval_before_gate(self):
+        blocker = Path(self.workspace) / "blocker"
+        blocker.write_text("unchanged ancestor", encoding="utf-8")
+        targets = (
+            os.path.join(self.tmp.name, "outside.txt"),
+            str(blocker / "evidence.yaml"),
+            str(blocker / "missing" / "evidence.yaml"),
+        )
+        for target in targets:
+            with self.subTest(target=target):
+                params = {"path": target, "content": "must not write"}
+                args_hash = tool_events.normalize_args_hash("file_write", params)
+                token = tool_events._grant_approval_authorized(
+                    "file_write", args_hash,
+                )
+                with mock.patch.object(
+                    tool_events, "gate", wraps=tool_events.gate,
+                ) as gate, mock.patch.object(
+                    dispatcher.system_protection, "begin_execution",
+                    wraps=dispatcher.system_protection.begin_execution,
+                ) as begin, mock.patch.object(
+                    dispatcher, "file_write", wraps=dispatcher.file_write,
+                ) as write:
+                    result = dispatcher.dispatch("file_write", params)
+                self.assertIn("Path validation failed", result)
+                gate.assert_not_called()
+                begin.assert_not_called()
+                write.assert_not_called()
+                self.assertFalse(os.path.exists(target))
+                self.assertEqual(blocker.read_text(encoding="utf-8"), "unchanged ancestor")
+                self.assertEqual(
+                    tool_events.check_and_consume_approval("file_write", args_hash),
+                    token,
+                )
+
+        # Missing directories remain creatable once the exact call is approved.
+        target = Path(self.workspace) / "missing" / "nested" / "evidence.yaml"
+        dispatcher.reset_consecutive()
+        dispatcher.set_permission_mode("approve-each")
+        result = dispatcher.dispatch(
+            "file_write", {"path": str(target), "content": "approved bytes"},
+            permission_callback=lambda *_: True,
+        )
+        self.assertTrue(result.startswith("Written:"), result)
+        self.assertEqual(target.read_text(encoding="utf-8"), "approved bytes")
+
+    def test_existing_file_write_is_irreversible(self):
+        target = os.path.join(self.workspace, "existing.txt")
+        with open(target, "w", encoding="utf-8") as stream:
+            stream.write("old bytes")
+        result = dispatcher.dispatch(
+            "file_write", {"path": target, "content": "new bytes"},
+        )
+        self.assertIn("GATED", result)
+        self.assertEqual(Path(target).read_text(encoding="utf-8"), "old bytes")
+        gate = [event for event in self._events()
+                if event.get("event") == "gate"][-1]
+        self.assertEqual(gate["mutability"], "irreversible")
+
+    def test_file_tools_preserve_old_bytes_when_atomic_swap_fails(self):
+        import risk_gate
+
+        real_atomic_write = file_ops._rp.atomic_write_text
+
+        for tool_name, params, patch_name, old_content in (
+            (
+                "file_write",
+                {"content": "replacement bytes"},
+                "file_write",
+                "BLOCKED: old bytes",
+            ),
+            (
+                "file_edit",
+                {"old_string": "old", "new_string": "replacement"},
+                "edit_file",
+                "File not found: old bytes",
+            ),
+            (
+                "file_write",
+                {"content": "replacement bytes"},
+                "file_write",
+                "Read error: old bytes",
+            ),
+        ):
+            with self.subTest(tool_name=tool_name, old_content=old_content):
+                dispatcher.reset_consecutive()
+                dispatcher.set_permission_mode("auto-approve")
+                target = os.path.join(self.workspace, f"{tool_name}.txt")
+                Path(target).write_text(old_content, encoding="utf-8")
+                os.chmod(target, 0o640)
+                call_params = dict(params)
+                call_params["file_path" if tool_name == "file_edit" else "path"] = target
+
+                first = dispatcher.dispatch(tool_name, call_params)
+                self.assertIn("GATED", first)
+                dispatcher.set_permission_mode("approve-each")
+
+                seen_modes = []
+
+                def fail_atomic(path, text, *, mode):
+                    seen_modes.append(mode)
+                    with mock.patch.object(
+                        file_ops._rp.os, "replace",
+                        side_effect=OSError("synthetic atomic swap failure"),
+                    ):
+                        real_atomic_write(path, text, mode=mode)
+
+                real_handler = getattr(dispatcher, patch_name)
+
+                def run_handler(*args, **kwargs):
+                    with mock.patch.object(
+                        file_ops._rp, "atomic_write_text",
+                        side_effect=fail_atomic,
+                    ):
+                        return real_handler(*args, **kwargs)
+
+                dispatcher.reset_consecutive()
+                with mock.patch.object(
+                    dispatcher, patch_name, side_effect=run_handler,
+                ):
+                    result = dispatcher.dispatch(
+                        tool_name,
+                        call_params,
+                        permission_callback=lambda *_: True,
+                    )
+
+                self.assertIn("synthetic atomic swap failure", result)
+                self.assertEqual(
+                    Path(target).read_text(encoding="utf-8"), old_content,
+                )
+                self.assertEqual(seen_modes, [0o640])
+                self.assertEqual(os.stat(target).st_mode & 0o777, 0o640)
+                event = [item for item in self._events()
+                         if item.get("action") == tool_name][-1]
+                self.assertFalse(event["exit"]["ok"])
+                self.assertFalse(event["mutated"])
+                terminals = dispatcher.system_protection.verify_audit()
+                self.assertEqual(
+                    terminals[-1]["event_type"], "protected_action_failed",
+                )
+
+                conversation_id = f"read-preserved-{old_content}"
+                read_context = tool_events.set_turn_context(
+                    conversation_id=conversation_id,
+                )
+                try:
+                    read_result = dispatcher.dispatch("file_read", {"path": target})
+                finally:
+                    tool_events.reset_turn_context(read_context)
+                self.assertEqual(read_result, old_content)
+                self.assertTrue(self._events()[-1]["exit"]["ok"])
+                signals = risk_gate.fold_route_observed(
+                    self.sink, conversation_id=conversation_id,
+                    output_text="The preserved document remains available as source evidence.",
+                )
+                self.assertTrue(signals["source_read_suspected"])
+                self.assertEqual(signals["source_read_channels"], ["file_read"])
 
     def test_private_web_destination_precedes_generic_gate_and_handler(self):
         with mock.patch.object(
@@ -539,6 +703,7 @@ class TestGateBeforeExecution(DispatchBase):
         self.assertEqual(len(self.shell_calls), 1)
         self.assertTrue(os.path.exists(victim))  # no host process ran
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         dispatcher.reset_consecutive()
         r3 = dispatcher.dispatch("bash_execute", params)
         self.assertIn("GATED", r3)  # token was one-shot
@@ -938,6 +1103,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         self.assertIn("SYSTEM PROTECTION", r1)
         tool_events.grant_standing_allow("credential_store:svc-x")
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         dispatcher.reset_consecutive()
         r2 = dispatcher.dispatch("credential_store",
                                  {"action": "retrieve", "service": "svc-x",

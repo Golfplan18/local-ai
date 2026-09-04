@@ -507,7 +507,7 @@ class ModelProfileApiTests(unittest.TestCase):
     def test_public_chat_gear2_invokes_each_effective_profile_endpoint(self):
         import milestone_executor as executor
         import model_profiles as top_mp
-        import framework_parser as top_parser
+        import framework_preflight as preflight
         import boot
         from textwrap import dedent
 
@@ -546,30 +546,38 @@ class ModelProfileApiTests(unittest.TestCase):
             'model_locks': locks,
         }
         project_token = top_mp.project_lock_token('example', locks)
-        base_framework = top_parser.parse_framework_text(dedent('''\
-            # Public Gear 2 profile proof
-
-            ## LAYER 1: Work
-            Produce the result.
-
-            ## MILESTONES DELIVERED
-
-            ### Milestone 1: Result
-            - **Endpoint produced:** A result.
-            - **Verification criterion:** It exists.
-            - **Layers covered:** 1
-            - **Required prior milestones:** None
-            - **Gear:** 2
-            - **Output format:** Markdown.
-            - **Drift check question:** Is it complete?
-        '''), path='public-gear2-profile-proof.md')
         current = {'process': None, 'step': None}
         invoked_endpoints = []
+        saved_assistant = []
 
-        def parsed_framework(_path):
-            framework = copy.deepcopy(base_framework)
-            framework.all_milestones()[0].model_profile = current['step']
-            return framework
+        def load_operative_framework(_canonical, _project_nexus):
+            raw = dedent('''\
+                # Public Gear 2 profile proof
+
+                ## MILESTONES DELIVERED
+
+                ### Milestone 1: Result
+                - **Endpoint produced:** A result.
+                - **Verification criterion:** It exists.
+                - **Methods:** work
+                - **Required prior milestones:** None
+                - **External prerequisites:** None
+                - **Gear:** 2
+                - **Output format:** Markdown.
+                - **Drift check question:** Is it complete?
+
+                ## EXECUTION METHODS
+
+                ### METHOD work: Produce the result
+                Produce the requested result.
+            ''')
+            if current['step']:
+                raw = raw.replace(
+                    '- **Output format:** Markdown.',
+                    f"- **Model Profile:** {current['step']}\n"
+                    '- **Output format:** Markdown.',
+                )
+            return raw, 'public-gear2-profile-proof.md', None
 
         def slot_endpoint(_config, slot, *, config_name=None, **_kwargs):
             self.assertEqual(slot, 'fast')
@@ -577,7 +585,11 @@ class ModelProfileApiTests(unittest.TestCase):
 
         def run_model(_messages, endpoint, **_kwargs):
             invoked_endpoints.append(endpoint['id'])
-            return 'framework result'
+            return 'Framework result with sufficient material detail.'
+
+        def save_conversation(_user, assistant, *_args, **_kwargs):
+            saved_assistant.append(assistant)
+            return 'chunk-g116-gear2'
 
         cases = (
             ('project', None, None, None, project_token),
@@ -601,17 +613,17 @@ class ModelProfileApiTests(unittest.TestCase):
                 server, '_active_project_model_context',
                 return_value=('example', locks),
             ),
-            mock.patch.object(server, '_log_pending_submission', return_value='sub-g116'),
+            mock.patch.object(server, '_log_pending_submission', return_value=None),
             mock.patch.object(server, '_finalize_pending_submission'),
             mock.patch.object(
-                server, '_save_conversation', return_value='chunk-g116-gear2'),
+                server, '_save_conversation', side_effect=save_conversation),
             mock.patch.object(server, 'build_contributor_context', return_value=None),
             mock.patch.object(server, 'RUNTIME_PIPELINE_AVAILABLE', False),
             mock.patch.object(server, '_session_data', {}),
             mock.patch.object(
-                executor, 'parse_framework_file', side_effect=parsed_framework),
+                preflight, '_load_bound_text', side_effect=load_operative_framework),
             mock.patch.object(
-                executor, '_lookup_framework_default_configuration',
+                preflight, '_lookup_process_profile',
                 side_effect=lambda _name: current['process'],
             ),
             mock.patch.object(
@@ -653,6 +665,11 @@ class ModelProfileApiTests(unittest.TestCase):
                     )
                     self.assertEqual(
                         json.loads(response.get_data(as_text=True))['status'], 'ok')
+                    self.assertTrue(
+                        invoked_endpoints,
+                        saved_assistant[-1] if saved_assistant else
+                        response.get_data(as_text=True),
+                    )
                     self.assertEqual(invoked_endpoints[-1], f'endpoint::{expected}')
 
         self.assertEqual(

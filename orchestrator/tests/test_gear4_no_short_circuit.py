@@ -25,6 +25,7 @@ if str(ORCH_DIR) not in sys.path:
     sys.path.insert(0, str(ORCH_DIR))
 
 import boot
+from tools import resilience
 
 
 class TestGear4NoShortCircuit(unittest.TestCase):
@@ -71,15 +72,18 @@ class TestGear4NoShortCircuit(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIsInstance(result, str)
 
-    def test_run_gear4_still_falls_back_when_endpoint_resolution_fails(self):
-        """The remaining Gear-3 fallback path (depth or breadth = None)
-        is a correctness guard, not a parallel-safety gate. Keep it."""
-        context_pkg = {"cleaned_prompt": "test prompt", "trace_dir": None}
+    def test_run_gear4_delegates_only_on_true_effective_gear3(self):
+        """A router-selected Gear 3 delegates independently of scheduling."""
+        context_pkg = {
+            "cleaned_prompt": "test prompt",
+            "trace_dir": None,
+            "framework_execution": {"strict": True},
+        }
         config: dict = {}
 
         with mock.patch.object(
             boot, "resolve_gear4_endpoints",
-            return_value=(None, None, True),
+            return_value=boot.Gear4EndpointResolution(None, None, False, 3),
         ), mock.patch.object(
             boot, "run_gear3", return_value="gear-3-fallback",
         ) as gear3_mock:
@@ -90,6 +94,120 @@ class TestGear4NoShortCircuit(unittest.TestCase):
 
         gear3_mock.assert_called_once()
         self.assertEqual(result, "gear-3-fallback")
+        self.assertNotIn("framework_execution_state", context_pkg)
+
+    def test_over_threshold_local_analysts_run_release_then_run(self):
+        """The memory guard serializes only the analyst pair in call order."""
+        context_pkg = {"cleaned_prompt": "test prompt", "trace_dir": None}
+        depth, breadth, _ = self._both_local_same_machine()
+        events = []
+
+        def supplement(_messages, endpoint, step_name, *args, **kwargs):
+            if step_name == "analyst":
+                events.append(("call", endpoint["name"]))
+            return ("substantive model output " * 20, True, "ok")
+
+        def release(endpoint, *, mlx_evictor=None):
+            events.append(("release", endpoint["name"]))
+            return True
+
+        with mock.patch.object(
+            boot, "resolve_gear4_endpoints",
+            return_value=boot.Gear4EndpointResolution(
+                depth, breadth, False, 4),
+        ), mock.patch.object(
+            boot, "should_release_kv_cache", return_value=True,
+        ), mock.patch.object(
+            boot, "release_kv_cache", side_effect=release,
+        ), mock.patch.object(
+            boot, "_assemble_step_prompt", return_value="system prompt",
+        ), mock.patch.object(
+            boot, "_call_with_supplement", side_effect=supplement,
+        ), mock.patch.object(
+            boot, "_call_with_retry",
+            return_value=("step output " * 30, True, "ok"),
+        ), mock.patch.object(
+            boot, "_extract_structured_verdict", return_value="PASS",
+        ):
+            result = boot.run_gear4(
+                context_pkg, {}, history=None, images=None,
+                execution_context="interactive",
+            )
+
+        self.assertIsInstance(result, str)
+        self.assertEqual(events[:3], [
+            ("call", "hermes-70b"),
+            ("release", "hermes-70b"),
+            ("call", "kimi-72b"),
+        ])
+
+    def test_missing_gear4_endpoints_are_an_explicit_typed_failure(self):
+        context_pkg = {"cleaned_prompt": "test prompt", "trace_dir": None}
+        with mock.patch.object(
+            boot, "resolve_gear4_endpoints",
+            return_value=boot.Gear4EndpointResolution(None, None, True, 4),
+        ), mock.patch.object(boot, "run_gear3") as gear3_mock:
+            with self.assertRaises(boot.ModelInvocationFailure) as raised:
+                boot.run_gear4(
+                    context_pkg, {}, history=None, images=None,
+                    execution_context="interactive",
+                )
+
+        self.assertEqual(raised.exception.kind, "endpoint_resolution_failed")
+        gear3_mock.assert_not_called()
+
+    def test_failed_ram_probes_are_unknown_and_conservative(self):
+        with mock.patch.object(
+            resilience.subprocess, "run", side_effect=OSError("unsupported"),
+        ):
+            self.assertIsNone(resilience.get_available_ram_gb())
+            self.assertIsNone(resilience.get_total_ram_gb())
+        with mock.patch.object(
+            resilience, "check_hardware_constraints", return_value={
+                "ram_available_gb": None,
+                "ram_total_gb": None,
+                "ram_known": False,
+                "ram_pressure": True,
+                "models_loaded": 0,
+                "can_parallel": False,
+            },
+        ):
+            state = resilience.get_degradation_path(4, {})
+        self.assertEqual(state.degradation_level, 1)
+        self.assertIsNone(state.fallback_gear)
+        self.assertIn("unknown", state.reason.lower())
+
+    def test_cache_release_uses_only_selected_distinct_local_models(self):
+        depth = {
+            "id": "depth-endpoint", "type": "local", "engine": "mlx",
+            "model_path": "/models/depth", "ram_resident_gb": 50,
+            "ram_overhead_gb": 5,
+        }
+        breadth = {
+            "id": "breadth-endpoint", "type": "local", "engine": "mlx",
+            "model_path": "/models/breadth", "ram_resident_gb": 35,
+            "ram_overhead_gb": 5,
+        }
+        with mock.patch.object(
+            resilience, "get_available_ram_gb", return_value=100,
+        ):
+            self.assertTrue(
+                resilience.should_release_kv_cache({}, depth, breadth),
+            )
+            self.assertFalse(
+                resilience.should_release_kv_cache({}, depth, dict(depth)),
+            )
+            self.assertFalse(resilience.should_release_kv_cache(
+                {}, depth, {**breadth, "type": "api"},
+            ))
+            self.assertFalse(resilience.should_release_kv_cache(
+                {}, {**depth, "ram_resident_gb": 10},
+                {**breadth, "ram_resident_gb": 10},
+            ))
+
+        evict = mock.Mock(return_value=True)
+        self.assertTrue(resilience.release_kv_cache(depth, mlx_evictor=evict))
+        evict.assert_called_once_with("/models/depth")
 
 
 class TestShortCircuitNotInSource(unittest.TestCase):

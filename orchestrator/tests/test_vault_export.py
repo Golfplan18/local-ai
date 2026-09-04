@@ -27,6 +27,7 @@ behind a self-check so CI without jsdom still passes.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shutil
@@ -853,15 +854,15 @@ class TestFlaskEndpoint(unittest.TestCase):
     """Smoke test for ``POST /api/session/export``.
 
     We import the Flask app, substitute a temporary vault + a stub CLI, and
-    post a conversation_id that resolves to a raw log we planted. The
-    endpoint should delegate to ``vault_export.export_session_to_vault``
+    post a conversation_id that resolves to a canonical Dialogue fixture.
+    The endpoint should delegate to ``vault_export.export_session_to_vault``
     and return JSON with the markdown path.
     """
 
     @classmethod
     def setUpClass(cls):
         # Import lazily — pulling server.py drags a lot of orchestrator code.
-        sys.path.insert(0, str(Path.home() / "ora" / "server"))
+        sys.path.insert(0, str(HERE.parents[1] / "server"))
         try:
             from server import app as S  # type: ignore
             cls.S = S
@@ -881,25 +882,34 @@ class TestFlaskEndpoint(unittest.TestCase):
             vault = td / "vault"; sessions = td / "sessions"; raw = td / "raw"
             sessions.mkdir(); raw.mkdir()
 
-            # Plant a raw log.
-            (raw / "session.md").write_text(textwrap.dedent("""\
-                # Session endpt9
-
-                session_start: 2026-04-17 18:00:00
-                panel_id: endpoint-test
-                model: local-mlx-test
-                source_platform: local
-
-                ---
-
-                <!-- pair 001 | 2026-04-17 18:00:00 -->
-
-                **User:** Endpoint check.
-
-                **Assistant:** OK.
-
-                ---
-            """), encoding="utf-8")
+            # Plant the canonical identity, privacy, and turn-owner record
+            # required by a Full Dialogue export.
+            conversation_dir = sessions / "endpoint-test"
+            conversation_dir.mkdir()
+            (conversation_dir / "conversation.json").write_text(json.dumps({
+                "conversation_id": "endpoint-test",
+                "session_title": None,
+                "created_at": "2026-04-17 18:00:00",
+                "tag": "",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Endpoint check.",
+                        "timestamp": "2026-04-17 18:00:00",
+                        "turn_index": 1,
+                        "chunk_id": "endpoint-turn-1",
+                        "turn_privacy": "standard",
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "OK.",
+                        "timestamp": "2026-04-17 18:00:00",
+                        "turn_index": 1,
+                        "chunk_id": "endpoint-turn-1",
+                        "turn_privacy": "standard",
+                    },
+                ],
+            }, indent=2), encoding="utf-8")
 
             stub = _stub_cli_script(td, "ok")
 
@@ -907,12 +917,26 @@ class TestFlaskEndpoint(unittest.TestCase):
             body = {
                 "conversation_id": "endpoint-test",
                 "session_title": "Endpoint Smoke",
-                "_vault_root": str(vault),
-                "_sessions_root": str(sessions),
-                "_raw_conversations_dir": str(raw),
-                "_node_cli": str(stub),
             }
-            with _FakeRenderCLIContext(stub, "ok"):
+            real_export = V.export_session_to_vault
+
+            def internal_export(*, conversation_id, **kwargs):
+                return real_export(
+                    conversation_id=conversation_id,
+                    session_title=kwargs.get("session_title"),
+                    vault_root=vault,
+                    sessions_root=sessions,
+                    raw_conversations_dir=raw,
+                    node_cli=stub,
+                    _validator=_passthrough_validator,
+                )
+
+            with _FakeRenderCLIContext(stub, "ok"), mock.patch.object(
+                V, "export_session_to_vault", side_effect=internal_export,
+            ), mock.patch.object(
+                self.S, "_full_dialogue_export_lifecycle_scope",
+                return_value=contextlib.nullcontext(),
+            ):
                 resp = app.post(
                     "/api/session/export",
                     data=json.dumps(body),
@@ -936,6 +960,26 @@ class TestFlaskEndpoint(unittest.TestCase):
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 400)
+
+    def test_endpoint_rejects_private_dependency_overrides_before_export(self):
+        if not self.import_ok:
+            self.skipTest("server import failed")
+        app = self.S.app.test_client()
+        for field in (
+            "_vault_root", "_sessions_root", "_raw_conversations_dir", "_node_cli",
+        ):
+            with self.subTest(field=field), mock.patch.object(
+                V, "export_session_to_vault",
+            ) as export, mock.patch.object(
+                self.S, "_full_dialogue_export_lifecycle_scope",
+            ) as lifecycle:
+                response = app.post(
+                    "/api/session/export",
+                    json={"conversation_id": "override-probe", field: None},
+                )
+                self.assertEqual(response.status_code, 400)
+                export.assert_not_called()
+                lifecycle.assert_not_called()
 
 
 if __name__ == "__main__":
