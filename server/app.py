@@ -19117,7 +19117,7 @@ def _v3_list_project_themes():
             try:
                 # Re-resolve both required assets on every list request.  The
                 # manifest parser validated them at registration/load time;
-                # this second check closes a later symlink swap.
+                # content readers separately bind and validate an open file.
                 p.resolve_theme_asset(theme_id, "theme.css")
                 p.resolve_theme_asset(theme_id, "manifest.json")
             except (OSError, _pr.ManifestError) as exc:
@@ -19203,13 +19203,13 @@ def _v3_theme_css_url_for(entry):
         return f"/themes/project/{entry['project_nexus']}/theme.css"
     return f"/static/themes/{entry['id']}/theme.css"
 
-def _v3_project_theme_asset_path(entry, filename):
+def _v3_open_project_theme_asset(entry, filename):
     from orchestrator import project_registry as _pr
     project = _pr.get_project(entry["project_nexus"])
     if project is None:
         return None
     try:
-        return project.resolve_theme_asset(entry["id"], filename)
+        return project.open_theme_asset(entry["id"], filename)
     except (OSError, _pr.ManifestError):
         return None
 
@@ -19226,10 +19226,13 @@ def _v3_read_theme_asset(theme_id, filename):
     if not entry:
         raise FileNotFoundError(f"Theme not found: {theme_id}")
     if entry.get("origin", "").startswith("project:"):
-        path = _v3_project_theme_asset_path(entry, filename)
-    else:
-        path = os.path.join(V3_THEMES_DIR, theme_id, filename)
-    if not path or not os.path.isfile(path):
+        asset = _v3_open_project_theme_asset(entry, filename)
+        if asset is None:
+            raise FileNotFoundError(f"Theme asset not found: {theme_id}/{filename}")
+        with io.TextIOWrapper(asset, encoding="utf-8") as text_asset:
+            return text_asset.read()
+    path = os.path.join(V3_THEMES_DIR, theme_id, filename)
+    if not os.path.isfile(path):
         raise FileNotFoundError(f"Theme asset not found: {theme_id}/{filename}")
     with open(path, encoding="utf-8") as f:
         return f.read()
@@ -19339,12 +19342,12 @@ def v3_themes_list_api():
         # directory; core / user-installed themes from server/static/themes/.
         if entry.get("origin", "").startswith("project:"):
             try:
-                manifest_path = _v3_project_theme_asset_path(
+                manifest_asset = _v3_open_project_theme_asset(
                     entry, "manifest.json",
                 )
-                if manifest_path is not None:
-                    with manifest_path.open(encoding="utf-8") as f:
-                        manifest = json.load(f)
+                if manifest_asset is not None:
+                    with manifest_asset:
+                        manifest = json.loads(manifest_asset.read().decode("utf-8"))
             except Exception:
                 pass
         else:
@@ -19384,9 +19387,8 @@ def v3_themes_project_asset(nexus, filename):
     named asset OR by structuring requests through theme-specific
     subpaths under the directory.
 
-    Path safety is enforced by the Project registry's resolved containment
-    rule, not by string matching: the Project root, theme directory, and
-    requested asset must all remain nested after symlink resolution.
+    The Project registry validates the bound open file against the resolved
+    Project and theme roots. Serving never reopens a checked mutable pathname.
     """
     try:
         from orchestrator import project_registry as _pr
@@ -19408,15 +19410,28 @@ def v3_themes_project_asset(nexus, filename):
     unsafe = False
     for theme_id in themes:
         try:
-            target = project.resolve_theme_asset(theme_id, filename)
+            asset = project.open_theme_asset(theme_id, filename)
         except _pr.ManifestError:
             unsafe = True
             continue
         except OSError:
             continue
-        # Serve the resolved target rather than re-opening the unresolved
-        # manifest path (which could traverse a symlink a second time).
-        return send_from_directory(str(target.parent), target.name)
+        try:
+            metadata = os.fstat(asset.fileno())
+            response = flask.send_file(
+                asset, download_name=filename, last_modified=metadata.st_mtime,
+                conditional=False,
+            )
+            response.content_length = metadata.st_size
+            response.make_conditional(
+                request.environ, accept_ranges=True,
+                complete_length=metadata.st_size,
+            )
+            response.call_on_close(asset.close)
+            return response
+        except BaseException:
+            asset.close()
+            raise
     if unsafe:
         return Response("Forbidden", status=403)
     return Response(

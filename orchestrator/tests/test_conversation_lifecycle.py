@@ -563,10 +563,16 @@ class TestConversationMetadataPropagation(unittest.TestCase):
             chunk_one = conversations / "chunk-one.md"
             chunk_two = conversations / "chunk-two.md"
             block_tail_marker = "# keep block-list separator bytes\n"
+            legacy_comments = (
+                " # keep legacy tag comment\n",
+                " # keep legacy private flag comment\n",
+            )
             chunk_one.write_text(
                 "---\n"
                 "nexus:\n"
                 "type: chat\n"
+                f"tag:{legacy_comments[0]}"
+                f"tag_private: false{legacy_comments[1]}"
                 "tags:\n"
                 "  - atomic\n"
                 '  - "block: [kept], # literal"\n'
@@ -580,6 +586,8 @@ class TestConversationMetadataPropagation(unittest.TestCase):
                 "---\n"
                 "nexus:\n"
                 "type: chat\n"
+                f'"tag": ""{legacy_comments[0]}'
+                f'"tag_private": false{legacy_comments[1]}'
                 'tags: [resource, "inline: [kept], # literal"]\n'
                 "---\n\nSecond body.\n",
                 encoding="utf-8",
@@ -675,6 +683,13 @@ class TestConversationMetadataPropagation(unittest.TestCase):
             original_bodies = {
                 path: parse_artifact(path)[1] for path in expected_tags
             }
+            original_metadata = {
+                path: {
+                    key: value for key, value in parse_artifact(path)[0].items()
+                    if key not in ("tags", "tag", "tag_private")
+                }
+                for path in expected_tags
+            }
             original_block_tail = preserved_block_tail(chunk_one)
             explicit_note = vault_root / "Explicit Source Note.md"
             explicit_note.write_text(
@@ -720,6 +735,15 @@ class TestConversationMetadataPropagation(unittest.TestCase):
                 metadata, body = parse_artifact(path)
                 self.assertEqual(metadata["tags"], unrelated_tags + ["private"])
                 self.assertEqual(body, original_bodies[path])
+                self.assertEqual({
+                    key: value for key, value in metadata.items()
+                    if key not in ("tags", "tag", "tag_private")
+                }, original_metadata[path])
+                if path in (chunk_one, chunk_two):
+                    self.assertEqual(metadata["tag"], "private")
+                    self.assertIs(metadata["tag_private"], True)
+                    for comment in legacy_comments:
+                        self.assertIn(comment, path.read_text(encoding="utf-8"))
             self.assertEqual(
                 preserved_block_tail(chunk_one), original_block_tail,
             )
@@ -774,6 +798,15 @@ class TestConversationMetadataPropagation(unittest.TestCase):
                 metadata, body = parse_artifact(path)
                 self.assertEqual(metadata["tags"], unrelated_tags)
                 self.assertEqual(body, original_bodies[path])
+                self.assertEqual({
+                    key: value for key, value in metadata.items()
+                    if key not in ("tags", "tag", "tag_private")
+                }, original_metadata[path])
+                if path in (chunk_one, chunk_two):
+                    self.assertEqual(metadata["tag"], "")
+                    self.assertIs(metadata["tag_private"], False)
+                    for comment in legacy_comments:
+                        self.assertIn(comment, path.read_text(encoding="utf-8"))
             self.assertEqual(
                 preserved_block_tail(chunk_one), original_block_tail,
             )
