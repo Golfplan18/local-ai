@@ -142,8 +142,17 @@ def parse_corpus_text(content: str, file_path: str = "") -> ParsedCorpus:
     if title_match:
         parsed.title = title_match.group(1).strip()
 
-    # Look for a sections block in YAML form (preferred for templates)
-    parsed.sections = _parse_sections_yaml(body) or _parse_sections_markdown(body)
+    # Look for a sections block in YAML form (preferred for templates).
+    # Malformed section metadata is an invalid corpus, not an absent block
+    # eligible for the Markdown fallback.
+    try:
+        parsed.sections = _parse_sections_yaml(body)
+    except yaml.YAMLError as exc:
+        parsed.is_valid = False
+        parsed.parse_error = f"Invalid YAML corpus sections block: {exc}"
+        return parsed
+    if not parsed.sections:
+        parsed.sections = _parse_sections_markdown(body)
 
     # Chain relationships
     parsed.chain_relationships = _parse_chain_relationships(body)
@@ -190,6 +199,8 @@ def _parse_sections_yaml(body: str) -> list[CorpusSection]:
         try:
             data = yaml.safe_load(block)
         except yaml.YAMLError:
+            if re.search(r"(?m)^[ \t]*(?:sections|['\"]sections['\"])[ \t]*:", block):
+                raise
             continue
         if not isinstance(data, dict):
             continue
