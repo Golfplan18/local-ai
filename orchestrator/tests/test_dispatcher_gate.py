@@ -61,11 +61,8 @@ def _read_events(path):
 
 class DispatchBase(unittest.TestCase):
     def setUp(self):
-        # Keep absolute positive-path fixtures under the portable home root.
-        # The legacy classifier treats /var and /private as sensitive before
-        # consulting the modeled workspace, which would make a default macOS
-        # temp directory prompt for the wrong reason.
-        self.tmp = tempfile.TemporaryDirectory(dir=str(Path.home()))
+        # Runtime writes stay in disposable storage, never the real home.
+        self.tmp = tempfile.TemporaryDirectory()
         self.workspace = os.path.join(self.tmp.name, "workspace")
         os.makedirs(self.workspace)
         self.sink = os.path.join(self.tmp.name, "tool-events.jsonl")
@@ -296,6 +293,78 @@ class TestGateBeforeExecution(DispatchBase):
             tool_events.check_and_consume_approval("bash_execute", args_hash),
             token,
         )
+
+        import mcp_client
+        invalid_browser_calls = []
+        for tool in ("click", "hover", "select_option", "type", "drop"):
+            for invalid in (None, "", "   ", 17):
+                params = {"element": "description", "ref": "e1", "selector": "#item"}
+                if invalid is not None:
+                    params["target"] = invalid
+                invalid_browser_calls.append((f"mcp_playwright_browser_{tool}", params))
+        for field in ("startTarget", "endTarget"):
+            for invalid in (None, "", "  ", False):
+                params = {"startTarget": "e1", "endTarget": "e2"}
+                if invalid is None:
+                    params.pop(field)
+                else:
+                    params[field] = invalid
+                invalid_browser_calls.append(("mcp_playwright_browser_drag", params))
+        for params in ({}, {"fields": {}}, {"fields": [None]},
+                       {"fields": [{"ref": "e1", "element": "description"}]},
+                       {"fields": [{"target": ""}]}, {"fields": [{"target": 1}]}):
+            invalid_browser_calls.append(("mcp_playwright_browser_fill_form", params))
+        manager = mcp_client.MCPClientManager()
+        with mock.patch.object(dispatcher, "_mcp_client", manager), mock.patch.object(
+            mcp_client.subprocess, "Popen", side_effect=AssertionError("no real MCP child"),
+        ), mock.patch.object(manager, "call_mcp_tool") as send:
+            for action, params in invalid_browser_calls:
+                with self.subTest(action=action, params=params):
+                    raw_hash = tool_events.normalize_args_hash(action, params)
+                    approval = tool_events._grant_approval_authorized(action, raw_hash)
+                    with mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+                         mock.patch.object(dispatcher.system_protection, "begin_execution") as begin:
+                        result = dispatcher.dispatch(action, params)
+                    self.assertIn("SYSTEM PROTECTION", result)
+                    gate.assert_not_called()
+                    begin.assert_not_called()
+                    send.assert_not_called()
+                    self.assertEqual(tool_events.check_and_consume_approval(action, raw_hash), approval)
+
+            # An unavailable implicit-account child cannot spend an approval.
+            action = "mcp_github_create_repository"
+            params = {"name": "unavailable"}
+            raw_hash = tool_events.normalize_args_hash(action, params)
+            approval = tool_events._grant_approval_authorized(action, raw_hash)
+            manager._authorized_tools[action] = ("github", "create_repository")
+            with mock.patch.object(manager, "_recover_server", return_value=(None, "absent")), \
+                 mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+                 mock.patch.object(dispatcher.system_protection, "begin_execution") as begin:
+                result = dispatcher.dispatch(action, params)
+            self.assertIn("unavailable", result)
+            gate.assert_not_called()
+            begin.assert_not_called()
+            send.assert_not_called()
+            self.assertEqual(tool_events.check_and_consume_approval(action, raw_hash), approval)
+
+        # Required-target validation leaves non-target tools and upload cancel
+        # intact and does not turn this into general browser-schema validation.
+        for tool in ("click", "hover", "select_option", "type", "drop"):
+            params = {"target": "e1"}
+            self.assertEqual(tool_events.mcp_policy(
+                f"mcp_playwright_browser_{tool}", params,
+            )["parameters"], params)
+        for tool, params in (
+            ("drag", {"startTarget": "e1", "endTarget": "e2"}),
+            ("fill_form", {"fields": []}),
+            ("fill_form", {"fields": [{"target": "e1"}]}),
+            ("press_key", {"key": "Enter"}),
+            ("snapshot", {}), ("navigate_back", {}),
+            ("file_upload", {}), ("file_upload", {"paths": []}),
+        ):
+            self.assertEqual(tool_events.mcp_policy(
+                f"mcp_playwright_browser_{tool}", params,
+            )["parameters"], params)
 
     def test_invalid_file_target_preserves_approval_before_gate(self):
         blocker = Path(self.workspace) / "blocker"

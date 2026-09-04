@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
@@ -12,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 
 try:
     import runtime_paths as _rp
@@ -74,6 +77,16 @@ class MCPProtocolError(MCPError):
 
 class MCPBusyError(MCPError):
     pass
+
+
+@dataclass(frozen=True)
+class PreparedMCPCall:
+    namespaced_name: str
+    server_name: str
+    tool_name: str
+    connection: MCPConnection
+    launch_id: str
+    parameters: dict
 
 
 def _placeholder_value(name: str) -> str | None:
@@ -279,6 +292,7 @@ class MCPConnection:
         self.env_allowlist = list(env_allowlist or [])
         self.env_from_parent = list(env_from_parent or [])
         self.process = None
+        self.launch_id: str | None = None
         self.tools: list[dict] = []
         self._request_id = 0
         self._request_lock = threading.Lock()
@@ -380,6 +394,9 @@ class MCPConnection:
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 env=self._fresh_environment(), cwd=self.cwd, text=False, bufsize=0,
             )
+            # Identity belongs to this actual spawn, not the parent's current
+            # environment or any credential bytes. Reconnection gets a new ID.
+            self.launch_id = uuid.uuid4().hex
             self._start_reader()
             self._start_stderr_reader()
             result = self._request(
@@ -738,7 +755,62 @@ class MCPClientManager:
             except Exception as exc:
                 print(f"[MCP] {name}: failed-soft ({exc})", file=sys.stderr)
 
-    def call_mcp_tool(self, namespaced_name: str, parameters: dict) -> dict:
+    def prepare_mcp_tool(self, namespaced_name: str, parameters: dict) -> PreparedMCPCall:
+        """Select the exact child before reviewing an implicit-account effect."""
+        with self._lock:
+            binding = self._authorized_tools.get(namespaced_name) or self.all_tools.get(namespaced_name)
+            conn = self.connections.get(binding[0]) if binding else None
+        if binding is None:
+            raise MCPError(f"Unknown MCP tool: {namespaced_name}")
+        if conn is not None and (
+            conn._closed or conn._fatal_error or conn._reader_eof
+            or conn.process is None or conn.process.poll() is not None
+        ):
+            # A dead child may not yet have reached call_tool's cleanup. Retire
+            # only that instance so ordinary pre-review recovery stays usable.
+            self._remove_server(binding[0], conn)
+            conn = None
+        if conn is None or getattr(conn, "_closed", False):
+            conn, reason = self._recover_server(binding[0])
+            if conn is None:
+                raise MCPError(f"MCP server {binding[0]} unavailable: {reason}")
+        prepared = PreparedMCPCall(
+            namespaced_name, *binding, conn, conn.launch_id,
+            copy.deepcopy(parameters),
+        )
+        self.revalidate_prepared_call(prepared)
+        return prepared
+
+    def revalidate_prepared_call(self, prepared: PreparedMCPCall) -> None:
+        """Never replace or recover a child selected for an approval."""
+        conn = prepared.connection
+        with self._lock:
+            if (
+                self.connections.get(prepared.server_name) is not conn
+                or self.all_tools.get(prepared.namespaced_name)
+                != (prepared.server_name, prepared.tool_name)
+                or not prepared.launch_id or conn.launch_id != prepared.launch_id
+                or conn._closed or conn._fatal_error or conn._reader_eof
+                or conn.process is None or conn.process.poll() is not None
+            ):
+                raise MCPError("prepared MCP child is unavailable or changed")
+
+    def call_mcp_tool(self, namespaced_name: str, parameters: dict, *,
+                      prepared_call: PreparedMCPCall | None = None) -> dict:
+        if prepared_call is not None:
+            try:
+                if prepared_call.namespaced_name != namespaced_name:
+                    raise MCPError("prepared MCP tool does not match the call")
+                self.revalidate_prepared_call(prepared_call)
+                result = prepared_call.connection.call_tool(
+                    prepared_call.tool_name, prepared_call.parameters,
+                )
+                if prepared_call.connection._closed:
+                    self._remove_server(prepared_call.server_name, prepared_call.connection)
+                    return {"error": "prepared MCP child became unavailable"}
+                return result
+            except MCPError as exc:
+                return {"error": str(exc)}
         binding = self._authorized_tools.get(namespaced_name)
         if binding is None:
             # Keep the small direct-manager fixture path compatible for callers

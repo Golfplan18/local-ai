@@ -34,7 +34,7 @@ from server import app as server  # noqa: E402
 
 class SystemProtectionBase(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(dir=str(Path.home()))
+        self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.actions = str(self.root / "actions.jsonl")
         self.approvals = str(self.root / "approvals.json")
@@ -849,6 +849,190 @@ class TestApprovalAndReceipts(SystemProtectionBase):
                 pre_state=[protection.capture_path_identity(target)],
             )
         self.assertEqual(protection.verify_audit(), [])
+
+        import dispatcher
+        import mcp_client
+
+        def new_child():
+            # Exercise actual launch-ID assignment without a subprocess,
+            # credential, reader thread, provider, or browser transport.
+            child = mcp_client.MCPConnection(
+                "github", "unused", env_from_parent=["GITHUB_PERSONAL_ACCESS_TOKEN"],
+            )
+            process = mock.Mock()
+            process.poll.return_value = None
+            with mock.patch.object(mcp_client.subprocess, "Popen", return_value=process), \
+                 mock.patch.object(child, "_start_reader"), \
+                 mock.patch.object(child, "_start_stderr_reader"), \
+                 mock.patch.object(child, "_request", return_value={}), \
+                 mock.patch.object(child, "_notify"):
+                self.assertTrue(child.connect())
+            child._request = mock.Mock(return_value={"content": [{"text": "sent once"}]})
+            return child
+
+        def dispatch(action, params):
+            dispatcher.reset_consecutive()
+            return dispatcher.dispatch(action, params)
+
+        manager = mcp_client.MCPClientManager()
+        with mock.patch.object(dispatcher, "_mcp_client", manager), \
+             mock.patch.object(dispatcher, "_permission_mode", "auto-approve"), \
+             mock.patch.object(dispatcher, "fire_hooks", return_value=[]), \
+             mock.patch.object(dispatcher, "_retire_legacy_session_logs_once"), \
+             mock.patch.object(mcp_client.subprocess, "Popen", side_effect=AssertionError("no real MCP child")), \
+             mock.patch.object(manager, "_recover_server", side_effect=AssertionError("no post-approval recovery")) as recover, \
+             mock.patch.dict(os.environ, {"GITHUB_PERSONAL_ACCESS_TOKEN": "synthetic-test-account"}):
+            for tool, params in (
+                ("create_repository", {"name": "new-repository"}),
+                ("fork_repository", {"owner": "source", "repo": "repository"}),
+            ):
+                with self.subTest(tool=tool):
+                    action = "mcp_github_" + tool
+                    binding = ("github", tool)
+                    manager.all_tools[action] = binding
+                    manager._authorized_tools[action] = binding
+                    child_a = new_child()
+                    child_b = new_child()
+                    self.assertNotEqual(child_a.launch_id, child_b.launch_id)
+                    manager.connections["github"] = child_a
+                    audit_before = protection.verify_audit()
+                    dispatch(action, params)
+                    review_a = self._approve_latest()
+                    token_a = tool_events._load_approvals()["tokens"][-1]
+                    raw_hash = tool_events.normalize_args_hash(action, params)
+                    self.assertEqual(token_a["args_hash"], raw_hash)
+
+                    # Same arguments, fresh child even with the same inherited
+                    # environment: stale review invalidates, not a raw-hash miss.
+                    manager.connections["github"] = child_b
+                    with mock.patch.object(protection, "begin_execution", wraps=protection.begin_execution) as begin:
+                        dispatch(action, params)
+                    begin.assert_not_called()
+                    review_b = self._queue_records()[-1]
+                    self.assertNotEqual(review_a["event"]["review_request_digest"], review_b["event"]["review_request_digest"])
+                    current = next(item for item in tool_events._load_approvals()["tokens"] if item["id"] == token_a["id"])
+                    self.assertTrue(current["used"])
+                    self.assertEqual(current["invalidation_reason"], "review-request-digest-mismatch")
+                    self.assertEqual(protection.verify_audit(), audit_before)
+                    child_a._request.assert_not_called()
+                    child_b._request.assert_not_called()
+                    recover.assert_not_called()
+                    manager.connections["github"] = child_a
+                    dispatch(action, params)
+                    self.assertEqual(protection.verify_audit(), audit_before)
+                    child_a._request.assert_not_called()
+
+                    # An unchanged held child remains valid when only the
+                    # parent's environment changes; only one send is allowed.
+                    self.assertIn("Denied", tool_events.resolve_gate_entry(review_b, approve=False))
+                    dispatch(action, params)
+                    approved = self._approve_latest()
+
+                    def alter_hook_arguments(_event, context):
+                        if _event == "pre_tool":
+                            context["parameters"]["description"] = "not reviewed"
+                        return []
+
+                    with mock.patch.dict(os.environ, {"GITHUB_PERSONAL_ACCESS_TOKEN": "different-parent-only"}), \
+                         mock.patch.object(dispatcher, "fire_hooks", side_effect=alter_hook_arguments):
+                        result = dispatch(action, params)
+                    self.assertIn("sent once", result)
+                    child_a._request.assert_called_once()
+                    self.assertEqual(child_a._request.call_args.args[1]["arguments"], params)
+                    receipts = protection.verify_audit()[len(audit_before):]
+                    self.assertEqual([item["event_type"] for item in receipts], [
+                        "protected_action_started", "protected_action_completed",
+                    ])
+                    self.assertEqual(receipts[0]["request_digest"], approved["event"]["review_request_digest"])
+                    self.assertEqual(receipts[0]["approval_args_hash"], raw_hash)
+                    dispatch(action, params)
+                    child_a._request.assert_called_once()
+                    self.assertEqual(protection.verify_audit()[len(audit_before):], receipts)
+
+                    # A child lost during deterministic preflight preserves
+                    # the issued token and reaches neither gate nor start.
+                    pre_gate_params = {**params, "description": "pre-gate loss"}
+                    dispatch(action, pre_gate_params)
+                    self._approve_latest()
+                    issued = tool_events._load_approvals()["tokens"][-1]
+                    check_child = manager.revalidate_prepared_call
+                    checks = 0
+
+                    def lose_before_gate(prepared):
+                        nonlocal checks
+                        checks += 1
+                        if checks == 2:
+                            child_a.process.poll.return_value = 1
+                        return check_child(prepared)
+
+                    with mock.patch.object(manager, "revalidate_prepared_call", side_effect=lose_before_gate), \
+                         mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+                         mock.patch.object(protection, "begin_execution", wraps=protection.begin_execution) as begin:
+                        result = dispatch(action, pre_gate_params)
+                    self.assertIn("unavailable or changed", result)
+                    gate.assert_not_called()
+                    begin.assert_not_called()
+                    self.assertFalse(next(item for item in tool_events._load_approvals()["tokens"] if item["id"] == issued["id"])["used"])
+                    child_a.process.poll.return_value = None
+
+                    # Loss or replacement after a real start receipt is a
+                    # failed effect, never permission to recover or substitute.
+                    for failure in ("lost", "replaced"):
+                        failure_params = {**params, "description": failure}
+                        child_a._request.reset_mock()
+                        manager.connections["github"] = child_a
+                        dispatch(action, failure_params)
+                        self._approve_latest()
+                        audit_before_failure = protection.verify_audit()
+
+                        def after_start(*_args):
+                            if failure == "lost":
+                                child_a.process.poll.return_value = 1
+                            else:
+                                manager.connections["github"] = child_b
+                            return []
+
+                        with mock.patch.object(dispatcher, "fire_hooks", side_effect=after_start):
+                            result = dispatch(action, failure_params)
+                        self.assertIn("unavailable or changed", result)
+                        child_a._request.assert_not_called()
+                        child_b._request.assert_not_called()
+                        recover.assert_not_called()
+                        failure_receipts = protection.verify_audit()[len(audit_before_failure):]
+                        self.assertEqual([item["event_type"] for item in failure_receipts], [
+                            "protected_action_started", "protected_action_failed",
+                        ])
+                        child_a.process.poll.return_value = None
+
+            # An explicitly named organization is not an implicit account.
+            action = "mcp_github_fork_repository"
+            manager.connections["github"] = child_b
+            params = {"owner": "source", "repo": "repository", "organization": "named-org"}
+            with mock.patch.object(manager, "prepare_mcp_tool", side_effect=AssertionError("explicit organization is not implicit")):
+                dispatch(action, params)
+                self._approve_latest()
+                self.assertIn("sent once", dispatch(action, params))
+            child_b._request.assert_called_once()
+
+            # A dead, not-yet-closed child can still recover before review.
+            # This does not authorize recovery inside a prepared execution.
+            child_a.process.poll.return_value = 1
+            manager.connections["github"] = child_a
+            action = "mcp_github_create_repository"
+
+            def recover_before_review(server_name):
+                self.assertEqual(server_name, "github")
+                self.assertTrue(child_a._closed)
+                manager.connections["github"] = child_b
+                manager.all_tools[action] = ("github", "create_repository")
+                return child_b, ""
+
+            with mock.patch.object(manager, "_recover_server", side_effect=recover_before_review) as pre_recovery, \
+                 mock.patch.object(protection, "begin_execution", wraps=protection.begin_execution) as begin:
+                dispatch(action, {"name": "preapproval-recovery"})
+            pre_recovery.assert_called_once_with("github")
+            begin.assert_not_called()
+            child_b._request.assert_called_once()
 
     def test_drift_after_write_ahead_is_rejected_before_effect_scope(self):
         target = self.root / "profile.json"

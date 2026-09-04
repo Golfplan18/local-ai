@@ -924,10 +924,22 @@ def dispatch(tool_name: str, parameters: dict,
             tool_events.record(refusal_event)
             return f"[SYSTEM PROTECTION — {exc}]"
 
+    prepared_mcp = None
+    prepared_mcp_client = None
     if is_mcp:
         try:
             resolved_mcp = tool_events.mcp_policy(tool_name, parameters)
             parameters = dict(resolved_mcp["parameters"])
+            if tool_name == "mcp_github_create_repository" or (
+                tool_name == "mcp_github_fork_repository"
+                and not parameters.get("organization")
+            ):
+                prepared_mcp_client = _mcp_client
+                if prepared_mcp_client is None:
+                    raise ValueError("MCP client is unavailable")
+                prepared_mcp = prepared_mcp_client.prepare_mcp_tool(
+                    tool_name, parameters,
+                )
         except Exception as exc:
             tool_events.record({
                 "event": "gate", "action": tool_name, "category": "execute",
@@ -988,6 +1000,11 @@ def dispatch(tool_name: str, parameters: dict,
     gate_parameters = dict(parameters)
     if prepared_command is not None:
         gate_parameters["_prepared_command"] = prepared_command.binding()
+    protection_parameters = dict(gate_parameters)
+    if prepared_mcp is not None:
+        # Keep the raw gate identity stable so a replacement child invalidates
+        # the existing approval as stale, including after an ABA restoration.
+        protection_parameters["_mcp_child_launch"] = prepared_mcp.launch_id
 
     # G1.22A: classification at the same pre-effect boundary as the existing
     # execution gate.  The generic capability axes cannot express absolute
@@ -1027,7 +1044,7 @@ def dispatch(tool_name: str, parameters: dict,
             review_request, review_digest = (
                 system_protection.prepare_protection_request(
                     protection_policy,
-                    params_digest=system_protection.params_digest(gate_parameters),
+                    params_digest=system_protection.params_digest(protection_parameters),
                     pre_state=protection_pre_state,
                     surface="tool_dispatcher",
                     command_binding=(
@@ -1104,6 +1121,11 @@ def dispatch(tool_name: str, parameters: dict,
         )
         if current_file_state != file_pre_state:
             return "[SYSTEM PROTECTION — file target changed after validation]"
+    if prepared_mcp is not None:
+        try:
+            prepared_mcp_client.revalidate_prepared_call(prepared_mcp)
+        except Exception as exc:
+            return f"[SYSTEM PROTECTION — {exc}]"
 
     decision = tool_events.gate(
         tool_name, gate_axes, params=gate_parameters,
@@ -1130,7 +1152,7 @@ def dispatch(tool_name: str, parameters: dict,
                 approval_args_hash=tool_events.normalize_args_hash(
                     tool_name, gate_parameters,
                 ),
-                params_digest=system_protection.params_digest(gate_parameters),
+                params_digest=system_protection.params_digest(protection_parameters),
                 pre_state=protection_pre_state,
                 surface="tool_dispatcher",
                 command_binding=(
@@ -1194,7 +1216,11 @@ def dispatch(tool_name: str, parameters: dict,
                         "file target changed immediately before effect"
                     )
             if is_mcp:
-                if _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
+                if prepared_mcp is not None:
+                    result = prepared_mcp_client.call_mcp_tool(
+                        tool_name, parameters, prepared_call=prepared_mcp,
+                    )
+                elif _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
                     result = _mcp_client.call_mcp_tool(tool_name, parameters)
                 else:
                     result = f"[MCP unavailable — no client for {tool_name}]"

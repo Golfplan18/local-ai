@@ -467,6 +467,28 @@ def mcp_policy(namespaced_tool: str, parameters: dict | None) -> dict:
     normalized = dict(parameters)
     selectors: list[str] = []
     adapter = policy["adapter"]
+    # Only the target-bearing fields of the locked browser schema belong to
+    # this preflight. Optional descriptions/legacy refs are not substitutes.
+    if policy["server"] == "playwright":
+        required_targets = ()
+        if policy["tool"] in {
+            "browser_click", "browser_hover", "browser_select_option",
+            "browser_type", "browser_drop",
+        }:
+            required_targets = ("target",)
+        elif policy["tool"] == "browser_drag":
+            required_targets = ("startTarget", "endTarget")
+        for field in required_targets:
+            value = normalized.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise MCPPolicyError(f"browser {field} is missing or malformed")
+        if policy["tool"] == "browser_fill_form":
+            fields = normalized.get("fields")
+            if not isinstance(fields, list):
+                raise MCPPolicyError("browser fields must be a list")
+            for field in fields:
+                if not isinstance(field, dict) or not isinstance(field.get("target"), str) or not field["target"].strip():
+                    raise MCPPolicyError("browser field target is missing or malformed")
     if adapter == "deny_opaque_code":
         raise MCPPolicyError("opaque arbitrary-code MCP tools are prohibited")
     if adapter == "vault_path":
