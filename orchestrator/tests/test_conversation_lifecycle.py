@@ -130,11 +130,13 @@ class TestConversationMemoryLifecycle(unittest.TestCase):
             root = Path(td)
             path = root / "corrupt" / "conversation.json"
             path.parent.mkdir()
-            path.write_text("{broken")
-            self.assertIsNone(memory.ensure_conversation_envelope(
-                "corrupt", tag="private", sessions_root=root,
-            ))
-            self.assertEqual(path.read_text(), "{broken")
+            for content in (b"{broken", b"[]", b'{"messages": {}}', b"\xff"):
+                with self.subTest(content=content):
+                    path.write_bytes(content)
+                    self.assertIsNone(memory.ensure_conversation_envelope(
+                        "corrupt", tag="private", sessions_root=root,
+                    ))
+                    self.assertEqual(path.read_bytes(), content)
 
     def test_direct_writers_refuse_session_symlink_escape(self):
         with tempfile.TemporaryDirectory() as td:
@@ -2662,41 +2664,103 @@ class TestServerLifecycleWiring(unittest.TestCase):
         video_routes._render_conversations["render-aside"] = (
             "aside-dialogue"
         )
-        with (
-            mock.patch.object(self.server, "SIDEBAR_WINDOW_AVAILABLE", True),
-            mock.patch.object(
-                self.server, "clear_sidebar_window", return_value=1,
-            ) as clear_sidebar,
-        ):
+        owned = self.server.get_sidebar_window("aside-dialogue")
+        other = self.server.get_sidebar_window("other-aside-dialogue")
+        owned.add_exchange("A prompt", "A answer")
+        other.add_exchange("B prompt", "B answer")
+        self.addCleanup(self.server.clear_sidebar_window, "other-aside-dialogue")
+        with mock.patch.object(self.server, "SIDEBAR_WINDOW_AVAILABLE", True):
             result = self.server._clear_conversation_runtime_state(
                 "Aside-Dialogue",
             )
 
-        clear_sidebar.assert_called_once_with("Aside-Dialogue")
+        self.assertEqual(owned.get_history(), [])
+        self.assertEqual(other.get_history(), [
+            {"role": "user", "content": "B prompt"},
+            {"role": "assistant", "content": "B answer"},
+        ])
         self.assertEqual(result["cleared"]["sidebar_windows"], 1)
         self.assertNotIn("render-aside", video_routes._render_conversations)
         self.assertFalse(result["errors"])
 
     def test_unreadable_existing_envelope_is_not_treated_as_new_standard(self):
+        import conversation_memory as legacy_memory
+
         with tempfile.TemporaryDirectory() as td:
-            corrupt = Path(td) / "conversation.json"
-            corrupt.write_text("{not-json", encoding="utf-8")
+            root = Path(td)
+            sessions = root / "sessions"
+            corrupt = sessions / "existing-corrupt" / "conversation.json"
+            corrupt.parent.mkdir(parents=True)
+            pending = root / "pending"
+            pending.mkdir()
+            pending_file = pending / "interrupted.json"
+            payload = {
+                "conversation_id": "existing-corrupt",
+                "submission_id": "interrupted",
+                "user_input": "preserve the exact pending prompt",
+                "tag": "private",
+                "captured_at": "2026-09-03T00:00:00Z",
+            }
+            pending_bytes = json.dumps(payload).encode()
+            pending_file.write_bytes(pending_bytes)
             with (
-                mock.patch.object(memory, "load_conversation_json",
-                                  return_value=None),
-                mock.patch.object(memory, "_conversation_path",
-                                  return_value=corrupt),
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT", sessions),
+                mock.patch.object(legacy_memory, "_DEFAULT_SESSIONS_ROOT", sessions),
+                mock.patch.object(self.server, "CONVERSATIONS_PENDING", str(pending)),
+                mock.patch.object(self.server, "CONVERSATIONS_PROCESSED", str(root / "processed")),
+                mock.patch.object(self.server, "CONVERSATIONS_DIR", str(root / "chunks")),
                 mock.patch.object(self.server, "_delete_conversation_runtime") as delete,
             ):
-                tag = self.server._effective_conversation_tag(
-                    "existing-corrupt", "",
-                )
-                response = self.server.app.test_client().post(
-                    "/api/conversation/existing-corrupt/close",
-                )
-        self.assertEqual(tag, "stealth")
-        self.assertEqual(response.status_code, 409)
-        delete.assert_not_called()
+                for content in (b"{not-json", b"[]", b'{"messages": {}}', b"\xff"):
+                    with self.subTest(content=content):
+                        corrupt.write_bytes(content)
+                        with self.assertRaisesRegex(ValueError, "unreadable"):
+                            self.server._effective_conversation_tag("existing-corrupt", "")
+                        response = self.server.app.test_client().post(
+                            "/api/conversation/existing-corrupt/close",
+                        )
+                        self.assertEqual(response.status_code, 409)
+                        self.assertEqual(self.server._scan_orphaned_pending_submissions(), 0)
+                        self.assertEqual(corrupt.read_bytes(), content)
+                        self.assertEqual(pending_file.read_bytes(), pending_bytes)
+                        self.assertIsNone(legacy_memory.mark_conversation_errored(
+                            "existing-corrupt", "failed turn",
+                        ))
+                        self.assertEqual(corrupt.read_bytes(), content)
+                delete.assert_not_called()
+
+                prior = {
+                    "conversation_id": "existing-corrupt", "tag": "private",
+                    "display_name": "Keep this title", "parent_conversation_id": "parent",
+                    "messages": [{"role": "user", "content": "existing words"}],
+                    "custom_field": {"keep": True},
+                }
+                corrupt.write_text(json.dumps(prior))
+                original = corrupt.read_bytes()
+                with mock.patch.object(legacy_memory, "_atomic_write_envelope", return_value=False):
+                    self.assertEqual(self.server._scan_orphaned_pending_submissions(), 0)
+                self.assertEqual(corrupt.read_bytes(), original)
+                self.assertEqual(pending_file.read_bytes(), pending_bytes)
+                with mock.patch.object(self.server.rp, "atomic_write_text", side_effect=OSError("disk full")):
+                    self.assertEqual(self.server._scan_orphaned_pending_submissions(), 0)
+                self.assertEqual(corrupt.read_bytes(), original)
+                self.assertEqual(pending_file.read_bytes(), pending_bytes)
+                self.assertEqual(self.server._scan_orphaned_pending_submissions(), 1)
+                recovered = json.loads(corrupt.read_text())
+                for key, value in prior.items():
+                    self.assertEqual(recovered[key], value)
+                self.assertEqual(recovered["interrupted_input"], payload["user_input"])
+                self.assertEqual(recovered["last_status"], "errored")
+                self.assertFalse(pending_file.exists())
+                self.assertEqual((root / "processed" / pending_file.name).read_bytes(), pending_bytes)
+
+                payload.update(conversation_id="new-recovery", submission_id="new-recovery")
+                pending_file.write_text(json.dumps(payload))
+                self.assertEqual(self.server._scan_orphaned_pending_submissions(), 1)
+                created = json.loads((sessions / "new-recovery" / "conversation.json").read_text())
+                self.assertEqual(created["messages"], [])
+                self.assertEqual(created["tag"], "private")
+                self.assertEqual(created["interrupted_input"], payload["user_input"])
 
     def test_cross_origin_delete_is_rejected_before_purge(self):
         with mock.patch.object(

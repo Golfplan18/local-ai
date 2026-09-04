@@ -7313,8 +7313,8 @@ def _effective_conversation_tag(conversation_id: str, requested_tag="") -> str:
     # ``load_conversation_json`` intentionally returns None for both missing
     # and unreadable files. Existing-but-corrupt state is not a new Dialogue:
     # accepting a request-supplied Standard tag could make a Private/Stealth
-    # conversation persist in clear form. Keep execution available but use
-    # the non-persistent Stealth behavior and report the corruption loudly.
+    # conversation persist in clear form. Refuse the turn and report the
+    # corruption without replacing its privacy authority.
     try:
         envelope_path = _conversation_path(
             conversation_id, _DEFAULT_SESSIONS_ROOT,
@@ -7578,7 +7578,8 @@ def _scan_orphaned_pending_submissions() -> int:
             continue
 
         try:
-            _surface_orphan_as_errored_chunk(payload)
+            if not _surface_orphan_as_errored_chunk(payload):
+                continue
             os.makedirs(CONVERSATIONS_PROCESSED, exist_ok=True)
             shutil.move(path, os.path.join(CONVERSATIONS_PROCESSED, fname))
             count += 1
@@ -7590,7 +7591,7 @@ def _scan_orphaned_pending_submissions() -> int:
     return count
 
 
-def _surface_orphan_as_errored_chunk(payload: dict) -> None:
+def _surface_orphan_as_errored_chunk(payload: dict) -> bool:
     """Surface an interrupted submission to the user as an errored row.
 
     Two-track recovery:
@@ -7654,75 +7655,59 @@ def _surface_orphan_as_errored_chunk(payload: dict) -> None:
         f"## Recommendation\n\n{recommendation}\n\n"
         f"## Original prompt\n\n{user_input}\n"
     )
-    try:
-        with open(fpath, "w", encoding="utf-8") as f:
-            f.write(yaml_block + body)
-    except Exception as e:
-        print(f"[WARNING] _surface_orphan_as_errored_chunk write failed: {e}")
+    from conversation_memory import (
+        _atomic_write_envelope,
+        _conversation_path,
+        _conversation_write_lock,
+        _DEFAULT_SESSIONS_ROOT,
+    )
 
-    # Track 2 — envelope marker so the row surfaces in the sidebar.
-    try:
-        from conversation_memory import (
-            load_conversation_json,
-            mark_conversation_errored,
-            _conversation_path,
-            _DEFAULT_SESSIONS_ROOT,
+    # Use the same lifecycle/write locks as ordinary Dialogue persistence.
+    # Only an absent file may become a fresh envelope. A failed read or write
+    # propagates to the scanner, which retains the original pending submission.
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return False
+        env_path = _conversation_path(
+            conversation_id, _DEFAULT_SESSIONS_ROOT, create_parent=True,
         )
-    except Exception as e:
-        print(f"[WARNING] orphan envelope marker imports failed: {e}")
-        return
-
-    # Ensure the envelope exists. If the user crashed mid-first-submit on a
-    # brand-new conversation, no envelope was ever written; create a minimal
-    # one carrying just the tag + interrupted_input. Existing envelopes are
-    # left intact (immutability of prior turns).
-    env_path = _conversation_path(conversation_id, _DEFAULT_SESSIONS_ROOT)
-    existing = load_conversation_json(conversation_id)
-    if existing is None:
-        try:
-            env_path.parent.mkdir(parents=True, exist_ok=True)
-            envelope = {
-                "conversation_id": conversation_id,
-                "display_name":    user_input[:60].strip() or "Recovered submission",
-                "tag":             tag,
-                "messages":        [],
-                "created_at":      captured_at,
-            }
-            env_path.write_text(
-                json.dumps(envelope, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
-        except Exception as e:
-            print(f"[WARNING] orphan envelope create failed: {e}")
-            return
-
-    # Stamp the envelope with the interrupted-input field so retry
-    # re-submits the original prompt verbatim.
-    try:
-        data = load_conversation_json(conversation_id) or {}
-        data["interrupted_input"]    = user_input
-        data["interrupted_at"]       = captured_at
-        data["interrupted_submission_id"] = submission_id
-        visual_checkpoint_id = payload.get("visual_checkpoint_id")
-        canvas_preview_path = payload.get("canvas_preview_path")
-        if (isinstance(visual_checkpoint_id, str)
-                and _VISUAL_CHECKPOINT_ID_RE.fullmatch(visual_checkpoint_id)
-                and isinstance(canvas_preview_path, str)
-                and os.path.isfile(canvas_preview_path)
-                and not os.path.islink(canvas_preview_path)):
-            data["interrupted_visual_checkpoint_id"] = visual_checkpoint_id
-        env_path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except Exception as e:
-        print(f"[WARNING] orphan interrupted_input write failed: {e}")
-
-    # Flip last_status → errored so the sidebar groups it correctly.
-    try:
-        mark_conversation_errored(conversation_id, failure_summary)
-    except Exception as e:
-        print(f"[WARNING] orphan mark_errored failed: {e}")
+        with _conversation_write_lock(conversation_id), rp.locked_file(env_path):
+            try:
+                envelope = json.loads(env_path.read_text(encoding="utf-8"))
+            except FileNotFoundError:
+                envelope = {
+                    "conversation_id": conversation_id,
+                    "display_name": user_input[:60].strip() or "Recovered submission",
+                    "tag": tag,
+                    "messages": [],
+                    "created": captured_at,
+                    "parent_conversation_id": None,
+                    "fork_point_message_count": None,
+                    "fork_point_chunk_id": None,
+                    "project_ids": [],
+                    "contributors": [],
+                }
+            if (not isinstance(envelope, dict)
+                    or not isinstance(envelope.get("messages"), list)):
+                raise ValueError("unreadable existing Dialogue envelope")
+            envelope["interrupted_input"] = user_input
+            envelope["interrupted_at"] = captured_at
+            envelope["interrupted_submission_id"] = submission_id
+            envelope["last_status"] = "errored"
+            envelope["last_error_summary"] = failure_summary
+            envelope["last_errored_at"] = captured_at
+            visual_checkpoint_id = payload.get("visual_checkpoint_id")
+            canvas_preview_path = payload.get("canvas_preview_path")
+            if (isinstance(visual_checkpoint_id, str)
+                    and _VISUAL_CHECKPOINT_ID_RE.fullmatch(visual_checkpoint_id)
+                    and isinstance(canvas_preview_path, str)
+                    and os.path.isfile(canvas_preview_path)
+                    and not os.path.islink(canvas_preview_path)):
+                envelope["interrupted_visual_checkpoint_id"] = visual_checkpoint_id
+            rp.atomic_write_text(fpath, yaml_block + body)
+            if not _atomic_write_envelope(env_path, envelope):
+                raise OSError("interrupted Dialogue envelope could not be saved")
+    return True
 
 
 def _resolve_chunk_destination(output_destination: str) -> str:
@@ -17446,7 +17431,10 @@ def conversation_close(conversation_id):
             print(f"[conversation-lifecycle] close preflight failed open for "
                   f"{conversation_id}: {exc}", file=sys.stderr, flush=True)
 
-    effective_tag = _effective_conversation_tag(conversation_id, "")
+    try:
+        effective_tag = _effective_conversation_tag(conversation_id, "")
+    except ValueError as exc:
+        return json.dumps({"error": str(exc), "conversation_id": conversation_id}), 409
     with _conversation_lifecycle_guard:
         unreadable = (
             _conversation_storage_identity(conversation_id)
@@ -17854,7 +17842,7 @@ def api_scratchpad():
     visible DOM history bounded.
 
     Request body:
-        { "prompt": "<string>" }
+        { "prompt": "<string>", "conversation_id": "<Dialogue ID>" }
 
     Response (200, application/json):
         { "answer": "<assistant text>" }
@@ -17871,12 +17859,17 @@ def api_scratchpad():
 
     if not isinstance(data, dict):
         return json.dumps({"error": "Aside request must be an object"}), 400
-    unexpected = sorted(set(data) - {"prompt"})
+    unexpected = sorted(set(data) - {"prompt", "conversation_id"})
     if unexpected:
         return json.dumps({
             "error": "Aside is informational and cannot carry Run or transfer fields",
             "unsupported_fields": unexpected,
         }), 422
+
+    conversation_id = data.get("conversation_id")
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "conversation_id is required"}), 400
+    conversation_id = conversation_id.strip()
 
     prompt = (data.get("prompt") or "").strip()
     if not prompt:
@@ -17902,38 +17895,41 @@ def api_scratchpad():
         if not ep:
             error = "Aside model and SMALL fallback are not configured"
             print(f"[aside] {error}", file=sys.stderr, flush=True)
-            return json.dumps({"error": error})
+            return json.dumps({"error": error, "conversation_id": conversation_id})
 
-        window = get_sidebar_window("aside")
-        # One window transaction spans context read + model call + append, so
-        # rapid submits cannot both read the same prior turn and then land out
-        # of causal order. The lock is per window, not process-global.
-        with window.transaction():
-            help_context = ""
-            try:
-                help_context = get_help_context(prompt)
-            except Exception as help_exc:
-                print(
-                    f"[aside] help retrieval failed open: {help_exc}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-            messages = window.get_history()
-            if help_context:
-                messages.insert(0, {"role": "system", "content": help_context})
-            messages.append({"role": "user", "content": prompt})
-            answer = call_model(messages, ep)
-            if isinstance(answer, str) and answer.lstrip().startswith("[Error"):
-                print(f"[aside] model call failed open: {answer}",
-                      file=sys.stderr, flush=True)
-                return json.dumps({"error": answer})
-            if not isinstance(answer, str) or not answer.strip():
-                error = "Aside model returned no response"
-                print(f"[aside] {error}", file=sys.stderr, flush=True)
-                return json.dumps({"error": error})
-            window.add_exchange(prompt, answer)
+        # Hold the existing purge barrier across lookup, reply and append.
+        # Delete Forever cannot retire the window and then receive a late turn.
+        with _conversation_lifecycle_lock(conversation_id):
+            if _is_conversation_deleted(conversation_id):
+                return json.dumps({"status": "deleted", "conversation_id": conversation_id}), 410
+            window = get_sidebar_window(conversation_id)
+            with window.transaction():
+                help_context = ""
+                try:
+                    help_context = get_help_context(prompt)
+                except Exception as help_exc:
+                    print(
+                        f"[aside] help retrieval failed open: {help_exc}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                messages = window.get_history()
+                if help_context:
+                    messages.insert(0, {"role": "system", "content": help_context})
+                messages.append({"role": "user", "content": prompt})
+                answer = call_model(messages, ep)
+                if isinstance(answer, str) and answer.lstrip().startswith("[Error"):
+                    print(f"[aside] model call failed open: {answer}",
+                          file=sys.stderr, flush=True)
+                    return json.dumps({"error": answer, "conversation_id": conversation_id})
+                if not isinstance(answer, str) or not answer.strip():
+                    error = "Aside model returned no response"
+                    print(f"[aside] {error}", file=sys.stderr, flush=True)
+                    return json.dumps({"error": error, "conversation_id": conversation_id})
+                window.add_exchange(prompt, answer)
         return json.dumps({
             "answer": answer,
+            "conversation_id": conversation_id,
             "surface_contract": {
                 "surface": "aside",
                 "persisted": False,
@@ -17944,7 +17940,7 @@ def api_scratchpad():
         })
     except Exception as e:
         print(f"[aside] request failed open: {e}", file=sys.stderr, flush=True)
-        return json.dumps({"error": str(e)})
+        return json.dumps({"error": str(e), "conversation_id": conversation_id})
 
 
 # ── WP-4.4: queue-for-later endpoint ─────────────────────────────────────────
@@ -18328,7 +18324,10 @@ def sidebar_clear():
         return json.dumps({"error": "Sidebar window not available"}), 501
     data = request.get_json(force=True)
     pid = data.get("panel_id", "sidebar")
-    clear_sidebar_window(pid)
+    if not _valid_existing_conversation_id(pid):
+        return json.dumps({"error": "invalid panel_id"}), 400
+    with _conversation_lifecycle_lock(pid):
+        clear_sidebar_window(pid)
     return json.dumps({"ok": True, "panel_id": pid})
 
 @app.route("/api/sidebar/status")
@@ -18337,13 +18336,18 @@ def sidebar_status():
     if not SIDEBAR_WINDOW_AVAILABLE:
         return json.dumps({"available": False})
     pid = request.args.get("panel_id", "sidebar")
-    win = get_sidebar_window(pid)
-    return json.dumps({
-        "available": True,
-        "panel_id": pid,
-        "turn_count": win.get_turn_count(),
-        "max_turns": win.max_turns,
-    })
+    if not _valid_existing_conversation_id(pid):
+        return json.dumps({"error": "invalid panel_id"}), 400
+    with _conversation_lifecycle_lock(pid):
+        if _is_conversation_deleted(pid):
+            return json.dumps({"status": "deleted"}), 410
+        win = get_sidebar_window(pid)
+        return json.dumps({
+            "available": True,
+            "panel_id": pid,
+            "turn_count": win.get_turn_count(),
+            "max_turns": win.max_turns,
+        })
 
 
 # ── static files ──────────────────────────────────────────────────────────────

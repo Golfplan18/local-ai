@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr
 from pathlib import Path
 
@@ -127,32 +128,32 @@ class TestConversationMemoryAtomic(unittest.TestCase):
             # No .tmp left behind.
             self.assertFalse(p.with_suffix(p.suffix + ".tmp").exists())
 
-    def test_corrupt_envelope_moved_aside(self):
+    def test_corrupt_envelope_preserved_in_place(self):
         from orchestrator.conversation_memory import save_turn_spatial_state as append_pair
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             conv_dir = root / "conv-corrupt"
             conv_dir.mkdir()
             corrupt_path = conv_dir / "conversation.json"
-            corrupt_path.write_text("{this is not valid JSON")
-            buf = io.StringIO()
-            with redirect_stderr(buf):
-                p = append_pair(
-                    "conv-corrupt",
-                    user_input="new turn",
-                    ai_response="response",
-                    sessions_root=root,
-                )
-            self.assertIsNotNone(p)
-            self.assertIn("CORRUPT conversation.json", buf.getvalue())
-            # Sidecar exists with .corrupt-<timestamp> suffix.
-            sidecars = list(conv_dir.glob("conversation.json.corrupt-*"))
-            self.assertEqual(len(sidecars), 1)
-            self.assertEqual(sidecars[0].read_text(), "{this is not valid JSON")
-            # Fresh envelope captures the current turn.
-            fresh = json.loads(p.read_text())
-            self.assertEqual(len(fresh["messages"]), 2)
-            self.assertEqual(fresh["messages"][0]["content"], "new turn")
+            for content in (b"{this is not valid JSON", b"[]", b'{"messages": {}}', b"\xff"):
+                with self.subTest(content=content):
+                    corrupt_path.write_bytes(content)
+                    buf = io.StringIO()
+                    with redirect_stderr(buf), mock.patch.object(Path, "rename") as rename:
+                        result = append_pair(
+                            "conv-corrupt", "new turn", "response", sessions_root=root,
+                        )
+                    self.assertIsNone(result)
+                    self.assertIn("preserving the existing file", buf.getvalue())
+                    self.assertEqual(corrupt_path.read_bytes(), content)
+                    rename.assert_not_called()
+                    self.assertEqual(list(conv_dir.glob("conversation.json.corrupt-*")), [])
+            content = b'{"messages": [], "tag": "private"}'
+            corrupt_path.write_bytes(content)
+            with mock.patch.object(Path, "read_text", side_effect=PermissionError("unreadable")):
+                result = append_pair("conv-corrupt", "new turn", "response", sessions_root=root)
+            self.assertIsNone(result)
+            self.assertEqual(corrupt_path.read_bytes(), content)
 
 
 if __name__ == "__main__":

@@ -151,7 +151,7 @@ def _read_parsed_envelope_snapshot(path: Path) -> dict[str, Any] | None:
             return copy.deepcopy(cached[1])
     try:
         parsed = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return None
     if not isinstance(parsed, dict):
         return None
@@ -1306,43 +1306,20 @@ def _do_write(
     """Inner read-modify-write helper. Runs inside the per-conversation
     lock; do not call directly."""
     existing: dict[str, Any] | None = None
-    if path.exists():
-        try:
-            existing = json.loads(path.read_text(encoding="utf-8"))
-            if not isinstance(existing, dict):
-                existing = None
-            elif not isinstance(existing.get("messages"), list):
-                existing = None
-        except (OSError, json.JSONDecodeError) as _read_exc:
-            # A corrupt conversation.json was previously silently
-            # overwritten with a fresh envelope — discarding every prior
-            # turn. Now: move the corrupt file aside to a .corrupt-<ts>
-            # sidecar so the data is recoverable, log loudly to stderr,
-            # then continue with a fresh envelope so the current turn
-            # doesn't fail. Manual recovery is possible from the sidecar.
-            existing = None
-            try:
-                import sys as _sys
-                from datetime import datetime as _dt2
-                ts = _dt2.utcnow().strftime("%Y%m%dT%H%M%SZ")
-                sidecar = path.with_suffix(path.suffix + f".corrupt-{ts}")
-                if not sidecar.exists():
-                    path.rename(sidecar)
-                print(
-                    f"[conversation_memory] CORRUPT conversation.json "
-                    f"for {conversation_id}: {_read_exc}; moved aside to "
-                    f"{sidecar} for manual recovery. A fresh envelope "
-                    f"will capture the current turn.",
-                    file=_sys.stderr, flush=True,
-                )
-            except Exception as _sidecar_exc:
-                import sys as _sys2
-                print(
-                    f"[conversation_memory] CORRUPT conversation.json "
-                    f"for {conversation_id} AND failed to move it aside: "
-                    f"read_error={_read_exc} move_error={_sidecar_exc}",
-                    file=_sys2.stderr, flush=True,
-                )
+    try:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(existing, dict) or not isinstance(existing.get("messages"), list):
+            raise ValueError("conversation envelope must contain a messages list")
+    except FileNotFoundError:
+        pass
+    except (OSError, ValueError) as exc:
+        import sys as _sys
+        print(
+            f"[conversation_memory] unreadable conversation.json for "
+            f"{conversation_id}: {exc}; preserving the existing file",
+            file=_sys.stderr, flush=True,
+        )
+        return None
 
     # Resolve the tag to write. On a new envelope, validate the incoming
     # ``tag`` against CONVERSATION_TAGS (silently coerce invalid → ""). On
@@ -2877,6 +2854,8 @@ def mark_conversation_errored(
 
     def mutate(data: dict[str, Any]) -> None:
         errored_at = timestamp or _dt.now().isoformat(timespec="seconds")
+        if not isinstance(data.get("messages"), list):
+            raise ValueError("unreadable existing Dialogue envelope")
         data["last_status"] = "errored"
         data["last_error_summary"] = summary or ""
         data["last_errored_at"] = errored_at
@@ -2906,7 +2885,10 @@ def mark_conversation_errored(
                         message["visual_outcome"] = next_outcome
                     break
 
-    return _mutate_conversation_envelope(conversation_id, root, mutate)
+    try:
+        return _mutate_conversation_envelope(conversation_id, root, mutate)
+    except ValueError:
+        return None
 
 
 def clear_conversation_error(
