@@ -12586,7 +12586,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             turn_state["status"] = "completed" if result.get("ok") else "error"
             return json.dumps(result, indent=2, default=str)
         if action == "execute":
-            endpoint = get_endpoint(config)
+            endpoint = get_active_endpoint(config)
             if endpoint is None:
                 turn_state["status"] = "error"
                 return "Trace probe error: no AI endpoints configured"
