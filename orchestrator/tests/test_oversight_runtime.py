@@ -127,6 +127,27 @@ class TestCInstance(_TempWorkspace):
         self.assertIn("Invalid YAML frontmatter", result.error)
         self.assertFalse(os.path.exists(self.instance_dir))
 
+        with open(self.template_path, "w") as f:
+            f.write(dedent("""\
+                ---
+                type: corpus_template
+                ---
+
+                # Broken section metadata
+
+                ## Sections
+
+                ```yaml
+                sections:
+                  - id: [weekly_sales
+                ```
+                """))
+        result = c_instance(self.template_path, "2026-05", self.instance_dir)
+        self.assertFalse(result.success)
+        self.assertIn("Invalid YAML corpus sections", result.error)
+        self.assertFalse(os.path.exists(self.instance_dir))
+        self.assertNotIn("CorpusInstanceCreated", self.events)
+
     def test_rejects_falsey_non_mapping_frontmatter_and_invalid_tags(self):
         body = "# Corpus\n\n## Sections\n\n### Section SalesQ2 — Quarterly Sales\n"
         cases = {
@@ -215,12 +236,49 @@ class TestCValidate(_TempWorkspace):
         self.assertIn("not found", result.error)
 
     def test_rejects_malformed_instance_frontmatter(self):
+        with open(self.instance_path) as f:
+            valid_instance = f.read()
+
         with open(self.instance_path, "w") as f:
             f.write("---\ntype: [corpus_instance\n---\n# Broken\n")
         result = c_validate(self.instance_path, self.template_path)
         self.assertFalse(result.success)
         self.assertEqual(result.overall_status, "FAIL")
         self.assertIn("Invalid YAML frontmatter", result.error)
+
+        malformed_sections = dedent("""\
+            ---
+            type: {corpus_type}
+            ---
+
+            # Broken section metadata
+
+            ## Sections
+
+            ```yaml
+            sections:
+              - id: [weekly_sales
+            ```
+            """)
+        for label, target_path, corpus_type in (
+            ("instance", self.instance_path, "corpus_instance"),
+            ("template", self.template_path, "corpus_template"),
+        ):
+            with self.subTest(corpus_input=label):
+                with open(self.instance_path, "w") as f:
+                    f.write(valid_instance)
+                with open(self.template_path, "w") as f:
+                    f.write(SAMPLE_TEMPLATE)
+                with open(target_path, "w") as f:
+                    f.write(malformed_sections.format(corpus_type=corpus_type))
+                self.events.clear()
+
+                result = c_validate(self.instance_path, self.template_path)
+
+                self.assertFalse(result.success)
+                self.assertEqual(result.overall_status, "FAIL")
+                self.assertIn("Invalid YAML corpus sections", result.error)
+                self.assertNotIn("CorpusValidated", self.events)
 
 
 class TestORender(_TempWorkspace):
@@ -274,6 +332,31 @@ class TestORender(_TempWorkspace):
         result = o_render(self.off_path, self.instance_path, self.output_dir)
         self.assertFalse(result.success)
         self.assertIn("Invalid YAML frontmatter", result.error)
+        self.assertFalse(os.path.exists(self.output_dir))
+        self.assertNotIn("OFFRendered", self.events)
+
+        with open(self.instance_path, "w") as f:
+            f.write(dedent("""\
+                ---
+                type: corpus_instance
+                period: 2026-05
+                ---
+
+                # Broken section metadata
+
+                ## Sections
+
+                ```yaml
+                sections:
+                  - id: [weekly_sales
+                ```
+                """))
+        self.events.clear()
+
+        result = o_render(self.off_path, self.instance_path, self.output_dir)
+
+        self.assertFalse(result.success)
+        self.assertIn("Invalid YAML corpus sections", result.error)
         self.assertFalse(os.path.exists(self.output_dir))
         self.assertNotIn("OFFRendered", self.events)
 
