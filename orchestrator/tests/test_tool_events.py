@@ -14,6 +14,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 from pathlib import Path
 _ORCH = Path(__file__).resolve().parent.parent
@@ -55,6 +56,7 @@ class ToolEventsBase(unittest.TestCase):
         tool_events.APPROVALS_PATH = self.approvals
         tool_events.reset_telemetry_health()
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         self._orig_te_env = os.environ.pop("ORA_TOOL_EVENTS", None)
         tool_events.set_turn_context()  # clean context
 
@@ -63,6 +65,7 @@ class ToolEventsBase(unittest.TestCase):
         tool_events.APPROVALS_PATH = self._orig_approvals
         tool_events.reset_telemetry_health()
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         if self._orig_te_env is not None:
             os.environ["ORA_TOOL_EVENTS"] = self._orig_te_env
         self.tmp.cleanup()
@@ -432,6 +435,7 @@ class TestGate(ToolEventsBase):
         self.assertTrue(d2.allowed)
         self.assertEqual(d2.decision, "approved")
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         d3 = self._gate(axes={"mutability": "irreversible"}, params=params)
         self.assertFalse(d3.allowed)
 
@@ -506,6 +510,60 @@ class TestGate(ToolEventsBase):
                            params={"command": "z"})
             self.assertFalse(d.allowed)  # fail closed regardless
             self.assertIn("approval queue unavailable", d.message)
+        finally:
+            oversight_queue.HUMAN_QUEUE_PATH = orig
+
+    def test_queue_failure_can_retry_same_call(self):
+        import oversight_queue
+        orig = oversight_queue.HUMAN_QUEUE_PATH
+        oversight_queue.HUMAN_QUEUE_PATH = os.path.join(
+            self.tmp.name, "retry-queue.jsonl",
+        )
+        params = {"command": "retry-exactly"}
+        try:
+            concurrent = []
+
+            def fail_publication(entry):
+                # Re-enter while the first call owns the reservation, without
+                # a worker or a wait that could outlive this test.
+                concurrent.append(self._gate(
+                    axes={"mutability": "irreversible"}, params=params,
+                ))
+                raise OSError("synthetic card write failure")
+
+            with mock.patch.object(
+                oversight_queue, "add_entry",
+                side_effect=fail_publication,
+            ):
+                first = self._gate(
+                    axes={"mutability": "irreversible"}, params=params,
+                )
+            self.assertFalse(first.allowed)
+            self.assertIn("approval queue unavailable", first.message)
+            self.assertEqual(len(concurrent), 1)
+            self.assertFalse(concurrent[0].allowed)
+            self.assertEqual(concurrent[0].decision, "blocked")
+            self.assertIsNone(concurrent[0].queue_id)
+            self.assertIn("publication in progress", concurrent[0].message)
+            self.assertIn("not yet available", concurrent[0].message)
+            self.assertNotIn("queued for approval", concurrent[0].message)
+            self.assertFalse(os.path.exists(oversight_queue.HUMAN_QUEUE_PATH))
+            self.assertEqual(tool_events._queued_hashes, set())
+            self.assertEqual(tool_events._queue_reservations, set())
+
+            second = self._gate(
+                axes={"mutability": "irreversible"}, params=params,
+            )
+            self.assertFalse(second.allowed)
+            self.assertEqual(second.decision, "queued")
+            self.assertEqual(len(tool_events._queued_hashes), 1)
+            self.assertEqual(tool_events._queue_reservations, set())
+            with open(oversight_queue.HUMAN_QUEUE_PATH, encoding="utf-8") as stream:
+                self.assertEqual(len([line for line in stream if line.strip()]), 1)
+            published = self._gate(
+                axes={"mutability": "irreversible"}, params=params,
+            )
+            self.assertIn("already queued for approval", published.message)
         finally:
             oversight_queue.HUMAN_QUEUE_PATH = orig
 

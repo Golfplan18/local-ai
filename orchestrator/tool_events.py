@@ -1866,21 +1866,26 @@ class GateDecision:
 # doesn't enqueue one Paused card per retry.
 _queued_hashes_lock = threading.Lock()
 _queued_hashes: set[str] = set()
+_queue_reservations: set[str] = set()
 
 
 def _queue_gate_entry(action: str, args_hash: str, why: str,
                       description: str, ctx: dict,
                       queue_extra: dict | None = None,
                       approval_binding: dict | None = None) -> str | None:
-    """Guarded Paused-queue write. Returns queue entry id, or None when the
-    write failed or was skipped (stealth). Never raises."""
+    """Return a published id, 'deduped', 'publishing', or None on failure/stealth.
+
+    A reservation is not a delivered approval card. Never raises.
+    """
     if ctx.get("stealth"):
         return None  # a queue card would leak stealth content
+    key = f"{ctx.get('conversation_id')}|{args_hash}"
     with _queued_hashes_lock:
-        key = f"{ctx.get('conversation_id')}|{args_hash}"
         if key in _queued_hashes:
             return "deduped"
-        _queued_hashes.add(key)
+        if key in _queue_reservations:
+            return "publishing"
+        _queue_reservations.add(key)
     approval_nonce = None
     try:
         from oversight_queue import add_entry
@@ -1942,6 +1947,8 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
         ):
             _discard_pending_approval(approval_nonce)
             return None
+        with _queued_hashes_lock:
+            _queued_hashes.add(key)
         return written.id
     except Exception as e:
         if approval_nonce:
@@ -1951,6 +1958,9 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
                 pass
         _note_failure(e, "queue_gate_entry")
         return None
+    finally:
+        with _queued_hashes_lock:
+            _queue_reservations.discard(key)
 
 
 def gate(action: str, axes: dict, params: dict | None = None,
@@ -2090,6 +2100,12 @@ def gate(action: str, axes: dict, params: dict | None = None,
                                      "request_digest": review_request_digest,
                                      "selectors": list(review_selectors),
                                  } if approval_binding is not None else None)
+    if queue_id == "publishing":
+        _record_decision("blocked", f"{block_why} (approval publication in progress)")
+        return GateDecision(False, "blocked", block_why,
+                            message=f"[GATED — approval card publication in progress; "
+                                    f"not yet available. Reissue the action to retry. "
+                                    f"Reason: {block_why}]")
     if queue_id and queue_id != "deduped":
         _record_decision("queued", block_why, queue_id=queue_id)
         return GateDecision(False, "queued", block_why, queue_id=queue_id,
@@ -2114,7 +2130,9 @@ def clear_queued_hash(conversation_id, args_hash: str) -> None:
     Without this the per-process dedup set would block re-queueing for the
     life of the server."""
     with _queued_hashes_lock:
-        _queued_hashes.discard(f"{conversation_id}|{args_hash}")
+        key = f"{conversation_id}|{args_hash}"
+        _queued_hashes.discard(key)
+        _queue_reservations.discard(key)
 
 
 def resolve_gate_entry(record_dict: dict, approve: bool,

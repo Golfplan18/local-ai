@@ -2709,6 +2709,65 @@ class TestServerLifecycleWiring(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         delete.assert_not_called()
 
+    def test_central_origin_guard_blocks_plain_multipart_and_form_before_routes(self):
+        from server import review as review_server
+
+        routed = mock.Mock(return_value=("unexpected", 200))
+        client = self.server.app.test_client()
+        with mock.patch.dict(
+            self.server.app.view_functions,
+            {
+                "settings_post": routed,
+                "models_endpoint": routed,
+                "model_registry_get": routed,
+                "configurations_list": routed,
+                "model_profiles_list": routed,
+            },
+        ):
+            requests = (
+                {"data": b"plain", "content_type": "text/plain"},
+                {
+                    "data": b"--probe--\r\n",
+                    "content_type": "multipart/form-data; boundary=probe",
+                },
+                {"data": {"setting": "value"}},
+            )
+            for kwargs in requests:
+                with self.subTest(content_type=kwargs.get("content_type", "form")):
+                    response = client.post(
+                        "/api/settings",
+                        headers={"Origin": "https://attacker.example"},
+                        **kwargs,
+                    )
+                    self.assertEqual(response.status_code, 403)
+            for path in (
+                "/models",
+                "/api/model-registry",
+                "/api/configurations",
+                "/api/model-profiles",
+            ):
+                for method in ("GET", "HEAD"):
+                    with self.subTest(path=path, method=method):
+                        response = client.open(
+                            path,
+                            method=method,
+                            headers={"Origin": "https://attacker.example"},
+                        )
+                        self.assertEqual(response.status_code, 403)
+        routed.assert_not_called()
+
+        review_routed = mock.Mock(return_value=("unexpected", 200))
+        with mock.patch.dict(
+            review_server.app.view_functions, {"action": review_routed},
+        ):
+            response = review_server.app.test_client().post(
+                "/action/probe.json",
+                headers={"Origin": "https://attacker.example"},
+                data={"action": "approve"},
+            )
+        self.assertEqual(response.status_code, 403)
+        review_routed.assert_not_called()
+
     def test_delete_forever_route_refuses_retained_dialogues_before_approval(self):
         from orchestrator import system_protection
 

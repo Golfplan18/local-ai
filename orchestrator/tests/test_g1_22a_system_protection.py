@@ -48,9 +48,11 @@ class SystemProtectionBase(unittest.TestCase):
             conversation_id="g1-22a-test", surface="test",
         )
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
 
     def tearDown(self):
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         tool_events.reset_turn_context(self.turn_token)
         for patcher in reversed(self._patches):
             patcher.stop()
@@ -143,12 +145,100 @@ class TestPolicyFloor(SystemProtectionBase):
         self.assertEqual(decision.outcome, "allow")
 
     def test_dedicated_path_builders_reject_traversal_before_review(self):
-        from orchestrator import active_configuration, project_registry
+        from orchestrator import active_configuration, project_registry, slash_commands
 
         with self.assertRaises(ValueError):
             active_configuration._config_path("../../authority")
         with self.assertRaises(project_registry.ProjectError):
             project_registry._pointer_path("../../authority")
+        pointer_dir = self.root / "project-pointers"
+        pointer_dir.mkdir()
+        with self.assertRaises(project_registry.ProjectNotFoundError):
+            project_registry.prepare_pointer_mutation(
+                "missing", str(pointer_dir), require_registered=True,
+            )
+        outside = self.root / "outside-pointer.json"
+        outside.write_text('{"root": "/tmp/project"}', encoding="utf-8")
+        (pointer_dir / "linked.json").symlink_to(outside)
+        with self.assertRaises(project_registry.ProjectError):
+            project_registry.prepare_pointer_mutation(
+                "linked", str(pointer_dir), require_registered=True,
+            )
+        script_dir = self.root / "declared-script-directory"
+        script_dir.mkdir()
+        for declared_script in (self.root / "missing-script.py", script_dir):
+            with self.subTest(declared_script=declared_script):
+                with self.assertRaises(
+                    project_registry.ProjectExecutionBindingError
+                ):
+                    project_registry._resolve_executable_identity(
+                        [sys.executable, str(declared_script)]
+                    )
+        unreadable_script = self.root / "unreadable-script.py"
+        unreadable_script.write_text("pass\n", encoding="utf-8")
+        original_read_bytes = Path.read_bytes
+
+        def reject_unreadable(path):
+            if path == unreadable_script.resolve():
+                raise PermissionError("declared script is unreadable")
+            return original_read_bytes(path)
+
+        with mock.patch.object(
+            project_registry.Path, "read_bytes", reject_unreadable,
+        ):
+            with self.assertRaises(project_registry.ProjectExecutionBindingError):
+                project_registry._resolve_executable_identity(
+                    [sys.executable, str(unreadable_script)]
+                )
+
+        launcher = self.root / "launch.py"
+        launcher.write_text("#!/usr/bin/env python3\nprint('{}')\n", encoding="utf-8")
+        manifest = self.root / project_registry.MANIFEST_FILENAME
+        manifest.write_text(json.dumps({
+            "nexus": "test-project", "name": "Test project",
+            "tools": [{"name": "launch", "command": [str(launcher)]}],
+            "slash_commands": [{"name": "launch", "command": [str(launcher)]}],
+        }), encoding="utf-8")
+        snapshot = project_registry.load_project_snapshot(self.root)
+        registered = self.root / "registered-projects"
+        registered.mkdir()
+        (registered / "test-project.json").write_text(json.dumps({
+            "nexus": "test-project", "root": str(self.root),
+            "manifest_sha256": snapshot.manifest_sha256,
+        }), encoding="utf-8")
+        callers = (
+            lambda: slash_commands._cmd_project_tool(
+                ["test-project", "launch", "direct"],
+            ),
+            lambda: slash_commands._cmd_projects(
+                ["tool", "test-project", "launch", "grouped"],
+            ),
+            lambda: slash_commands._try_project_slash_command("/launch", []),
+        )
+        with mock.patch.object(project_registry, "POINTER_DIR", str(registered)), \
+                mock.patch.object(project_registry.subprocess, "run") as spawn:
+            for invoke in callers:
+                with self.subTest(caller=invoke):
+                    launcher.chmod(0o700)
+                    invoke()
+                    self._approve_latest()
+                    approval_bytes = Path(self.approvals).read_bytes()
+                    launcher.chmod(0o600)
+                    with mock.patch.object(
+                        slash_commands._sp, "authorize_project_action",
+                        wraps=protection.authorize_project_action,
+                    ) as authorize:
+                        result = invoke()
+                    self.assertIn("execute permission", result)
+                    authorize.assert_not_called()
+                    self.assertEqual(Path(self.approvals).read_bytes(), approval_bytes)
+                    self.assertFalse(Path(self.actions).exists())
+            spawn.assert_not_called()
+        # An interpreter reads its script; only the launched program needs X_OK.
+        identity = project_registry._resolve_executable_identity(
+            [sys.executable, str(launcher)],
+        )
+        self.assertEqual(identity[2], str(launcher.resolve()))
 
     def test_whole_roots_raw_drives_and_channels_are_absolute_denials(self):
         roots = protection._critical_roots()

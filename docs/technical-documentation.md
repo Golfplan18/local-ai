@@ -213,6 +213,11 @@ For the rationale behind the installer's shape and the retired First-Boot flow, 
 
 ## 2. Server & Browser-UI Runtime
 
+- **Current browser-origin boundary.** Before application code parses a body or any view runs in either shipped Flask application, each app-wide pre-view hook calls the same server-package browser-origin decision. This covers the main chat/API host (`server/app.py`) and the standalone document-review host (`server/review.py`).
+- A hostile `Origin` or cross-site fetch context receives `403` on either host regardless of method; plain-text, form, multipart, `GET`, and `HEAD` requests—including the review action form—do not bypass the decision.
+- Headerless local clients and same-origin browser requests remain supported. Route-local checks may repeat the decision, but they are no longer the only protection.
+- `POST /api/session/export` accepts the public Dialogue identity and optional title only. Presence of a private vault root, sessions root, raw-conversation directory, or Node-program field is a `400` before lifecycle, filesystem, or export work; tests substitute those dependencies at the internal Python seam.
+
 The orchestrator described in the pipeline chapters is a library. It has no way to receive a prompt, show you a result, let you switch models, or resolve an oversight pause. This chapter is about the process that turns that library into a running system you can talk to: a single localhost Flask host (`server/app.py`, 15,040 lines) that serves one browser page (`server/index-v3.html`) backed by ~130 static JavaScript modules, and exposes 174 HTTP routes covering chat, clarification, conversation persistence, named configurations, model-routing slots, oversight, canvas/visual rendering, media capability, themes, and the model registry.
 
 I am describing the installed system at commit `7a5e8f40` (PR #181, "Execution Review Phase 1-4: macOS+Windows portability retrofit"). That commit matters for this chapter specifically: it is the change that pulled the server's filesystem roots out of hardcoded `~/ora` / `~/Documents` string literals and behind a single cross-platform resolver. Where older documentation still describes the server as Mac-only string paths, trust the code — the retrofit landed. What the retrofit did not do is boot the server off a Mac; the code paths exist, the observation does not, and the Platform compatibility section holds that line.
@@ -349,6 +354,8 @@ The macOS+Windows portability retrofit (PR #181) is what this commit *is*, so th
 - **CSP / auth / non-localhost bind:** all platforms = absent. No `Content-Security-Policy` header on the served page (0 matches in `index-v3.html`), no auth middleware, `host="localhost"` only (`server.py:15040`). This is a scope decision, uniform across platforms, and it is the blocker for any remote-access goal.
 
 ## 3. Settings, API Keys & Local-Model Handling
+
+- **Current API-key store boundary.** Before approval, `POST /api/settings/api-key` requires a registered provider and one non-empty string value. Approval binds the exact raw string that the handler stores; malformed values cannot consume the approval.
 
 ### Problem
 
@@ -715,6 +722,9 @@ No non-macOS surface is claimed to work; every one above is labeled untested or 
 
 ## 6. Framework Loading & Execution
 
+- **Current standalone document-review boundary.** The Note Review app at `server/review.py` remains a separate localhost process, but its app-wide pre-view hook calls the same server-package browser-origin decision as the main host.
+- A hostile form POST to `/action/<filename>` returns `403` before the action handler reads `request.form` or touches review, staging, or rejected files; headerless local and same-origin requests remain compatible.
+
 ### Problem
 
 An Ora framework is a long adversarial-analysis specification — Process Formalization Framework v2.1, for one, runs to thousands of words of layered instructions. If I hand that whole document to a model as a single prompt, three failure modes follow. The model truncates: it reads the first layers, produces something plausible, and never reaches the verification criteria at the bottom. The model wanders: with no enforced checkpoints, milestone three's output drifts from what the user actually asked in milestone one, and nothing catches the drift until a human reads the final artifact. And the model conflates: it collapses a five-stage procedure into one undifferentiated pass, losing the reproducibility that made the framework worth writing down. A framework that is only prose is a framework the model is free to ignore.
@@ -800,6 +810,8 @@ Four drift hotspots, where future changes are most likely to cause silent breaka
 - **Untested off-Mac overall:** Windows-native, WSL, and Linux have not been run for this subsystem end-to-end. Any "works" above is scoped to macOS; POSIX `expanduser`/`pathlib` semantics are the *reason to expect* Linux/WSL portability, not evidence of an executed run.
 
 ## 7. Output Styles & Personal Values
+
+- **Current Style/Theme deletion boundary.** Style deletion requires its callable store/settings handlers, a regular style store, a regular-or-absent settings file, the exact profile, and valid settings shape before review. Theme deletion similarly requires one valid regular index entry and its non-symlink directory. Their existing protection receipts still bind the affected files and terminal state.
 
 ### Problem
 
@@ -948,6 +960,10 @@ All verification for this subsystem was performed on macOS (Apple M4 Max, macOS 
 
 ## 8. Vault, RAG, Conversations & Persistent State
 
+- **Current destructive-state preparation.** Protected mutations do not ask for approval until their exact durable target is usable.
+- A Stealth Delete Forever request binds the Dialogue's logical identity, deletion state, and authoritative tag, then compares that exact approved state again while holding the lifecycle lock immediately before installing the tombstone.
+- **Session-export privacy boundary.** `POST /api/session/export` refuses any request containing a private vault-root, sessions-root, raw-conversation, or Node-program HTTP field before entering Dialogue lifecycle or touching filesystem/export paths. Those dependencies remain substitutable only through the internal Python seam.
+
 ### Problem
 
 A stateless model cannot supply continuity by itself. Ora must reconstruct the exact history a Dialogue branch may see, add explicit and discovered sources without violating privacy, fit complete evidence units inside the selected endpoint's real request limit, and deliver the same server-authoritative context to every processing path.
@@ -1077,6 +1093,12 @@ The installed path is exercised on macOS/Apple Silicon. The context contract its
 - Help indexing uses the configured embedding and Chroma services when available, but deterministic lexical fallback is local and platform-neutral. The files themselves are the canonical corpus; an unavailable index must not disable Aside.
 
 ## 9. Tool Dispatch, the Capability Gate & Execution Telemetry
+
+- **Current gate-order and file-integrity boundary.** The dispatcher completes deterministic handler-contract and target preparation before the generic gate can consume one-shot authority.
+- File read/write/edit calls require typed fields and one canonical allowed regular-or-absent target as appropriate. A write's existing ancestors must be directories; missing parent directories may still be created. That state is checked before the gate and immediately before the handler. Edits and overwrites are irreversible; only new-file creation may remain reversible.
+- File write/edit use `runtime_paths.atomic_write_text` and retain an existing file's mode. A failed atomic swap leaves the old bytes intact. Overwrites advertise no rollback, and blocked/error write/edit results produce failed receipts and telemetry with `mutated=false`. Successful read text with an error-like prefix remains eligible source evidence.
+- Credential calls require a declared `ora` account and an action of `status`, `store`, or `delete`; store additionally requires a non-empty string value. Invalid calls fail before gate entry.
+- A blocked call reserves its dedup key only while the existing Paused card and pending authority are being written and bound. A concurrent identical call reports publication in progress, not a delivered card. Publication promotes the key to the published process-local dedup set; every failure releases the reservation, allowing an exact retry.
 
 > **2026-08-20 G1.22 currency note.** The chapter's older composite pin remains useful for the surrounding Execution Review design, but this note supersedes its descriptions of command execution, native network reach, and MCP startup. `bash_execute` now accepts one command only, prepares one immutable argument vector, rejects shell grammar, resolves the executable against the same reduced environment used at execution, classifies Git/download/path effects semantically, and carries that prepared object through approval to `shell=False` execution. Public web and provider calls validate public destinations and redirect hops; credentialed provider requests are exact-origin and no-redirect, Jina refuses credential-bearing, signed, or sensitive-query URLs and records whether forwarding occurred, and Replicate output URLs are materialized instead of being retained as durable signed references. The vault-filesystem, Playwright, and GitHub MCP capabilities are all preserved: exact repository-local packages and Chromium are pinned, each child receives a fresh minimal environment, discovery exposes only the intersection of the child's catalog and the exact per-tool policy map, JSON-RPC requests are size-bounded and response-ID-correlated, and shutdown cleans up the children. Arbitrary Playwright code/evaluation tools are denied. The Playwright route hook is defense in depth rather than complete egress confinement: redirect hops are not delivered to the hook by the pinned browser, Chrome performs DNS independently after validation, and WebRTC and WebTransport are outside the hook.
 
@@ -1962,6 +1984,10 @@ Per-subsystem platform checks, labeled by evidence. "Works" appears only where t
 - **Windows-native launcher is present but untested.** `start.bat` and `stop.bat` ship. The start path now honors relocation, resolves the checkout interpreter, validates an explicit port, enables oversight by default with `--no-oversight` as the diagnostic opt-out, forwards other arguments safely, and records an identity-bound PID for stop/health handling. It still sets only the Execution Review flag itself, not the POSIX launcher's additional feature defaults, so reduced or differently configured Windows behavior remains possible. It has not completed a clean-room native-Windows run, and several surrounding recovery/diagnostic paths remain POSIX- or Mac-oriented.
 
 ## 17. The Project Plugin Convention
+
+- **Current Project preflight boundary.** Project registration and removal do not request approval until their exact pointer target is usable; protected tool and slash invocation checks readable regular program/script files and execute permission for the launched program before approval and again before spawn, without requiring an execute bit on an interpreter-read script.
+- HTTP and slash callers share `prepare_pointer_mutation` with the registry sink, which repeats the strict preflight under the pointer lock. Symlinked, malformed, non-regular, or changing pointers fail before review; missing and container-only pointers fail before unregister review, while registration may create an absent pointer or extend a valid container-only record.
+- Registration carries the canonical project root, manifest path, and byte digest from one stable manifest snapshot through approval. The sink re-reads that canonical root and refuses manifest drift before atomically replacing the shared pointer.
 
 ### Problem
 
