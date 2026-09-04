@@ -97,49 +97,105 @@ class TestGear4NoShortCircuit(unittest.TestCase):
         self.assertNotIn("framework_execution_state", context_pkg)
 
     def test_over_threshold_local_analysts_run_release_then_run(self):
-        """The memory guard serializes only the analyst pair in call order."""
-        context_pkg = {"cleaned_prompt": "test prompt", "trace_dir": None}
-        depth, breadth, _ = self._both_local_same_machine()
-        events = []
+        """Safety follows the attempted pair, including both recovery lanes."""
+        import threading
 
-        def supplement(_messages, endpoint, step_name, *args, **kwargs):
-            if step_name == "analyst":
-                events.append(("call", endpoint["name"]))
-            return ("substantive model output " * 20, True, "ok")
+        memory = sys.modules[boot.should_release_kv_cache.__module__]
 
-        def release(endpoint, *, mlx_evictor=None):
-            events.append(("release", endpoint["name"]))
-            return True
+        def local(name, ram, engine="mlx"):
+            return {
+                "id": name, "name": name, "type": "local", "engine": engine,
+                "model": name, "model_path": "/models/" + name,
+                "ram_resident_gb": ram, "ram_overhead_gb": 0,
+            }
 
-        with mock.patch.object(
-            boot, "resolve_gear4_endpoints",
-            return_value=boot.Gear4EndpointResolution(
-                depth, breadth, False, 4),
-        ), mock.patch.object(
-            boot, "should_release_kv_cache", return_value=True,
-        ), mock.patch.object(
-            boot, "release_kv_cache", side_effect=release,
-        ), mock.patch.object(
-            boot, "_assemble_step_prompt", return_value="system prompt",
-        ), mock.patch.object(
-            boot, "_call_with_supplement", side_effect=supplement,
-        ), mock.patch.object(
-            boot, "_call_with_retry",
-            return_value=("step output " * 30, True, "ok"),
-        ), mock.patch.object(
-            boot, "_extract_structured_verdict", return_value="PASS",
+        for failed_slot, depth_ram, breadth_ram, fallback, available, expected_releases in (
+            (None, 55, 40, None, 100, ["depth"]),
+            (None, 10, 10, None, 100, []),
+            ("depth", 55, 40, local("small", 10), 100, ["depth"]),
+            ("depth", 55, 40, {"id": "api", "name": "api", "type": "api"}, 100, ["depth"]),
+            ("depth", 55, 40, local("breadth", 40), 100, ["depth"]),
+            ("breadth", 35, 10, local("large", 50, "ollama"), 100, ["depth"]),
+            ("both", 0, 0, {
+                "depth": local("local-depth", 35),
+                "breadth": local("large", 50, "ollama"),
+            }, 100, ["local-depth"]),
+            ("both", 0, 0, {
+                "depth": local("local-depth", 35),
+                "breadth": local("large", 50, "ollama"),
+            }, None, []),
         ):
-            result = boot.run_gear4(
-                context_pkg, {}, history=None, images=None,
-                execution_context="interactive",
-            )
+            with self.subTest(failed_slot=failed_slot, fallback=fallback):
+                depth, breadth = local("depth", depth_ram), local("breadth", breadth_ram)
+                if failed_slot == "both":
+                    depth["type"] = breadth["type"] = "api"
+                events, active, overlap = [], set(), []
+                depth_started = threading.Event()
+                fallback_started = threading.Event()
+                breadth_started = threading.Event()
 
-        self.assertIsInstance(result, str)
-        self.assertEqual(events[:3], [
-            ("call", "hermes-70b"),
-            ("release", "hermes-70b"),
-            ("call", "kimi-72b"),
-        ])
+                def fallback_for(slot, *_args, **_kwargs):
+                    return fallback[slot] if failed_slot == "both" else fallback
+
+                def supplement(_messages, endpoint, step_name, *args, **kwargs):
+                    if step_name != "analyst":
+                        return ("substantive model output " * 20, True, "ok")
+                    name = endpoint["name"]
+                    events.append(("call", name))
+                    if name == "large":
+                        overlap.append(bool(active & {"depth", "local-depth"}))
+                        fallback_started.set()
+                    active.add(name)
+                    try:
+                        if name == "local-depth" or (name == "depth" and failed_slot == "breadth"):
+                            depth_started.set()
+                            # Keep the healthy lane in flight while the other
+                            # selects a larger fallback. A correct handoff waits.
+                            fallback_started.wait(0.1)
+                        elif name == "breadth" and failed_slot in {"breadth", "both"}:
+                            self.assertTrue(depth_started.wait(1))
+                        elif failed_slot is None and depth_ram + breadth_ram <= 80:
+                            if name == "depth":
+                                self.assertTrue(breadth_started.wait(1))
+                            else:
+                                breadth_started.set()
+                        if name == failed_slot or (failed_slot == "both" and name in {"depth", "breadth"}):
+                            return ("", False, "transport failure")
+                        return ("substantive model output " * 20, True, "ok")
+                    finally:
+                        active.remove(name)
+                        events.append(("done", name))
+
+                def release(endpoint, *, mlx_evictor=None):
+                    self.assertNotIn(endpoint["name"], active)
+                    events.append(("release", endpoint["name"]))
+                    return True
+
+                with mock.patch.object(
+                    boot, "resolve_gear4_endpoints",
+                    return_value=boot.Gear4EndpointResolution(depth, breadth, True, 4),
+                ), mock.patch.object(memory, "get_available_ram_gb", return_value=available), \
+                     mock.patch.object(memory, "get_total_ram_gb", return_value=128), \
+                     mock.patch.object(boot, "release_kv_cache", side_effect=release), \
+                     mock.patch.object(boot, "_resolve_fallback_endpoint", side_effect=fallback_for), \
+                     mock.patch.object(boot, "_assemble_step_prompt", return_value="system"), \
+                     mock.patch.object(boot, "_call_with_supplement", side_effect=supplement), \
+                     mock.patch.object(boot, "_call_with_retry", return_value=("output " * 50, True, "ok")), \
+                     mock.patch.object(boot, "_extract_structured_verdict", return_value="PASS"), \
+                     mock.patch.object(boot, "run_gear3") as gear3:
+                    result = boot.run_gear4({"cleaned_prompt": "test", "trace_dir": None}, {})
+
+                self.assertIsInstance(result, str)
+                gear3.assert_not_called()
+                self.assertEqual([name for kind, name in events if kind == "release"], expected_releases)
+                self.assertFalse(any(overlap), events)
+                if failed_slot is None and expected_releases:
+                    self.assertEqual(events[:4], [
+                        ("call", "depth"), ("done", "depth"),
+                        ("release", "depth"), ("call", "breadth"),
+                    ])
+                elif failed_slot is None:
+                    self.assertLess(events.index(("call", "breadth")), events.index(("done", "depth")))
 
     def test_missing_gear4_endpoints_are_an_explicit_typed_failure(self):
         context_pkg = {"cleaned_prompt": "test prompt", "trace_dir": None}
@@ -177,6 +233,48 @@ class TestGear4NoShortCircuit(unittest.TestCase):
         self.assertIsNone(state.fallback_gear)
         self.assertIn("unknown", state.reason.lower())
 
+        import threading
+
+        memory = sys.modules[boot.should_release_kv_cache.__module__]
+        for total, available in ((None, None), (128, None), (None, 100)):
+            with self.subTest(total=total, available=available):
+                depth, breadth, _ = self._both_local_same_machine()
+                for endpoint in (depth, breadth):
+                    endpoint["ram_resident_gb"] = 10
+                events = []
+                breadth_started = threading.Event()
+
+                def supplement(_messages, endpoint, step_name, *args, **kwargs):
+                    if step_name == "analyst":
+                        name = endpoint["name"]
+                        events.append(("call", name))
+                        if name == depth["name"]:
+                            breadth_started.wait(0.1)
+                        else:
+                            breadth_started.set()
+                        events.append(("done", name))
+                    return ("substantive model output " * 20, True, "ok")
+
+                with mock.patch.object(
+                    boot, "resolve_gear4_endpoints",
+                    return_value=boot.Gear4EndpointResolution(depth, breadth, True, 4),
+                ), mock.patch.object(memory, "get_total_ram_gb", return_value=total), \
+                     mock.patch.object(memory, "get_available_ram_gb", return_value=available), \
+                     mock.patch.object(boot, "release_kv_cache") as release, \
+                     mock.patch.object(boot, "run_gear3") as gear3, \
+                     mock.patch.object(boot, "_assemble_step_prompt", return_value="system"), \
+                     mock.patch.object(boot, "_call_with_supplement", side_effect=supplement), \
+                     mock.patch.object(boot, "_call_with_retry", return_value=("output " * 50, True, "ok")), \
+                     mock.patch.object(boot, "_extract_structured_verdict", return_value="PASS"):
+                    result = boot.run_gear4({"cleaned_prompt": "test", "trace_dir": None}, {})
+                self.assertIsInstance(result, str)
+                self.assertEqual(events, [
+                    ("call", depth["name"]), ("done", depth["name"]),
+                    ("call", breadth["name"]), ("done", breadth["name"]),
+                ])
+                release.assert_not_called()
+                gear3.assert_not_called()
+
     def test_cache_release_uses_only_selected_distinct_local_models(self):
         depth = {
             "id": "depth-endpoint", "type": "local", "engine": "mlx",
@@ -204,10 +302,26 @@ class TestGear4NoShortCircuit(unittest.TestCase):
                 {}, {**depth, "ram_resident_gb": 10},
                 {**breadth, "ram_resident_gb": 10},
             ))
+            self.assertFalse(resilience.should_release_kv_cache(
+                {}, {**depth, "ram_resident_gb": None}, breadth,
+            ))
+
+        with mock.patch.object(resilience, "get_available_ram_gb", return_value=None):
+            self.assertFalse(resilience.should_release_kv_cache({}, depth, breadth))
 
         evict = mock.Mock(return_value=True)
         self.assertTrue(resilience.release_kv_cache(depth, mlx_evictor=evict))
         evict.assert_called_once_with("/models/depth")
+        with mock.patch("requests.post", return_value=mock.Mock(ok=True)) as post:
+            self.assertTrue(resilience.release_kv_cache({
+                **breadth, "engine": "ollama", "model": "selected-model",
+                "url": "http://fixture.invalid:11435",
+            }, mlx_evictor=evict))
+        post.assert_called_once_with(
+            "http://fixture.invalid:11435/api/generate",
+            json={"model": "selected-model", "keep_alive": 0}, timeout=10,
+        )
+        evict.assert_called_once()
 
 
 class TestShortCircuitNotInSource(unittest.TestCase):

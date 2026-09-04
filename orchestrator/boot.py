@@ -1740,7 +1740,7 @@ RESILIENCE_AVAILABLE = False
 try:
     from resilience import (
         get_degradation_path, format_degradation_signal,
-        should_release_kv_cache, release_kv_cache,
+        should_release_kv_cache, release_kv_cache, can_parallel_analysts,
     )
     RESILIENCE_AVAILABLE = True
 except ImportError:
@@ -16552,14 +16552,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             kind="endpoint_resolution_failed",
         )
 
-    # Cache protection belongs to the selected execution facts, not the
-    # profile's pre-routing slot declarations. API pairs, same-model pairs,
-    # unknown RAM, and below-threshold local pairs remain parallel no-ops.
-    # A known over-threshold distinct local pair runs only its analyst calls
-    # serially, releasing the model that just completed between the calls.
+    # Unknown RAM requires real serialization without authorizing eviction.
+    # This initial worker count preserves depth-first ordering for a constrained
+    # local pair; each actual attempt (including fallback) is checked below.
     serialize_analysts = bool(
         RESILIENCE_AVAILABLE
-        and should_release_kv_cache(config, depth_endpoint, breadth_endpoint)
+        and not can_parallel_analysts(depth_endpoint, breadth_endpoint)
     )
 
     image_input_error = _prepare_image_routing(
@@ -16610,6 +16608,45 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         context_pkg, slot="breadth", step="analyst", framework_name=None
     )
 
+    # Only these two analyst streams share this short-lived guard. The local
+    # transport still owns its existing machine mutex; do not acquire it twice.
+    import threading
+    analyst_condition = threading.Condition()
+    active_analysts: dict[str, dict] = {}
+    local_attempts: list[dict] = []
+
+    def _analyst_call(msgs, endpoint, slot):
+        with analyst_condition:
+            while RESILIENCE_AVAILABLE:
+                releases = [
+                    previous for previous in local_attempts
+                    if should_release_kv_cache(config, previous, endpoint)
+                ]
+                if any(previous in active_analysts.values() for previous in releases) or any(
+                    not can_parallel_analysts(endpoint, active)
+                    for active in active_analysts.values()
+                ):
+                    analyst_condition.wait()
+                    continue
+                for previous in releases:
+                    if release_kv_cache(previous, mlx_evictor=evict_mlx_model):
+                        local_attempts.remove(previous)
+                break
+            # Failed local attempts can still leave a cache behind. Retain
+            # only actual attempts, even if the lane later recovers on an API.
+            if endpoint.get("type") == "local" and endpoint not in local_attempts:
+                local_attempts.append(endpoint)
+            active_analysts[slot] = endpoint
+        try:
+            return _call_with_supplement(
+                msgs, endpoint, "analyst", 30, None, images, context_pkg,
+                slot=slot, gear=None, config_name=config_name,
+            )
+        finally:
+            with analyst_condition:
+                active_analysts.pop(slot, None)
+                analyst_condition.notify_all()
+
     # Per-stream analyst recovery (2026-06-29): a refusing/empty model must not
     # let the pipeline proceed on one participant. Each stream tries its PRIMARY
     # model with one SAME-model retry (slot retained for per-call metadata,
@@ -16626,10 +16663,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": cleaned_prompt},
         ]
-        primary_call = _call_with_supplement(
-            msgs, primary_endpoint, "analyst", 30, None, images, context_pkg,
-            slot=slot, gear=None, config_name=config_name,
-        )
+        primary_call = _analyst_call(msgs, primary_endpoint, slot)
         text, ok, reason = primary_call
         primary_outcome = _as_invocation_outcome(
             text, primary_endpoint, failure=getattr(text, "failure", None),
@@ -16650,10 +16684,7 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 "", False, f"no-fallback-available ({reason})",
                 "no-fallback", primary_outcome, primary_endpoint,
             )
-        fallback_call = _call_with_supplement(
-            msgs, fb, "analyst", 30, None, images, context_pkg,
-            slot=slot, gear=None, config_name=config_name,
-        )
+        fallback_call = _analyst_call(msgs, fb, slot)
         fb_text, fb_ok, fb_reason = fallback_call
         fallback_outcome = _as_invocation_outcome(
             fb_text, fb, failure=getattr(fb_text, "failure", None),
@@ -16700,45 +16731,27 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             ModelInvocationOutcome("", failure=failure), endpoint,
         )
 
-    if serialize_analysts:
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=1 if serialize_analysts else 2,
+    ) as executor:
+        depth_future = _submit_with_context(
+            executor, _analyst_stream, depth_system, depth_endpoint, "depth")
+        breadth_future = _submit_with_context(
+            executor, _analyst_stream, breadth_system, breadth_endpoint, "breadth")
         try:
             (depth_analysis, depth_ok, depth_reason, depth_recovery,
-             depth_invocation, depth_used_endpoint) = _analyst_stream(
-                depth_system, depth_endpoint, "depth")
+             depth_invocation, depth_used_endpoint) = depth_future.result()
         except Exception as e:
             (depth_analysis, depth_ok, depth_reason, depth_recovery,
              depth_invocation, depth_used_endpoint) = _failed_analyst(
                 e, depth_endpoint, "depth")
-        release_kv_cache(
-            depth_used_endpoint, mlx_evictor=evict_mlx_model)
         try:
             (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
-             breadth_invocation, breadth_used_endpoint) = _analyst_stream(
-                breadth_system, breadth_endpoint, "breadth")
+             breadth_invocation, breadth_used_endpoint) = breadth_future.result()
         except Exception as e:
             (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
              breadth_invocation, breadth_used_endpoint) = _failed_analyst(
                 e, breadth_endpoint, "breadth")
-    else:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            depth_future = _submit_with_context(
-                executor, _analyst_stream, depth_system, depth_endpoint, "depth")
-            breadth_future = _submit_with_context(
-                executor, _analyst_stream, breadth_system, breadth_endpoint, "breadth")
-            try:
-                (depth_analysis, depth_ok, depth_reason, depth_recovery,
-                 depth_invocation, depth_used_endpoint) = depth_future.result()
-            except Exception as e:
-                (depth_analysis, depth_ok, depth_reason, depth_recovery,
-                 depth_invocation, depth_used_endpoint) = _failed_analyst(
-                    e, depth_endpoint, "depth")
-            try:
-                (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
-                 breadth_invocation, breadth_used_endpoint) = breadth_future.result()
-            except Exception as e:
-                (breadth_analysis, breadth_ok, breadth_reason, breadth_recovery,
-                 breadth_invocation, breadth_used_endpoint) = _failed_analyst(
-                    e, breadth_endpoint, "breadth")
     # Worker-local Pipeline Health state is not visible to the request thread.
     # Aggregate the outcomes after joining, then record the one turn warning.
     _record_model_substitution_warning(depth_invocation, context_pkg)

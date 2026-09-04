@@ -133,6 +133,24 @@ def should_release_kv_cache(
     return (depth_ram + breadth_ram) > available * 0.8
 
 
+def can_parallel_analysts(depth_endpoint: dict, breadth_endpoint: dict) -> bool:
+    """Unknown or pressured local memory serializes calls, not the Gear."""
+    if depth_endpoint.get("type") != "local" or breadth_endpoint.get("type") != "local":
+        return True
+    total = get_total_ram_gb()
+    available = get_available_ram_gb()
+    depth_ram = _resident_ram_gb(depth_endpoint)
+    breadth_ram = _resident_ram_gb(breadth_endpoint)
+    if any(value is None for value in (total, available, depth_ram, breadth_ram)):
+        return False
+    if available < total * 0.3 or available <= 20:
+        return False
+    depth_model = _selected_model_identity(depth_endpoint)
+    if depth_model and depth_model == _selected_model_identity(breadth_endpoint):
+        return True
+    return depth_ram + breadth_ram <= available * 0.8
+
+
 def release_kv_cache(endpoint: dict, *, mlx_evictor=None) -> bool:
     """
     Release KV cache for a model via Ollama API.
