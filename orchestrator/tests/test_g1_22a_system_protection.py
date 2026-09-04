@@ -1034,6 +1034,46 @@ class TestApprovalAndReceipts(SystemProtectionBase):
             begin.assert_not_called()
             child_b._request.assert_called_once()
 
+            # Browser review identity includes the exact connector-owned target,
+            # even for two distinct Pages with the same URL and arguments.
+            browser = new_child()
+            manager.connections["playwright"] = browser
+            action = "mcp_playwright_browser_click"
+            params = {"target": "#approved"}
+            manager.all_tools[action] = ("playwright", "browser_click")
+            current = {"id": "target-a", "page": "same-url-page-a", "url": "https://example.com"}
+            phases = []
+
+            def browser_reply(_method, payload, **_kwargs):
+                control = payload["arguments"]["_meta"]["ora"]
+                phases.append(control["phase"])
+                if control["phase"] == "execute":
+                    self.assertEqual(control["id"], current["id"])
+                    return {"content": [{"text": "bound browser sent once"}]}
+                return {"content": [], "structuredContent": {"oraBrowserBinding": dict(current)}}
+
+            browser._request = mock.Mock(side_effect=browser_reply)
+            audit_before = protection.verify_audit()
+            dispatch(action, params)
+            review = self._approve_latest()
+            token = tool_events._load_approvals()["tokens"][-1]
+            current.update(id="target-b", page="same-url-page-b")
+            with mock.patch.object(protection, "begin_execution", wraps=protection.begin_execution) as begin:
+                dispatch(action, params)
+            begin.assert_not_called()
+            self.assertNotIn("execute", phases)
+            self.assertEqual(protection.verify_audit(), audit_before)
+            invalidated = next(item for item in tool_events._load_approvals()["tokens"] if item["id"] == token["id"])
+            self.assertTrue(invalidated["used"])
+            self.assertEqual(invalidated["invalidation_reason"], "review-request-digest-mismatch")
+            replacement_review = self._queue_records()[-1]
+            self.assertNotEqual(review["event"]["review_request_digest"], replacement_review["event"]["review_request_digest"])
+            self._approve_latest()
+            self.assertIn("bound browser sent once", dispatch(action, params))
+            self.assertEqual(phases.count("execute"), 1)
+            self.assertEqual([item["event_type"] for item in protection.verify_audit()[len(audit_before):]],
+                             ["protected_action_started", "protected_action_completed"])
+
     def test_drift_after_write_ahead_is_rejected_before_effect_scope(self):
         target = self.root / "profile.json"
         target.write_text("before", encoding="utf-8")

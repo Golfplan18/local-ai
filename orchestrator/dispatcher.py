@@ -108,10 +108,13 @@ except ImportError:
     def fire_hooks(event, context=None): return []
 
 try:
-    from mcp_client import get_manager as _get_mcp_manager, shutdown as _mcp_shutdown
+    from mcp_client import (
+        BOUND_BROWSER_TOOLS, get_manager as _get_mcp_manager, shutdown as _mcp_shutdown,
+    )
 except ImportError:
     _get_mcp_manager = None
     _mcp_shutdown = None
+    BOUND_BROWSER_TOOLS = frozenset()
 
 
 # ── Tool Registry ─────────────────────────────────────────────────────────
@@ -930,7 +933,7 @@ def dispatch(tool_name: str, parameters: dict,
         try:
             resolved_mcp = tool_events.mcp_policy(tool_name, parameters)
             parameters = dict(resolved_mcp["parameters"])
-            if tool_name == "mcp_github_create_repository" or (
+            if tool_name in BOUND_BROWSER_TOOLS or tool_name == "mcp_github_create_repository" or (
                 tool_name == "mcp_github_fork_repository"
                 and not parameters.get("organization")
             ):
@@ -1005,6 +1008,8 @@ def dispatch(tool_name: str, parameters: dict,
         # Keep the raw gate identity stable so a replacement child invalidates
         # the existing approval as stale, including after an ABA restoration.
         protection_parameters["_mcp_child_launch"] = prepared_mcp.launch_id
+        if prepared_mcp.browser_binding is not None:
+            protection_parameters["_mcp_browser_target"] = prepared_mcp.browser_binding
 
     # G1.22A: classification at the same pre-effect boundary as the existing
     # execution gate.  The generic capability axes cannot express absolute

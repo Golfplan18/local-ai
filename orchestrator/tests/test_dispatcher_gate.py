@@ -347,6 +347,37 @@ class TestGateBeforeExecution(DispatchBase):
             send.assert_not_called()
             self.assertEqual(tool_events.check_and_consume_approval(action, raw_hash), approval)
 
+        # A page/document loss discovered by the connector's second preflight
+        # cannot consume even an already-issued generic approval.
+        child = mcp_client.MCPConnection("playwright", "unused")
+        child.launch_id = "fixture-browser-child"
+        child.process = mock.Mock()
+        child.process.poll.return_value = None
+        manager.connections["playwright"] = child
+        action = "mcp_playwright_browser_click"
+        params = {"target": "#approved"}
+        manager.all_tools[action] = ("playwright", "browser_click")
+        bound = {"id": "reviewed-document", "page": "page-a", "url": "https://example.com"}
+        raw_hash = tool_events.normalize_args_hash(action, params)
+        token = tool_events._grant_approval_authorized(action, raw_hash)
+        replies = [
+            {"content": [], "structuredContent": {"oraBrowserBinding": bound}},
+            {"content": [], "structuredContent": {"oraBrowserBinding": bound}},
+            {"isError": True, "content": [{"text": "approved document drifted"}]},
+        ]
+        with mock.patch.object(dispatcher, "_mcp_client", manager), \
+             mock.patch.object(child, "call_tool", side_effect=replies) as send, \
+             mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+             mock.patch.object(dispatcher.system_protection, "begin_execution") as begin:
+            dispatcher.reset_consecutive()
+            result = dispatcher.dispatch(action, params)
+        self.assertIn("document drifted", result)
+        gate.assert_not_called()
+        begin.assert_not_called()
+        self.assertEqual([call.args[1]["_meta"]["ora"]["phase"] for call in send.call_args_list],
+                         ["prepare", "validate", "validate"])
+        self.assertEqual(tool_events.check_and_consume_approval(action, raw_hash), token)
+
         # Required-target validation leaves non-target tools and upload cancel
         # intact and does not turn this into general browser-schema validation.
         for tool in ("click", "hover", "select_option", "type", "drop"):

@@ -58,8 +58,11 @@ The script also installs the three pinned MCP servers from `mcp-runtime/package-
 
 ```bash
 cd mcp-runtime && npm ci --ignore-scripts --no-audit --no-fund && cd ..
+node mcp-runtime/patch-playwright.cjs
 PLAYWRIGHT_BROWSERS_PATH=0 node mcp-runtime/node_modules/playwright-core/cli.js install chromium
 ```
+
+The patch binds approved browser interactions to their reviewed Page, document, and native target. Apply it after installing the pinned packages; Ora refuses an unpatched connector at startup.
 
 `PLAYWRIGHT_BROWSERS_PATH=0` is not optional. It puts Chromium inside the package's own `.local-browsers` directory instead of the shared per-user cache, and Ora accepts only the package-local copy — both `install.py` and `orchestrator/mcp_client.py` re-resolve the browser with that variable set and refuse it if it lands anywhere else.
 

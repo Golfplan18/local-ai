@@ -61,6 +61,12 @@ MAX_TOOLS_PER_SERVER = 128
 MAX_SCHEMA_DEPTH = 32
 MAX_CATALOG_BYTES = 64 * 1024
 _TOOL_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
+BOUND_BROWSER_TOOLS = frozenset(
+    "mcp_playwright_browser_" + name for name in (
+        "click", "hover", "select_option", "type", "drop", "drag", "fill_form",
+        "press_key", "handle_dialog", "file_upload", "navigate_back",
+    )
+)
 
 
 class MCPError(RuntimeError):
@@ -87,6 +93,7 @@ class PreparedMCPCall:
     connection: MCPConnection
     launch_id: str
     parameters: dict
+    browser_binding: dict | None = None
 
 
 def _placeholder_value(name: str) -> str | None:
@@ -246,6 +253,10 @@ def _validate_server_config(raw: dict) -> dict:
         raise MCPConfigError(f"{name}: environment permits loader or proxy injection")
     launch_args = list(expected_args)
     if name == "playwright":
+        bundle = Path(expected["entry"]).parents[2] / "playwright-core" / "lib" / "coreBundle.js"
+        marker = 'const oraBrowserBinding = require("../../../browser-target-binding.cjs");'
+        if not bundle.is_file() or marker not in bundle.read_text(encoding="utf-8"):
+            raise MCPConfigError("playwright: target-binding patch is missing; rerun scripts/install.py")
         launch_args.extend([
             "--executable-path",
             _playwright_browser_executable(
@@ -774,9 +785,12 @@ class MCPClientManager:
             conn, reason = self._recover_server(binding[0])
             if conn is None:
                 raise MCPError(f"MCP server {binding[0]} unavailable: {reason}")
+        browser_binding = None
+        if namespaced_name in BOUND_BROWSER_TOOLS:
+            browser_binding = self._browser_control(conn, binding[1], parameters, "prepare")
         prepared = PreparedMCPCall(
             namespaced_name, *binding, conn, conn.launch_id,
-            copy.deepcopy(parameters),
+            copy.deepcopy(parameters), browser_binding,
         )
         self.revalidate_prepared_call(prepared)
         return prepared
@@ -794,6 +808,25 @@ class MCPClientManager:
                 or conn.process is None or conn.process.poll() is not None
             ):
                 raise MCPError("prepared MCP child is unavailable or changed")
+        if prepared.browser_binding is not None:
+            current = self._browser_control(
+                conn, prepared.tool_name, prepared.parameters, "validate",
+                prepared.browser_binding["id"],
+            )
+            if current != prepared.browser_binding:
+                raise MCPError("prepared browser target changed")
+
+    @staticmethod
+    def _browser_control(conn, tool_name, parameters, phase, binding_id=None):
+        arguments = copy.deepcopy(parameters)
+        arguments["_meta"] = {"ora": {"phase": phase, "id": binding_id}}
+        result = conn.call_tool(tool_name, arguments)
+        binding = result.get("structuredContent", {}).get("oraBrowserBinding")
+        if result.get("isError") or result.get("error") or not isinstance(binding, dict) or not all(
+            isinstance(binding.get(key), str) and binding[key] for key in ("id", "page", "url")
+        ):
+            raise MCPError(f"browser target preparation failed: {result}")
+        return binding
 
     def call_mcp_tool(self, namespaced_name: str, parameters: dict, *,
                       prepared_call: PreparedMCPCall | None = None) -> dict:
@@ -802,15 +835,20 @@ class MCPClientManager:
                 if prepared_call.namespaced_name != namespaced_name:
                     raise MCPError("prepared MCP tool does not match the call")
                 self.revalidate_prepared_call(prepared_call)
-                result = prepared_call.connection.call_tool(
-                    prepared_call.tool_name, prepared_call.parameters,
-                )
+                arguments = copy.deepcopy(prepared_call.parameters)
+                if prepared_call.browser_binding is not None:
+                    arguments["_meta"] = {"ora": {
+                        "phase": "execute", "id": prepared_call.browser_binding["id"],
+                    }}
+                result = prepared_call.connection.call_tool(prepared_call.tool_name, arguments)
                 if prepared_call.connection._closed:
                     self._remove_server(prepared_call.server_name, prepared_call.connection)
                     return {"error": "prepared MCP child became unavailable"}
                 return result
             except MCPError as exc:
                 return {"error": str(exc)}
+        if namespaced_name in BOUND_BROWSER_TOOLS:
+            return {"error": "browser interaction requires a prepared approved target"}
         binding = self._authorized_tools.get(namespaced_name)
         if binding is None:
             # Keep the small direct-manager fixture path compatible for callers

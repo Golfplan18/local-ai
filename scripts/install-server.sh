@@ -173,12 +173,14 @@ if [[ ! -f mcp-runtime/package-lock.json ]]; then
 fi
 if (( DRY_RUN )); then
   log "  DRY: would run npm ci --offline against the pinned MCP lock, with an exact-lock registry fallback only if the cache is incomplete"
+  log "  DRY: would run node mcp-runtime/patch-playwright.cjs"
   log "  DRY: would run node mcp-runtime/node_modules/playwright-core/cli.js install chromium with PLAYWRIGHT_BROWSERS_PATH=0"
 else
   if ! (cd mcp-runtime && npm ci --offline --ignore-scripts --no-audit --no-fund); then
     log "  ⚠ Local npm cache incomplete; installing the same exact lock from its registry URLs"
     (cd mcp-runtime && npm ci --ignore-scripts --no-audit --no-fund)
   fi
+  node mcp-runtime/patch-playwright.cjs
   PLAYWRIGHT_BROWSERS_PATH=0 node \
     mcp-runtime/node_modules/playwright-core/cli.js install chromium
   PLAYWRIGHT_BROWSERS_PATH=0 node -e \
