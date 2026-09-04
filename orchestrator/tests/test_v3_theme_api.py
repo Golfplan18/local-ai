@@ -105,8 +105,8 @@ class TestV3ThemeApi(unittest.TestCase):
     def response_json(self, response):
         return json.loads(response.get_data(as_text=True))
 
-    def _make_project_theme(self):
-        project_root = self.tmpdir / "project"
+    def _make_project_theme(self, project_name="project"):
+        project_root = self.tmpdir / project_name
         theme_dir = project_root / "themes" / "publisher" / "deep-theme"
         theme_dir.mkdir(parents=True)
         (theme_dir / "manifest.json").write_text(
@@ -270,6 +270,104 @@ class TestV3ThemeApi(unittest.TestCase):
         )
         self.assertEqual(served.status_code, 200)
         self.assertEqual(served.get_data(as_text=True), "/* nested project asset */\n")
+        served.close()
+
+        # Preserve binary assets, inward links, and a symlink alias of the root
+        # when the response consumes an already-open file rather than a path.
+        binary = b"\x00\xff\x80project asset\r\n"
+        (nested.parent / "palette.bin").write_bytes(binary)
+        (nested.parent / "linked.bin").symlink_to(nested.parent / "palette.bin")
+        root_alias = self.tmpdir / "project-alias"
+        root_alias.symlink_to(project.root, target_is_directory=True)
+        directory_alias = project.root / "theme-alias"
+        directory_alias.symlink_to(theme_dir, target_is_directory=True)
+        project.themes["deep-project"].directory = "theme-alias"
+        project.root = root_alias
+        list_patch, get_patch = self._patch_project_registry(project)
+        with list_patch, get_patch:
+            for filename in ("palette.bin", "linked.bin"):
+                with self.subTest(filename=filename):
+                    with self.client.get(
+                        f"/themes/project/test-project/assets/{filename}",
+                    ) as response:
+                        self.assertEqual(response.status_code, 200)
+                        self.assertEqual(response.data, binary)
+                        self.assertEqual(response.content_length, len(binary))
+
+    def test_project_theme_swap_after_validation_never_reads_outside_bytes(self):
+        outside_marker = b"OUTSIDE-SECRET-ASSET"
+        for sink, swapped in (
+            ("internal-read", "file"),
+            ("list-manifest", "theme-directory"),
+            ("http-asset", "project-root"),
+        ):
+            with self.subTest(sink=sink, swapped=swapped):
+                project, theme_dir = self._make_project_theme(sink)
+                filename = "manifest.json" if sink == "list-manifest" else "theme.css"
+                outside = self.tmpdir / f"outside-{sink}"
+                outside.mkdir()
+                outside_asset = outside / filename
+                outside_asset.write_bytes(
+                    b'{"name":"' + outside_marker + b'"}'
+                    if sink == "list-manifest" else outside_marker
+                )
+                entry = {
+                    "id": "deep-project", "name": "Deep Project Theme",
+                    "directory": project.themes["deep-project"].directory,
+                    "origin": "project:test-project",
+                    "project_nexus": "test-project", "bundled": False,
+                }
+                resolve = project.resolve_theme_asset
+                swaps = []
+
+                def resolve_then_swap(theme_id, relative):
+                    target = resolve(theme_id, relative)
+                    self.assertEqual(target, theme_dir / filename)
+                    if swapped == "file":
+                        target.unlink()
+                        target.symlink_to(outside_asset)
+                        replacement = target
+                    elif swapped == "theme-directory":
+                        theme_dir.rename(theme_dir.with_name("held-theme"))
+                        theme_dir.symlink_to(outside, target_is_directory=True)
+                        replacement = theme_dir
+                    else:
+                        outside_theme = outside / project.themes[theme_id].directory
+                        outside_theme.mkdir(parents=True)
+                        outside_asset.rename(outside_theme / filename)
+                        project.root.rename(project.root.with_name(project.root.name + "-held"))
+                        project.root.symlink_to(outside, target_is_directory=True)
+                        replacement = project.root
+                    self.assertTrue(replacement.is_symlink())
+                    self.assertTrue(target.resolve().is_relative_to(outside))
+                    swaps.append(replacement)
+                    return target
+
+                list_patch, get_patch = self._patch_project_registry(project)
+                # Supply the already-listed entry so the injected swap is
+                # after the sink's own validation, not an earlier list check.
+                with list_patch, get_patch, mock.patch.object(
+                    S, "_v3_aggregate_themes", return_value=[entry],
+                ), mock.patch.object(
+                    project, "resolve_theme_asset", side_effect=resolve_then_swap,
+                ):
+                    if sink == "internal-read":
+                        try:
+                            result = S._v3_read_theme_asset("deep-project", filename).encode()
+                        except FileNotFoundError:
+                            result = b""
+                    elif sink == "list-manifest":
+                        with self.client.get("/api/v3-themes/list") as response:
+                            self.assertEqual(response.status_code, 200)
+                            result = response.data
+                    else:
+                        with self.client.get(
+                            f"/themes/project/test-project/{filename}",
+                        ) as response:
+                            self.assertIn(response.status_code, (200, 403, 404))
+                            result = response.data
+                self.assertEqual(len(swaps), 1, "The post-validation swap must actually occur")
+                self.assertNotIn(outside_marker, result)
 
     def test_project_theme_parent_traversal_request_forbidden(self):
         project, _theme_dir = self._make_project_theme()

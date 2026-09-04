@@ -61,6 +61,8 @@ var lifecycleChannels = [];
 var lateResolve = null;
 var pendingBResolve = null;
 var forkResolve = null;
+var privacyTagResolve = null;
+var holdPrivacyTag = false;
 var slowCloseResolve = null;
 var concurrentDeleteResolve = null;
 var envelopes = {
@@ -304,6 +306,9 @@ w.fetch = function (url, opts) {
   if (/\/mark-read$/.test(decoded)) return response(true, { ok: true });
   if (/\/privacy-tag$/.test(decoded)) {
     var privacyBody = JSON.parse(opts.body || '{}');
+    if (holdPrivacyTag) {
+      return new Promise(function (resolve) { privacyTagResolve = resolve; });
+    }
     envelopes.retained.tag = privacyBody.tag;
     return response(true, { ok: true, tag: privacyBody.tag, errors: [] });
   }
@@ -459,53 +464,67 @@ async function runScratchpadPrivacyTests() {
     path.resolve(__dirname, '..', '..', 'index-v3.html'), 'utf8'
   );
   var scratchDom = new jsdom.JSDOM(
-    '<!doctype html><html><body></body></html>',
+    '<!doctype html><html><body><div class="chat-output-pane"></div></body></html>',
     { url: 'http://localhost/', runScripts: 'outside-only' }
   );
   var sw = scratchDom.window;
   var release = null;
   var fetches = [];
-  var rendered = [];
   var activeId = 'scratch-parent';
+  var loading = false;
   var draftText = null;
+  var deferredReply = null;
+  var deferReply = false;
+  var mismatchReply = false;
   var rightInputArea = { value: 'My medical diagnosis is private.' };
   var leftInputArea = { value: 'Existing main Inquiry draft' };
+  var pane = sw.document.querySelector('.chat-output-pane');
+  function select(id) {
+    activeId = id;
+    sw.document.dispatchEvent(new sw.CustomEvent('ora:conversation-tag-changed', {
+      detail: { conversation_id: id, source: 'conversation-envelope' },
+    }));
+  }
+  function asideResponse(id, answer) {
+    return {
+      ok: true, status: 200,
+      json: function () { return Promise.resolve({ conversation_id: id, answer: answer }); },
+    };
+  }
   sw.OraConversation = {
+    getActiveConversationId: function () { return activeId; },
+    isLoading: function () { return loading; },
     submitAfterPrivacy: function (_text, submit, options) {
       draftText = options && options.draftText;
       return new Promise(function (resolve) {
         release = function () {
-          activeId = 'scratch-private-child';
+          select('scratch-private-child');
           Promise.resolve(submit()).then(function () { resolve(true); });
         };
       });
     },
   };
   sw.fetch = function (url, opts) {
-    fetches.push({
-      url: String(url),
-      body: JSON.parse(opts.body || '{}'),
-      activeId: activeId,
-    });
-    return Promise.resolve({
-      ok: true,
-      status: 200,
-      json: function () { return Promise.resolve({ answer: 'Private answer' }); },
-    });
+    var body = JSON.parse(opts.body || '{}');
+    fetches.push({ url: String(url), body: body, activeId: activeId });
+    if (deferReply) {
+      return new Promise(function (resolve, reject) {
+        deferredReply = { resolve: resolve, reject: reject };
+      });
+    }
+    return Promise.resolve(asideResponse(
+      mismatchReply ? 'wrong-dialogue' : body.conversation_id, 'Answer for ' + body.prompt
+    ));
   };
   var scratchContext = scratchDom.getInternalVMContext();
   scratchContext.console = console;
   scratchContext.fetch = sw.fetch;
   scratchContext.rightInputArea = rightInputArea;
   scratchContext.leftInputArea = leftInputArea;
-  scratchContext.renderScratchpadEntry = function (cls, text) {
-    rendered.push({ cls: cls, text: text });
-    return { remove: function () {} };
-  };
-  scratchContext.trimScratchpadHistory = function () {};
+  scratchContext.pendingInquiryCompositionTarget = null;
   var scratchSource = sourceSlice(
     indexSource,
-    '  const submitToScratchpad = async',
+    "  const chatOutputPane = document.querySelector('.chat-output-pane');",
     '  const submitInput = async'
   );
   vm.runInContext(
@@ -521,10 +540,11 @@ async function runScratchpadPrivacyTests() {
     fetches.length === 0 && rightInputArea.value.indexOf('diagnosis') >= 0);
   release();
   await pending;
-  record('Aside posts exactly once after the child is selected',
+  record('Aside binds its request to the identity selected inside the privacy callback',
     fetches.length === 1
       && fetches[0].url === '/api/scratchpad'
       && fetches[0].activeId === 'scratch-private-child'
+      && fetches[0].body.conversation_id === 'scratch-private-child'
       && fetches[0].body.prompt === 'My medical diagnosis is private.'
       && rightInputArea.value === ''
       && draftText === 'Existing main Inquiry draft');
@@ -535,13 +555,104 @@ async function runScratchpadPrivacyTests() {
   record('cancelled Aside privacy sends nothing and preserves its input',
     fetches.length === 1 && rightInputArea.value === 'My password remains private.');
 
+  var conversation = sw.OraConversation;
   sw.OraConversation = null;
   await sw.__submitScratchpadAfterPrivacy(rightInputArea.value);
   record('Aside fails closed without privacy controls',
-    fetches.length === 1
-      && rendered.some(function (entry) {
-        return /Privacy check unavailable/.test(entry.text);
-      }));
+    fetches.length === 1 && /Privacy check unavailable/.test(pane.textContent));
+  sw.OraConversation = conversation;
+  conversation.submitAfterPrivacy = async function (_text, submit) { await submit(); return true; };
+
+  select('aside-a');
+  deferReply = true;
+  var lateA = sw.__submitScratchpadAfterPrivacy('A question');
+  var replyA = deferredReply;
+  select('aside-b');
+  record('selecting Dialogue B hides Dialogue A pending Aside history', pane.textContent === '');
+  deferReply = false;
+  await sw.__submitScratchpadAfterPrivacy('B question');
+  replyA.resolve(asideResponse('aside-a', 'Late A answer'));
+  await lateA;
+  record('late A reply never appears in B and requests keep exact owners',
+    pane.textContent.indexOf('Late A answer') === -1
+      && pane.textContent.indexOf('Answer for B question') !== -1
+      && fetches[1].body.conversation_id === 'aside-a'
+      && fetches[2].body.conversation_id === 'aside-b');
+  select('aside-a');
+  record('returning to A restores only its own Aside query and late answer',
+    pane.textContent.indexOf('A question') !== -1
+      && pane.textContent.indexOf('Late A answer') !== -1
+      && pane.textContent.indexOf('B question') === -1);
+
+  deferReply = true;
+  var failedA = sw.__submitScratchpadAfterPrivacy('A failure question');
+  var failureA = deferredReply;
+  select('aside-b');
+  failureA.reject(new Error('A request failed'));
+  await failedA;
+  record('late A request failure remains outside B', pane.textContent.indexOf('A request failed') === -1);
+  select('aside-a');
+  record('A keeps its own late request failure', pane.textContent.indexOf('A request failed') !== -1);
+
+  var purgedA = sw.__submitScratchpadAfterPrivacy('A purged question');
+  var purgedReply = deferredReply;
+  select('aside-b');
+  sw.document.dispatchEvent(new sw.CustomEvent('ora:conversation-lifecycle-completed', {
+    detail: { conversation_id: 'aside-a', action: 'delete-forever', result: {} },
+  }));
+  purgedReply.resolve(asideResponse('aside-a', 'Purged A late answer'));
+  await purgedA;
+  record('purging A preserves B Aside and suppresses A late response',
+    pane.textContent.indexOf('Answer for B question') !== -1
+      && pane.textContent.indexOf('Purged A late answer') === -1);
+  select('aside-a');
+  record('purged A has no restored Aside history', pane.textContent === '');
+  select('aside-b');
+  sw.document.dispatchEvent(new sw.CustomEvent('ora:conversation-lifecycle-completed', {
+    detail: { conversation_id: 'aside-b', action: 'close', result: { action: 'close' } },
+  }));
+  select('aside-a');
+  select('aside-b');
+  record('retained Close preserves that Dialogue Aside history',
+    pane.textContent.indexOf('Answer for B question') !== -1);
+
+  var fetchCount = fetches.length;
+  rightInputArea.value = 'Wait for selection';
+  scratchContext.pendingInquiryCompositionTarget = 'missing-dialogue';
+  sw.document.dispatchEvent(new sw.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: 'missing-dialogue' },
+  }));
+  await sw.__submitScratchpadAfterPrivacy(rightInputArea.value);
+  record('optimistic navigation cannot submit Aside under the prior Dialogue before loading begins',
+    pane.textContent.indexOf('B question') === -1
+      && fetches.length === fetchCount && rightInputArea.value === 'Wait for selection');
+  loading = true;
+  sw.document.dispatchEvent(new sw.CustomEvent('ora:conversation-loading-state', {
+    detail: { conversation_id: 'missing-dialogue', loading: true },
+  }));
+  await sw.__submitScratchpadAfterPrivacy(rightInputArea.value);
+  record('unresolved selection exposes no prior Aside and cannot send under its old ID',
+    pane.textContent.indexOf('B question') === -1
+      && fetches.length === fetchCount && rightInputArea.value === 'Wait for selection');
+  loading = false;
+  scratchContext.pendingInquiryCompositionTarget = null;
+  sw.document.dispatchEvent(new sw.CustomEvent('ora:conversation-load-failed', {
+    detail: { conversation_id: 'missing-dialogue', active_conversation_id: 'aside-b' },
+  }));
+  record('failed selection restores the still-active Dialogue Aside',
+    pane.textContent.indexOf('Answer for B question') !== -1);
+
+  deferReply = false;
+  mismatchReply = true;
+  await sw.__submitScratchpadAfterPrivacy('Mismatched response question');
+  record('Aside rejects a response naming a different Dialogue',
+    pane.textContent.indexOf('Answer for Mismatched response question') === -1
+      && /response did not match this Dialogue/.test(pane.textContent));
+  sw.document.dispatchEvent(new sw.CustomEvent('ora:conversation-lifecycle-completed', {
+    detail: { conversation_id: 'aside-b', action: 'close', result: { action: 'purge' } },
+  }));
+  record('legacy purge result clears the exact Aside window', pane.textContent === '');
+  scratchDom.window.close();
 }
 
 async function runIndexPrivacyEgressTests() {
@@ -1246,7 +1357,7 @@ async function runIndexLifecycleControlsTests() {
   var modeCore = sourceSlice(
     indexSource,
     "  const qaMessage       = document.getElementById('bridgeQAMessage');",
-    '  // ─── Pane-mode buttons (Audio/Video Phase 1)'
+    '  // ─── Pane-mode buttons ─'
   );
   var modeLifecycle = sourceSlice(
     indexSource,
@@ -1690,6 +1801,48 @@ async function run() {
     (await askPromise) === true && askSubmits === 1 && calls.length === 0);
 
   await w.OraConversation.load('fork-parent');
+  var failedSelectionEvents = [];
+  var observeFailedSelection = function (event) {
+    failedSelectionEvents.push(event.detail);
+  };
+  w.document.addEventListener('ora:conversation-load-failed', observeFailedSelection);
+  var supersededLoad = w.OraConversation.load('pending-b');
+  await wait(0);
+  var supersededResolve = pendingBResolve;
+  var failVisualFlush;
+  w.OraCanvas = {
+    flushDraft: function () {
+      return new Promise(function (_resolve, reject) { failVisualFlush = reject; });
+    },
+  };
+  var failedVisualSelection = w.OraConversation.load('other-row');
+  failVisualFlush(new Error('fixture visual draft cannot be saved'));
+  record('failed visual flush restores the active Dialogue through the normal load-failure event',
+    (await failedVisualSelection) === false
+      && w.OraConversation.getActiveConversationId() === 'fork-parent'
+      && !w.OraConversation.isLoading()
+      && !w.document.querySelector('.input-pane textarea').readOnly
+      && failedSelectionEvents.length === 1
+      && failedSelectionEvents[0].conversation_id === 'other-row'
+      && failedSelectionEvents[0].active_conversation_id === 'fork-parent'
+      && tagEvents[tagEvents.length - 1].source === 'conversation-load-failed-restore');
+  supersededResolve({
+    ok: true, status: 200,
+    json: function () { return Promise.resolve({ conversation_id: 'pending-b', messages: [] }); },
+  });
+  await supersededLoad;
+  var staleVisualSelection = w.OraConversation.load('other-row');
+  w.OraConversation.startFresh({
+    conversation_id: 'newer-visual-selection', tag: '', skip_visual_flush: true,
+  });
+  failVisualFlush(new Error('fixture stale visual draft failed'));
+  await staleVisualSelection;
+  record('an old failed visual flush cannot restore over a newer Dialogue',
+    w.OraConversation.getActiveConversationId() === 'newer-visual-selection'
+      && failedSelectionEvents.length === 1);
+  delete w.OraCanvas;
+  w.document.removeEventListener('ora:conversation-load-failed', observeFailedSelection);
+  await w.OraConversation.load('fork-parent');
   var navFirst = w.document.getElementById('outputPaneNavFirst');
   var navBack = w.document.getElementById('outputPaneNavBack');
   var navForward = w.document.getElementById('outputPaneNavForward');
@@ -1784,30 +1937,25 @@ async function run() {
   var parentVisualSnapshot = {
     editor: 'excalidraw', conversationId: 'fork-parent', elements: [{ id: 'parent-visual' }],
   };
-  var carriedVisualSnapshot = null;
-  var visualCapturedBeforeFork = false;
+  var visualMutations = 0;
   w.OraCanvas = {
     hasContent: function () { return true; },
-    snapshotForSubmit: function () {
-      visualCapturedBeforeFork = !calls.some(function (call) {
-        return /\/fork$/.test(call.url);
-      });
-      return parentVisualSnapshot;
-    },
+    snapshotForSubmit: function () { return parentVisualSnapshot; },
     flushDraft: function () { return Promise.resolve(); },
-    setConversationContext: function () {},
-    loadCheckpoint: function () { return Promise.resolve(false); },
-    clear: function () {},
+    setConversationContext: function () { visualMutations += 1; },
+    loadCheckpoint: function () { visualMutations += 1; return Promise.resolve(false); },
+    clear: function () { visualMutations += 1; },
   };
   calls = [];
-  var forkPromise = w.OraConversation.submitAfterPrivacy(
+  holdPrivacyTag = true;
+  var privacyPromise = w.OraConversation.submitAfterPrivacy(
     privacyInput.value,
-    function (submissionContext) {
-      carriedVisualSnapshot = submissionContext.visualSnapshot;
+    function () {
       return w.fetch('/chat', {
         method: 'POST',
         body: JSON.stringify({
           conversation_id: w.OraConversation.getActiveConversationId(),
+          tag: w.OraConversation.getActiveTag(),
           prompt: privacyInput.value,
         }),
       });
@@ -1817,34 +1965,36 @@ async function run() {
   await wait(0);
   w.document.querySelector('.ora-privacy-intervention [data-choice="private"]').click();
   await wait(0);
-  var parentPostsBeforeFork = calls.filter(function (call) {
+  var postsBeforePrivacy = calls.filter(function (call) {
     return call.url === '/chat';
   }).length;
-  forkResolve({
+  privacyTagResolve({
     ok: true, status: 200,
-    json: function () { return Promise.resolve({
-      new_conversation_id: 'privacy-child', tag: 'private',
-    }); },
+    json: function () { return Promise.resolve({ ok: true, tag: 'private' }); },
   });
-  var forkAllowed = await forkPromise;
+  var privacyAllowed = await privacyPromise;
+  holdPrivacyTag = false;
   var finalPosts = calls.filter(function (call) { return call.url === '/chat'; });
-  record('final sensitive submit posts zero times to parent and exactly once to Private child',
-    forkAllowed
-      && parentPostsBeforeFork === 0
+  record('sensitive submit waits for next-turn privacy and keeps the same Dialogue and drafts',
+    privacyAllowed
+      && postsBeforePrivacy === 0
       && finalPosts.length === 1
-      && JSON.parse(finalPosts[0].opts.body).conversation_id === 'privacy-child'
-      && w.OraConversation.getActiveConversationId() === 'privacy-child'
+      && JSON.parse(finalPosts[0].opts.body).conversation_id === 'fork-parent'
+      && JSON.parse(finalPosts[0].opts.body).tag === 'private'
+      && w.OraConversation.getActiveConversationId() === 'fork-parent'
       && w.OraConversation.getActiveTag() === 'private'
       && privacyInput.value === 'My secret key is abc'
-      && visualCapturedBeforeFork
-      && carriedVisualSnapshot === parentVisualSnapshot
-      && w.localStorage.getItem('ora-v3-draft-privacy-child') === 'My secret key is abc'
-      && w.localStorage.getItem('ora-v3-draft-fork-parent') === null
-      && calls.filter(function (call) { return /\/fork$/.test(call.url); }).length === 1);
+      && visualMutations === 0
+      && w.OraCanvas.snapshotForSubmit() === parentVisualSnapshot
+      && w.localStorage.getItem('ora-v3-draft-fork-parent') === 'My secret key is abc'
+      && envelopes.forkParent.messages.length === 4
+      && calls.filter(function (call) { return /\/privacy-tag$/.test(call.url); }).length === 1
+      && !calls.some(function (call) { return /\/fork$/.test(call.url); }));
   delete w.OraCanvas;
 
   await w.OraConversation.load('fork-parent');
   calls = [];
+  holdPrivacyTag = true;
   var auxiliaryPromise = w.OraConversation.submitChatTurn({
     message: 'Investigate this trace.',
     conversation_id: 'fork-parent',
@@ -1860,21 +2010,22 @@ async function run() {
   var auxiliaryParentPosts = calls.filter(function (call) {
     return call.url === '/chat';
   }).length;
-  forkResolve({
+  privacyTagResolve({
     ok: true, status: 200,
-    json: function () { return Promise.resolve({
-      new_conversation_id: 'privacy-child', tag: 'private',
-    }); },
+    json: function () { return Promise.resolve({ ok: true, tag: 'private' }); },
   });
   var auxiliaryConversationId = await auxiliaryPromise;
+  holdPrivacyTag = false;
   var auxiliaryPosts = calls.filter(function (call) { return call.url === '/chat'; });
   var auxiliaryBody = JSON.parse(auxiliaryPosts[0].opts.body);
-  record('auxiliary user text shares privacy gate and posts exactly once to the child',
+  record('auxiliary user text waits for privacy and posts exactly once to the same Dialogue',
     auxiliaryParentPosts === 0
-      && auxiliaryConversationId === 'privacy-child'
+      && auxiliaryConversationId === 'fork-parent'
       && auxiliaryPosts.length === 1
-      && auxiliaryBody.conversation_id === 'privacy-child'
-      && auxiliaryBody.panel_id === 'privacy-child'
+      && auxiliaryBody.conversation_id === 'fork-parent'
+      && auxiliaryBody.panel_id === 'fork-parent'
+      && auxiliaryBody.tag === 'private'
+      && !calls.some(function (call) { return /\/fork$/.test(call.url); })
       && /secret key/.test(auxiliaryBody.trace_debug.symptom));
 
   await w.OraConversation.load('fork-parent');
@@ -1904,7 +2055,8 @@ async function run() {
   w.localStorage.setItem('ora-v3-draft-fork-parent', privacyInput.value);
   calls = [];
   var racedSubmitCount = 0;
-  var racedFork = w.OraConversation.submitAfterPrivacy(
+  holdPrivacyTag = true;
+  var racedPrivacy = w.OraConversation.submitAfterPrivacy(
     privacyInput.value,
     function () { racedSubmitCount += 1; }
   );
@@ -1912,20 +2064,19 @@ async function run() {
   w.document.querySelector('.ora-privacy-intervention [data-choice="private"]').click();
   await wait(0);
   w.OraConversation.startFresh({ conversation_id: 'newer-selection', tag: '' });
-  forkResolve({
+  privacyTagResolve({
     ok: true, status: 200,
-    json: function () { return Promise.resolve({
-      new_conversation_id: 'privacy-race-child', tag: 'private',
-    }); },
+    json: function () { return Promise.resolve({ ok: true, tag: 'private' }); },
   });
-  var racedAllowed = await racedFork;
-  record('successful privacy fork saves child draft before navigation can clear parent',
+  var racedAllowed = await racedPrivacy;
+  holdPrivacyTag = false;
+  record('navigation during privacy acknowledgement suppresses submission and retains its owner draft',
     racedAllowed === false
       && racedSubmitCount === 0
       && w.OraConversation.getActiveConversationId() === 'newer-selection'
-      && w.localStorage.getItem('ora-v3-draft-privacy-race-child') ===
+      && w.localStorage.getItem('ora-v3-draft-fork-parent') ===
         'My private key must survive navigation'
-      && w.localStorage.getItem('ora-v3-draft-fork-parent') === null);
+      && !calls.some(function (call) { return /\/fork$/.test(call.url); }));
 
   await w.OraConversation.load('privacy-child');
   calls = [];
@@ -2030,6 +2181,19 @@ async function run() {
     '  const currentPaneMode = () => {',
     '  // Close dropdown on outside click or Escape.'
   ), context, { filename: 'index-pane-mode-navigation.js' });
+  vm.runInContext(
+    fs.readFileSync(path.resolve(__dirname, '..', 'js', 'v3-pane-ownership.js'), 'utf8'),
+    context,
+    { filename: 'pane-ownership-exit-navigation.js' }
+  );
+  w.OraPanes.register({ pane: 'exhibits', mode: 'video', label: 'Video editor' });
+  vm.runInContext('(function (root) {\n' + sourceSlice(
+    fs.readFileSync(path.resolve(
+      __dirname, '..', '..', '..', 'plugins', 'video', 'static', 'video-plugin.js'
+    ), 'utf8'),
+    '  function installPaneExits() {',
+    '  initialiseFeature();'
+  ) + '\ninstallPaneExits();\n})(window);', context, { filename: 'video-pane-exits.js' });
   vm.runInContext(
     fs.readFileSync(path.resolve(__dirname, '..', 'js', 'sidebar.js'), 'utf8'),
     context,

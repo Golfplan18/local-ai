@@ -3023,23 +3023,79 @@
   };
 
   // V3 Backlog 6 — Right-column Aside. /api/scratchpad uses the dedicated
-  // Aside model setting and a five-turn in-memory context window. Nothing is
-  // persisted; client-side autopurging separately keeps the last
-  // SCRATCHPAD_MAX_PAIRS query/answer pairs visible.
+  // Aside model setting and a five-turn in-memory context window per Dialogue.
+  // Nothing is persisted; each Dialogue's browser display separately keeps
+  // the last SCRATCHPAD_MAX_PAIRS query/answer pairs.
   const chatOutputPane = document.querySelector('.chat-output-pane');
   const SCRATCHPAD_MAX_PAIRS = 10;
+  const scratchpadHistories = new Map();
+  let scratchpadConversationId = null;
 
-  const ensureScratchpadNotSavedLabel = () => {
-    if (!chatOutputPane) return;
-    if (chatOutputPane.querySelector('.scratchpad-not-saved-label')) return;
+  const scratchpadActiveId = () => {
+    const conversation = window.OraConversation;
+    if (pendingInquiryCompositionTarget
+        || !conversation || typeof conversation.getActiveConversationId !== 'function'
+        || (typeof conversation.isLoading === 'function' && conversation.isLoading())) {
+      return null;
+    }
+    return conversation.getActiveConversationId();
+  };
+
+  const scratchpadContainer = (history) => (
+    history.conversationId === scratchpadConversationId
+      ? chatOutputPane : history.fragment
+  );
+
+  const selectScratchpadHistory = (conversationId) => {
+    if (!chatOutputPane || conversationId === scratchpadConversationId) return;
+    const previous = scratchpadHistories.get(scratchpadConversationId);
+    if (previous) previous.fragment.append(...chatOutputPane.childNodes);
+    chatOutputPane.replaceChildren();
+    scratchpadConversationId = conversationId;
+    if (!conversationId) return;
+    let history = scratchpadHistories.get(conversationId);
+    if (!history) {
+      history = { conversationId, fragment: document.createDocumentFragment() };
+      scratchpadHistories.set(conversationId, history);
+    }
+    chatOutputPane.append(history.fragment);
+  };
+
+  const syncScratchpadHistory = () => selectScratchpadHistory(scratchpadActiveId());
+  // Hide the previous Dialogue immediately while the selected envelope loads.
+  // Committed identity events restore its own history, including failed loads.
+  document.addEventListener('ora:conversation-selected', () => selectScratchpadHistory(null));
+  document.addEventListener('ora:conversation-loading-state', (event) => {
+    if (event.detail && event.detail.loading) selectScratchpadHistory(null);
+  });
+  document.addEventListener('ora:conversation-tag-changed', syncScratchpadHistory);
+  document.addEventListener('ora:conversation-load-failed', syncScratchpadHistory);
+  document.addEventListener('ora:fresh-conversation-started', syncScratchpadHistory);
+  document.addEventListener('ora:conversation-lifecycle-completed', (event) => {
+    const detail = (event && event.detail) || {};
+    const id = detail.conversation_id;
+    const result = detail.result || {};
+    const purged = detail.action === 'delete-forever'
+      || result.action === 'delete_forever' || result.action === 'purge';
+    if (!id || !purged) return;
+    if (scratchpadConversationId === id) selectScratchpadHistory(null);
+    scratchpadHistories.delete(id);
+    syncScratchpadHistory();
+  });
+  syncScratchpadHistory();
+
+  const ensureScratchpadNotSavedLabel = (container) => {
+    if (!container) return;
+    if (container.querySelector('.scratchpad-not-saved-label')) return;
     const lbl = document.createElement('div');
     lbl.className = 'scratchpad-not-saved-label';
     lbl.textContent = 'not saved';
-    chatOutputPane.appendChild(lbl);
+    container.appendChild(lbl);
   };
 
-  const renderScratchpadEntry = (cls, text) => {
-    if (!chatOutputPane) return null;
+  const renderScratchpadEntry = (cls, text, history = null) => {
+    const container = history ? scratchpadContainer(history) : chatOutputPane;
+    if (!container) return null;
     const block = document.createElement('div');
     block.className = 'scratchpad-turn ' + cls;
     block.textContent = text;
@@ -3085,15 +3141,16 @@
       actions.appendChild(speakBtn);
       block.appendChild(actions);
     }
-    chatOutputPane.appendChild(block);
-    chatOutputPane.scrollTop = chatOutputPane.scrollHeight;
-    ensureScratchpadNotSavedLabel();
+    container.appendChild(block);
+    if (container === chatOutputPane) chatOutputPane.scrollTop = chatOutputPane.scrollHeight;
+    ensureScratchpadNotSavedLabel(container);
     return block;
   };
 
-  const trimScratchpadHistory = () => {
-    if (!chatOutputPane) return;
-    const queries = chatOutputPane.querySelectorAll('.scratchpad-turn-query');
+  const trimScratchpadHistory = (history) => {
+    const container = scratchpadContainer(history);
+    if (!container) return;
+    const queries = container.querySelectorAll('.scratchpad-turn-query');
     if (queries.length <= SCRATCHPAD_MAX_PAIRS) return;
     const excess = queries.length - SCRATCHPAD_MAX_PAIRS;
     for (let i = 0; i < excess; i++) {
@@ -3107,28 +3164,36 @@
     }
   };
 
-  const submitToScratchpad = async (prompt) => {
-    renderScratchpadEntry('scratchpad-turn-query', prompt);
-    const pending = renderScratchpadEntry('scratchpad-turn-pending', '…');
+  const submitToScratchpad = async (prompt, conversationId) => {
+    selectScratchpadHistory(conversationId);
+    const history = scratchpadHistories.get(conversationId);
+    if (!history) return;
+    renderScratchpadEntry('scratchpad-turn-query', prompt, history);
+    const pending = renderScratchpadEntry('scratchpad-turn-pending', '…', history);
+    // A successful purge discards this exact history object. Its late reply
+    // must never recreate that window or append to the newly selected one.
+    const stillOwned = () => scratchpadHistories.get(conversationId) === history;
+    const finish = (cls, text) => {
+      if (!stillOwned()) return;
+      if (pending) pending.remove();
+      renderScratchpadEntry(cls, text, history);
+      trimScratchpadHistory(history);
+    };
     let resp;
     try {
       resp = await fetch('/api/scratchpad', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ prompt }),
+        body:    JSON.stringify({ prompt, conversation_id: conversationId }),
       });
     } catch (e) {
-      if (pending) pending.remove();
-      renderScratchpadEntry('scratchpad-turn-error',
+      finish('scratchpad-turn-error',
         '[Scratchpad failed: ' + (e.message || e) + ']');
-      trimScratchpadHistory();
       return;
     }
     if (!resp.ok) {
-      if (pending) pending.remove();
-      renderScratchpadEntry('scratchpad-turn-error',
+      finish('scratchpad-turn-error',
         '[Scratchpad failed: HTTP ' + resp.status + ']');
-      trimScratchpadHistory();
       return;
     }
     // V3 Backlog 2A Chunk 4 — /api/scratchpad replies with plain JSON
@@ -3140,17 +3205,20 @@
     } catch (e) {
       payload = null;
     }
-    if (pending) pending.remove();
+    if (!stillOwned()) return;
+    if (!payload || payload.conversation_id !== conversationId) {
+      finish('scratchpad-turn-error', '[Aside response did not match this Dialogue.]');
+      return;
+    }
     const errDetail = payload && typeof payload.error === 'string' ? payload.error : null;
     const answer    = payload && typeof payload.answer === 'string' ? payload.answer : null;
     if (errDetail) {
-      renderScratchpadEntry('scratchpad-turn-error', '[' + errDetail + ']');
+      finish('scratchpad-turn-error', '[' + errDetail + ']');
     } else if (answer !== null) {
-      renderScratchpadEntry('scratchpad-turn-answer', answer || '[no response]');
+      finish('scratchpad-turn-answer', answer || '[no response]');
     } else {
-      renderScratchpadEntry('scratchpad-turn-error', '[no response]');
+      finish('scratchpad-turn-error', '[no response]');
     }
-    trimScratchpadHistory();
   };
 
   const submitScratchpadAfterPrivacy = async (prompt) => {
@@ -3163,8 +3231,15 @@
       return false;
     }
     return conversation.submitAfterPrivacy(prompt, async () => {
+      const conversationId = scratchpadActiveId();
+      if (!conversationId) {
+        renderScratchpadEntry(
+          'scratchpad-turn-error', '[Wait for a Dialogue to finish loading before using Aside.]'
+        );
+        return;
+      }
       rightInputArea.value = '';
-      await submitToScratchpad(prompt);
+      await submitToScratchpad(prompt, conversationId);
     }, {
       // The Aside text has no parent-keyed draft of its own. Preserve any
       // main Inquiry draft when a populated Standard Dialogue is forked.

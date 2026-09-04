@@ -23,11 +23,13 @@ import hmac
 import os
 import re
 import shutil
+import stat
 import subprocess
+import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, BinaryIO, Optional
 
 try:
     import runtime_paths as _rp
@@ -309,11 +311,10 @@ class Project:
         return (self.root / p).resolve()
 
     def resolve_theme_asset(self, theme_id: str, relative: str) -> Path:
-        """Resolve one declared theme asset inside its Project-owned directory.
+        """Validate one declared theme asset's current resolved pathname.
 
-        The root, declared theme directory, and requested asset are resolved on
-        every call so a symlink changed after registration cannot turn a valid
-        theme into an outward file read.
+        This is an existence/containment check only. Readers must use
+        ``open_theme_asset`` so later path changes cannot redirect their I/O.
         """
         theme = self.themes.get(theme_id)
         if theme is None:
@@ -331,6 +332,68 @@ class Project:
         if not target.is_file():
             raise FileNotFoundError(target)
         return target
+
+    def open_theme_asset(self, theme_id: str, relative: str) -> BinaryIO:
+        """Open an asset, then verify the bound file before exposing any bytes.
+
+        The OS reports the path of the open object, not a second lookup of the
+        caller's mutable pathname. Compare it with the resolved roots captured
+        before opening; a file or ancestor swapped outward therefore refuses.
+        Inward symlinks and root aliases remain valid. The caller owns closure.
+        """
+        root = self.root.resolve(strict=True)
+        theme = self.themes.get(theme_id)
+        if theme is None:
+            raise ManifestError(f"project {self.nexus!r} declares no theme {theme_id!r}")
+        asset_dir = _resolve_project_contained_path(root, theme.directory)
+        target = self.resolve_theme_asset(theme_id, relative)
+        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(target, flags)
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise FileNotFoundError(target)
+            if sys.platform == "darwin":
+                import fcntl
+                # F_GETPATH asks the kernel about this descriptor (MAXPATHLEN).
+                bound_path = os.fsdecode(fcntl.fcntl(fd, 50, bytes(1024)).split(b"\0", 1)[0])
+            elif sys.platform == "win32":
+                import ctypes
+                import msvcrt
+                from ctypes import wintypes
+
+                get_path = ctypes.WinDLL("kernel32", use_last_error=True).GetFinalPathNameByHandleW
+                get_path.argtypes = [wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD]
+                get_path.restype = wintypes.DWORD
+                buffer = ctypes.create_unicode_buffer(32768)
+                length = get_path(msvcrt.get_osfhandle(fd), buffer, len(buffer), 0)
+                if not length or length >= len(buffer):
+                    raise OSError("Cannot determine the open theme asset's path")
+                # Normalize all captured spellings without looking them up again.
+                normalized_paths = []
+                for path in (str(root), str(asset_dir), buffer.value):
+                    if path[:8].upper() == "\\\\?\\UNC\\":
+                        path = "\\\\" + path[8:]
+                    elif path.startswith("\\\\?\\"):
+                        path = path[4:]
+                    normalized_paths.append(Path(path))
+                root, asset_dir, bound_path = normalized_paths
+            elif sys.platform.startswith("linux"):
+                bound_path = os.readlink(f"/proc/self/fd/{fd}")
+            else:
+                raise OSError("Secure theme-asset opening is unavailable on this platform")
+            try:
+                # Do not resolve again: these are the kernel's bound-object
+                # path and the roots captured before the mutable-path open.
+                Path(bound_path).relative_to(root)
+                Path(bound_path).relative_to(asset_dir)
+            except ValueError as exc:
+                raise ManifestError("Open theme asset is outside its allowed directory") from exc
+            stream = os.fdopen(fd, "rb")
+            fd = -1
+            return stream
+        finally:
+            if fd >= 0:
+                os.close(fd)
 
     def find_framework_configuration(
         self, framework: str, profile_name: str,
@@ -954,6 +1017,51 @@ def _read_pointer_for_mutation(path: Path) -> dict[str, Any]:
     return data
 
 
+def prepare_pointer_mutation(
+    nexus: str, pointer_dir: str = POINTER_DIR, *, require_registered: bool,
+) -> tuple[Path, dict[str, Any]]:
+    """Resolve and strictly read the exact pointer before seeking approval.
+
+    Registration may create an absent pointer or extend a valid container-only
+    pointer. Unregistration requires an existing regular pointer with a live
+    plugin binding. Both callers and the mutation sink use this same preflight
+    so malformed, symlinked, or already-unregistered targets fail before an
+    approval can be consumed.
+    """
+
+    pointer = _pointer_path(nexus, pointer_dir)
+    if pointer.is_symlink():
+        raise ProjectError(f"project pointer must not be a symlink: {pointer}")
+    try:
+        before = pointer.stat(follow_symlinks=False)
+    except FileNotFoundError:
+        if require_registered:
+            raise ProjectNotFoundError(
+                f"No project registered with nexus {nexus!r}"
+            )
+        return pointer, {}
+    if not stat.S_ISREG(before.st_mode):
+        raise ProjectError(f"project pointer must be a regular file: {pointer}")
+    data = _read_pointer_for_mutation(pointer)
+    try:
+        after = pointer.stat(follow_symlinks=False)
+    except FileNotFoundError as exc:
+        raise ProjectError(f"project pointer changed during preflight: {pointer}") from exc
+    identity = lambda value: (
+        value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns,
+    )
+    if identity(before) != identity(after):
+        raise ProjectError(f"project pointer changed during preflight: {pointer}")
+    root = data.get("root")
+    if require_registered and (
+        not isinstance(root, str) or not root.strip()
+    ):
+        raise ProjectNotFoundError(
+            f"No project registered with nexus {nexus!r}"
+        )
+    return pointer, data
+
+
 def _load_registered_project(pointer_data: dict, pointer_path: Path) -> Project:
     """Resolve one pointer only when its issued manifest bytes still match."""
 
@@ -1061,7 +1169,9 @@ def register_project(
     pf = _pointer_path(project.nexus, pointer_dir)
     try:
         with _rp.locked_file(pf):
-            data = _read_pointer_for_mutation(pf)
+            pf, data = prepare_pointer_mutation(
+                project.nexus, pointer_dir, require_registered=False,
+            )
             data["nexus"] = project.nexus
             data["root"] = str(project.root)
             data["manifest_sha256"] = snapshot.manifest_sha256
@@ -1079,14 +1189,13 @@ def unregister_project(nexus: str, pointer_dir: str = POINTER_DIR) -> bool:
     plugin binding was removed, otherwise ``False``.
     """
     pf = _pointer_path(nexus, pointer_dir)
-    if not pf.is_file():
-        return False
     try:
         with _rp.locked_file(pf):
-            if not pf.is_file():
-                return False
-            data = _read_pointer_for_mutation(pf)
-            if not data.get("root"):
+            try:
+                pf, data = prepare_pointer_mutation(
+                    nexus, pointer_dir, require_registered=True,
+                )
+            except ProjectNotFoundError:
                 return False
             try:
                 from project_meta import pointer_has_container_metadata
@@ -1144,6 +1253,8 @@ def _resolve_executable_identity(
         executable = executable.resolve(strict=True)
         if not executable.is_file():
             raise OSError("executable is not a regular file")
+        if not os.access(executable, os.X_OK):
+            raise PermissionError("executable has no execute permission")
         digest = hashlib.sha256(executable.read_bytes()).hexdigest()
     except OSError as exc:
         raise ProjectExecutionBindingError(
@@ -1153,20 +1264,17 @@ def _resolve_executable_identity(
     script_path = ""
     script_identity = "sha256:" + hashlib.sha256(b"no-declared-script").hexdigest()
     if len(command) > 1:
-        candidate = Path(command[1]).expanduser().resolve()
-        script_path = str(candidate)
         try:
-            if candidate.is_file():
-                script_bytes = candidate.read_bytes()
-                script_identity = "sha256:" + hashlib.sha256(script_bytes).hexdigest()
-            else:
-                script_identity = "sha256:" + hashlib.sha256(
-                    f"not-a-regular-file:{candidate}".encode("utf-8")
-                ).hexdigest()
-        except OSError as exc:
+            candidate = Path(command[1]).expanduser().resolve(strict=True)
+            if not candidate.is_file():
+                raise OSError("declared script is not a regular file")
+            script_bytes = candidate.read_bytes()
+        except (OSError, RuntimeError) as exc:
             raise ProjectExecutionBindingError(
-                f"project script {candidate} cannot be authenticated: {exc}"
+                f"project script {command[1]} cannot be authenticated: {exc}"
             ) from exc
+        script_path = str(candidate)
+        script_identity = "sha256:" + hashlib.sha256(script_bytes).hexdigest()
     executable_identity = "sha256:" + hashlib.sha256(json.dumps(
         {
             "interpreter_path": interpreter_path,

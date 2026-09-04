@@ -26,13 +26,18 @@ import math
 import os
 import re
 import threading
+from contextlib import nullcontext
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from types import MappingProxyType
+from typing import Any, Callable, Mapping
 
 try:
     from . import runtime_paths as rp
+    from . import system_protection
 except ImportError:  # direct script-style import from sys.path
     import runtime_paths as rp  # type: ignore
+    import system_protection  # type: ignore
 
 ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
 DATA_DIR = ORA_HOME / "data"
@@ -1173,7 +1178,103 @@ def _is_baseline_complete(config: dict) -> bool:
     return True
 
 
-def delete_configuration(name: str) -> None:
+@dataclass(frozen=True)
+class ConfigurationDeletionPreflight:
+    """Read-only semantic state required to delete one Model Profile."""
+
+    name: str
+    target_path: Path
+    target_identity: Mapping[str, Any]
+    active_pointer_path: Path
+    active_pointer_identity: Mapping[str, Any]
+    active_name: str
+    fallback_path: Path | None
+    fallback_identity: Mapping[str, Any] | None
+
+    @property
+    def deletes_active_profile(self) -> bool:
+        return self.name == self.active_name
+
+    @property
+    def identities(self) -> tuple[Mapping[str, Any], ...]:
+        identities = (self.target_identity, self.active_pointer_identity)
+        if self.fallback_identity is not None:
+            identities += (self.fallback_identity,)
+        return identities
+
+    @property
+    def identity_paths(self) -> tuple[Path, ...]:
+        paths = (self.target_path, self.active_pointer_path)
+        if self.fallback_path is not None:
+            paths += (self.fallback_path,)
+        return paths
+
+
+def _capture_immutable_path_identity(path: Path) -> Mapping[str, Any]:
+    return MappingProxyType(system_protection.capture_path_identity(path))
+
+
+def _require_regular_profile_file(path: Path, *, label: str) -> None:
+    if path.is_symlink() or not path.is_file():
+        raise FileNotFoundError(
+            f"{label} is missing or is not a regular file: {path}"
+        )
+
+
+def preflight_delete_configuration(name: str) -> ConfigurationDeletionPreflight:
+    """Validate deletion semantics without mutating profile or pointer state."""
+    if name in {"background-default", "user-pipeline"}:
+        raise ValueError(
+            f"{name!r} is a system Model Profile and cannot be deleted")
+    if name in PRESET_ORDER:
+        raise ValueError(
+            f"{name!r} is a system preset and cannot be deleted")
+
+    target_path = _config_path(name)
+    _require_regular_profile_file(target_path, label=f"Model Profile {name!r}")
+    if ACTIVE_POINTER_PATH.is_symlink() or not ACTIVE_POINTER_PATH.is_file():
+        raise ValueError(
+            "active Model Profile pointer is missing or is not a regular file: "
+            f"{ACTIVE_POINTER_PATH}"
+        )
+    active_name = get_active_name(strict=True)
+
+    fallback_path = None
+    if active_name == name:
+        fallback_path = _config_path("free")
+        _require_regular_profile_file(
+            fallback_path, label="fallback Model Profile 'free'",
+        )
+        try:
+            fallback = _load_config("free")
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(
+                f"fallback Model Profile 'free' is unreadable: {exc}"
+            ) from exc
+        validate_profile_allocation(fallback)
+
+    return ConfigurationDeletionPreflight(
+        name=name,
+        target_path=target_path,
+        target_identity=_capture_immutable_path_identity(target_path),
+        active_pointer_path=ACTIVE_POINTER_PATH,
+        active_pointer_identity=_capture_immutable_path_identity(
+            ACTIVE_POINTER_PATH
+        ),
+        active_name=active_name,
+        fallback_path=fallback_path,
+        fallback_identity=(
+            _capture_immutable_path_identity(fallback_path)
+            if fallback_path is not None else None
+        ),
+    )
+
+
+def delete_configuration(
+    name: str,
+    *,
+    expected_preflight: ConfigurationDeletionPreflight | None = None,
+) -> None:
     """Delete a custom configuration.
 
     Safety checks (raise ValueError on violation):
@@ -1187,34 +1288,36 @@ def delete_configuration(name: str) -> None:
     caller is responsible for re-fetching the active state after a
     delete so the UI's "ACTIVE" flag tracks the new pointer.
     """
-    if name in {"background-default", "user-pipeline"}:
-        raise ValueError(
-            f"{name!r} is a system Model Profile and cannot be deleted")
-    if name in PRESET_ORDER:
-        raise ValueError(
-            f"{name!r} is a system preset and cannot be deleted")
-    path = _config_path(name)
-    if not path.exists():
-        raise FileNotFoundError(f"no Model Profile named {name!r}")
+    initial = expected_preflight or preflight_delete_configuration(name)
+    if (
+        initial.name != name
+        or initial.target_path != _config_path(name)
+        or initial.active_pointer_path != ACTIVE_POINTER_PATH
+    ):
+        raise ValueError("Model Profile deletion preflight does not match target")
+    path = initial.target_path
+
     with _lock, rp.locked_file(path):
-        if not path.exists():
-            raise FileNotFoundError(f"no Model Profile named {name!r}")
         with rp.locked_file(ACTIVE_POINTER_PATH):
-            was_active = (name == get_active_name())
-            path.unlink()
-            if was_active:
-                # Free is baked on Models-pane open. Preserve the historical
-                # stale-pointer fallback if it is unexpectedly unavailable.
-                try:
-                    validate_profile_allocation(_load_config("free"))
+            fallback_lock = (
+                rp.locked_file(initial.fallback_path)
+                if initial.fallback_path is not None else nullcontext()
+            )
+            with fallback_lock:
+                current = preflight_delete_configuration(name)
+                if current != initial:
+                    raise ValueError(
+                        "Model Profile deletion state changed after approval; "
+                        "review it again"
+                    )
+                path.unlink()
+                if current.deletes_active_profile:
                     DATA_DIR.mkdir(parents=True, exist_ok=True)
                     rp.atomic_write_text(
                         ACTIVE_POINTER_PATH,
                         json.dumps({"name": "free"}, indent=2) + "\n",
                         mode=0o644,
                     )
-                except Exception:
-                    pass
 
 
 def _next_auto_name() -> str:

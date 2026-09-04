@@ -92,8 +92,9 @@ class TraceSweepTests(RetentionSweeperBase):
             "conversation_id": conversation_id,
             "turn_timestamp_utc": turn.name,
             "retention_state": state,
-            "finalized_at": finalized_at,
         }
+        if finalized_at is not ...:
+            manifest["finalized_at"] = finalized_at
         manifest.update(changes)
         (turn / "trace-manifest.json").write_text(json.dumps(manifest))
         return manifest
@@ -217,6 +218,18 @@ class TraceSweepTests(RetentionSweeperBase):
                 turn, conversation_id="conv-1", retention_state=None,
             ),
         }
+        for name, finalized_at in (
+            ("missing-finalization", ...),
+            ("unfinished", None),
+            ("empty-finalization", ""),
+            ("malformed-finalization", "not-a-timestamp"),
+            ("non-string-finalization", 123),
+            ("date-only-finalization", "2026-01-01"),
+            ("unqualified-finalization", "2026-01-01T00:00:00"),
+        ):
+            cases[name] = lambda turn, value=finalized_at: self._write_manifest(
+                turn, conversation_id="conv-1", finalized_at=value,
+            )
         turns = []
         for name, arrange in cases.items():
             turn = conv / name
@@ -241,28 +254,56 @@ class TraceSweepTests(RetentionSweeperBase):
         conv.mkdir()
         outside = Path(self.tmp.name) / "deadline-outside.json"
         outside.write_text("{}")
+        finalized = "2026-01-01T00:00:00+00:00"
         cases = {
-            "missing": lambda turn: None,
-            "malformed": lambda turn: (
+            "missing": (lambda turn: None, finalized),
+            "malformed": (lambda turn: (
                 turn / "trace-manifest.json"
-            ).write_text("{broken"),
-            "symlinked": lambda turn: (
+            ).write_text("{broken"), finalized),
+            "symlinked": (lambda turn: (
                 turn / "trace-manifest.json"
-            ).symlink_to(outside),
-            "inconsistent": lambda turn: self._write_manifest(
+            ).symlink_to(outside), finalized),
+            "inconsistent": (lambda turn: self._write_manifest(
                 turn, conversation_id="wrong-conversation",
-            ),
+            ), finalized),
         }
+        for name, finalized_at in (
+            ("missing-finalization", ...),
+            ("unfinished", None),
+            ("empty-finalization", ""),
+            ("malformed-finalization", "not-a-timestamp"),
+            ("non-string-finalization", 123),
+            ("date-only-finalization", "2026-01-01"),
+            ("unqualified-finalization", "2026-01-01T00:00:00"),
+        ):
+            cases[name] = (
+                lambda turn, value=finalized_at: self._write_manifest(
+                    turn, conversation_id="deadline-conv", finalized_at=value,
+                ),
+                finalized_at,
+            )
+        for name, expected in (
+            ("missing-expected-finalization", ...),
+            ("null-expected-finalization", None),
+            ("malformed-expected-finalization", "not-a-timestamp"),
+            ("stale-expected-finalization", "2025-12-01T00:00:00+00:00"),
+        ):
+            cases[name] = (
+                lambda turn: self._write_manifest(
+                    turn, conversation_id="deadline-conv",
+                ),
+                expected,
+            )
         with mock.patch.object(pipeline_trace, "TRACE_ROOT", str(self.traces)):
-            for name, arrange in cases.items():
+            for name, (arrange, expected) in cases.items():
                 with self.subTest(name=name):
                     turn = conv / name
                     turn.mkdir()
                     arrange(turn)
-                    result = daemon._handle_trace_retention_deadline({
-                        "trace_ref": f"deadline-conv/{name}",
-                        "finalized_at": "2026-01-01T00:00:00+00:00",
-                    })
+                    payload = {"trace_ref": f"deadline-conv/{name}"}
+                    if expected is not ...:
+                        payload["finalized_at"] = expected
+                    result = daemon._handle_trace_retention_deadline(payload)
                     self.assertEqual(result["status"], "preserved_uncertain")
                     self.assertTrue(result.get("reason"))
                     self.assertTrue(turn.exists())
@@ -275,12 +316,15 @@ class TraceSweepTests(RetentionSweeperBase):
         conv = self.traces / "deadline-conv"
         turn = conv / "expired"
         turn.mkdir(parents=True)
-        self._write_manifest(turn, conversation_id="deadline-conv")
+        finalized = "2026-01-01T00:00:00.123456Z"
+        self._write_manifest(
+            turn, conversation_id="deadline-conv", finalized_at=finalized,
+        )
 
         with mock.patch.object(pipeline_trace, "TRACE_ROOT", str(self.traces)):
             result = daemon._handle_trace_retention_deadline({
                 "trace_ref": "deadline-conv/expired",
-                "finalized_at": "2026-01-01T00:00:00+00:00",
+                "finalized_at": finalized,
             })
 
         self.assertEqual(result["status"], "deleted")

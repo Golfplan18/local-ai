@@ -236,6 +236,18 @@ def _read_retention_manifest(
         return None, "manifest turn identity is inconsistent"
     if manifest.get("retention_state") not in {"default", "pinned"}:
         return None, "manifest retention state is inconsistent"
+    # New traces start with finalized_at=None. Only a timezone-qualified
+    # finalization timestamp can authorize expiry, including for deadlines
+    # whose expected identity is compared with this exact manifest value.
+    finalized_at = manifest.get("finalized_at")
+    if not isinstance(finalized_at, str) or not finalized_at:
+        return None, "manifest finalization identity is missing or invalid"
+    try:
+        finalized = datetime.fromisoformat(finalized_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None, "manifest finalization identity is malformed"
+    if finalized.utcoffset() is None:
+        return None, "manifest finalization identity has no timezone"
     return manifest, None
 
 

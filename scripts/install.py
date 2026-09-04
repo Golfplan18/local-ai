@@ -899,6 +899,7 @@ def _install_mcp_runtime(*, dry_run: bool) -> bool:
     if dry_run:
         log(f"  [dry-run] would run from {MCP_RUNTIME_DIR}: {' '.join(offline)}")
         log("  [dry-run] would retry the same exact lock without --offline only if the cache is incomplete")
+        log(f"  [dry-run] would run: {node} {MCP_RUNTIME_DIR / 'patch-playwright.cjs'}")
         cli = MCP_RUNTIME_DIR / "node_modules" / "playwright-core" / "cli.js"
         log(f"  [dry-run] would run: {node} {cli} install chromium (PLAYWRIGHT_BROWSERS_PATH=0)")
         return True
@@ -923,6 +924,13 @@ def _install_mcp_runtime(*, dry_run: bool) -> bool:
         if actual != expected:
             log(f"  ✗ Installed MCP package version mismatch: {package} {actual} != {expected}")
             return False
+    patch = subprocess.run(
+        [node, str(MCP_RUNTIME_DIR / "patch-playwright.cjs")],
+        cwd=MCP_RUNTIME_DIR, capture_output=True, text=True,
+    )
+    if patch.returncode != 0:
+        log(f"  ✗ Pinned Playwright target-binding patch failed: {patch.stderr}")
+        return False
     cli = MCP_RUNTIME_DIR / "node_modules" / "playwright-core" / "cli.js"
     if not cli.is_file():
         log("  ✗ Locked Playwright CLI is missing after npm ci")

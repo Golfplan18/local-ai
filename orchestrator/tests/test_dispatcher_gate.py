@@ -61,11 +61,8 @@ def _read_events(path):
 
 class DispatchBase(unittest.TestCase):
     def setUp(self):
-        # Keep absolute positive-path fixtures under the portable home root.
-        # The legacy classifier treats /var and /private as sensitive before
-        # consulting the modeled workspace, which would make a default macOS
-        # temp directory prompt for the wrong reason.
-        self.tmp = tempfile.TemporaryDirectory(dir=str(Path.home()))
+        # Runtime writes stay in disposable storage, never the real home.
+        self.tmp = tempfile.TemporaryDirectory()
         self.workspace = os.path.join(self.tmp.name, "workspace")
         os.makedirs(self.workspace)
         self.sink = os.path.join(self.tmp.name, "tool-events.jsonl")
@@ -76,6 +73,7 @@ class DispatchBase(unittest.TestCase):
         self._orig_permission_mode = dispatcher._permission_mode
         self._orig_approved_categories = set(dispatcher._approved_categories)
         self._orig_queued_hashes = set(tool_events._queued_hashes)
+        self._orig_queue_reservations = set(tool_events._queue_reservations)
         self._orig_mcp_axes_cache = tool_events._mcp_axes_cache
         self._orig_telemetry_health = tool_events.get_telemetry_health()
         tool_events.GLOBAL_SINK_DEFAULT = self.sink
@@ -84,6 +82,7 @@ class DispatchBase(unittest.TestCase):
                                                         "human-queue.jsonl")
         tool_events.reset_telemetry_health()
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         self._orig_te_env = os.environ.pop("ORA_TOOL_EVENTS", None)
         self._orig_te_path_env = os.environ.pop("ORA_TOOL_EVENTS_PATH", None)
         self._turn_token = tool_events.set_turn_context()
@@ -144,6 +143,10 @@ class DispatchBase(unittest.TestCase):
             oversight_queue.HUMAN_QUEUE_PATH = self._orig_queue
             tool_events._queued_hashes.clear()
             tool_events._queued_hashes.update(self._orig_queued_hashes)
+            tool_events._queue_reservations.clear()
+            tool_events._queue_reservations.update(
+                self._orig_queue_reservations
+            )
             tool_events._mcp_axes_cache = self._orig_mcp_axes_cache
             with tool_events._health_lock:
                 tool_events._telemetry_failures = \
@@ -290,6 +293,267 @@ class TestGateBeforeExecution(DispatchBase):
             tool_events.check_and_consume_approval("bash_execute", args_hash),
             token,
         )
+
+        import mcp_client
+        invalid_browser_calls = []
+        for tool in ("click", "hover", "select_option", "type", "drop"):
+            for invalid in (None, "", "   ", 17):
+                params = {"element": "description", "ref": "e1", "selector": "#item"}
+                if invalid is not None:
+                    params["target"] = invalid
+                invalid_browser_calls.append((f"mcp_playwright_browser_{tool}", params))
+        for field in ("startTarget", "endTarget"):
+            for invalid in (None, "", "  ", False):
+                params = {"startTarget": "e1", "endTarget": "e2"}
+                if invalid is None:
+                    params.pop(field)
+                else:
+                    params[field] = invalid
+                invalid_browser_calls.append(("mcp_playwright_browser_drag", params))
+        for params in ({}, {"fields": {}}, {"fields": [None]},
+                       {"fields": [{"ref": "e1", "element": "description"}]},
+                       {"fields": [{"target": ""}]}, {"fields": [{"target": 1}]}):
+            invalid_browser_calls.append(("mcp_playwright_browser_fill_form", params))
+        manager = mcp_client.MCPClientManager()
+        with mock.patch.object(dispatcher, "_mcp_client", manager), mock.patch.object(
+            mcp_client.subprocess, "Popen", side_effect=AssertionError("no real MCP child"),
+        ), mock.patch.object(manager, "call_mcp_tool") as send:
+            for action, params in invalid_browser_calls:
+                with self.subTest(action=action, params=params):
+                    raw_hash = tool_events.normalize_args_hash(action, params)
+                    approval = tool_events._grant_approval_authorized(action, raw_hash)
+                    with mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+                         mock.patch.object(dispatcher.system_protection, "begin_execution") as begin:
+                        result = dispatcher.dispatch(action, params)
+                    self.assertIn("SYSTEM PROTECTION", result)
+                    gate.assert_not_called()
+                    begin.assert_not_called()
+                    send.assert_not_called()
+                    self.assertEqual(tool_events.check_and_consume_approval(action, raw_hash), approval)
+
+            # An unavailable implicit-account child cannot spend an approval.
+            action = "mcp_github_create_repository"
+            params = {"name": "unavailable"}
+            raw_hash = tool_events.normalize_args_hash(action, params)
+            approval = tool_events._grant_approval_authorized(action, raw_hash)
+            manager._authorized_tools[action] = ("github", "create_repository")
+            with mock.patch.object(manager, "_recover_server", return_value=(None, "absent")), \
+                 mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+                 mock.patch.object(dispatcher.system_protection, "begin_execution") as begin:
+                result = dispatcher.dispatch(action, params)
+            self.assertIn("unavailable", result)
+            gate.assert_not_called()
+            begin.assert_not_called()
+            send.assert_not_called()
+            self.assertEqual(tool_events.check_and_consume_approval(action, raw_hash), approval)
+
+        # A page/document loss discovered by the connector's second preflight
+        # cannot consume even an already-issued generic approval.
+        child = mcp_client.MCPConnection("playwright", "unused")
+        child.launch_id = "fixture-browser-child"
+        child.process = mock.Mock()
+        child.process.poll.return_value = None
+        manager.connections["playwright"] = child
+        action = "mcp_playwright_browser_click"
+        params = {"target": "#approved"}
+        manager.all_tools[action] = ("playwright", "browser_click")
+        bound = {"id": "reviewed-document", "page": "page-a", "url": "https://example.com"}
+        raw_hash = tool_events.normalize_args_hash(action, params)
+        token = tool_events._grant_approval_authorized(action, raw_hash)
+        replies = [
+            {"content": [], "structuredContent": {"oraBrowserBinding": bound}},
+            {"content": [], "structuredContent": {"oraBrowserBinding": bound}},
+            {"isError": True, "content": [{"text": "approved document drifted"}]},
+        ]
+        with mock.patch.object(dispatcher, "_mcp_client", manager), \
+             mock.patch.object(child, "call_tool", side_effect=replies) as send, \
+             mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+             mock.patch.object(dispatcher.system_protection, "begin_execution") as begin:
+            dispatcher.reset_consecutive()
+            result = dispatcher.dispatch(action, params)
+        self.assertIn("document drifted", result)
+        gate.assert_not_called()
+        begin.assert_not_called()
+        self.assertEqual([call.args[1]["_meta"]["ora"]["phase"] for call in send.call_args_list],
+                         ["prepare", "validate", "validate"])
+        self.assertEqual(tool_events.check_and_consume_approval(action, raw_hash), token)
+
+        # Required-target validation leaves non-target tools and upload cancel
+        # intact and does not turn this into general browser-schema validation.
+        for tool in ("click", "hover", "select_option", "type", "drop"):
+            params = {"target": "e1"}
+            self.assertEqual(tool_events.mcp_policy(
+                f"mcp_playwright_browser_{tool}", params,
+            )["parameters"], params)
+        for tool, params in (
+            ("drag", {"startTarget": "e1", "endTarget": "e2"}),
+            ("fill_form", {"fields": []}),
+            ("fill_form", {"fields": [{"target": "e1"}]}),
+            ("press_key", {"key": "Enter"}),
+            ("snapshot", {}), ("navigate_back", {}),
+            ("file_upload", {}), ("file_upload", {"paths": []}),
+        ):
+            self.assertEqual(tool_events.mcp_policy(
+                f"mcp_playwright_browser_{tool}", params,
+            )["parameters"], params)
+
+    def test_invalid_file_target_preserves_approval_before_gate(self):
+        blocker = Path(self.workspace) / "blocker"
+        blocker.write_text("unchanged ancestor", encoding="utf-8")
+        targets = (
+            os.path.join(self.tmp.name, "outside.txt"),
+            str(blocker / "evidence.yaml"),
+            str(blocker / "missing" / "evidence.yaml"),
+        )
+        for target in targets:
+            with self.subTest(target=target):
+                params = {"path": target, "content": "must not write"}
+                args_hash = tool_events.normalize_args_hash("file_write", params)
+                token = tool_events._grant_approval_authorized(
+                    "file_write", args_hash,
+                )
+                with mock.patch.object(
+                    tool_events, "gate", wraps=tool_events.gate,
+                ) as gate, mock.patch.object(
+                    dispatcher.system_protection, "begin_execution",
+                    wraps=dispatcher.system_protection.begin_execution,
+                ) as begin, mock.patch.object(
+                    dispatcher, "file_write", wraps=dispatcher.file_write,
+                ) as write:
+                    result = dispatcher.dispatch("file_write", params)
+                self.assertIn("Path validation failed", result)
+                gate.assert_not_called()
+                begin.assert_not_called()
+                write.assert_not_called()
+                self.assertFalse(os.path.exists(target))
+                self.assertEqual(blocker.read_text(encoding="utf-8"), "unchanged ancestor")
+                self.assertEqual(
+                    tool_events.check_and_consume_approval("file_write", args_hash),
+                    token,
+                )
+
+        # Missing directories remain creatable once the exact call is approved.
+        target = Path(self.workspace) / "missing" / "nested" / "evidence.yaml"
+        dispatcher.reset_consecutive()
+        dispatcher.set_permission_mode("approve-each")
+        result = dispatcher.dispatch(
+            "file_write", {"path": str(target), "content": "approved bytes"},
+            permission_callback=lambda *_: True,
+        )
+        self.assertTrue(result.startswith("Written:"), result)
+        self.assertEqual(target.read_text(encoding="utf-8"), "approved bytes")
+
+    def test_existing_file_write_is_irreversible(self):
+        target = os.path.join(self.workspace, "existing.txt")
+        with open(target, "w", encoding="utf-8") as stream:
+            stream.write("old bytes")
+        result = dispatcher.dispatch(
+            "file_write", {"path": target, "content": "new bytes"},
+        )
+        self.assertIn("GATED", result)
+        self.assertEqual(Path(target).read_text(encoding="utf-8"), "old bytes")
+        gate = [event for event in self._events()
+                if event.get("event") == "gate"][-1]
+        self.assertEqual(gate["mutability"], "irreversible")
+
+    def test_file_tools_preserve_old_bytes_when_atomic_swap_fails(self):
+        import risk_gate
+
+        real_atomic_write = file_ops._rp.atomic_write_text
+
+        for tool_name, params, patch_name, old_content in (
+            (
+                "file_write",
+                {"content": "replacement bytes"},
+                "file_write",
+                "BLOCKED: old bytes",
+            ),
+            (
+                "file_edit",
+                {"old_string": "old", "new_string": "replacement"},
+                "edit_file",
+                "File not found: old bytes",
+            ),
+            (
+                "file_write",
+                {"content": "replacement bytes"},
+                "file_write",
+                "Read error: old bytes",
+            ),
+        ):
+            with self.subTest(tool_name=tool_name, old_content=old_content):
+                dispatcher.reset_consecutive()
+                dispatcher.set_permission_mode("auto-approve")
+                target = os.path.join(self.workspace, f"{tool_name}.txt")
+                Path(target).write_text(old_content, encoding="utf-8")
+                os.chmod(target, 0o640)
+                call_params = dict(params)
+                call_params["file_path" if tool_name == "file_edit" else "path"] = target
+
+                first = dispatcher.dispatch(tool_name, call_params)
+                self.assertIn("GATED", first)
+                dispatcher.set_permission_mode("approve-each")
+
+                seen_modes = []
+
+                def fail_atomic(path, text, *, mode):
+                    seen_modes.append(mode)
+                    with mock.patch.object(
+                        file_ops._rp.os, "replace",
+                        side_effect=OSError("synthetic atomic swap failure"),
+                    ):
+                        real_atomic_write(path, text, mode=mode)
+
+                real_handler = getattr(dispatcher, patch_name)
+
+                def run_handler(*args, **kwargs):
+                    with mock.patch.object(
+                        file_ops._rp, "atomic_write_text",
+                        side_effect=fail_atomic,
+                    ):
+                        return real_handler(*args, **kwargs)
+
+                dispatcher.reset_consecutive()
+                with mock.patch.object(
+                    dispatcher, patch_name, side_effect=run_handler,
+                ):
+                    result = dispatcher.dispatch(
+                        tool_name,
+                        call_params,
+                        permission_callback=lambda *_: True,
+                    )
+
+                self.assertIn("synthetic atomic swap failure", result)
+                self.assertEqual(
+                    Path(target).read_text(encoding="utf-8"), old_content,
+                )
+                self.assertEqual(seen_modes, [0o640])
+                self.assertEqual(os.stat(target).st_mode & 0o777, 0o640)
+                event = [item for item in self._events()
+                         if item.get("action") == tool_name][-1]
+                self.assertFalse(event["exit"]["ok"])
+                self.assertFalse(event["mutated"])
+                terminals = dispatcher.system_protection.verify_audit()
+                self.assertEqual(
+                    terminals[-1]["event_type"], "protected_action_failed",
+                )
+
+                conversation_id = f"read-preserved-{old_content}"
+                read_context = tool_events.set_turn_context(
+                    conversation_id=conversation_id,
+                )
+                try:
+                    read_result = dispatcher.dispatch("file_read", {"path": target})
+                finally:
+                    tool_events.reset_turn_context(read_context)
+                self.assertEqual(read_result, old_content)
+                self.assertTrue(self._events()[-1]["exit"]["ok"])
+                signals = risk_gate.fold_route_observed(
+                    self.sink, conversation_id=conversation_id,
+                    output_text="The preserved document remains available as source evidence.",
+                )
+                self.assertTrue(signals["source_read_suspected"])
+                self.assertEqual(signals["source_read_channels"], ["file_read"])
 
     def test_private_web_destination_precedes_generic_gate_and_handler(self):
         with mock.patch.object(
@@ -539,6 +803,7 @@ class TestGateBeforeExecution(DispatchBase):
         self.assertEqual(len(self.shell_calls), 1)
         self.assertTrue(os.path.exists(victim))  # no host process ran
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         dispatcher.reset_consecutive()
         r3 = dispatcher.dispatch("bash_execute", params)
         self.assertIn("GATED", r3)  # token was one-shot
@@ -938,6 +1203,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         self.assertIn("SYSTEM PROTECTION", r1)
         tool_events.grant_standing_allow("credential_store:svc-x")
         tool_events._queued_hashes.clear()
+        tool_events._queue_reservations.clear()
         dispatcher.reset_consecutive()
         r2 = dispatcher.dispatch("credential_store",
                                  {"action": "retrieve", "service": "svc-x",

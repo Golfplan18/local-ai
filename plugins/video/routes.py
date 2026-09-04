@@ -293,7 +293,9 @@ def _library_remove(conversation_id, entry_id):
                 entry_id=entry_id,
                 entry=entry,
                 state_path=library.state_path,
-                effect=lambda: library.remove(entry_id),
+                effect=lambda: library.remove(
+                    entry_id, expected_entry=entry,
+                ),
             )
             if not removed:
                 return _json({"error": "entry changed before deletion"}, 409)
@@ -357,15 +359,12 @@ def _library_waveform(conversation_id, entry_id):
 
 
 def _transcript_for_entry(conversation_id: str, entry_id: str):
-    with _context.conversation_read_scope(conversation_id) as (conversation_id, error):
-        if error is not None:
-            return None, error
-        entry = media_library.get_library(conversation_id).get_entry(entry_id)
-        if entry is None:
-            return None, _json({"error": "unknown entry"}, 404)
-        source = entry.get("source_path")
-        if not source:
-            return None, _json({"error": "entry has no source path"}, 404)
+    entry = media_library.get_library(conversation_id).get_entry(entry_id)
+    if entry is None:
+        return None, _json({"error": "unknown entry"}, 404)
+    source = entry.get("source_path")
+    if not source:
+        return None, _json({"error": "entry has no source path"}, 404)
     path = Path(source or "").with_suffix(".whisper.json")
     if not path.is_file():
         return None, _json({"error": "no transcript"}, 404)
@@ -394,8 +393,11 @@ def _transcript_for_entry(conversation_id: str, entry_id: str):
 
 
 def _library_transcript(conversation_id, entry_id):
-    transcript, error = _transcript_for_entry(conversation_id, entry_id)
-    return error if error is not None else _json(transcript)
+    with _context.conversation_read_scope(conversation_id) as (conversation_id, error):
+        if error is not None:
+            return error
+        transcript, error = _transcript_for_entry(conversation_id, entry_id)
+        return error if error is not None else _json(transcript)
 
 
 def _import_start(conversation_id):
@@ -436,22 +438,25 @@ def _imports_list(conversation_id):
 
 
 def _suggest_edits(conversation_id, entry_id):
-    transcript, error = _transcript_for_entry(conversation_id, entry_id)
-    if error is not None:
-        return error
-    body = request.get_json(silent=True) or {}
-    try:
-        result = video_suggestions.generate_suggestions_heuristic(
-            transcript,
-            entry_id=entry_id,
-            goals=body.get("goals"),
-            existing_clips=body.get("existing_clips"),
-        )
-        return _json(result)
-    except video_suggestions.SuggestionValidationError as exc:
-        return _json({"error": f"suggestion validation: {exc}"}, 500)
-    except Exception as exc:
-        return _json({"error": f"suggestion generation: {exc}"}, 500)
+    with _context.conversation_read_scope(conversation_id) as (conversation_id, error):
+        if error is not None:
+            return error
+        transcript, error = _transcript_for_entry(conversation_id, entry_id)
+        if error is not None:
+            return error
+        body = request.get_json(silent=True) or {}
+        try:
+            result = video_suggestions.generate_suggestions_heuristic(
+                transcript,
+                entry_id=entry_id,
+                goals=body.get("goals"),
+                existing_clips=body.get("existing_clips"),
+            )
+            return _json(result)
+        except video_suggestions.SuggestionValidationError as exc:
+            return _json({"error": f"suggestion validation: {exc}"}, 500)
+        except Exception as exc:
+            return _json({"error": f"suggestion generation: {exc}"}, 500)
 
 
 def _timeline_load(conversation_id):

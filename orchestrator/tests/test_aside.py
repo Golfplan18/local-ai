@@ -126,7 +126,10 @@ class ExplicitEndpointResolutionTests(unittest.TestCase):
 
 class ScratchpadEndpointTests(unittest.TestCase):
     def setUp(self):
-        server.clear_sidebar_window("aside")
+        self.dialogue = "aside-dialogue-a"
+        self.other_dialogue = "aside-dialogue-b"
+        server.clear_sidebar_window(self.dialogue)
+        server.clear_sidebar_window(self.other_dialogue)
         self.client = server.app.test_client()
         self.preferred = {"name": "gemini/preferred", "type": "api",
                           "service": "gemini", "model": "preferred"}
@@ -146,7 +149,8 @@ class ScratchpadEndpointTests(unittest.TestCase):
     def tearDown(self):
         for patcher in reversed(self.patches):
             patcher.stop()
-        server.clear_sidebar_window("aside")
+        server.clear_sidebar_window(self.dialogue)
+        server.clear_sidebar_window(self.other_dialogue)
 
     def test_preferred_model_wins_and_prior_exchange_is_sent(self):
         calls = []
@@ -156,8 +160,8 @@ class ScratchpadEndpointTests(unittest.TestCase):
             return "first answer" if len(calls) == 1 else "second answer"
 
         with mock.patch.object(server, "call_model", side_effect=invoke):
-            first = self.client.post("/api/scratchpad", json={"prompt": "first"})
-            second = self.client.post("/api/scratchpad", json={"prompt": "second"})
+            first = self.client.post("/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "first"})
+            second = self.client.post("/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "second"})
 
         self.assertEqual(json.loads(first.data)["answer"], "first answer")
         self.assertEqual(json.loads(second.data)["answer"], "second answer")
@@ -167,6 +171,24 @@ class ScratchpadEndpointTests(unittest.TestCase):
             {"role": "assistant", "content": "first answer"},
             {"role": "user", "content": "second"},
         ])
+        with mock.patch.object(server, "call_model", side_effect=invoke):
+            other = self.client.post("/api/scratchpad", json={
+                "conversation_id": self.other_dialogue, "prompt": "only B",
+            })
+            missing = self.client.post("/api/scratchpad", json={"prompt": "unowned"})
+        self.assertEqual(json.loads(other.data)["conversation_id"], self.other_dialogue)
+        self.assertEqual(calls[2][0], [{"role": "user", "content": "only B"}])
+        self.assertEqual(missing.status_code, 400)
+        self.assertEqual(server.get_sidebar_window(self.dialogue).get_turn_count(), 2)
+        with mock.patch.object(server, "call_model", return_value="[Error] unavailable"):
+            failed = self.client.post("/api/scratchpad", json={
+                "conversation_id": self.dialogue, "prompt": "failed exchange",
+            })
+        self.assertEqual(json.loads(failed.data), {
+            "error": "[Error] unavailable", "conversation_id": self.dialogue,
+        })
+        self.assertEqual(server.get_sidebar_window(self.dialogue).get_turn_count(), 2)
+
 
     def test_failed_exchange_is_not_added_to_memory(self):
         seen = []
@@ -176,8 +198,8 @@ class ScratchpadEndpointTests(unittest.TestCase):
             return "[Error] unavailable" if len(seen) == 1 else "ok"
 
         with mock.patch.object(server, "call_model", side_effect=invoke):
-            failed = self.client.post("/api/scratchpad", json={"prompt": "lost"})
-            succeeded = self.client.post("/api/scratchpad", json={"prompt": "kept"})
+            failed = self.client.post("/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "lost"})
+            succeeded = self.client.post("/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "kept"})
 
         self.assertIn("error", json.loads(failed.data))
         self.assertEqual(json.loads(succeeded.data)["answer"], "ok")
@@ -193,14 +215,14 @@ class ScratchpadEndpointTests(unittest.TestCase):
         with mock.patch.object(server, "get_help_context", return_value="HELP CONTEXT"), \
              mock.patch.object(server, "call_model", side_effect=invoke):
             response = self.client.post(
-                "/api/scratchpad", json={"prompt": "How do I install Ora?"})
+                "/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "How do I install Ora?"})
 
         self.assertEqual(json.loads(response.data)["answer"], "helpful answer")
         self.assertEqual(seen[0], [
             {"role": "system", "content": "HELP CONTEXT"},
             {"role": "user", "content": "How do I install Ora?"},
         ])
-        self.assertEqual(server.get_sidebar_window("aside").get_history(), [
+        self.assertEqual(server.get_sidebar_window(self.dialogue).get_history(), [
             {"role": "user", "content": "How do I install Ora?"},
             {"role": "assistant", "content": "helpful answer"},
         ])
@@ -210,7 +232,7 @@ class ScratchpadEndpointTests(unittest.TestCase):
                 server, "get_help_context", side_effect=RuntimeError("offline")), \
              mock.patch.object(server, "call_model", return_value="a limerick") as call:
             response = self.client.post(
-                "/api/scratchpad", json={"prompt": "Write a limerick"})
+                "/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "Write a limerick"})
 
         self.assertEqual(json.loads(response.data)["answer"], "a limerick")
         self.assertEqual(call.call_args.args[0], [
@@ -245,7 +267,7 @@ class ScratchpadEndpointTests(unittest.TestCase):
         def submit(prompt):
             with server.app.test_client() as client:
                 responses[prompt] = client.post(
-                    "/api/scratchpad", json={"prompt": prompt})
+                    "/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": prompt})
 
         with mock.patch.object(server, "get_endpoint_by_id",
                                side_effect=resolve_endpoint), \
@@ -278,7 +300,7 @@ class ScratchpadEndpointTests(unittest.TestCase):
                 {"role": "user", "content": "second"},
             ],
         ])
-        self.assertEqual(server.get_sidebar_window("aside").get_history(), [
+        self.assertEqual(server.get_sidebar_window(self.dialogue).get_history(), [
             {"role": "user", "content": "first"},
             {"role": "assistant", "content": "answer to first"},
             {"role": "user", "content": "second"},
@@ -288,7 +310,7 @@ class ScratchpadEndpointTests(unittest.TestCase):
     def test_unavailable_preference_falls_back_to_small(self):
         with mock.patch.object(server, "get_endpoint_by_id", return_value=None), \
              mock.patch.object(server, "call_model", return_value="fallback answer") as call:
-            response = self.client.post("/api/scratchpad", json={"prompt": "hello"})
+            response = self.client.post("/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "hello"})
         self.assertEqual(json.loads(response.data)["answer"], "fallback answer")
         self.assertEqual(call.call_args.args[1], self.fallback)
 
@@ -312,15 +334,37 @@ class ScratchpadEndpointTests(unittest.TestCase):
             return "answer"
 
         with mock.patch.object(server, "call_model", side_effect=invoke):
-            self.client.post("/api/scratchpad", json={"prompt": "first"})
-            status = self.client.get("/api/sidebar/status?panel_id=aside")
+            self.client.post("/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "first"})
+            status = self.client.get("/api/sidebar/status", query_string={"panel_id": self.dialogue})
+            server.get_sidebar_window(self.other_dialogue).add_exchange("B prompt", "B answer")
             cleared = self.client.post(
-                "/api/sidebar/clear", json={"panel_id": "aside"})
-            self.client.post("/api/scratchpad", json={"prompt": "second"})
+                "/api/sidebar/clear", json={"panel_id": self.dialogue})
+            self.client.post("/api/scratchpad", json={"conversation_id": self.dialogue, "prompt": "second"})
 
         self.assertEqual(json.loads(status.data)["turn_count"], 1)
         self.assertTrue(json.loads(cleared.data)["ok"])
         self.assertEqual(seen[1], [{"role": "user", "content": "second"}])
+        self.assertEqual(server.get_sidebar_window(self.other_dialogue).get_history(), [
+            {"role": "user", "content": "B prompt"},
+            {"role": "assistant", "content": "B answer"},
+        ])
+        with server._conversation_lifecycle_lock(self.dialogue):
+            server._deleted_conversations.add(self.dialogue)
+            server.clear_sidebar_window(self.dialogue)
+        try:
+            with mock.patch.object(server, "call_model") as invoke:
+                late = self.client.post("/api/scratchpad", json={
+                    "conversation_id": self.dialogue, "prompt": "late",
+                })
+                status = self.client.get("/api/sidebar/status", query_string={
+                    "panel_id": self.dialogue,
+                })
+            self.assertEqual(late.status_code, 410)
+            self.assertEqual(status.status_code, 410)
+            invoke.assert_not_called()
+        finally:
+            server._deleted_conversations.discard(self.dialogue)
+
 
 
 class _FakeHelpCollection:

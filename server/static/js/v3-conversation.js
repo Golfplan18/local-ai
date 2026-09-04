@@ -775,10 +775,34 @@
         await window.OraCanvas.flushDraft();
       } catch (e) {
         console.warn('[v3-conversation] Excalidraw draft flush failed:', e);
-        if (epoch === loadEpoch
-            && window.OraV3VisualDispatch
-            && typeof window.OraV3VisualDispatch.setActiveKey === 'function') {
-          window.OraV3VisualDispatch.setActiveKey(previousVisualKey);
+        if (epoch === loadEpoch) {
+          if (window.OraV3VisualDispatch
+              && typeof window.OraV3VisualDispatch.setActiveKey === 'function') {
+            window.OraV3VisualDispatch.setActiveKey(previousVisualKey);
+          }
+          const cancelledLoadId = pendingLoadId;
+          pendingLoadId = null;
+          if (cancelledLoadId) {
+            document.dispatchEvent(new CustomEvent('ora:conversation-loading-state', {
+              detail: { conversation_id: cancelledLoadId, loading: false, cancelled: true },
+            }));
+          }
+          syncInquiryReadOnlyState();
+          renderHeader();
+          updateForkAvailability();
+          document.dispatchEvent(new CustomEvent('ora:conversation-tag-changed', {
+            detail: {
+              conversation_id: state.activeConversationId,
+              tag: state.activeTag,
+              source: 'conversation-load-failed-restore',
+            },
+          }));
+          document.dispatchEvent(new CustomEvent('ora:conversation-load-failed', {
+            detail: {
+              conversation_id,
+              active_conversation_id: state.activeConversationId,
+            },
+          }));
         }
         return false;
       }

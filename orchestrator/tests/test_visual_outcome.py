@@ -588,6 +588,23 @@ class VisualOutcomePersistenceTests(unittest.TestCase):
             "The service depends on the database.\n\n"
             "```ora-visual\n" + json.dumps(envelope) + "\n```"
         )
+        interactive_context = {"mode_name": "synthesis"}
+        self.assertEqual(boot._run_visual_hook(response, interactive_context), response)
+        self.assertEqual(interactive_context["_visual_outcome"]["state"], "building")
+        paired_context = {
+            "mode_name": "synthesis",
+            "_visual_candidates": [
+                {"envelope": dict(envelope, id="superseded-candidate")},
+                {"envelope": envelope},
+            ],
+        }
+        paired = boot._run_visual_hook("The final selected prose.", paired_context)
+        self.assertTrue(paired.startswith("The final selected prose.\n\n"))
+        self.assertNotIn("superseded-candidate", paired)
+        self.assertEqual(
+            json.loads(paired.split("```ora-visual\n")[1].split("\n```")[0]),
+            envelope,
+        )
         with tempfile.TemporaryDirectory() as temp:
             context = {
                 "mode_name": "synthesis",
@@ -598,21 +615,135 @@ class VisualOutcomePersistenceTests(unittest.TestCase):
                 boot, "_render_visual_svg_cli", return_value=("<svg/>", None)
             ) as render:
                 result = boot._run_visual_hook(response, context)
-            self.assertNotIn("ora-visual", result)
+            self.assertEqual(result, "The service depends on the database.")
             self.assertEqual(context["_visual_outcome"]["state"], "ready")
             self.assertEqual(render.call_count, 1)
             self.assertTrue((Path(temp) / "visual-artifact.svg").exists())
-            self.assertTrue((Path(temp) / "visual-artifact.json").exists())
+            self.assertEqual(json.loads(
+                (Path(temp) / "visual-artifact.json").read_text(encoding="utf-8")
+            ), envelope)
 
     def test_noninteractive_result_without_trace_fails_loudly(self):
         example = Path(os.environ.get("ORA_HOME", os.path.expanduser("~/ora"))) \
             / "config/visual-schemas/examples/concept_map.valid.json"
         envelope = json.loads(example.read_text(encoding="utf-8"))
-        response = "```ora-visual\n" + json.dumps(envelope) + "\n```"
+        response = (
+            "The service depends on the database.\n\n"
+            "```ora-visual\n" + json.dumps(envelope) + "\n```"
+        )
         context = {"mode_name": "synthesis", "execution_context": "agent"}
         with mock.patch.object(
             boot, "_render_visual_svg_cli", return_value=("<svg/>", None)
         ):
-            boot._run_visual_hook(response, context)
+            result = boot._run_visual_hook(response, context)
+        self.assertEqual(result, response)
         self.assertEqual(context["_visual_outcome"]["state"], "failed")
         self.assertEqual(context["_visual_outcome"]["stage"], "cli_render")
+
+    def test_visual_processor_exception_preserves_prose_and_records_failure(self):
+        example = Path(os.environ.get("ORA_HOME", os.path.expanduser("~/ora"))) \
+            / "config/visual-schemas/examples/concept_map.valid.json"
+        envelope = json.loads(example.read_text(encoding="utf-8"))
+        block = "```ora-visual\n" + json.dumps(envelope) + "\n```"
+        prose_parts = [
+            "Before the visual.", "Between sections.",
+            "```python\nprint('ordinary code survives')\n```", "After the visual.",
+        ]
+        unfinished_parts = [
+            '{"id": "unfinished-candidate"', "Prose after the unfinished visual.",
+        ]
+        response = (
+            prose_parts[0] + "\n\n" + block + "\n\n" + prose_parts[1]
+            + "\n\n" + block + "\n\n[visual fig-old suppressed: prior warning]\n\n"
+            + "```ora-visual\n" + "\n\n".join(unfinished_parts) + "\n\n"
+            + prose_parts[2] + "\n\n" + prose_parts[3]
+        )
+        approved_response = "\n\n".join(prose_parts) + "\n\n" + block
+        approved_diagnostics = {"visuals": [{
+            "id": envelope["id"], "type": envelope["type"], "blocked": False,
+            "adversarial": {"warns": [{"rule": "clarity.redundant"}]},
+        }]}
+        for improvement in (False, True):
+            for execution, tracing in (("interactive", False), ("interactive", True), ("agent", True)):
+                with self.subTest(improvement=improvement, execution=execution, tracing=tracing):
+                    with tempfile.TemporaryDirectory() as temp, mock.patch.object(
+                        boot.pipeline_trace, "TRACE_ROOT", str(Path(temp) / "pipeline-traces"),
+                    ):
+                        trace_dir = boot.pipeline_trace.start_trace(
+                            "processor-failure", raw_input="Show the dependency",
+                        ) if tracing else None
+                        context = {
+                            "mode_name": "synthesis", "execution_context": execution,
+                            "trace_dir": trace_dir,
+                        }
+                        failure = RuntimeError("processor exploded")
+                        effects = [(approved_response, approved_diagnostics), failure] \
+                            if improvement else failure
+                        with mock.patch.object(
+                            boot, "_visual_process_response", side_effect=effects,
+                        ), mock.patch.object(
+                            boot, "_maybe_synthesize_visual",
+                            return_value=("Unreviewed improvement.\n\n" + block, {}),
+                        ), mock.patch.object(
+                            boot, "_maybe_recover_visual", return_value=(None, None),
+                        ), mock.patch.object(
+                            boot, "_maybe_build_concept_map", return_value=(None, None),
+                        ), mock.patch.object(
+                            boot, "_render_visual_svg_cli", return_value=("<svg/>", None),
+                        ):
+                            result = boot._run_visual_hook(
+                                approved_response if improvement else response, context,
+                            )
+
+                        if improvement:
+                            expected = "\n\n".join(prose_parts) if execution == "agent" \
+                                else approved_response
+                            notice = (
+                                "The optional visual improvement failed. "
+                                "The previously approved visual was retained."
+                            )
+                            self.assertEqual(result, expected + "\n\n" + notice)
+                            self.assertNotIn("Unreviewed improvement", result)
+                            expected_state = "ready" if execution == "agent" else "building"
+                            self.assertEqual(context["_visual_outcome"]["state"], expected_state)
+                            self.assertIn("approved visual", context["_visual_outcome"]["reason"])
+                            if execution == "agent":
+                                artifact = Path(trace_dir) / "visual-artifact.json"
+                                self.assertEqual(json.loads(artifact.read_text(encoding="utf-8")), envelope)
+                        else:
+                            self.assertNotIn("ora-visual", result)
+                            self.assertNotIn("[visual", result)
+                            preserved_parts = prose_parts[:2] + unfinished_parts + prose_parts[2:]
+                            self.assertEqual(
+                                [result.index(part) for part in preserved_parts],
+                                sorted(result.index(part) for part in preserved_parts),
+                            )
+                            self.assertEqual(context["_visual_outcome"]["state"], "failed")
+                            self.assertEqual(context["_visual_outcome"]["stage"], "visual_hook")
+                        self.assertIn("processor exploded", context["_visual_outcome"]["reason"])
+                        failure_visual = context["visual_diagnostics"]["visuals"][-1]
+                        self.assertTrue(failure_visual["blocked"])
+                        self.assertIn(
+                            "processor exploded",
+                            failure_visual["validator"]["errors"][0]["message"],
+                        )
+                        if tracing:
+                            trace = json.loads(
+                                (Path(trace_dir) / "step-visual-hook.json").read_text(encoding="utf-8")
+                            )
+                            if improvement:
+                                self.assertEqual(trace["improvement_failure"], "processor exploded")
+                            else:
+                                self.assertEqual(trace["status"], "processor_exception")
+                                self.assertEqual(trace["error"], "processor exploded")
+
+                        sessions_root = Path(temp) / "sessions"
+                        memory.save_turn_spatial_state(
+                            "processor-failure", "Show the dependency", result,
+                            visual_outcome=context["_visual_outcome"], sessions_root=sessions_root,
+                        )
+                        durable = memory.load_conversation_json(
+                            "processor-failure", sessions_root=sessions_root,
+                        )["messages"][-1]
+                        self.assertEqual(durable["content"], result)
+                        self.assertEqual(durable["visual_outcome"], context["_visual_outcome"])

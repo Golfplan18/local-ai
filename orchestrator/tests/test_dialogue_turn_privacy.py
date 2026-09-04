@@ -3419,7 +3419,6 @@ def test_full_export_routes_hold_all_owner_locks_through_publication(tmp_path):
     from server import app as server_app
 
     sessions = tmp_path / "sessions"
-    vault = tmp_path / "vault"
     _save(
         sessions, "a-export-owner", "owner user", "owner answer",
         tag="", privacy="standard", chunk_id="owner-chunk",
@@ -3550,11 +3549,7 @@ def test_full_export_routes_hold_all_owner_locks_through_publication(tmp_path):
         with server_app.app.test_client() as client:
             session_response = client.post(
                 "/api/session/export",
-                json={
-                    "conversation_id": "z-export-target",
-                    "_sessions_root": str(sessions),
-                    "_vault_root": str(vault),
-                },
+                json={"conversation_id": "z-export-target"},
             )
         assert session_response.status_code == 200
 

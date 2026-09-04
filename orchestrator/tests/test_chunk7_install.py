@@ -427,13 +427,17 @@ class TestMCPRuntimeInstall(unittest.TestCase):
             results = [
                 subprocess.CompletedProcess([], 0, "", ""),
                 subprocess.CompletedProcess([], 0, "", ""),
+                subprocess.CompletedProcess([], 0, "", ""),
                 subprocess.CompletedProcess([], 0, str(browser), ""),
             ]
             with mock.patch.object(install, "MCP_RUNTIME_DIR", runtime), \
                  mock.patch.object(install.shutil, "which", side_effect=lambda name: f"/exact/{name}"), \
                  mock.patch.object(install.subprocess, "run", side_effect=results) as run:
                 self.assertTrue(install._install_mcp_runtime(dry_run=False))
-        browser_call = run.call_args_list[1]
+        self.assertEqual(run.call_args_list[1].args[0], [
+            "/exact/node", str(runtime / "patch-playwright.cjs"),
+        ])
+        browser_call = run.call_args_list[2]
         self.assertEqual(
             browser_call.args[0],
             ["/exact/node", str(cli), "install", "chromium"],

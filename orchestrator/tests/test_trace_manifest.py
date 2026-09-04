@@ -2054,7 +2054,15 @@ class TestTraceDebugChunk3(TraceManifestBase):
         self.assertEqual(before, after)
 
     def test_execute_probe_consumes_before_trace_and_records_completed_probe(self):
+        self.enterContext(mock.patch(
+            "socket.socket.connect", side_effect=AssertionError("network denied"),
+        ))
+        self.enterContext(mock.patch(
+            "socket.create_connection", side_effect=AssertionError("network denied"),
+        ))
+        import boot
         import trace_debug
+        self.enterContext(mock.patch.dict(trace_debug._APPROVALS, {}, clear=True))
         d = self.start("conv-exec-probe")
         ref = pipeline_trace.trace_ref_for_dir(d)
         payload = {"model_request": {
@@ -2064,22 +2072,42 @@ class TestTraceDebugChunk3(TraceManifestBase):
         pipeline_trace.write_step(d, "step1-phase-a", payload)
         pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
         prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-exec-probe")
-        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
-        result = trace_debug.execute_probe(
-            prepared["approval_id"], prepared["approval_digest"],
-            conversation_id="conv-exec-probe",
-            model_executor=lambda req: "probe result")
+        self.assertTrue(prepared["ok"], prepared)
+        approved = trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        self.assertTrue(approved["ok"], approved)
+        command = f"/trace-probe execute {prepared['approval_id']} {prepared['approval_digest']}"
+        recorded_endpoint = {"id": "test-endpoint", "provider": "test", "model": "m"}
+        with mock.patch.object(boot, "load_routing_config", return_value={}) as load_config, \
+             mock.patch.object(boot, "_get_router", return_value=None), \
+             mock.patch.object(boot, "get_endpoint_by_id", return_value=recorded_endpoint) as lookup, \
+             mock.patch.object(boot, "call_model", return_value="probe result") as model:
+            refused = boot.run_pipeline(command, conversation_id="conv-exec-probe")
+            self.assertEqual(refused, "Trace probe error: no AI endpoints configured")
+            model.assert_not_called()
+            lookup.assert_not_called()
+
+            # The real active resolver admits the probe; its recorded endpoint,
+            # not the current default, still supplies the approved model call.
+            load_config.return_value = {
+                "default_endpoint": "active-endpoint",
+                "endpoints": [{"id": "active-endpoint", "status": "active"}],
+            }
+            result = json.loads(boot.run_pipeline(command, conversation_id="conv-exec-probe"))
+            model.assert_called_once_with(
+                payload["model_request"]["messages"],
+                {"id": "test-endpoint", "provider": "test", "model": "m", "max_tokens": 10},
+            )
+            replay = json.loads(boot.run_pipeline(command, conversation_id="conv-exec-probe"))
+            self.assertFalse(replay["ok"])
+            self.assertEqual(replay["error"], "approval already consumed")
+            self.assertEqual(model.call_count, 1)
+            lookup.assert_called_once_with("test-endpoint")
         self.assertTrue(result["ok"])
         probe_dir = pipeline_trace.resolve_trace_ref(result["trace_ref"])
         probe = self.manifest(probe_dir)
         self.assertEqual(probe["trace_kind"], "trace-probe")
         self.assertEqual(probe["terminal_status"], "completed")
         self.assertEqual(probe["investigates_trace_ref"], ref)
-        replay = trace_debug.execute_probe(
-            prepared["approval_id"], prepared["approval_digest"],
-            conversation_id="conv-exec-probe",
-            model_executor=lambda req: "second")
-        self.assertFalse(replay["ok"])
 
     def test_framework_contract_bundle_fails_if_any_child_unavailable(self):
         import trace_debug
