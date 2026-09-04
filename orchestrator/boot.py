@@ -15759,10 +15759,11 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
          gate_verdict_label, gate_user) = (
             _run_gear3_final_gate(revised_analysis, 2, prior_findings=gate_out)
         )
-        contingencies_fired.append(
-            f"step6_5-gear3-quality-gate-reinspection-{gate_verdict_label}"
-        )
-    else:
+        if not gate_passed:
+            contingencies_fired.append(
+                f"step6_5-gear3-quality-gate-reinspection-{gate_verdict_label}"
+            )
+    elif not gate_passed:
         contingencies_fired.append(
             f"step6_5-gear3-quality-gate-{gate_verdict_label}")
 
@@ -17415,8 +17416,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
         ))
 
         if gate_passed:
-            contingencies_fired.append(
-                f"step8_6-quality-gate-{gate_verdict_label}-pass{_qg_pass + 1}")
+            # A passing gate is the normal outcome, not a contingency. This
+            # list is a diary of things that went WRONG -- "so trend data
+            # reflects reality" -- and recording a success here made every
+            # healthy run look degraded to any consumer reading the list.
+            # The verdict itself is already in the trace, recorded by the
+            # _record and _trace_step calls just above, so nothing is lost.
             break
         if gate_broken:
             contingencies_fired.append(
