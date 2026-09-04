@@ -25,10 +25,11 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, BinaryIO, Optional
 
 try:
     import runtime_paths as _rp
@@ -310,11 +311,10 @@ class Project:
         return (self.root / p).resolve()
 
     def resolve_theme_asset(self, theme_id: str, relative: str) -> Path:
-        """Resolve one declared theme asset inside its Project-owned directory.
+        """Validate one declared theme asset's current resolved pathname.
 
-        The root, declared theme directory, and requested asset are resolved on
-        every call so a symlink changed after registration cannot turn a valid
-        theme into an outward file read.
+        This is an existence/containment check only. Readers must use
+        ``open_theme_asset`` so later path changes cannot redirect their I/O.
         """
         theme = self.themes.get(theme_id)
         if theme is None:
@@ -332,6 +332,68 @@ class Project:
         if not target.is_file():
             raise FileNotFoundError(target)
         return target
+
+    def open_theme_asset(self, theme_id: str, relative: str) -> BinaryIO:
+        """Open an asset, then verify the bound file before exposing any bytes.
+
+        The OS reports the path of the open object, not a second lookup of the
+        caller's mutable pathname. Compare it with the resolved roots captured
+        before opening; a file or ancestor swapped outward therefore refuses.
+        Inward symlinks and root aliases remain valid. The caller owns closure.
+        """
+        root = self.root.resolve(strict=True)
+        theme = self.themes.get(theme_id)
+        if theme is None:
+            raise ManifestError(f"project {self.nexus!r} declares no theme {theme_id!r}")
+        asset_dir = _resolve_project_contained_path(root, theme.directory)
+        target = self.resolve_theme_asset(theme_id, relative)
+        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(target, flags)
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise FileNotFoundError(target)
+            if sys.platform == "darwin":
+                import fcntl
+                # F_GETPATH asks the kernel about this descriptor (MAXPATHLEN).
+                bound_path = os.fsdecode(fcntl.fcntl(fd, 50, bytes(1024)).split(b"\0", 1)[0])
+            elif sys.platform == "win32":
+                import ctypes
+                import msvcrt
+                from ctypes import wintypes
+
+                get_path = ctypes.WinDLL("kernel32", use_last_error=True).GetFinalPathNameByHandleW
+                get_path.argtypes = [wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD]
+                get_path.restype = wintypes.DWORD
+                buffer = ctypes.create_unicode_buffer(32768)
+                length = get_path(msvcrt.get_osfhandle(fd), buffer, len(buffer), 0)
+                if not length or length >= len(buffer):
+                    raise OSError("Cannot determine the open theme asset's path")
+                # Normalize all captured spellings without looking them up again.
+                normalized_paths = []
+                for path in (str(root), str(asset_dir), buffer.value):
+                    if path[:8].upper() == "\\\\?\\UNC\\":
+                        path = "\\\\" + path[8:]
+                    elif path.startswith("\\\\?\\"):
+                        path = path[4:]
+                    normalized_paths.append(Path(path))
+                root, asset_dir, bound_path = normalized_paths
+            elif sys.platform.startswith("linux"):
+                bound_path = os.readlink(f"/proc/self/fd/{fd}")
+            else:
+                raise OSError("Secure theme-asset opening is unavailable on this platform")
+            try:
+                # Do not resolve again: these are the kernel's bound-object
+                # path and the roots captured before the mutable-path open.
+                Path(bound_path).relative_to(root)
+                Path(bound_path).relative_to(asset_dir)
+            except ValueError as exc:
+                raise ManifestError("Open theme asset is outside its allowed directory") from exc
+            stream = os.fdopen(fd, "rb")
+            fd = -1
+            return stream
+        finally:
+            if fd >= 0:
+                os.close(fd)
 
     def find_framework_configuration(
         self, framework: str, profile_name: str,
