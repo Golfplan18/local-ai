@@ -23657,7 +23657,7 @@ def _refresh_direct_apis_if_stale():
 
     try:
         r = subprocess.run(
-            ["/opt/homebrew/bin/python3", DIRECT_API_REFRESH_SCRIPT],
+            [sys.executable, DIRECT_API_REFRESH_SCRIPT],
             capture_output=True, text=True, timeout=120,
             env=_model_refresh_env(),
         )
@@ -23693,7 +23693,7 @@ def _refresh_openrouter_if_stale():
     import subprocess
     try:
         r = subprocess.run(
-            ["/opt/homebrew/bin/python3", OPENROUTER_REFRESH_SCRIPT],
+            [sys.executable, OPENROUTER_REFRESH_SCRIPT],
             capture_output=True, text=True, timeout=60,
             env=_model_refresh_env(),
         )

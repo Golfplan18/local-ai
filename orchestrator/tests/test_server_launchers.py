@@ -250,6 +250,31 @@ def _load_server_workspace_contract():
     return namespace["_resolve_server_workspace"]
 
 
+def _load_startup_refresh_contract(rp):
+    """Load the startup callers and their real environment/path helpers."""
+    tree = ast.parse(SERVER.read_text(encoding="utf-8"), filename=str(SERVER))
+    assignments = {
+        "OPENROUTER_REFRESH_SCRIPT", "DIRECT_API_REFRESH_SCRIPT",
+        "OPENROUTER_STALE_DAYS", "DIRECT_API_STALE_DAYS",
+    }
+    definitions = {
+        "_model_refresh_env", "_openrouter_catalog_path", "_direct_api_marker_path",
+        "_refresh_direct_apis_if_stale", "_refresh_openrouter_if_stale",
+    }
+    nodes = [node for node in tree.body if (
+        isinstance(node, ast.FunctionDef) and node.name in definitions
+    ) or (
+        isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id in assignments
+            for target in node.targets
+        )
+    )]
+    namespace = {"os": os, "sys": sys, "rp": rp, "WORKSPACE": str(ROOT)}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=nodes, type_ignores=[])),
+                 str(SERVER), "exec"), namespace)
+    return namespace
+
+
 def _run_with_fake_python(tmp_path: Path, *args: str, overrides: dict[str, str] | None = None):
     workspace = tmp_path / "ora root"
     server_dir = workspace / "server"
@@ -307,6 +332,81 @@ class TestServerLaunchers(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tmp_path, ignore_errors=True)
+
+    def _assert_startup_refresh(self, direct, timeout):
+        import runtime_paths as rp
+
+        runtime = self.tmp_path / "private runtime"
+        config = runtime / "config"
+        config.mkdir(parents=True)
+        selected = str(self.tmp_path / "selected venv" / "python")
+        label = "Direct-API" if direct else "OpenRouter"
+        function = ("_refresh_direct_apis_if_stale" if direct
+                    else "_refresh_openrouter_if_stale")
+        script = ROOT / "scripts" / (
+            "refresh-direct-apis.py" if direct else "refresh-openrouter.py"
+        )
+        state = config / (
+            ".direct-api-refresh-stamp" if direct else "openrouter-catalog.json"
+        )
+        old_bytes = b"previous successful refresh"
+        now = 2_000_000_000
+        with mock.patch.multiple(
+            rp, ORA_HOME=self.tmp_path / "private seed", RUNTIME_ROOT=runtime,
+            RUNTIME_CONFIG_DIR=config, RUNTIME_DATA_DIR=runtime / "data",
+            RUNTIME_CONFIGURATIONS_DIR=config / "configurations",
+        ), mock.patch.dict(os.environ, {
+            "D23_INHERITED": "retained",
+            "ORA_MODEL_CATALOG_PATH": "inherited value must be overridden",
+            "ORA_DIRECT_API_REFRESH_MARKER": str(config / ".direct-api-refresh-stamp"),
+        }), mock.patch.object(sys, "executable", selected), \
+                mock.patch("time.time", return_value=now):
+            refresh = _load_startup_refresh_contract(rp)[function]
+            expected_env = os.environ.copy()
+            expected_env.update(rp.runtime_refresh_env())
+            for outcome in ("fresh", "success", "nonzero", "timeout", "missing"):
+                with self.subTest(outcome=outcome):
+                    state.write_bytes(old_bytes)
+                    mtime = now if outcome == "fresh" else now - 8 * 86400
+                    os.utime(state, (mtime, mtime))
+                    if outcome == "missing":
+                        state.unlink()
+                    result = subprocess.CompletedProcess(
+                        [], 3 if outcome == "nonzero" else 0,
+                        stdout="refreshed", stderr="catalogue refresh failed",
+                    )
+                    with mock.patch.object(subprocess, "run", return_value=result) as run, \
+                            mock.patch("builtins.print") as printed:
+                        if outcome == "timeout":
+                            run.side_effect = subprocess.TimeoutExpired([selected, str(script)], timeout)
+                        self.assertIsNone(refresh())  # Failure must let startup continue.
+                    if outcome == "fresh":
+                        run.assert_not_called()
+                        self.assertEqual(state.read_bytes(), old_bytes)
+                        continue
+                    run.assert_called_once_with(
+                        [selected, str(script)], capture_output=True, text=True,
+                        timeout=timeout, env=expected_env,
+                    )
+                    messages = "\n".join(str(call.args[0]) for call in printed.call_args_list)
+                    if outcome in {"nonzero", "timeout"}:
+                        self.assertEqual(state.read_bytes(), old_bytes)
+                        self.assertEqual(state.stat().st_mtime, mtime)
+                        self.assertIn(f"{label} refresh " + (
+                            "failed:" if outcome == "nonzero" else "exception:"
+                        ), messages)
+                    else:
+                        self.assertIn(f"{label} catalog refreshed.", messages)
+                        if direct:
+                            self.assertEqual(float(state.read_text(encoding="utf-8")), now)
+                        elif outcome == "success":
+                            self.assertEqual(state.read_bytes(), old_bytes)
+
+    def test_startup_direct_api_refresh_uses_running_interpreter(self):
+        self._assert_startup_refresh(direct=True, timeout=120)
+
+    def test_startup_openrouter_refresh_uses_running_interpreter(self):
+        self._assert_startup_refresh(direct=False, timeout=60)
 
     def test_foreground_launcher_exports_every_runtime_flag(self):
         completed, workspace, argv, child_env = _run_with_fake_python(

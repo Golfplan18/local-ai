@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path, PureWindowsPath
+from types import SimpleNamespace
 from unittest import mock
 
 _ORCH = Path(__file__).resolve().parent.parent
@@ -38,6 +39,110 @@ def _win_norm_key(p) -> str:
     """Simulate runtime_paths.norm_key on Windows: ntpath.normcase folds
     case + backslashes; tool_events._cmp_key then forward-slashes it."""
     return ntpath.normcase(str(p))
+
+
+class TestRuntimeEventInterpreter(unittest.TestCase):
+    def test_event_pipeline_uses_running_interpreter_and_preserves_dispatch(self):
+        import orchestrator
+        import runtime_event_dispatcher as dispatcher
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            vault, inbound, ora = root / "vault", root / "inbound", root / "ora"
+            hook = ora / "operations/g1-10-current/macos/vault-event-pipeline.py"
+            hook.parent.mkdir(parents=True)
+            hook.write_text("# subprocess is mocked\n", encoding="utf-8")
+            note = vault / "note with space\nand newline.md"
+            resource = vault / "Resources" / "reading copy.md"
+            incoming = inbound / "source.pdf"
+            for path in (note, resource, incoming):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("fixture", encoding="utf-8")
+            paths = {str(path) for path in (note, resource, incoming)}
+            selected = str(root / "selected venv" / "python")
+            for outcome in ("success", "nonzero", "exception"):
+                with self.subTest(outcome=outcome):
+                    emit = mock.Mock()
+                    triggers = mock.Mock()
+                    triggers.service.return_value.dispatch_paths.return_value = {
+                        "fired": ["fixture-trigger"], "errors": [],
+                    }
+                    consumers = {name: mock.Mock() for name in (
+                        "ped_watcher", "corpus_watcher", "workflow_spec_sweeper",
+                        "revisit_sweeper", "resources_watcher",
+                    )}
+                    consumers["ped_watcher"].sweep.return_value = ["ped-event"]
+                    consumers["corpus_watcher"].sweep.return_value = ["corpus-event"]
+                    ledger = mock.Mock()
+                    ledger.return_value.completed_mutation_causing.return_value = None
+                    process_write = mock.Mock(return_value={"status": "completed"})
+                    modules = {
+                        **consumers, "oversight_events": SimpleNamespace(emit=emit),
+                        "orchestrator.triggers": triggers,
+                        "orchestrator.runtime_hygiene": SimpleNamespace(
+                            EventLedger=ledger, artifact_identity=lambda path: path,
+                        ),
+                        "orchestrator.tools.supersession_sweep": SimpleNamespace(
+                            process_artifact_write=process_write,
+                        ),
+                    }
+                    path_files = []
+
+                    def launch(argv, **kwargs):
+                        self.assertEqual(argv[:3], [selected, str(hook), "--paths-file"])
+                        self.assertEqual(len(argv), 4)
+                        self.assertEqual(kwargs, {"capture_output": True, "text": True})
+                        path_file = Path(argv[3])
+                        path_files.append(path_file)
+                        self.assertEqual(json.loads(path_file.read_text(encoding="utf-8")),
+                                         sorted([str(note), str(resource)]))
+                        if outcome == "exception":
+                            raise OSError("selected interpreter unavailable")
+                        return subprocess.CompletedProcess(
+                            argv, 7 if outcome == "nonzero" else 0,
+                            stdout='pipeline output\n{"event_id": "fixture-event"}\n',
+                            stderr="pipeline failed" if outcome == "nonzero" else "",
+                        )
+
+                    with mock.patch.dict(sys.modules, modules), \
+                            mock.patch.object(orchestrator, "triggers", triggers, create=True), \
+                            mock.patch.object(dispatcher, "_rp", SimpleNamespace(
+                                ORA_HOME=ora, VAULT_STR=str(vault), DATA_DIR_STR=str(root / "data"),
+                            )), mock.patch.object(dispatcher._export, "current_resources_dir", return_value=inbound), \
+                            mock.patch.dict(os.environ, {"ORA_AUTONOMOUS_HYGIENE": "on"}), \
+                            mock.patch.object(sys, "executable", selected), \
+                            mock.patch.object(subprocess, "run", side_effect=launch) as run:
+                        summary = dispatcher.dispatch_paths(paths)
+                    run.assert_called_once()
+                    self.assertEqual(len(path_files), 1)
+                    self.assertFalse(path_files[0].exists())
+                    triggers.service.return_value.dispatch_paths.assert_called_once_with(paths)
+                    process_write.assert_called_once_with(str(resource))
+                    for name, consumer in consumers.items():
+                        if name == "resources_watcher":
+                            consumer.sweep.assert_called_once_with()
+                        else:
+                            consumer.sweep.assert_called_once_with(emit_event=emit)
+                    consumers["revisit_sweeper"].register_age_review_deadlines.assert_called_once_with()
+                    self.assertEqual(summary["paths"], sorted(paths))
+                    self.assertEqual((summary["ped_events"], summary["corpus_events"]), (1, 1))
+                    self.assertTrue(all(summary[key] for key in (
+                        "workflow_checked", "revisit_checked", "resources_checked",
+                    )))
+                    self.assertEqual(summary["triggers_fired"], ["fixture-trigger"])
+                    if outcome == "exception":
+                        self.assertIsNone(summary["operational_hook"])
+                        self.assertEqual(summary["errors"], [
+                            "vault operational hook: selected interpreter unavailable",
+                        ])
+                    else:
+                        self.assertEqual(summary["operational_hook"], {
+                            "event_id": "fixture-event",
+                            "exit_status": 7 if outcome == "nonzero" else 0,
+                        })
+                        self.assertEqual(summary["errors"], [
+                            "vault operational hook failed (7): pipeline failed",
+                        ] if outcome == "nonzero" else [])
 
 
 class TestWindowsSecretPaths(unittest.TestCase):

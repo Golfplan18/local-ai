@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import json
 import subprocess
+import sys
 import tempfile
 import threading
 from datetime import datetime, timezone
@@ -257,7 +258,7 @@ def dispatch_paths(paths: set[str]) -> dict:
                     paths_file = handle.name
                 try:
                     result = subprocess.run(
-                        ["/opt/homebrew/bin/python3", str(hook),
+                        [sys.executable, str(hook),
                          "--paths-file", paths_file],
                         capture_output=True, text=True,
                     )
