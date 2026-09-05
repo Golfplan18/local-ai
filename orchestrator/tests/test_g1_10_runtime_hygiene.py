@@ -556,6 +556,200 @@ class LedgerTests(RuntimeHygieneBase):
             hygiene.sha256_file(Path(exact_record["rollback_manifest"])),
         )
 
+        # Upgrade recovery may encounter rollback records created before the
+        # manifest digest was independently bound. Those bytes cannot become
+        # trusted retrospectively: each legacy event fails closed without
+        # touching any referenced bytes and cannot prevent a later
+        # authenticated event recovering.
+        def legacy_manifest(event_id, path, before):
+            rollback_dir = hygiene._root() / "rollback" / event_id
+            rollback_dir.mkdir(parents=True)
+            backup = rollback_dir / "0000.before"
+            backup.write_bytes(before)
+            manifest = rollback_dir / "manifest.json"
+            manifest.write_text(json.dumps({
+                "schema_version": hygiene.SCHEMA_VERSION,
+                "event_id": event_id,
+                "prepared_at": "2026-09-01T00:00:00+00:00",
+                "snapshots": [{
+                    "path": str(path.resolve()),
+                    "existed": True,
+                    "before_sha256": hashlib.sha256(before).hexdigest(),
+                    "backup": str(backup),
+                }],
+            }), encoding="utf-8")
+            return manifest, backup
+
+        legacy_material = {}
+        for status in ("prepared", "applying", "rollback_applying"):
+            event_id = f"evt-legacy-{status}"
+            path = self.root / f"legacy-{status}.bin"
+            before = f"before-{status}".encode()
+            after = f"after-{status}".encode()
+            path.write_bytes(after)
+            ledger.claim(
+                event_id=event_id, event_type="test",
+                subject={"id": event_id},
+            )
+            manifest, backup = legacy_manifest(event_id, path, before)
+            if status in {"prepared", "applying"}:
+                ledger.transition(
+                    event_id, {"claimed"}, "prepared",
+                    rollback_manifest=str(manifest),
+                )
+                if status == "applying":
+                    ledger.transition(event_id, {"prepared"}, "applying")
+            else:
+                ledger.transition(
+                    event_id, {"claimed"}, "completed",
+                    rollback_manifest=str(manifest),
+                    after=[{
+                        "path": str(path.resolve()), "exists": True,
+                        "sha256": hashlib.sha256(after).hexdigest(),
+                    }],
+                    completed_at="2026-09-01T00:01:00+00:00",
+                )
+                ledger.transition(
+                    event_id, {"completed"}, "rollback_applying",
+                )
+            legacy_material[event_id] = {
+                "path": path, "after": after, "manifest": manifest,
+                "manifest_bytes": manifest.read_bytes(), "backup": backup,
+                "backup_bytes": backup.read_bytes(),
+            }
+
+        actual_refusal = self.root / "actual-call-refusal.bin"
+        actual_refusal_manifest = complete_mutation(
+            "evt-actual-call-refusal", actual_refusal,
+            b"actual-call-before", b"actual-call-after",
+        )
+        ledger.transition(
+            "evt-actual-call-refusal", {"completed"}, "rollback_applying",
+        )
+        actual_refusal_manifest_value = json.loads(
+            actual_refusal_manifest.read_text(encoding="utf-8")
+        )
+        actual_refusal_backup = Path(
+            actual_refusal_manifest_value["snapshots"][0]["backup"]
+        )
+        actual_refusal_backup_bytes = actual_refusal_backup.read_bytes()
+
+        recoverable = self.root / "later-authenticated.bin"
+        recoverable.write_bytes(b"authenticated-before")
+        ledger.claim(
+            event_id="evt-later-authenticated", event_type="test",
+            subject={"id": "evt-later-authenticated"},
+        )
+        recoverable_tx = hygiene.MutationTransaction(
+            ledger, "evt-later-authenticated", [recoverable],
+        )
+        recoverable_tx.prepare()
+        ledger.transition(
+            "evt-later-authenticated", {"prepared"}, "applying",
+        )
+        recoverable.write_bytes(b"authenticated-after")
+
+        real_rollback_completed_event = hygiene.rollback_completed_event
+        actual_call_reached = False
+
+        def change_manifest_at_actual_rollback_call(event_id, active_ledger=None):
+            nonlocal actual_call_reached
+            if event_id == "evt-actual-call-refusal":
+                self.assertFalse(actual_call_reached)
+                actual_call_reached = True
+                actual_refusal_manifest.write_bytes(b"{")
+            return real_rollback_completed_event(event_id, active_ledger)
+
+        with mock.patch.object(
+            hygiene, "rollback_completed_event",
+            side_effect=change_manifest_at_actual_rollback_call,
+        ):
+            recovered = hygiene.restore_incomplete_events(ledger)
+
+        for event_id, material in legacy_material.items():
+            with self.subTest(legacy_restart_status=event_id):
+                record = ledger.get(event_id)
+                self.assertEqual(record["status"], "failed")
+                self.assertNotIn(event_id, recovered)
+                self.assertNotIn("rollback_material_retained", record)
+                self.assertIn(
+                    "refused rollback because rollback material "
+                    "authentication failed",
+                    record["error"],
+                )
+                self.assertIn(
+                    "did not modify the referenced target, manifest, backups, "
+                    "or rollback material",
+                    record["error"],
+                )
+                self.assertEqual(material["path"].read_bytes(), material["after"])
+                self.assertEqual(
+                    material["manifest"].read_bytes(),
+                    material["manifest_bytes"],
+                )
+                self.assertEqual(
+                    material["backup"].read_bytes(), material["backup_bytes"],
+                )
+
+        with self.subTest(refusal_at="actual rollback call"):
+            refused = ledger.get("evt-actual-call-refusal")
+            self.assertTrue(actual_call_reached)
+            self.assertEqual(refused["status"], "failed")
+            self.assertNotIn("evt-actual-call-refusal", recovered)
+            self.assertNotIn("rollback_material_retained", refused)
+            self.assertIn(
+                "refused rollback because rollback material authentication "
+                "failed",
+                refused["error"],
+            )
+            self.assertEqual(actual_refusal.read_bytes(), b"actual-call-after")
+            self.assertEqual(actual_refusal_manifest.read_bytes(), b"{")
+            self.assertEqual(
+                actual_refusal_backup.read_bytes(),
+                actual_refusal_backup_bytes,
+            )
+            self.assertIn("evt-later-authenticated", recovered)
+            self.assertEqual(
+                recoverable.read_bytes(), b"authenticated-before",
+            )
+            self.assertEqual(
+                ledger.get("evt-later-authenticated")["status"], "failed",
+            )
+
+        legacy_completed = self.root / "legacy-completed.bin"
+        legacy_completed.write_bytes(b"legacy-current")
+        ledger.claim(
+            event_id="evt-legacy-completed", event_type="test",
+            subject={"id": "evt-legacy-completed"},
+        )
+        legacy_completed_manifest, legacy_completed_backup = legacy_manifest(
+            "evt-legacy-completed", legacy_completed, b"legacy-before",
+        )
+        ledger.transition(
+            "evt-legacy-completed", {"claimed"}, "completed",
+            rollback_manifest=str(legacy_completed_manifest),
+            after=[{
+                "path": str(legacy_completed.resolve()), "exists": True,
+                "sha256": hashlib.sha256(b"legacy-current").hexdigest(),
+            }],
+            completed_at="2026-09-01T00:01:00+00:00",
+        )
+        retained_manifest = legacy_completed_manifest.read_bytes()
+        retained_backup = legacy_completed_backup.read_bytes()
+        refusal = slash_commands.run_runtime_command(
+            "/maintenance rollback evt-legacy-completed"
+        )
+        self.assertIn("predates authenticated rollback support", refusal)
+        self.assertIn("no rollback attempted", refusal)
+        self.assertEqual(legacy_completed.read_bytes(), b"legacy-current")
+        self.assertEqual(
+            legacy_completed_manifest.read_bytes(), retained_manifest,
+        )
+        self.assertEqual(legacy_completed_backup.read_bytes(), retained_backup)
+        self.assertEqual(
+            ledger.get("evt-legacy-completed")["status"], "completed",
+        )
+
         subject = self.root / "subject.md"
         subject.write_text("before", encoding="utf-8")
         ledger.claim(event_id="evt-complete", event_type="test", subject={"id": 1})

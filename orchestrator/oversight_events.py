@@ -562,7 +562,18 @@ def _prepare_watcher_router(event: dict) -> bool:
         import oversight_router
     except ImportError:  # pragma: no cover
         from orchestrator import oversight_router
-    if oversight_router.process_event not in _handlers:
+    expected_identity = (
+        oversight_router.process_event.__module__.removeprefix("orchestrator."),
+        oversight_router.process_event.__qualname__,
+    )
+    installed = any(
+        (
+            getattr(handler, "__module__", "").removeprefix("orchestrator."),
+            getattr(handler, "__qualname__", ""),
+        ) == expected_identity
+        for handler in _handlers
+    )
+    if not installed:
         return False
     record = oversight_router.prepare_watcher_publication(event)
     subject = record.get("subject") if isinstance(record, dict) else None

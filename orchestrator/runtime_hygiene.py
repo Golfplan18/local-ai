@@ -630,6 +630,10 @@ class MutationTransaction:
         return False
 
 
+class _RollbackMaterialAuthenticationError(ValueError):
+    """Rollback material failed authentication before any target mutation."""
+
+
 def _authenticated_rollback_material(
     event_id: str, record: dict,
 ) -> tuple[list[Snapshot], dict[str, tuple[bytes, int]]]:
@@ -637,29 +641,41 @@ def _authenticated_rollback_material(
     manifest_value = record.get("rollback_manifest")
     manifest_digest = record.get("rollback_manifest_sha256")
     if not isinstance(manifest_value, str) or not manifest_value:
-        raise ValueError("event has no rollback manifest")
+        raise _RollbackMaterialAuthenticationError(
+            "event has no rollback manifest"
+        )
     if (
         not isinstance(manifest_digest, str)
         or len(manifest_digest) != 64
         or any(character not in "0123456789abcdef" for character in manifest_digest)
     ):
-        raise ValueError("event has no authenticated rollback manifest")
+        raise _RollbackMaterialAuthenticationError(
+            "event has no authenticated rollback manifest"
+        )
     manifest_path = Path(os.path.abspath(os.path.expanduser(manifest_value)))
     expected_manifest = Path(os.path.abspath(str(
         _root() / "rollback" / event_id / "manifest.json"
     )))
     if manifest_path != expected_manifest or manifest_path.is_symlink():
-        raise ValueError("event has an invalid rollback manifest path")
+        raise _RollbackMaterialAuthenticationError(
+            "event has an invalid rollback manifest path"
+        )
     try:
         manifest_bytes = manifest_path.read_bytes()
     except OSError as exc:
-        raise ValueError("event has an unreadable rollback manifest") from exc
+        raise _RollbackMaterialAuthenticationError(
+            "event has an unreadable rollback manifest"
+        ) from exc
     if hashlib.sha256(manifest_bytes).hexdigest() != manifest_digest:
-        raise ValueError("rollback manifest authentication failed")
+        raise _RollbackMaterialAuthenticationError(
+            "rollback manifest authentication failed"
+        )
     try:
         manifest = json.loads(manifest_bytes.decode("utf-8"))
     except (UnicodeError, json.JSONDecodeError) as exc:
-        raise ValueError("event has an unreadable rollback manifest") from exc
+        raise _RollbackMaterialAuthenticationError(
+            "event has an unreadable rollback manifest"
+        ) from exc
     if (
         not isinstance(manifest, dict)
         or set(manifest) != {
@@ -670,7 +686,9 @@ def _authenticated_rollback_material(
         or not isinstance(manifest.get("prepared_at"), str)
         or not isinstance(manifest.get("snapshots"), list)
     ):
-        raise ValueError("event has an invalid rollback manifest")
+        raise _RollbackMaterialAuthenticationError(
+            "event has an invalid rollback manifest"
+        )
 
     snapshots: list[Snapshot] = []
     restore_bytes: dict[str, tuple[bytes, int]] = {}
@@ -678,16 +696,22 @@ def _authenticated_rollback_material(
         if not isinstance(value, dict) or set(value) != {
             "path", "existed", "before_sha256", "backup",
         }:
-            raise ValueError("rollback manifest has an invalid snapshot")
+            raise _RollbackMaterialAuthenticationError(
+                "rollback manifest has an invalid snapshot"
+            )
         raw_path = value.get("path")
         existed = value.get("existed")
         before_sha256 = value.get("before_sha256")
         backup_value = value.get("backup")
         if not isinstance(raw_path, str) or not raw_path or not isinstance(existed, bool):
-            raise ValueError("rollback manifest has an invalid snapshot")
+            raise _RollbackMaterialAuthenticationError(
+                "rollback manifest has an invalid snapshot"
+            )
         exact_path = str(Path(raw_path).expanduser().resolve())
         if exact_path != raw_path:
-            raise ValueError("rollback manifest has a noncanonical snapshot path")
+            raise _RollbackMaterialAuthenticationError(
+                "rollback manifest has a noncanonical snapshot path"
+            )
         snapshot = Snapshot(raw_path, existed, before_sha256, backup_value)
         if existed:
             if (
@@ -700,23 +724,39 @@ def _authenticated_rollback_material(
                 or not isinstance(backup_value, str)
                 or not backup_value
             ):
-                raise ValueError("rollback manifest has an invalid before-image")
+                raise _RollbackMaterialAuthenticationError(
+                    "rollback manifest has an invalid before-image"
+                )
             backup = Path(os.path.abspath(os.path.expanduser(backup_value)))
             expected_backup = manifest_path.parent / f"{index:04d}.before"
             if backup != expected_backup or backup.is_symlink() or not backup.is_file():
-                raise ValueError("rollback manifest has an invalid backup path")
-            payload = backup.read_bytes()
+                raise _RollbackMaterialAuthenticationError(
+                    "rollback manifest has an invalid backup path"
+                )
+            try:
+                payload = backup.read_bytes()
+                mode = backup.stat().st_mode & 0o7777
+            except OSError as exc:
+                raise _RollbackMaterialAuthenticationError(
+                    "rollback manifest has an unreadable backup"
+                ) from exc
             if hashlib.sha256(payload).hexdigest() != before_sha256:
-                raise ValueError(f"rollback refused after backup drift: {backup}")
+                raise _RollbackMaterialAuthenticationError(
+                    f"rollback refused after backup drift: {backup}"
+                )
             restore_bytes[raw_path] = (
-                payload, backup.stat().st_mode & 0o7777,
+                payload, mode,
             )
         elif before_sha256 is not None or backup_value is not None:
-            raise ValueError("rollback manifest has an invalid absent snapshot")
+            raise _RollbackMaterialAuthenticationError(
+                "rollback manifest has an invalid absent snapshot"
+            )
         snapshots.append(snapshot)
     paths = [snapshot.path for snapshot in snapshots]
     if len(set(paths)) != len(paths) or paths != sorted(paths):
-        raise ValueError("rollback manifest has an invalid path set")
+        raise _RollbackMaterialAuthenticationError(
+            "rollback manifest has an invalid path set"
+        )
     return snapshots, restore_bytes
 
 
@@ -746,6 +786,14 @@ def restore_incomplete_events(ledger: EventLedger | None = None) -> list[str]:
                 # effects receipt must remain claimed until the event-log
                 # delivery marker is fsynced and explicitly acknowledged.
                 continue
+            if (
+                record.get("event_type") == "trigger_firing"
+                and isinstance(record.get("process_identity"), dict)
+            ):
+                # Trigger startup owns these claims because only its existing
+                # platform-specific process check can prove the action tree
+                # dead. An absent or incomplete proof must remain nonterminal.
+                continue
             ledger.transition(
                 event_id, {"claimed"}, "failed",
                 error="restart recovery: interrupted before mutation",
@@ -754,7 +802,21 @@ def restore_incomplete_events(ledger: EventLedger | None = None) -> list[str]:
             restored.append(event_id)
             continue
         if record.get("status") == "rollback_applying":
-            rollback_completed_event(event_id, ledger)
+            try:
+                rollback_completed_event(event_id, ledger)
+            except _RollbackMaterialAuthenticationError as exc:
+                current = ledger.get(event_id)
+                if current and current.get("status") == "rollback_applying":
+                    ledger.transition(
+                        event_id, {"rollback_applying"}, "failed",
+                        error=(
+                            "restart recovery refused rollback because rollback "
+                            "material authentication failed; Ora did not modify "
+                            "the referenced target, manifest, backups, or rollback "
+                            f"material during this refusal: {exc}"
+                        ),
+                    )
+                continue
             restored.append(event_id)
             continue
         if record.get("status") not in {"prepared", "applying"}:
@@ -763,9 +825,23 @@ def restore_incomplete_events(ledger: EventLedger | None = None) -> list[str]:
             ledger.transition(event_id, {record["status"]}, "failed",
                               error="interrupted before rollback material was bound")
             continue
-        snapshots, restore_bytes = _authenticated_rollback_material(
-            event_id, record,
-        )
+        try:
+            snapshots, restore_bytes = _authenticated_rollback_material(
+                event_id, record,
+            )
+        except _RollbackMaterialAuthenticationError as exc:
+            current = ledger.get(event_id)
+            if current and current.get("status") in {"prepared", "applying"}:
+                ledger.transition(
+                    event_id, {current["status"]}, "failed",
+                    error=(
+                        "restart recovery refused rollback because rollback "
+                        "material authentication failed; Ora did not modify "
+                        "the referenced target, manifest, backups, or rollback "
+                        f"material during this refusal: {exc}"
+                    ),
+                )
+            continue
         with mutation_path_locks(snapshot.path for snapshot in snapshots):
             _restore_snapshots(snapshots, restore_bytes)
             current = ledger.get(event_id)
@@ -847,12 +923,25 @@ def rollback_completed_event(event_id: str, ledger: EventLedger | None = None) -
         if tuple(locked_paths) != current_paths:
             raise ValueError("completed event mutation paths changed before rollback")
 
+        if (
+            isinstance(record.get("rollback_manifest"), str)
+            and record.get("rollback_manifest")
+            and "rollback_manifest_sha256" not in record
+        ):
+            raise _RollbackMaterialAuthenticationError(
+                "event predates authenticated rollback support; no rollback "
+                "attempted because retained material cannot safely be treated "
+                "as authenticated"
+            )
+
         snapshots, restore_bytes = _authenticated_rollback_material(
             event_id, record,
         )
         snapshot_paths = tuple(snapshot.path for snapshot in snapshots)
         if snapshot_paths != current_paths:
-            raise ValueError("rollback manifest path set does not match the event")
+            raise _RollbackMaterialAuthenticationError(
+                "rollback manifest path set does not match the event"
+            )
         after_by_path = {
             identity["path"]: identity for identity in record["after"]
         }

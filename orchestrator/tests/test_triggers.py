@@ -13,6 +13,8 @@ Run::
 """
 from __future__ import annotations
 
+import contextlib
+import copy
 import json
 import os
 import signal
@@ -415,6 +417,10 @@ class DriftTests(TriggerBase):
             "version": "1.0.0",
             "tools": [{"name": "run", "command": [sys.executable],
                        "interface": "argv-stdout-json"}],
+            "slash_commands": [{
+                "name": "root-status", "command": [sys.executable],
+                "interface": "argv-stdout-json",
+            }],
         }
         roots = [self.root / "registered-a", self.root / "registered-b"]
         for root in roots:
@@ -484,6 +490,98 @@ class DriftTests(TriggerBase):
                     expected_binding=expected_binding,
                 )
         spawn.assert_not_called()
+
+        # The final subprocess boundary owns the canonical root spelling.
+        # Even if an in-memory Project carries a symlink spelling, both the
+        # Trigger tool path and the direct project slash-command path must
+        # give the child the exact same root in cwd and ORA_PROJECT_ROOT.
+        root_alias = self.root / "registered-alias"
+        root_alias.symlink_to(roots[1], target_is_directory=True)
+        alias_project = pr.get_project("root-bound")
+        alias_project.root = root_alias
+        self.service.create(self.tool_spec(
+            trigger_id="root-env", name="Canonical child root",
+            action={"kind": "project_tool", "nexus": "root-bound",
+                    "tool": "run", "args": []},
+        ))
+        self.activate("root-env")
+        with (
+            mock.patch.object(pr, "get_project", return_value=alias_project),
+            mock.patch.object(
+                pr.subprocess, "run",
+                return_value=SimpleNamespace(
+                    returncode=0, stdout=b"{}", stderr=b"",
+                ),
+            ) as tool_spawn,
+        ):
+            self.service.run_manual(
+                "root-env", request_id="canonical-trigger-root",
+            )
+        tool_call = tool_spawn.call_args
+        self.assertEqual(tool_call.kwargs["cwd"], str(roots[1].resolve()))
+        self.assertEqual(
+            tool_call.kwargs["env"]["ORA_PROJECT_ROOT"],
+            tool_call.kwargs["cwd"],
+        )
+
+        with (
+            mock.patch.object(pr, "get_project", return_value=alias_project),
+            mock.patch.object(
+                pr.subprocess, "run",
+                return_value=SimpleNamespace(
+                    returncode=0, stdout=b"root status", stderr=b"",
+                ),
+            ) as slash_spawn,
+        ):
+            self.assertEqual(
+                pr.invoke_project_slash_command(
+                    "root-bound", "root-status", args=[],
+                    pointer_dir=str(self.data / "projects"),
+                ),
+                "root status",
+            )
+        slash_call = slash_spawn.call_args
+        self.assertEqual(slash_call.kwargs["cwd"], str(roots[1].resolve()))
+        self.assertEqual(
+            slash_call.kwargs["env"]["ORA_PROJECT_ROOT"],
+            slash_call.kwargs["cwd"],
+        )
+
+        # A deadline armed before admission identities existed may not enter
+        # _fire at all. It is reported stale, then the existing finally block
+        # arms exactly the successor contract in the authenticated format.
+        self.service.create(self.tool_spec(
+            trigger_id="legacy-calendar", name="Legacy calendar",
+            cause="calendar", condition=self.calendar_condition(),
+            runtime_justification=(
+                "The upstream deadline is itself the cause and exposes no "
+                "authenticated change callback for Ora to consume."
+            ),
+            action={"kind": "project_tool", "nexus": "root-bound",
+                    "tool": "run", "args": []},
+        ))
+        calendar = self.activate("legacy-calendar")
+        legacy_key = calendar["armed_deadline_key"]
+        legacy_payload = dict(self.queue.get(legacy_key)["payload"])
+        legacy_payload.pop("expected_admission_identity")
+        with mock.patch.object(
+            self.service, "_fire",
+            side_effect=AssertionError("legacy payload reached action admission"),
+        ) as fire:
+            stale = self.service.handle_calendar_deadline(legacy_payload)
+        fire.assert_not_called()
+        self.assertEqual(stale["outcome"], "stale")
+        self.assertIn("predates authenticated admission", stale["detail"])
+        self.assertEqual(self.service.firings("legacy-calendar"), [])
+        successor_key = self.service.get("legacy-calendar")["armed_deadline_key"]
+        self.assertNotEqual(successor_key, legacy_key)
+        successor = self.queue.get(successor_key)
+        self.assertEqual(successor["status"], "pending")
+        self.assertTrue(
+            successor["payload"]["expected_admission_identity"].startswith(
+                "sha256:"
+            )
+        )
 
     def test_editing_a_trigger_returns_it_to_draft(self):
         self.make_project(script_body=(
@@ -1096,68 +1194,880 @@ class FiringTests(TriggerBase):
         self.assertEqual(receipt["outcome"], "ran")
         self.assertEqual(provider_effect.read_text(encoding="utf-8"), "contacted")
 
-        # Windows termination is not acknowledged by merely invoking
-        # taskkill: its status and every captured descendant must be checked.
-        fake_process = SimpleNamespace(
-            pid=4242, join=mock.Mock(), is_alive=lambda: False,
-        )
-        with (
-            mock.patch.object(
-                triggers, "_uses_posix_process_groups", return_value=False,
-            ),
-            mock.patch.object(
-                triggers, "_windows_process_tree", return_value={4242, 4243},
-            ),
-            mock.patch.object(
-                triggers.subprocess, "run",
-                return_value=SimpleNamespace(returncode=1),
-            ),
-        ):
-            with self.assertRaisesRegex(
-                triggers.TriggerTerminationUnacknowledged, "failure status",
+        # Windows reuses the repository's Job Object primitive. The held
+        # wrapper is assigned before start acknowledgment, and later identity
+        # snapshots come from kernel Job membership rather than a parent graph.
+        # This model makes an intermediate disappear and adds its late child;
+        # the child remains contained even though no live-parent walk can reach
+        # it. TerminateJobObject must drive ActiveProcesses to zero before the
+        # ordinary result or error can become terminal.
+        held_context = triggers.multiprocessing.get_context("fork")
+        # Match triggers.py's runtime import path so recovery patches the same
+        # lazy Windows module instance rather than a second package alias.
+        import windows_appcontainer as windows_jobs
+
+        class NoopScope:
+            def __enter__(self):
+                return None
+
+            def __exit__(self, *_args):
+                return False
+
+        class FakeWindowsJob:
+            def __init__(self, root_pid, *, terminate_error=None):
+                self.root_pid = root_pid
+                self.intermediate_pid = root_pid + 100_000
+                self.late_child_pid = root_pid + 200_000
+                self.terminate_error = terminate_error
+                self.identity_calls = 0
+                self.terminated = False
+                self.closed = False
+                self.events = []
+
+            @staticmethod
+            def _member(pid, created):
+                return {"pid": pid, "creation_time_100ns": created}
+
+            def identity(self, *, action_may_have_started):
+                self.identity_calls += 1
+                root = self._member(self.root_pid, 101)
+                intermediate = self._member(self.intermediate_pid, 202)
+                late = self._member(self.late_child_pid, 303)
+                if self.terminated:
+                    active = []
+                    observed = [root, intermediate, late]
+                elif self.identity_calls == 1 or not action_may_have_started:
+                    active = [root]
+                    observed = [root]
+                else:
+                    # The intermediate has exited; its late child is still an
+                    # active Job member without a live parent edge.
+                    active = [root, late]
+                    observed = [root, intermediate, late]
+                identity = {
+                    "kind": "windows_job_object",
+                    "root_pid": self.root_pid,
+                    "root_creation_time_100ns": 101,
+                    "job_name": "Global\\ora.trigger." + ("a" * 32),
+                    "containment_established": True,
+                    "assignment_confirmed": True,
+                    "kill_on_close": True,
+                    "die_on_unhandled_exception": True,
+                    "breakaway_allowed": False,
+                    "owner_handle_inheritable": False,
+                    "owner_handle_sole_owner": True,
+                    "active_processes": len(active),
+                    "active_member_identities": active,
+                    "observed_member_identities": observed,
+                    "owner_handle_zero_observed": not active,
+                    "action_may_have_started": action_may_have_started,
+                }
+                self.events.append(("identity", len(active)))
+                return identity
+
+            def terminate_and_wait(self, _timeout):
+                self.events.append(("terminate", None))
+                if self.terminate_error is not None:
+                    raise self.terminate_error
+                self.terminated = True
+                with contextlib.suppress(ProcessLookupError):
+                    os.kill(self.root_pid, signal.SIGKILL)
+
+            def close(self):
+                self.events.append(("close", None))
+                self.closed = True
+                with contextlib.suppress(ProcessLookupError):
+                    os.kill(self.root_pid, signal.SIGKILL)
+
+        with self.subTest("Windows Job creation is global and collision-intolerant"):
+            generated_uuid = SimpleNamespace(hex="b" * 32)
+            namespace_api = SimpleNamespace()
+            with (
+                mock.patch.object(
+                    windows_jobs, "_load_api", return_value=namespace_api,
+                ),
+                mock.patch.object(
+                    windows_jobs.uuid, "uuid4", return_value=generated_uuid,
+                ),
+                mock.patch.object(
+                    windows_jobs, "_create_job_object",
+                    side_effect=windows_jobs.AppContainerError(
+                        "injected Job name collision"
+                    ),
+                ) as create_global,
             ):
-                triggers._terminate_action_process(fake_process)
+                with self.assertRaisesRegex(
+                    windows_jobs.AppContainerError, "name collision",
+                ):
+                    windows_jobs._WindowsJobBoundary.create(4242)
+            create_global.assert_called_once_with(
+                namespace_api,
+                name="Global\\ora.trigger." + ("b" * 32),
+            )
+
+            collision_kernel = SimpleNamespace(
+                CreateJobObjectW=mock.Mock(return_value=9001),
+                SetHandleInformation=mock.Mock(return_value=True),
+                SetInformationJobObject=mock.Mock(return_value=True),
+                CloseHandle=mock.Mock(return_value=True),
+            )
+            collision_api = SimpleNamespace(kernel32=collision_kernel)
+            with mock.patch.object(
+                windows_jobs, "_last_error",
+                return_value=windows_jobs.ERROR_ALREADY_EXISTS,
+            ):
+                with self.assertRaisesRegex(
+                    windows_jobs.AppContainerError,
+                    "unique Windows Job name unexpectedly exists",
+                ):
+                    windows_jobs._create_job_object(
+                        collision_api,
+                        name="Global\\ora.trigger." + ("c" * 32),
+                    )
+            collision_kernel.SetHandleInformation.assert_not_called()
+            collision_kernel.SetInformationJobObject.assert_not_called()
+            collision_kernel.CloseHandle.assert_called_once()
+
+        authenticated_identity = FakeWindowsJob(6262).identity(
+            action_may_have_started=True,
+        )
+        self.assertTrue(
+            windows_jobs._valid_trigger_job_identity(authenticated_identity)
+        )
+
+        with self.subTest("a reopened wrong empty Job remains ambiguous"):
+            reopened_kernel = SimpleNamespace(
+                OpenJobObjectW=mock.Mock(return_value=9002),
+                CloseHandle=mock.Mock(return_value=True),
+            )
+            reopened_api = SimpleNamespace(kernel32=reopened_kernel)
+            with (
+                mock.patch.object(
+                    windows_jobs, "_load_api", return_value=reopened_api,
+                ),
+                mock.patch.object(windows_jobs, "_last_error", return_value=0),
+                mock.patch.object(
+                    windows_jobs, "_job_active_processes", return_value=0,
+                ),
+            ):
+                self.assertFalse(
+                    windows_jobs._trigger_job_death_confirmed(
+                        authenticated_identity,
+                    )
+                )
+            reopened_kernel.OpenJobObjectW.assert_called_once_with(
+                windows_jobs.JOB_OBJECT_QUERY, 0,
+                authenticated_identity["job_name"],
+            )
+            reopened_kernel.CloseHandle.assert_called_once()
+
+        malformed_identities = {}
+        root_mismatch = copy.deepcopy(authenticated_identity)
+        root_mismatch["root_creation_time_100ns"] = 999
+        malformed_identities["root PID creation-time mismatch"] = root_mismatch
+        count_mismatch = copy.deepcopy(authenticated_identity)
+        count_mismatch["active_processes"] = 2
+        malformed_identities["member count mismatch"] = count_mismatch
+        duplicate_member = copy.deepcopy(authenticated_identity)
+        duplicate_member["active_member_identities"].append(
+            copy.deepcopy(duplicate_member["active_member_identities"][0])
+        )
+        duplicate_member["active_processes"] = 2
+        malformed_identities["duplicate active membership"] = duplicate_member
+        malformed_member = copy.deepcopy(authenticated_identity)
+        malformed_member["observed_member_identities"][0][
+            "creation_time_100ns"
+        ] = "101"
+        malformed_identities["malformed observed membership"] = malformed_member
+        false_zero = copy.deepcopy(authenticated_identity)
+        false_zero["owner_handle_zero_observed"] = True
+        malformed_identities["false owner-handle zero"] = false_zero
+        session_local = copy.deepcopy(authenticated_identity)
+        session_local["job_name"] = session_local["job_name"].removeprefix(
+            "Global\\"
+        )
+        malformed_identities["session-local name"] = session_local
+        missing_sole_owner = copy.deepcopy(authenticated_identity)
+        missing_sole_owner["owner_handle_sole_owner"] = False
+        malformed_identities["missing sole-owner fact"] = missing_sole_owner
+        for label, malformed_identity in malformed_identities.items():
+            with self.subTest("malformed Windows Job identity is retained", case=label):
+                with mock.patch.object(windows_jobs, "_load_api") as no_open:
+                    self.assertFalse(
+                        windows_jobs._trigger_job_death_confirmed(
+                            malformed_identity,
+                        )
+                    )
+                no_open.assert_not_called()
+
+        with self.subTest("cross-session or other lookup failure is not absence"):
+            lookup_kernel = SimpleNamespace(
+                OpenJobObjectW=mock.Mock(return_value=0),
+                CloseHandle=mock.Mock(return_value=True),
+            )
+            lookup_api = SimpleNamespace(kernel32=lookup_kernel)
+            with (
+                mock.patch.object(
+                    windows_jobs, "_load_api", return_value=lookup_api,
+                ),
+                mock.patch.object(windows_jobs, "_last_error", return_value=5),
+            ):
+                self.assertFalse(
+                    windows_jobs._trigger_job_death_confirmed(
+                        authenticated_identity,
+                    )
+                )
+
+        with self.subTest("authenticated global sole-owner not-found is terminal"):
+            absent_kernel = SimpleNamespace(
+                OpenJobObjectW=mock.Mock(return_value=0),
+                CloseHandle=mock.Mock(return_value=True),
+            )
+            absent_api = SimpleNamespace(kernel32=absent_kernel)
+            with (
+                mock.patch.object(
+                    windows_jobs, "_load_api", return_value=absent_api,
+                ),
+                mock.patch.object(
+                    windows_jobs, "_last_error",
+                    return_value=windows_jobs.ERROR_FILE_NOT_FOUND,
+                ),
+            ):
+                self.assertTrue(
+                    windows_jobs._trigger_job_death_confirmed(
+                        authenticated_identity,
+                    )
+                )
+
+        with self.subTest("Windows Job ambiguity remains nonterminal"):
+            fake_process = SimpleNamespace(
+                pid=4242, join=mock.Mock(), is_alive=lambda: False,
+            )
+            failing_job = FakeWindowsJob(
+                4242, terminate_error=RuntimeError("injected Job failure"),
+            )
+            with mock.patch.object(
+                triggers, "_uses_posix_process_groups", return_value=False,
+            ):
+                with self.assertRaisesRegex(
+                    triggers.TriggerTerminationUnacknowledged,
+                    "termination did not complete",
+                ):
+                    triggers._terminate_action_process(
+                        fake_process,
+                        windows_job=failing_job,
+                        action_may_have_started=True,
+                    )
+
+        for outcome in ("success", "ordinary_error", "serialization_error"):
+            with self.subTest(
+                "Windows Job contains exited-intermediate late child",
+                outcome=outcome,
+            ):
+                persisted = []
+                jobs = []
+                start_was_durable = self.root / f"job-start-{outcome}"
+
+                def execute_outcome(*_args, **_kwargs):
+                    if not start_was_durable.is_file():
+                        raise AssertionError("action crossed an undurable start")
+                    if outcome == "ordinary_error":
+                        raise RuntimeError("injected ordinary action error")
+                    if outcome == "serialization_error":
+                        return {"outcome": threading.Lock()}
+                    return {"outcome": "ran"}
+
+                def create_job(root_pid):
+                    job = FakeWindowsJob(root_pid)
+                    jobs.append(job)
+                    return job
+
+                def persist(identity):
+                    persisted.append(copy.deepcopy(dict(identity)))
+                    if len(persisted) == 1:
+                        start_was_durable.write_text("durable", encoding="utf-8")
+
+                with (
+                    mock.patch.object(
+                        triggers.multiprocessing, "get_context",
+                        return_value=held_context,
+                    ),
+                    mock.patch.object(
+                        triggers, "_uses_posix_process_groups",
+                        return_value=False,
+                    ),
+                    mock.patch.object(
+                        triggers, "_active_run_sleep_protection",
+                        side_effect=NoopScope,
+                    ),
+                    mock.patch.object(
+                        triggers, "_execute_action",
+                        side_effect=execute_outcome,
+                    ),
+                    mock.patch.object(
+                        triggers, "_create_windows_job_boundary",
+                        side_effect=create_job,
+                    ),
+                ):
+                    if outcome == "success":
+                        held_receipt = triggers._execute_action_with_deadline(
+                            {"kind": "framework"}, {}, prepared=None,
+                            on_provider_contact=None,
+                            on_process_started=persist,
+                            timeout_sec=2,
+                        )
+                        self.assertEqual(held_receipt["outcome"], "ran")
+                    else:
+                        with self.assertRaises(triggers.TriggerError):
+                            triggers._execute_action_with_deadline(
+                                {"kind": "framework"}, {}, prepared=None,
+                                on_provider_contact=None,
+                                on_process_started=persist,
+                                timeout_sec=2,
+                            )
+                self.assertEqual(persisted[0]["kind"], "windows_job_object")
+                self.assertTrue(persisted[0]["containment_established"])
+                self.assertTrue(persisted[0]["assignment_confirmed"])
+                self.assertFalse(persisted[0]["breakaway_allowed"])
+                self.assertTrue(persisted[0]["owner_handle_sole_owner"])
+                self.assertFalse(persisted[0]["owner_handle_zero_observed"])
+                self.assertEqual(persisted[-1]["active_processes"], 0)
+                self.assertTrue(persisted[-1]["owner_handle_zero_observed"])
+                live_snapshot = next(
+                    identity for identity in persisted
+                    if identity["active_processes"] == 2
+                )
+                self.assertEqual(
+                    {item["pid"] for item in live_snapshot["active_member_identities"]},
+                    {jobs[0].root_pid, jobs[0].late_child_pid},
+                )
+                self.assertNotIn(
+                    jobs[0].intermediate_pid,
+                    {item["pid"] for item in live_snapshot["active_member_identities"]},
+                )
+                self.assertTrue(jobs[0].terminated)
+                self.assertTrue(jobs[0].closed)
+                self.assertLess(
+                    jobs[0].events.index(("terminate", None)),
+                    jobs[0].events.index(("identity", 0)),
+                )
+
+        # Assignment or durable identity failure occurs while the child is
+        # still waiting on the start barrier, so action work never begins.
+        for failure in ("assignment", "persistence"):
+            with self.subTest("Windows Job start fails before action", failure=failure):
+                action_effect = self.root / f"job-action-{failure}"
+                jobs = []
+
+                def should_not_run(*_args, **_kwargs):
+                    action_effect.write_text("ran", encoding="utf-8")
+                    return {"outcome": "ran"}
+
+                def create_job(root_pid):
+                    if failure == "assignment":
+                        raise RuntimeError("injected Job assignment failure")
+                    job = FakeWindowsJob(root_pid)
+                    jobs.append(job)
+                    return job
+
+                def persist_or_fail(_identity):
+                    raise RuntimeError("injected Job identity persistence failure")
+
+                with (
+                    mock.patch.object(
+                        triggers.multiprocessing, "get_context",
+                        return_value=held_context,
+                    ),
+                    mock.patch.object(
+                        triggers, "_uses_posix_process_groups", return_value=False,
+                    ),
+                    mock.patch.object(
+                        triggers, "_active_run_sleep_protection",
+                        side_effect=NoopScope,
+                    ),
+                    mock.patch.object(
+                        triggers, "_execute_action", side_effect=should_not_run,
+                    ),
+                    mock.patch.object(
+                        triggers, "_create_windows_job_boundary",
+                        side_effect=create_job,
+                    ),
+                    mock.patch.object(triggers, "TERMINATION_GRACE_SEC", 0.2),
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "injected Job"):
+                        triggers._execute_action_with_deadline(
+                            {"kind": "framework"}, {}, prepared=None,
+                            on_provider_contact=None,
+                            on_process_started=(
+                                persist_or_fail
+                                if failure == "persistence"
+                                else (lambda _identity: None)
+                            ),
+                            timeout_sec=2,
+                        )
+                self.assertFalse(action_effect.exists())
+                if jobs:
+                    self.assertTrue(jobs[0].terminated)
+                    self.assertTrue(jobs[0].closed)
+
+        # Parent unwind cannot turn a failed terminal Job-membership write into
+        # ordinary evidence. Cleanup still kills every Job member, while the
+        # missing durable zero-membership record leaves the firing blocked.
+        persisted = []
+        jobs = []
+
+        def fail_terminal_identity(identity):
+            if identity.get("active_processes") == 0:
+                raise RuntimeError("injected process-identity ledger failure")
+            persisted.append(dict(identity))
+
+        def create_job(root_pid):
+            job = FakeWindowsJob(root_pid)
+            jobs.append(job)
+            return job
+
         with (
+            mock.patch.object(
+                triggers.multiprocessing, "get_context",
+                return_value=held_context,
+            ),
             mock.patch.object(
                 triggers, "_uses_posix_process_groups", return_value=False,
             ),
             mock.patch.object(
-                triggers, "_windows_process_tree", return_value={4242, 4243},
+                triggers, "_active_run_sleep_protection",
+                side_effect=NoopScope,
             ),
             mock.patch.object(
-                triggers.subprocess, "run",
-                return_value=SimpleNamespace(returncode=0),
+                triggers, "_execute_action", return_value={"outcome": "ran"},
             ),
             mock.patch.object(
-                triggers, "_windows_live_processes", return_value={4243},
+                triggers, "_create_windows_job_boundary", side_effect=create_job,
             ),
         ):
             with self.assertRaisesRegex(
                 triggers.TriggerTerminationUnacknowledged,
-                "did not acknowledge",
-            ):
-                triggers._terminate_action_process(fake_process)
+                "durably recorded",
+            ) as unwind_failure:
+                triggers._execute_action_with_deadline(
+                    {"kind": "framework"}, {}, prepared=None,
+                    on_provider_contact=None,
+                    on_process_started=fail_terminal_identity,
+                    timeout_sec=2,
+                )
+        self.assertEqual(
+            unwind_failure.exception.process_identity["active_processes"], 0,
+        )
+        self.assertTrue(
+            unwind_failure.exception.process_identity[
+                "owner_handle_zero_observed"
+            ]
+        )
+        self.assertTrue(persisted[0]["action_may_have_started"])
+        self.assertTrue(jobs[0].terminated)
+        self.assertTrue(jobs[0].closed)
 
-        # If termination cannot be proved, the overlap claim stays in place.
-        # A later firing is skipped instead of starting beside possibly-live
-        # timed-out work.
-        with mock.patch.object(
-            triggers, "_execute_action_with_deadline",
-            side_effect=triggers.TriggerTerminationUnacknowledged(
-                "injected live process tree",
+        # A Windows deadline uses the same barrier: current Job membership is
+        # durable before Job termination receives the still-live wrapper.
+        persisted = []
+        jobs = []
+
+        def wait_forever(*_args, **_kwargs):
+            threading.Event().wait(60)
+
+        def create_deadline_job(root_pid):
+            job = FakeWindowsJob(root_pid)
+            jobs.append(job)
+            return job
+
+        with (
+            mock.patch.object(
+                triggers.multiprocessing, "get_context",
+                return_value=held_context,
+            ),
+            mock.patch.object(
+                triggers, "_uses_posix_process_groups", return_value=False,
+            ),
+            mock.patch.object(
+                triggers, "_active_run_sleep_protection",
+                side_effect=NoopScope,
+            ),
+            mock.patch.object(
+                triggers, "_execute_action", side_effect=wait_forever,
+            ),
+            mock.patch.object(
+                triggers, "_create_windows_job_boundary",
+                side_effect=create_deadline_job,
             ),
         ):
-            stuck = service.run_manual("nightly", request_id="unacknowledged")
-        self.assertEqual(triggers._RUNNING["nightly"], stuck["event_id"])
-        blocked = service.run_manual("nightly", request_id="blocked-by-stuck")
-        blocked_record = next(
-            row for row in service.firings("nightly")
-            if row["event_id"] == blocked["event_id"]
-        )
-        self.assertEqual(blocked_record["receipt"]["outcome"], "skipped")
+            with self.assertRaisesRegex(TimeoutError, "deadline"):
+                triggers._execute_action_with_deadline(
+                    {"kind": "framework"}, {}, prepared=None,
+                    on_provider_contact=None,
+                    on_process_started=lambda identity: persisted.append(
+                        dict(identity)
+                    ),
+                    timeout_sec=0.1,
+                )
+        self.assertEqual(persisted[-1]["active_processes"], 0)
+        self.assertTrue(persisted[-1]["owner_handle_zero_observed"])
+        self.assertTrue(jobs[0].terminated)
+        self.assertTrue(jobs[0].closed)
+
+        # An incomplete identity is releasable only when it is definitely
+        # pre-action and its wrapper is absent. Once the start barrier may
+        # have opened, root absence cannot account for Windows descendants.
+        pre_action_event = "evt-windows-pre-action"
+        post_action_event = "evt-windows-post-action"
+        for event_id, trigger_id, action_may_have_started in (
+            (pre_action_event, "windows-pre-action", False),
+            (post_action_event, "windows-post-action", True),
+        ):
+            self.service.ledger.claim(
+                event_id=event_id,
+                event_type=triggers.FIRING_EVENT_TYPE,
+                subject={"trigger_id": trigger_id, "cause": "manual"},
+            )
+            self.service.ledger.transition(
+                event_id, {"claimed"}, "claimed",
+                process_identity={
+                    "kind": "windows_process_tree",
+                    "root_pid": 5252,
+                    "process_ids": [5252],
+                    "complete": False,
+                    "action_may_have_started": action_may_have_started,
+                },
+                termination_unacknowledged_at=triggers._now(),
+                termination_error="injected incomplete Windows identity",
+            )
+        with (
+            mock.patch.object(
+                triggers, "_uses_posix_process_groups", return_value=False,
+            ),
+            mock.patch.object(
+                triggers, "_windows_live_processes", return_value=set(),
+            ),
+        ):
+            pre_action_recovery = service.reconcile_unresolved_firings(
+                "windows-pre-action",
+            )
+            post_action_recovery = service.reconcile_unresolved_firings(
+                "windows-post-action",
+            )
+        self.assertEqual(pre_action_recovery["released"], [pre_action_event])
         self.assertEqual(
-            blocked_record["receipt"]["blocking_event_id"], stuck["event_id"],
+            service.ledger.get(pre_action_event)["status"], "failed",
         )
+        self.assertNotIn(
+            "termination_confirmed_at", service.ledger.get(pre_action_event),
+        )
+        self.assertEqual(post_action_recovery["retained"], [post_action_event])
+        self.assertEqual(
+            service.ledger.get(post_action_event)["status"], "claimed",
+        )
+        self.assertEqual(
+            triggers._RUNNING["windows-post-action"], post_action_event,
+        )
+        triggers._RUNNING.pop("windows-post-action", None)
+        service.ledger.transition(
+            post_action_event, {"claimed"}, "failed",
+            error="test cleanup", completed_at=triggers._now(),
+        )
+
+        # Restart recovery cannot authenticate a Job merely by reopening its
+        # name. Even an empty object may be a same-name recreation, so the
+        # durable claim stays until the original owner-handle zero observation
+        # is recorded or the authenticated global sole-owner name is absent.
+        job_event = "evt-windows-job-restart"
+        restart_identity = copy.deepcopy(authenticated_identity)
+        self.service.ledger.claim(
+            event_id=job_event,
+            event_type=triggers.FIRING_EVENT_TYPE,
+            subject={"trigger_id": "windows-job-restart", "cause": "manual"},
+        )
+        self.service.ledger.transition(
+            job_event, {"claimed"}, "claimed",
+            process_identity=restart_identity,
+            termination_unacknowledged_at=triggers._now(),
+            termination_error="injected parent crash after Job admission",
+        )
+        wrong_empty_kernel = SimpleNamespace(
+            OpenJobObjectW=mock.Mock(return_value=9003),
+            CloseHandle=mock.Mock(return_value=True),
+        )
+        wrong_empty_api = SimpleNamespace(kernel32=wrong_empty_kernel)
+        with (
+            mock.patch.object(
+                triggers, "_uses_posix_process_groups", return_value=False,
+            ),
+            mock.patch.object(
+                windows_jobs, "_load_api", return_value=wrong_empty_api,
+            ),
+            mock.patch.object(windows_jobs, "_last_error", return_value=0),
+            mock.patch.object(
+                windows_jobs, "_job_active_processes", return_value=0,
+            ),
+        ):
+            retained_job = service.reconcile_unresolved_firings(
+                "windows-job-restart",
+            )
+        self.assertEqual(retained_job["retained"], [job_event])
+        self.assertEqual(service.ledger.get(job_event)["status"], "claimed")
+        self.assertEqual(
+            triggers._RUNNING["windows-job-restart"], job_event,
+        )
+
+        terminal_job = FakeWindowsJob(6262)
+        terminal_job.terminated = True
+        owner_zero_identity = terminal_job.identity(
+            action_may_have_started=True,
+        )
+        self.assertTrue(owner_zero_identity["owner_handle_zero_observed"])
+        service.ledger.transition(
+            job_event, {"claimed"}, "claimed",
+            process_identity=owner_zero_identity,
+        )
+        with (
+            mock.patch.object(
+                triggers, "_uses_posix_process_groups", return_value=False,
+            ),
+            mock.patch.object(
+                windows_jobs, "_load_api",
+                side_effect=AssertionError(
+                    "persisted owner zero must not reopen a named Job"
+                ),
+            ) as no_owner_zero_open,
+        ):
+            released_job = service.reconcile_unresolved_firings(
+                "windows-job-restart",
+            )
+        no_owner_zero_open.assert_not_called()
+        self.assertEqual(released_job["released"], [job_event])
+        self.assertEqual(service.ledger.get(job_event)["status"], "failed")
+        self.assertNotIn("windows-job-restart", triggers._RUNNING)
+
+        absent_event = "evt-windows-job-authenticated-absence"
+        absent_identity = FakeWindowsJob(6363).identity(
+            action_may_have_started=True,
+        )
+        service.ledger.claim(
+            event_id=absent_event,
+            event_type=triggers.FIRING_EVENT_TYPE,
+            subject={
+                "trigger_id": "windows-job-authenticated-absence",
+                "cause": "manual",
+            },
+        )
+        service.ledger.transition(
+            absent_event, {"claimed"}, "claimed",
+            process_identity=absent_identity,
+            termination_unacknowledged_at=triggers._now(),
+            termination_error="injected parent crash with closed sole owner",
+        )
+        recovery_absent_kernel = SimpleNamespace(
+            OpenJobObjectW=mock.Mock(return_value=0),
+            CloseHandle=mock.Mock(return_value=True),
+        )
+        recovery_absent_api = SimpleNamespace(
+            kernel32=recovery_absent_kernel,
+        )
+        with (
+            mock.patch.object(
+                triggers, "_uses_posix_process_groups", return_value=False,
+            ),
+            mock.patch.object(
+                windows_jobs, "_load_api", return_value=recovery_absent_api,
+            ),
+            mock.patch.object(
+                windows_jobs, "_last_error",
+                return_value=windows_jobs.ERROR_NOT_FOUND,
+            ),
+        ):
+            absent_recovery = service.reconcile_unresolved_firings(
+                "windows-job-authenticated-absence",
+            )
+        self.assertEqual(absent_recovery["released"], [absent_event])
+        self.assertEqual(service.ledger.get(absent_event)["status"], "failed")
+
+        ambiguous_event = "evt-windows-job-false-absence"
+        service.ledger.claim(
+            event_id=ambiguous_event,
+            event_type=triggers.FIRING_EVENT_TYPE,
+            subject={
+                "trigger_id": "windows-job-false-absence", "cause": "manual",
+            },
+        )
+        service.ledger.transition(
+            ambiguous_event, {"claimed"}, "claimed",
+            process_identity=copy.deepcopy(absent_identity),
+            termination_unacknowledged_at=triggers._now(),
+            termination_error="injected ambiguous cross-session lookup",
+        )
+        false_absence_kernel = SimpleNamespace(
+            OpenJobObjectW=mock.Mock(return_value=0),
+            CloseHandle=mock.Mock(return_value=True),
+        )
+        false_absence_api = SimpleNamespace(kernel32=false_absence_kernel)
+        with (
+            mock.patch.object(
+                triggers, "_uses_posix_process_groups", return_value=False,
+            ),
+            mock.patch.object(
+                windows_jobs, "_load_api", return_value=false_absence_api,
+            ),
+            mock.patch.object(windows_jobs, "_last_error", return_value=5),
+        ):
+            false_absence_recovery = service.reconcile_unresolved_firings(
+                "windows-job-false-absence",
+            )
+        self.assertEqual(
+            false_absence_recovery["retained"], [ambiguous_event],
+        )
+        self.assertEqual(
+            service.ledger.get(ambiguous_event)["status"], "claimed",
+        )
+        self.assertEqual(
+            triggers._RUNNING["windows-job-false-absence"], ambiguous_event,
+        )
+        triggers._RUNNING.pop("windows-job-false-absence", None)
+        service.ledger.transition(
+            ambiguous_event, {"claimed"}, "failed",
+            error="test cleanup", completed_at=triggers._now(),
+        )
+
+        # If termination cannot be proved, neither evidence stream may call
+        # possibly-live work finished. The durable process identity must hold
+        # the same overlap claim across restart until death is proved.
+        unresolved_identity = {
+            "kind": "posix_process_group",
+            "root_pid": 987654321,
+            "process_group_id": 987654321,
+            "complete": True,
+        }
+        with self.subTest("unacknowledged termination stays nonterminal"):
+            with mock.patch.object(
+                triggers, "_execute_action_with_deadline",
+                side_effect=triggers.TriggerTerminationUnacknowledged(
+                    "injected live process tree",
+                    process_identity=unresolved_identity,
+                ),
+            ):
+                stuck = service.run_manual(
+                    "nightly", request_id="unacknowledged",
+                )
+            self.assertEqual(triggers._RUNNING["nightly"], stuck["event_id"])
+            stuck_record = service.ledger.get(stuck["event_id"])
+            self.assertEqual(stuck_record["status"], "claimed")
+            self.assertEqual(
+                stuck_record["process_identity"], unresolved_identity,
+            )
+            self.assertNotIn("completed_at", stuck_record)
+            self.assertNotIn("receipt", stuck_record)
+            projected = next(
+                row for row in service.firings("nightly")
+                if row["event_id"] == stuck["event_id"]
+            )
+            self.assertEqual(projected["outcome"], "termination_unacknowledged")
+            self.assertIsNone(projected["finished_at"])
+            audit = system_protection.verify_audit()
+            terminal_execution_ids = {
+                row.get("execution_id") for row in audit
+                if row.get("event_type") in {
+                    "protected_action_completed", "protected_action_failed",
+                }
+            }
+            pending_starts = [
+                row for row in audit
+                if row.get("event_type") == "protected_action_started"
+                and row.get("execution_id") not in terminal_execution_ids
+            ]
+            self.assertEqual(len(pending_starts), 1)
+            pending_execution_id = pending_starts[0]["execution_id"]
+            self.assertEqual(
+                stuck_record["protection_execution_id"],
+                pending_execution_id,
+            )
+            self.assertNotIn("protection_execution", stuck_record)
+            self.assertNotIn("protection_post_state", stuck_record)
+
+        with self.subTest("restart and admission retain a live claim"):
+            triggers._RUNNING.clear()
+            restarted = triggers.TriggerService(
+                queue=self.queue, ledger=service.ledger, executor=_inline,
+                firing_timeout_sec=1.0, terminate_actions=True,
+            )
+            with (
+                mock.patch.object(triggers, "_process_exists", return_value=True),
+                mock.patch.object(
+                    triggers, "_process_group_exists", return_value=True,
+                ),
+            ):
+                recovery = restarted.reconcile_unresolved_firings()
+                self.assertEqual(recovery["retained"], [stuck["event_id"]])
+                self.assertNotIn(
+                    stuck["event_id"],
+                    hygiene.restore_incomplete_events(restarted.ledger),
+                )
+                blocked = restarted.run_manual(
+                    "nightly", request_id="blocked-after-restart",
+                )
+            self.assertEqual(triggers._RUNNING["nightly"], stuck["event_id"])
+            self.assertEqual(
+                restarted.ledger.get(stuck["event_id"])["status"], "claimed",
+            )
+            blocked_record = next(
+                row for row in restarted.firings("nightly")
+                if row["event_id"] == blocked["event_id"]
+            )
+            self.assertEqual(blocked_record["receipt"]["outcome"], "skipped")
+            self.assertEqual(
+                blocked_record["receipt"]["blocking_event_id"],
+                stuck["event_id"],
+            )
+            self.assertFalse(any(
+                row.get("execution_id") == pending_execution_id
+                and row.get("event_type") in {
+                    "protected_action_completed", "protected_action_failed",
+                }
+                for row in system_protection.verify_audit()
+            ))
+
+        with self.subTest("positive death confirmation releases the claim"):
+            with (
+                mock.patch.object(triggers, "_process_exists", return_value=False),
+                mock.patch.object(
+                    triggers, "_process_group_exists", return_value=False,
+                ),
+            ):
+                recovery = restarted.reconcile_unresolved_firings()
+            self.assertEqual(recovery["released"], [stuck["event_id"]])
+            resolved = restarted.ledger.get(stuck["event_id"])
+            self.assertEqual(resolved["status"], "failed")
+            self.assertIn("completed_at", resolved)
+            self.assertNotIn("termination_confirmed_at", resolved)
+            terminals = [
+                row for row in system_protection.verify_audit()
+                if row.get("execution_id") == pending_execution_id
+                and row.get("event_type") in {
+                    "protected_action_completed", "protected_action_failed",
+                }
+            ]
+            self.assertEqual(len(terminals), 1)
+            self.assertEqual(terminals[0]["event_type"], "protected_action_failed")
+            self.assertEqual(
+                terminals[0]["post_state"],
+                pending_starts[0]["request"]["pre_state"],
+            )
+            self.assertNotIn("nightly", triggers._RUNNING)
+
+        with self.subTest("next firing starts only after positive death"):
+            with mock.patch.dict(os.environ, {"ORA_HOME": str(self.root)}):
+                restarted.run_manual(
+                    "nightly", request_id="after-positive-death",
+                )
+            latest = restarted.firings("nightly")[0]
+            self.assertEqual(latest["status"], "completed")
+            self.assertNotEqual(latest["receipt"]["outcome"], "skipped")
 
     @unittest.skipUnless(os.name == "posix", "process assertion is POSIX-only")
     def test_parent_callback_error_reaps_work_before_next_firing(self):

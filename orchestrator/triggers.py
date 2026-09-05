@@ -122,17 +122,27 @@ class TriggerStaleEvent(TriggerConflict):
 class TriggerTerminationUnacknowledged(TriggerError):
     """The action tree could not be proved stopped after termination."""
 
+    def __init__(self, message: str, *, process_identity: Mapping[str, Any] | None = None):
+        super().__init__(message)
+        self.process_identity = (
+            copy.deepcopy(dict(process_identity))
+            if isinstance(process_identity, Mapping)
+            else None
+        )
 
-def _termination_is_unacknowledged(exc: BaseException) -> bool:
-    """Recognize a termination failure even when receipt code wrapped it."""
+
+def _termination_exception(
+    exc: BaseException,
+) -> TriggerTerminationUnacknowledged | None:
+    """Find a termination failure even when receipt code wrapped it."""
     seen: set[int] = set()
     current: BaseException | None = exc
     while current is not None and id(current) not in seen:
         if isinstance(current, TriggerTerminationUnacknowledged):
-            return True
+            return current
         seen.add(id(current))
         current = current.__cause__ or current.__context__
-    return False
+    return None
 
 
 # ── small helpers ────────────────────────────────────────────────────────
@@ -954,6 +964,10 @@ class TriggerService:
             # on its worker thread reads "running", not "claimed", because the
             # ledger's vocabulary is not the user's.
             status = record.get("status")
+            termination_pending = bool(
+                status == "claimed"
+                and record.get("termination_unacknowledged_at")
+            )
             rows.append({
                 "event_id": record.get("event_id"),
                 "trigger_id": subject.get("trigger_id"),
@@ -961,11 +975,18 @@ class TriggerService:
                 "source": subject.get("source"),
                 "status": status,
                 "outcome": receipt.get("outcome") or (
-                    "running" if status == "claimed" else status),
+                    "termination_unacknowledged" if termination_pending
+                    else "running" if status == "claimed" else status),
                 "claimed_at": record.get("claimed_at"),
-                "finished_at": record.get("completed_at") or record.get("updated_at"),
+                "finished_at": (
+                    None if status == "claimed"
+                    else record.get("completed_at") or record.get("updated_at")
+                ),
                 "receipt": receipt or None,
-                "error": record.get("error"),
+                "error": (
+                    record.get("termination_error") if termination_pending
+                    else record.get("error")
+                ),
             })
         rows.sort(key=lambda row: (row.get("claimed_at") or ""), reverse=True)
         return rows[:limit] if limit else rows
@@ -1260,6 +1281,209 @@ class TriggerService:
 
     # ---- firing ----
 
+    def _close_recovered_protection(self, record: Mapping[str, Any]) -> None:
+        """Close one existing protected start only after its process is dead."""
+        execution_id = record.get("protection_execution_id")
+        if execution_id is None:
+            return
+        if not isinstance(execution_id, str) or not execution_id:
+            raise TriggerError(
+                "unresolved Trigger protection identity is invalid"
+            )
+        try:
+            try:
+                import system_protection as _sp
+            except ImportError:  # pragma: no cover - package context
+                from orchestrator import system_protection as _sp
+            audit = _sp.verify_audit()
+            starts = [
+                row for row in audit
+                if row.get("execution_id") == execution_id
+                and row.get("event_type") == "protected_action_started"
+            ]
+            terminals = [
+                row for row in audit
+                if row.get("execution_id") == execution_id
+                and row.get("event_type") in {
+                    "protected_action_completed", "protected_action_failed",
+                }
+            ]
+            if len(starts) != 1:
+                raise TriggerError(
+                    "unresolved Trigger lacks one authenticated protected start"
+                )
+            if len(terminals) > 1:
+                raise TriggerError(
+                    "unresolved Trigger has duplicate protected terminal receipts"
+                )
+            start = starts[0]
+            request = start.get("request")
+            if not isinstance(request, Mapping):
+                raise TriggerError(
+                    "unresolved Trigger protected start request is invalid"
+                )
+            raw_selectors = request.get("selectors")
+            if not isinstance(raw_selectors, list):
+                raise TriggerError(
+                    "unresolved Trigger protected selectors are invalid"
+                )
+            execution = _sp.ProtectionExecution(
+                execution_id=execution_id,
+                request_digest=str(start.get("request_digest") or ""),
+                start_digest=str(start.get("record_digest") or ""),
+                action=str(request.get("action") or ""),
+                selectors=tuple(str(value) for value in raw_selectors),
+                approval_id=str(start.get("approval_id") or ""),
+                approval_action=str(start.get("approval_action") or ""),
+                approval_args_hash=str(start.get("approval_args_hash") or ""),
+            )
+            if terminals:
+                terminal = terminals[0]
+                if (
+                    terminal.get("start_digest") != execution.start_digest
+                    or terminal.get("request_digest") != execution.request_digest
+                ):
+                    raise TriggerError(
+                        "unresolved Trigger protected terminal identity changed"
+                    )
+                return
+            raw_pre_state = request.get("pre_state")
+            if not isinstance(raw_pre_state, list) or not all(
+                isinstance(value, Mapping)
+                and value.get("kind") == "logical"
+                for value in raw_pre_state
+            ):
+                raise TriggerError(
+                    "unresolved Trigger protected logical state is invalid"
+                )
+            _sp.complete_execution(
+                execution,
+                ok=False,
+                result={
+                    "error": str(
+                        record.get("termination_error")
+                        or "Trigger action ended without an acknowledged termination"
+                    ),
+                    "process_tree_death_confirmed": True,
+                },
+                post_state=[copy.deepcopy(dict(value)) for value in raw_pre_state],
+            )
+        except TriggerError:
+            raise
+        except Exception as exc:
+            raise TriggerError(
+                f"unresolved Trigger protection receipt could not close: {exc}"
+            ) from exc
+
+    def reconcile_unresolved_firings(
+        self, trigger_id: str | None = None,
+    ) -> dict[str, list[str]]:
+        """Honor durable process claims until their trees are proved dead."""
+        selected = _safe_id(trigger_id, "trigger_id") if trigger_id else None
+        summary: dict[str, list[str]] = {
+            "retained": [], "released": [], "errors": [],
+        }
+        rows = self.ledger.list_events(event_type=FIRING_EVENT_TYPE)
+        rows.sort(key=lambda row: str(row.get("claimed_at") or ""))
+        for row in rows:
+            subject = row.get("subject") or {}
+            row_trigger_id = str(subject.get("trigger_id") or "")
+            event_id = str(row.get("event_id") or "")
+            process_identity = row.get("process_identity")
+            if (
+                row.get("status") != "claimed"
+                or not event_id
+                or not row_trigger_id
+                or (selected is not None and row_trigger_id != selected)
+                or not isinstance(process_identity, Mapping)
+            ):
+                continue
+            with _PROCESS_LOCK:
+                live_guard = _RUNNING.get(row_trigger_id)
+            if (
+                live_guard == event_id
+                and not row.get("termination_unacknowledged_at")
+            ):
+                summary["retained"].append(event_id)
+                continue
+            if not _process_identity_death_confirmed(process_identity):
+                if (
+                    live_guard != event_id
+                    and not row.get("termination_unacknowledged_at")
+                ):
+                    # A fresh process has an in-memory guard. Reaching this
+                    # branch without one means startup inherited the durable
+                    # identity but not the worker connection, so later
+                    # admission must re-check death rather than treating it as
+                    # a healthy worker forever.
+                    try:
+                        self.ledger.transition(
+                            event_id, {"claimed"}, "claimed",
+                            termination_unacknowledged_at=_now(),
+                            termination_error=(
+                                "restart recovery: Trigger action process tree "
+                                "is still live or its death cannot be proved"
+                            ),
+                        )
+                    except Exception as exc:
+                        summary["errors"].append(f"{event_id}: {exc}")
+                with _PROCESS_LOCK:
+                    if _RUNNING.get(row_trigger_id) in {None, event_id}:
+                        _RUNNING[row_trigger_id] = event_id
+                summary["retained"].append(event_id)
+                continue
+            try:
+                current = self.ledger.get(event_id)
+                if current is None or current.get("status") != "claimed":
+                    with _PROCESS_LOCK:
+                        if _RUNNING.get(row_trigger_id) == event_id:
+                            _RUNNING.pop(row_trigger_id, None)
+                    continue
+                self._close_recovered_protection(current)
+                confirmed_at = _now()
+                prior_error = str(
+                    current.get("termination_error")
+                    or "restart recovery: Trigger action process ended without "
+                       "an acknowledged termination"
+                )
+                self.ledger.transition(
+                    event_id, {"claimed"}, "failed",
+                    error=(f"{prior_error}; process-tree death was positively "
+                           "confirmed"),
+                    completed_at=confirmed_at,
+                )
+            except Exception as exc:
+                with _PROCESS_LOCK:
+                    if _RUNNING.get(row_trigger_id) in {None, event_id}:
+                        _RUNNING[row_trigger_id] = event_id
+                summary["retained"].append(event_id)
+                summary["errors"].append(f"{event_id}: {exc}")
+                continue
+            with _PROCESS_LOCK:
+                if _RUNNING.get(row_trigger_id) == event_id:
+                    _RUNNING.pop(row_trigger_id, None)
+            summary["released"].append(event_id)
+        return summary
+
+    def _reconcile_before_admission(self, trigger_id: str) -> None:
+        """Refresh only a durable unresolved guard, never a healthy worker."""
+        with _PROCESS_LOCK:
+            guarded_event_id = _RUNNING.get(trigger_id)
+        if guarded_event_id:
+            guarded = self.ledger.get(guarded_event_id)
+            if guarded is None:
+                # An opaque process-local guard may belong to a worker whose
+                # durable claim has not been observed yet. Retain it.
+                return
+            if guarded.get("status") == "claimed":
+                if not guarded.get("termination_unacknowledged_at"):
+                    return
+            else:
+                with _PROCESS_LOCK:
+                    if _RUNNING.get(trigger_id) == guarded_event_id:
+                        _RUNNING.pop(trigger_id, None)
+        self.reconcile_unresolved_firings(trigger_id)
+
     def run_manual(self, trigger_id: str, *, request_id: str | None = None) -> dict:
         """Fire one Trigger on an explicit human request.
 
@@ -1330,6 +1554,14 @@ class TriggerService:
             if record.get("status") != "active":
                 return {"outcome": "stale",
                         "detail": f"Trigger is {record.get('status')}"}
+            if not expected_admission_identity:
+                return {
+                    "outcome": "stale",
+                    "detail": (
+                        "calendar deadline predates authenticated admission "
+                        "support; its action was not run"
+                    ),
+                }
             schedule = spec["condition"]["schedule"]
             late_by = time.time() - instant_timestamp(scheduled_for)
             overdue = late_by > int(schedule["grace_seconds"])
@@ -1376,6 +1608,8 @@ class TriggerService:
               expected_admission_identity: str | None = None) -> dict:
         """Admit and claim one immutable firing, then run it off-lane."""
         ledger = self.ledger
+        trigger_id = record["spec"]["trigger_id"]
+        self._reconcile_before_admission(trigger_id)
         if expected_spec_digest is None:
             expected_spec_digest = _digest(record["spec"])
         if expected_admission_identity is None:
@@ -1385,7 +1619,6 @@ class TriggerService:
             # changes.  The caller's earlier view may have been paused or
             # retired while preparing this firing, and revocation must win
             # before either a standing receipt or a firing claim is minted.
-            trigger_id = record["spec"]["trigger_id"]
             current = _load()["triggers"].get(trigger_id)
             if current is None:
                 raise TriggerConflict(f"no Trigger with id {trigger_id!r}")
@@ -1543,6 +1776,9 @@ class TriggerService:
                 protection_execution=protection_execution,
             ))
         except BaseException as exc:
+            # Action and termination failures are consumed inside _execute.
+            # Reaching this branch means the executor itself failed to launch
+            # the worker, so retain the ordinary launch-failure behavior.
             with contextlib.suppress(Exception):
                 ledger.transition(
                     event_id, {"claimed"}, "failed",
@@ -1557,18 +1793,16 @@ class TriggerService:
                         post_state=_sp.project_binding_states(binding_snapshot),
                     )
                 except Exception as receipt_error:
-                    if not _termination_is_unacknowledged(exc):
-                        with _PROCESS_LOCK:
-                            if _RUNNING.get(trigger_id) == event_id:
-                                _RUNNING.pop(trigger_id, None)
+                    with _PROCESS_LOCK:
+                        if _RUNNING.get(trigger_id) == event_id:
+                            _RUNNING.pop(trigger_id, None)
                     raise _sp.ProtectionAuditError(
                         "Trigger worker launch failed and its failure receipt "
                         f"could not persist: {receipt_error}"
                     ) from exc
-            if not _termination_is_unacknowledged(exc):
-                with _PROCESS_LOCK:
-                    if _RUNNING.get(trigger_id) == event_id:
-                        _RUNNING.pop(trigger_id, None)
+            with _PROCESS_LOCK:
+                if _RUNNING.get(trigger_id) == event_id:
+                    _RUNNING.pop(trigger_id, None)
             raise
         return {"event_id": event_id, "status": "claimed"}
 
@@ -1596,12 +1830,25 @@ class TriggerService:
                 provider_contacted=True,
             )
 
+            def on_process_started(process_identity: Mapping[str, Any]) -> None:
+                fields: dict[str, Any] = {
+                    "process_identity": copy.deepcopy(dict(process_identity)),
+                }
+                if protection_execution is not None:
+                    fields["protection_execution_id"] = (
+                        protection_execution.execution_id
+                    )
+                ledger.transition(
+                    event_id, {"claimed"}, "claimed", **fields,
+                )
+
             def run_action():
                 if self._terminate_actions:
                     return _execute_action_with_deadline(
                         action, binding,
                         prepared=framework_prepared,
                         on_provider_contact=on_provider_contact,
+                        on_process_started=on_process_started,
                         timeout_sec=self._firing_timeout_sec,
                     )
                 return _execute_action(
@@ -1626,6 +1873,12 @@ class TriggerService:
                     )
                     protection_closed = True
                 except BaseException as action_error:
+                    if _termination_exception(action_error) is not None:
+                        # The protected start and firing claim both remain
+                        # nonterminal until the same process identity is later
+                        # proved dead. Calling complete_execution here would
+                        # falsely describe possibly-live work as finished.
+                        raise
                     if not protection_closed:
                         try:
                             _sp.complete_execution(
@@ -1657,13 +1910,49 @@ class TriggerService:
                 trigger_id, event_id, source_completion=completed,
             )
         except BaseException as exc:
-            release_running = not _termination_is_unacknowledged(exc)
-            # Record before anything else: a firing that dies without evidence
-            # is indistinguishable from one that never ran.
-            with contextlib.suppress(Exception):
-                ledger.transition(event_id, {"claimed"}, "failed",
-                                  error=f"{type(exc).__name__}: {exc}",
-                                  completed_at=_now())
+            termination = _termination_exception(exc)
+            release_running = termination is None
+            if termination is not None:
+                current = ledger.get(event_id) or {}
+                process_identity = (
+                    termination.process_identity
+                    or current.get("process_identity")
+                    or {
+                        "kind": "unproven_process_tree",
+                        "root_pid": None,
+                        "complete": False,
+                    }
+                )
+                fields: dict[str, Any] = {
+                    "process_identity": copy.deepcopy(dict(process_identity)),
+                    "termination_unacknowledged_at": _now(),
+                    "termination_error": f"{type(exc).__name__}: {exc}",
+                }
+                if protection_execution is not None:
+                    fields.setdefault(
+                        "protection_execution_id",
+                        protection_execution.execution_id,
+                    )
+                try:
+                    ledger.transition(
+                        event_id, {"claimed"}, "claimed", **fields,
+                    )
+                except Exception as evidence_error:
+                    # The process-local guard remains. A start-barrier record
+                    # normally already carries the process identity, so
+                    # startup can still retain it if this later annotation
+                    # alone failed.
+                    print(
+                        "[triggers] unresolved termination evidence could not "
+                        f"be updated for {event_id}: {evidence_error}"
+                    )
+            else:
+                # Record before anything else: an ordinary firing that dies
+                # without evidence is indistinguishable from one that never ran.
+                with contextlib.suppress(Exception):
+                    ledger.transition(event_id, {"claimed"}, "failed",
+                                      error=f"{type(exc).__name__}: {exc}",
+                                      completed_at=_now())
             # An ordinary failure is this firing's business and stops here. An
             # interpreter-level exit is the process's business and must not be
             # swallowed by a worker thread.
@@ -1895,9 +2184,10 @@ def _spawn_firing_thread(work: Callable[[], None]) -> None:
 
     The deadline lane also serves daily notes, log retention, and thousands of
     trace expirations; a framework run that takes minutes must not hold it.
-    The thread is a daemon and never outlives the process — a firing killed by
-    shutdown is failed by ``restore_incomplete_events`` at the next start, and
-    is terminal, because a failed event is not retried by a clock.
+    The thread is a daemon and never outlives the process. Restart recovery
+    fails an interrupted claim with no live process identity. A claim carrying
+    a spawned process identity instead remains nonterminal until Trigger
+    recovery positively confirms that its process tree is dead.
     """
     threading.Thread(target=work, daemon=True, name="ora-trigger-firing").start()
 
@@ -1956,7 +2246,137 @@ def _active_run_sleep_protection():
                 ) from exc
 
 
-def _action_process_main(connection, action: dict, binding: dict) -> None:
+def _action_process_identity() -> dict[str, Any]:
+    """Describe this action process with the platform's termination identity."""
+    if _uses_posix_process_groups():
+        return {
+            "kind": "posix_process_group",
+            "root_pid": os.getpid(),
+            "process_group_id": os.getpgrp(),
+            "complete": True,
+            "action_may_have_started": False,
+        }
+    return {
+        "kind": "windows_process_tree",
+        "root_pid": os.getpid(),
+        "process_ids": [os.getpid()],
+        # This pre-action wrapper identity is replaced by the parent with an
+        # assigned Job identity before the start barrier can open.
+        "complete": False,
+        "action_may_have_started": False,
+    }
+
+
+def _parent_process_identity(process) -> dict[str, Any]:
+    """Best available identity when the child start barrier did not finish."""
+    pid = process.pid
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return {
+            "kind": "unproven_process_tree",
+            "root_pid": None,
+            "complete": False,
+            "action_may_have_started": False,
+        }
+    if _uses_posix_process_groups():
+        return {
+            "kind": "posix_process_group",
+            "root_pid": pid,
+            "process_group_id": pid,
+            # Without the child acknowledgment, setsid may not have completed.
+            "complete": False,
+            "action_may_have_started": False,
+        }
+    return {
+        "kind": "windows_process_tree",
+        "root_pid": pid,
+        "process_ids": [pid],
+        "complete": False,
+        "action_may_have_started": False,
+    }
+
+
+def _process_exists(process_id: int) -> bool:
+    """Return whether one POSIX process identity still exists."""
+    try:
+        os.kill(process_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _process_identity_death_confirmed(identity: Mapping[str, Any]) -> bool:
+    """Prove an existing action-tree identity dead, or fail closed."""
+    kind = identity.get("kind")
+    try:
+        if kind == "windows_job_object":
+            if _uses_posix_process_groups():
+                return False
+            return _windows_job_identity_death_confirmed(identity)
+        if identity.get("complete") is not True:
+            # Before the durable start barrier, only the wrapper can exist. Its
+            # absence therefore proves no action work began. Once the barrier
+            # may have opened, an incomplete Windows tree cannot account for
+            # descendants and must remain blocked even if the root disappears.
+            if identity.get("action_may_have_started") is not False:
+                return False
+            root_pid = identity.get("root_pid")
+            if (
+                not isinstance(root_pid, int) or isinstance(root_pid, bool)
+                or root_pid <= 0
+            ):
+                return False
+            if kind == "posix_process_group":
+                return (
+                    _uses_posix_process_groups()
+                    and not _process_exists(root_pid)
+                )
+            if kind == "windows_process_tree":
+                return (
+                    not _uses_posix_process_groups()
+                    and not _windows_live_processes({root_pid})
+                )
+            return False
+        if kind == "posix_process_group":
+            if not _uses_posix_process_groups():
+                return False
+            root_pid = identity.get("root_pid")
+            group_id = identity.get("process_group_id")
+            if (
+                not isinstance(root_pid, int) or isinstance(root_pid, bool)
+                or root_pid <= 0
+                or not isinstance(group_id, int) or isinstance(group_id, bool)
+                or group_id <= 0
+            ):
+                return False
+            return (
+                not _process_exists(root_pid)
+                and not _process_group_exists(group_id)
+            )
+        if kind == "windows_process_tree":
+            if _uses_posix_process_groups():
+                return False
+            raw_process_ids = identity.get("process_ids")
+            if not isinstance(raw_process_ids, list) or not raw_process_ids:
+                return False
+            process_ids = set()
+            for value in raw_process_ids:
+                if (
+                    not isinstance(value, int) or isinstance(value, bool)
+                    or value <= 0
+                ):
+                    return False
+                process_ids.add(value)
+            return not _windows_live_processes(process_ids)
+    except Exception:
+        return False
+    return False
+
+
+def _action_process_main(
+    connection, action: dict, binding: dict, durable_start: bool = False,
+) -> None:
     """Process-side action entry point; reports provider contact and outcome."""
     if os.name == "posix":
         os.setsid()
@@ -1966,6 +2386,8 @@ def _action_process_main(connection, action: dict, binding: dict) -> None:
             # this supervisor exits; exec resets this caught handler to the
             # default disposition in the tool itself.
             signal.signal(signal.SIGTERM, lambda *_args: None)
+
+    hold_for_parent_release = False
 
     def provider_contact_boundary() -> None:
         # Provider I/O may begin only after the parent has durably recorded
@@ -1977,6 +2399,22 @@ def _action_process_main(connection, action: dict, binding: dict) -> None:
             raise RuntimeError("provider contact was not durably acknowledged")
 
     try:
+        if durable_start:
+            # No user action begins until the parent has durably attached the
+            # platform containment identity to the already-claimed firing.
+            connection.send(("process_started", _action_process_identity()))
+            kind, _payload = connection.recv()
+            if kind != "process_started_ack":
+                raise RuntimeError(
+                    "action process identity was not durably acknowledged"
+                )
+            # POSIX retains the independently addressable process group after
+            # this wrapper exits. On Windows the parent has now assigned this
+            # held wrapper to a non-breakaway Job. The duplex barrier remains
+            # through result/error handling so the parent can persist current
+            # Job membership, release the wrapper, and prove ActiveProcesses
+            # reached zero before terminal evidence.
+            hold_for_parent_release = not _uses_posix_process_groups()
         with _active_run_sleep_protection():
             receipt = _execute_action(
                 action, binding, prepared=None,
@@ -1987,6 +2425,18 @@ def _action_process_main(connection, action: dict, binding: dict) -> None:
         with contextlib.suppress(Exception):
             connection.send(("error", f"{type(exc).__name__}: {exc}"))
     finally:
+        if hold_for_parent_release:
+            # Result/error serialization can itself fail.  The wrapper still
+            # waits on the same duplex boundary so parent cleanup can terminate
+            # the kernel-owned Windows Job instead of inferring descendant
+            # death from the wrapper's lifetime.
+            while True:
+                try:
+                    kind, _payload = connection.recv()
+                except (EOFError, OSError):
+                    break
+                if kind == "process_release":
+                    break
         connection.close()
 
 
@@ -2005,39 +2455,24 @@ def _uses_posix_process_groups() -> bool:
     return os.name == "posix"
 
 
-def _windows_process_tree(root_pid: int) -> set[int]:
-    """Capture the wrapper and every current descendant on Windows."""
-    result = subprocess.run(
-        [
-            "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-            "Get-CimInstance Win32_Process | ForEach-Object { "
-            "Write-Output ($_.ProcessId.ToString() + ',' + "
-            "$_.ParentProcessId.ToString()) }",
-        ],
-        capture_output=True, text=True, check=False,
-        timeout=TERMINATION_GRACE_SEC,
-    )
-    if result.returncode != 0:
-        raise TriggerTerminationUnacknowledged(
-            "Windows process tree could not be captured before termination"
-        )
-    children: dict[int, set[int]] = {}
+def _create_windows_job_boundary(root_pid: int):
+    """Use the repository's existing native Windows Job primitive lazily."""
     try:
-        for line in result.stdout.splitlines():
-            child, parent = (int(value) for value in line.strip().split(",", 1))
-            children.setdefault(parent, set()).add(child)
-    except (TypeError, ValueError) as exc:
-        raise TriggerTerminationUnacknowledged(
-            "Windows process tree returned an invalid identity list"
-        ) from exc
-    tree = {root_pid}
-    pending = [root_pid]
-    while pending:
-        for child in children.get(pending.pop(), set()):
-            if child not in tree:
-                tree.add(child)
-                pending.append(child)
-    return tree
+        import windows_appcontainer as _wac
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator import windows_appcontainer as _wac
+    return _wac._create_trigger_job(root_pid)
+
+
+def _windows_job_identity_death_confirmed(
+    identity: Mapping[str, Any],
+) -> bool:
+    """Ask the persisted named Job whether any contained process is active."""
+    try:
+        import windows_appcontainer as _wac
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator import windows_appcontainer as _wac
+    return _wac._trigger_job_death_confirmed(dict(identity))
 
 
 def _windows_live_processes(process_ids: set[int]) -> set[int]:
@@ -2069,12 +2504,78 @@ def _windows_live_processes(process_ids: set[int]) -> set[int]:
         ) from exc
 
 
-def _terminate_action_process(process) -> None:
+def _release_completed_windows_process(
+    process, connection, job_boundary, *,
+    on_process_identity: Callable[[Mapping[str, Any]], None] | None = None,
+) -> dict[str, Any]:
+    """Release the held wrapper, terminate its Job, and prove membership zero."""
+    try:
+        process_identity = job_boundary.identity(action_may_have_started=True)
+    except BaseException as exc:
+        raise TriggerTerminationUnacknowledged(
+            "Windows Job membership could not be captured before release",
+        ) from exc
+    if on_process_identity is not None:
+        try:
+            on_process_identity(process_identity)
+        except BaseException as exc:
+            raise TriggerTerminationUnacknowledged(
+                "Windows Job membership could not be durably recorded",
+                process_identity=process_identity,
+            ) from exc
+    try:
+        connection.send(("process_release", None))
+    except BaseException as exc:
+        raise TriggerTerminationUnacknowledged(
+            "Windows action wrapper release could not be acknowledged",
+            process_identity=process_identity,
+        ) from exc
+    persistence_error: BaseException | None = None
+    try:
+        process.join(TERMINATION_GRACE_SEC)
+        job_boundary.terminate_and_wait(TERMINATION_GRACE_SEC)
+        process.join(TERMINATION_GRACE_SEC)
+        final_identity = job_boundary.identity(action_may_have_started=True)
+        if on_process_identity is not None:
+            try:
+                on_process_identity(final_identity)
+            except BaseException as exc:
+                persistence_error = exc
+    except BaseException as exc:
+        raise TriggerTerminationUnacknowledged(
+            "Windows Job death could not be verified after wrapper release",
+            process_identity=process_identity,
+        ) from exc
+    if (
+        process.is_alive()
+        or final_identity.get("active_processes") != 0
+        or final_identity.get("owner_handle_zero_observed") is not True
+    ):
+        raise TriggerTerminationUnacknowledged(
+            "Windows Job remained live after wrapper release",
+            process_identity=final_identity,
+        )
+    if persistence_error is not None:
+        raise TriggerTerminationUnacknowledged(
+            "Windows Job terminal membership could not be durably recorded",
+            process_identity=final_identity,
+        ) from persistence_error
+    return final_identity
+
+
+def _terminate_action_process(
+    process, *,
+    on_process_identity: Callable[[Mapping[str, Any]], None] | None = None,
+    windows_job=None,
+    action_may_have_started: bool = False,
+    known_process_identity: Mapping[str, Any] | None = None,
+) -> None:
     """Terminate the whole action process group and wait for acknowledgment."""
     if process.pid is None:
         if process.is_alive():
             raise TriggerTerminationUnacknowledged(
-                "Trigger action has no terminable process identity"
+                "Trigger action has no terminable process identity",
+                process_identity=_parent_process_identity(process),
             )
         return
     if _uses_posix_process_groups():
@@ -2084,29 +2585,75 @@ def _terminate_action_process(process) -> None:
         # to signal. Terminating the wrapper still closes that startup race.
         with contextlib.suppress(ProcessLookupError):
             process.terminate()
-    else:  # pragma: no cover - exercised at the Windows release checkpoint
-        tree = _windows_process_tree(process.pid)
+    elif windows_job is not None:  # pragma: no cover - simulated on POSIX
         try:
-            killed = subprocess.run(
-                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                capture_output=True, text=True, check=False,
-                timeout=TERMINATION_GRACE_SEC,
+            process_identity = windows_job.identity(
+                action_may_have_started=action_may_have_started,
             )
-        except (OSError, subprocess.TimeoutExpired) as exc:
+        except BaseException as exc:
+            process_identity = (
+                copy.deepcopy(dict(known_process_identity))
+                if isinstance(known_process_identity, Mapping)
+                else None
+            )
+            try:
+                windows_job.terminate_and_wait(TERMINATION_GRACE_SEC)
+                process.join(TERMINATION_GRACE_SEC)
+            except BaseException as termination_error:
+                raise TriggerTerminationUnacknowledged(
+                    "Windows Job membership and termination could not be acknowledged",
+                    process_identity=process_identity,
+                ) from termination_error
             raise TriggerTerminationUnacknowledged(
-                "Windows process-tree termination did not complete"
+                "Windows Job membership could not be captured before termination",
+                process_identity=process_identity,
             ) from exc
-        if killed.returncode != 0:
-            raise TriggerTerminationUnacknowledged(
-                "Windows process-tree termination returned a failure status"
+        # Persist the Job identity before terminating. Unlike a point-in-time
+        # parent graph, this identity still contains intermediate-parent exit
+        # and late-child creation because the kernel owns membership.
+        persistence_error: BaseException | None = None
+        if on_process_identity is not None:
+            try:
+                on_process_identity(process_identity)
+            except BaseException as exc:
+                persistence_error = exc
+        try:
+            windows_job.terminate_and_wait(TERMINATION_GRACE_SEC)
+            process.join(TERMINATION_GRACE_SEC)
+            final_identity = windows_job.identity(
+                action_may_have_started=action_may_have_started,
             )
-        process.join(TERMINATION_GRACE_SEC)
-        live = _windows_live_processes(tree)
-        if process.is_alive() or live:
+            if on_process_identity is not None:
+                try:
+                    on_process_identity(final_identity)
+                except BaseException as exc:
+                    persistence_error = persistence_error or exc
+        except BaseException as exc:
             raise TriggerTerminationUnacknowledged(
-                "Windows process tree did not acknowledge termination"
+                "Windows Job termination did not complete",
+                process_identity=process_identity,
+            ) from exc
+        if (
+            process.is_alive()
+            or final_identity.get("active_processes") != 0
+            or final_identity.get("owner_handle_zero_observed") is not True
+        ):
+            raise TriggerTerminationUnacknowledged(
+                "Windows Job did not acknowledge complete termination",
+                process_identity=final_identity,
             )
+        if persistence_error is not None and action_may_have_started:
+            raise TriggerTerminationUnacknowledged(
+                "Windows Job membership could not be durably recorded",
+                process_identity=final_identity,
+            ) from persistence_error
         return
+    else:
+        # No Job identity means the durable start barrier never opened. The
+        # held wrapper is the only possible process, so ordinary wrapper
+        # termination retains the established no-action recovery semantics.
+        with contextlib.suppress(ProcessLookupError):
+            process.terminate()
     process.join(TERMINATION_GRACE_SEC)
     group_exists = (
         _uses_posix_process_groups() and _process_group_exists(process.pid)
@@ -2131,26 +2678,47 @@ def _terminate_action_process(process) -> None:
         _uses_posix_process_groups() and _process_group_exists(process.pid)
     )
     if process.is_alive() or group_exists:
+        process_identity = _parent_process_identity(process)
+        if group_exists:
+            process_identity["complete"] = True
         raise TriggerTerminationUnacknowledged(
-            "Trigger action process group did not acknowledge termination"
+            "Trigger action process group did not acknowledge termination",
+            process_identity=process_identity,
         )
 
 
 def _execute_action_with_deadline(
     action: Mapping[str, Any], binding: Mapping[str, Any], *, prepared,
     on_provider_contact: Callable[[], None] | None, timeout_sec: float,
+    on_process_started: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> dict:
     """Run real action work across a boundary the deadline can terminate."""
     if timeout_sec <= 0:
         raise ValueError("Trigger firing timeout must be positive")
+    if not _uses_posix_process_groups() and on_process_started is None:
+        raise ValueError(
+            "Windows Job execution requires a durable process-identity callback"
+        )
     context = multiprocessing.get_context("spawn")
     parent_connection, child_connection = context.Pipe(duplex=True)
     process = context.Process(
         target=_action_process_main,
-        args=(child_connection, dict(action), dict(binding)),
+        args=(child_connection, dict(action), dict(binding), True),
         daemon=True,
         name="ora-trigger-action",
     )
+    process_identity: dict[str, Any] | None = None
+    windows_job = None
+    windows_job_termination_acknowledged = False
+    action_start_acknowledged = False
+
+    def persist_process_identity(identity: Mapping[str, Any]) -> None:
+        nonlocal process_identity
+        durable_identity = copy.deepcopy(dict(identity))
+        process_identity = durable_identity
+        if on_process_started is not None:
+            on_process_started(durable_identity)
+
     try:
         # Include start itself in the cleanup boundary: a platform launcher
         # can create the OS process and then fail while finishing the parent
@@ -2169,16 +2737,67 @@ def _execute_action_with_deadline(
                     kind, payload = parent_connection.recv()
                 except EOFError:
                     kind, payload = "closed", None
+                if kind == "process_started":
+                    if not isinstance(payload, Mapping):
+                        raise RuntimeError(
+                            "Trigger action returned an invalid process identity"
+                        )
+                    if _uses_posix_process_groups():
+                        process_identity = copy.deepcopy(dict(payload))
+                        admitted_identity = {
+                            **process_identity,
+                            # Persist this conservative marker before granting
+                            # permission to cross the action-start barrier.
+                            "action_may_have_started": True,
+                        }
+                    else:
+                        if windows_job is not None:
+                            raise RuntimeError(
+                                "Trigger action repeated its process-start barrier"
+                            )
+                        if process.pid is None:
+                            raise RuntimeError(
+                                "Trigger action has no Windows process id"
+                            )
+                        # The wrapper is blocked on this duplex message. Attach
+                        # it to the repository's non-breakaway Job before any
+                        # durable start acknowledgment can reach the child.
+                        windows_job = _create_windows_job_boundary(process.pid)
+                        admitted_identity = windows_job.identity(
+                            action_may_have_started=True,
+                        )
+                    persist_process_identity(admitted_identity)
+                    # Persistence is the last point at which the parent can
+                    # still prove that no action work began. Once the ack is
+                    # attempted it may have reached the child even if the
+                    # local send reports an error, so every unwind from here
+                    # must retain the conservative post-start Job identity.
+                    action_start_acknowledged = True
+                    parent_connection.send(("process_started_ack", None))
+                    continue
                 if kind == "provider_contact":
                     if on_provider_contact is not None:
                         on_provider_contact()
                     parent_connection.send(("provider_contact_ack", None))
                     continue
-                process.join(TERMINATION_GRACE_SEC)
-                if process.is_alive():
-                    raise RuntimeError(
-                        "Trigger action returned without terminating"
+                if (
+                    not _uses_posix_process_groups()
+                    and windows_job is not None
+                    and action_start_acknowledged
+                ):
+                    process_identity = _release_completed_windows_process(
+                        process,
+                        parent_connection,
+                        windows_job,
+                        on_process_identity=persist_process_identity,
                     )
+                    windows_job_termination_acknowledged = True
+                else:
+                    process.join(TERMINATION_GRACE_SEC)
+                    if process.is_alive():
+                        raise RuntimeError(
+                            "Trigger action returned without terminating"
+                        )
                 if kind == "result":
                     return payload
                 if kind == "error":
@@ -2192,26 +2811,85 @@ def _execute_action_with_deadline(
     finally:
         with contextlib.suppress(Exception):
             child_connection.close()
-        parent_connection.close()
-        # No parent-side failure may release TriggerService._RUNNING while
-        # action work still exists. This covers callback errors and all other
-        # exceptions outside the explicit timeout/result branches.
-        if process.pid is not None:
-            group_exists = (
-                _uses_posix_process_groups()
-                and _process_group_exists(process.pid)
-            )
-            if process.is_alive() or group_exists:
-                try:
-                    _terminate_action_process(process)
-                except TriggerTerminationUnacknowledged:
-                    raise
-                except Exception as exc:
-                    raise TriggerTerminationUnacknowledged(
-                        "Trigger action termination could not be acknowledged"
-                    ) from exc
-            else:
-                process.join()
+        try:
+            # Keep the duplex connection open through cleanup. A post-start
+            # Windows child waits on it while the parent snapshots and stops
+            # the kernel-owned Job on every unwind.
+            if process.pid is not None:
+                group_exists = (
+                    _uses_posix_process_groups()
+                    and _process_group_exists(process.pid)
+                )
+                needs_windows_job_cleanup = (
+                    windows_job is not None
+                    and not windows_job_termination_acknowledged
+                )
+                if process.is_alive() or group_exists or needs_windows_job_cleanup:
+                    try:
+                        _terminate_action_process(
+                            process,
+                            on_process_identity=persist_process_identity,
+                            windows_job=windows_job,
+                            action_may_have_started=action_start_acknowledged,
+                            known_process_identity=process_identity,
+                        )
+                    except TriggerTerminationUnacknowledged as exc:
+                        retained_identity = exc.process_identity
+                        if (
+                            isinstance(process_identity, Mapping)
+                            and (
+                                not isinstance(retained_identity, Mapping)
+                                or (
+                                    process_identity.get("kind")
+                                    == "windows_job_object"
+                                    and retained_identity.get("kind")
+                                    != "windows_job_object"
+                                )
+                                or (
+                                    retained_identity.get("kind")
+                                    != "windows_job_object"
+                                    and retained_identity.get("complete") is not True
+                                    and process_identity.get("complete") is True
+                                )
+                            )
+                        ):
+                            retained_identity = process_identity
+                        raise TriggerTerminationUnacknowledged(
+                            str(exc), process_identity=retained_identity,
+                        ) from exc
+                    except Exception as exc:
+                        raise TriggerTerminationUnacknowledged(
+                            "Trigger action termination could not be acknowledged",
+                            process_identity=(
+                                process_identity or _parent_process_identity(process)
+                            ),
+                        ) from exc
+                else:
+                    process.join()
+        finally:
+            try:
+                if windows_job is not None:
+                    windows_job.close()
+                    if process.pid is not None and process.is_alive():
+                        process.join(TERMINATION_GRACE_SEC)
+                    if process.pid is not None and process.is_alive():
+                        raise RuntimeError(
+                            "wrapper remained live after Job handle closure"
+                        )
+            except BaseException as exc:
+                raise TriggerTerminationUnacknowledged(
+                    "Windows Job ownership handle could not be closed",
+                    process_identity=process_identity,
+                ) from exc
+            finally:
+                parent_connection.close()
+                if process.pid is not None and not process.is_alive():
+                    close_process = getattr(process, "close", None)
+                    if callable(close_process):
+                        # ``join`` reaps the child; ``close`` releases the
+                        # multiprocessing process handle on Windows.
+                        with contextlib.suppress(Exception):
+                            close_process()
 
 
 def _execute_action(

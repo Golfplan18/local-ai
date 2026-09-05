@@ -1585,6 +1585,7 @@ def invoke_project_tool(
             ensure_ascii=False,
         ).encode("utf-8")
     env = _build_subprocess_env(project, extra_env=extra_env)
+    env["ORA_PROJECT_ROOT"] = binding["project_root"]
 
     # Execution Review Phase 1: boundary events. The tool body is an opaque
     # subprocess (enforcement boundary_only); the parent records invocation
@@ -1733,6 +1734,7 @@ def invoke_project_slash_command(
         cmd = cmd + [str(a) for a in args]
 
     env = _build_subprocess_env(project)
+    env["ORA_PROJECT_ROOT"] = binding["project_root"]
     try:
         result = subprocess.run(
             cmd, capture_output=True, timeout=timeout,

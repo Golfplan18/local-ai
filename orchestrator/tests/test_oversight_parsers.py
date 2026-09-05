@@ -570,6 +570,56 @@ class TestPEDWatcherDiff(unittest.TestCase):
         import oversight_relationships
         import oversight_router
         import runtime_hygiene
+        from orchestrator import oversight_router as qualified_router
+
+        # The installed router may have been imported through either supported
+        # module spelling (or may be the pre-reload function object). Match its
+        # normalized module plus exact qualified name, never its name alone.
+        self.assertIsNot(
+            qualified_router.process_event, oversight_router.process_event,
+        )
+        alternate_event = {
+            "event_type": "MilestoneClaimed",
+            "publication_id": "alternate-module-publication",
+        }
+        frozen_alternate_event = {
+            **alternate_event,
+            "milestone_text": "Frozen before publication",
+        }
+        clear_handlers()
+        register_handler(qualified_router.process_event)
+        with mock.patch.object(
+            oversight_router, "prepare_watcher_publication",
+            return_value={
+                "subject": {"publication_event": frozen_alternate_event},
+            },
+        ) as prepare:
+            self.assertTrue(
+                oversight_events._prepare_watcher_router(alternate_event),
+            )
+        prepare.assert_called_once()
+        self.assertEqual(alternate_event, frozen_alternate_event)
+
+        def unrelated_process_event(_event):
+            return None
+
+        unrelated_process_event.__qualname__ = (
+            oversight_router.process_event.__qualname__
+        )
+        unrelated_process_event.__module__ = "unrelated.oversight_router"
+        clear_handlers()
+        register_handler(unrelated_process_event)
+        with mock.patch.object(
+            oversight_router, "prepare_watcher_publication",
+        ) as prepare:
+            self.assertFalse(
+                oversight_events._prepare_watcher_router({
+                    "event_type": "MilestoneClaimed",
+                    "publication_id": "unrelated-module-publication",
+                })
+            )
+        prepare.assert_not_called()
+        clear_handlers()
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
