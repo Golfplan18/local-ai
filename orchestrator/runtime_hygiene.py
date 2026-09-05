@@ -17,7 +17,6 @@ import contextlib
 import hashlib
 import json
 import os
-import shutil
 import tempfile
 import threading
 import time
@@ -234,14 +233,73 @@ class EventLedger:
         except FileNotFoundError:
             return {"schema_version": SCHEMA_VERSION, "events": {}}
 
-    def _append(self, record: dict) -> None:
+    def _append(self, record: dict) -> int:
+        """Append one complete audit record and return its starting offset.
+
+        A caller that must coordinate this append with another durable file
+        can use the returned offset to compensate an unsuccessful second
+        write.  A failed or partial append is removed here before the error is
+        allowed to escape, so it can never masquerade as terminal evidence.
+        """
         self.audit_file.parent.mkdir(parents=True, exist_ok=True)
         rotate_if_oversized(self.audit_file)
         envelope = {"schema_version": SCHEMA_VERSION, "recorded_at": _now(), **record}
-        with open(self.audit_file, "a", encoding="utf-8") as handle:
-            handle.write(json.dumps(envelope, sort_keys=True) + "\n")
-            handle.flush()
-            os.fsync(handle.fileno())
+        line = (json.dumps(envelope, sort_keys=True) + "\n").encode("utf-8")
+        flags = os.O_RDWR | os.O_APPEND | os.O_CREAT
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(self.audit_file, flags, 0o600)
+        try:
+            # A prior partial append is not evidence. Trim only its incomplete
+            # tail before adding the next complete, fsynced record.
+            end = os.lseek(fd, 0, os.SEEK_END)
+            complete_end = end
+            if end:
+                cursor = end
+                complete_end = 0
+                while cursor:
+                    start = max(0, cursor - 8192)
+                    os.lseek(fd, start, os.SEEK_SET)
+                    block = os.read(fd, cursor - start)
+                    newline = block.rfind(b"\n")
+                    if newline >= 0:
+                        complete_end = start + newline + 1
+                        break
+                    cursor = start
+            if complete_end != end:
+                os.ftruncate(fd, complete_end)
+                os.fsync(fd)
+            try:
+                written = 0
+                while written < len(line):
+                    count = os.write(fd, line[written:])
+                    if count <= 0:
+                        raise OSError("event audit write made no progress")
+                    written += count
+                os.fsync(fd)
+            except BaseException:
+                # The descriptor is still held under the ledger lock. Remove
+                # any bytes from this attempt before exposing the failure to a
+                # MutationTransaction, whose context exit will restore the
+                # before-bytes.
+                os.ftruncate(fd, complete_end)
+                os.fsync(fd)
+                raise
+            return complete_end
+        finally:
+            os.close(fd)
+
+    def _truncate_audit(self, offset: int) -> None:
+        """Compensate a terminal append whose paired state write failed."""
+        flags = os.O_RDWR
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(self.audit_file, flags)
+        try:
+            os.ftruncate(fd, offset)
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 
     def claim(self, *, event_id: str, event_type: str, subject: dict) -> tuple[dict, bool]:
         """Persist the immutable event contract before any handler acts."""
@@ -288,7 +346,7 @@ class EventLedger:
             (record.get("completed_at") or record.get("updated_at")
              or record.get("claimed_at") or "", key)
             for key, record in events.items()
-            if record.get("status") in ("completed", "failed")
+            if record.get("status") in ("completed", "failed", "rolled_back")
             and not record.get("autonomous_judgment")
         ]
         if len(prunable) <= LEDGER_TERMINAL_RETENTION:
@@ -326,6 +384,92 @@ class EventLedger:
                 **fields,
             })
             return dict(updated)
+
+    def _finalize_terminal(
+        self,
+        event_id: str,
+        *,
+        expected_status: str,
+        terminal_status: str,
+        audit_kind: str,
+        timestamp_field: str,
+        idempotent: bool = False,
+        fields: dict | None = None,
+    ) -> dict:
+        """Pair one terminal audit append with its live-state replacement.
+
+        Both successful mutation and explicit rollback use this one ordering:
+        append and fsync terminal evidence, replace live state, then truncate
+        that append if state replacement fails.  Keeping the compensation in
+        one helper prevents the two terminal paths from drifting apart.
+        """
+        with _PROCESS_LOCK, _exclusive(self.lock_file):
+            state = self._state()
+            current = state["events"].get(event_id)
+            if current is None:
+                raise KeyError(event_id)
+            if idempotent and current.get("status") == terminal_status:
+                return dict(current)
+            if current.get("status") != expected_status:
+                raise ValueError(
+                    f"event {event_id} is {current.get('status')}, "
+                    f"expected [{expected_status!r}]"
+                )
+            updated_at = _now()
+            terminal_fields = dict(fields or {})
+            terminal_fields[timestamp_field] = str(
+                terminal_fields.get(timestamp_field) or updated_at
+            )
+            updated = {
+                **current, **terminal_fields, "status": terminal_status,
+                "updated_at": updated_at,
+            }
+            audit_offset = self._append({
+                "kind": audit_kind,
+                "event_id": event_id,
+                "status": terminal_status,
+                "updated_at": updated_at,
+                "subject_digest": subject_digest(current.get("subject")),
+                **terminal_fields,
+            })
+            state["events"][event_id] = updated
+            try:
+                _atomic_json(self.state_file, state)
+            except BaseException:
+                self._truncate_audit(audit_offset)
+                raise
+            return dict(updated)
+
+    def finalize_mutation(self, event_id: str, **fields) -> dict:
+        """Atomically pair completed-mutation evidence with terminal state."""
+        return self._finalize_terminal(
+            event_id,
+            expected_status="applying",
+            terminal_status="completed",
+            audit_kind="event_completed",
+            timestamp_field="completed_at",
+            fields=fields,
+        )
+
+    def finalize_rollback(self, event_id: str) -> dict:
+        """Durably evidence a restored rollback before terminalizing it.
+
+        If either append or state replacement fails, the record remains
+        ``rollback_applying`` and startup or an explicit retry safely finishes
+        the same event-and-manifest-bound restore. A finished rollback is an
+        idempotent success.
+        """
+        return self._finalize_terminal(
+            event_id,
+            expected_status="rollback_applying",
+            terminal_status="rolled_back",
+            audit_kind="event_rolled_back",
+            timestamp_field="rolled_back_at",
+            idempotent=True,
+            fields={
+                "rollback_reason": "explicit authenticated rollback",
+            },
+        )
 
     def get(self, event_id: str) -> dict | None:
         with _PROCESS_LOCK, _exclusive(self.lock_file):
@@ -418,8 +562,12 @@ class MutationTransaction:
             path = Path(raw)
             if path.exists():
                 backup = self.directory / f"{index:04d}.before"
-                shutil.copy2(path, backup)
-                self.snapshots.append(Snapshot(raw, True, sha256_file(path), str(backup)))
+                payload = path.read_bytes()
+                mode = path.stat().st_mode & 0o7777
+                _rp.atomic_write_bytes(backup, payload, mode=mode)
+                self.snapshots.append(Snapshot(
+                    raw, True, hashlib.sha256(payload).hexdigest(), str(backup),
+                ))
             else:
                 self.snapshots.append(Snapshot(raw, False, None, None))
         _atomic_json(self.manifest, {
@@ -431,6 +579,7 @@ class MutationTransaction:
         self.ledger.transition(
             self.event_id, {"claimed"}, "prepared",
             rollback_manifest=str(self.manifest),
+            rollback_manifest_sha256=sha256_file(self.manifest),
         )
 
     def __enter__(self):
@@ -447,8 +596,8 @@ class MutationTransaction:
                 "exists": path.exists(),
                 "sha256": sha256_file(path) if path.exists() else None,
             })
-        result = self.ledger.transition(
-            self.event_id, {"applying"}, "completed",
+        result = self.ledger.finalize_mutation(
+            self.event_id,
             after=after, completed_at=_now(), **fields,
         )
         self._committed = True
@@ -459,8 +608,14 @@ class MutationTransaction:
             path = Path(snapshot.path)
             if snapshot.existed:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(str(snapshot.backup), path)
-            elif path.exists():
+                backup = Path(str(snapshot.backup))
+                payload = backup.read_bytes()
+                if hashlib.sha256(payload).hexdigest() != snapshot.before_sha256:
+                    raise RuntimeError(f"rollback backup drifted: {backup}")
+                _rp.atomic_write_bytes(
+                    path, payload, mode=backup.stat().st_mode & 0o7777,
+                )
+            elif os.path.lexists(path):
                 path.unlink()
         current = self.ledger.get(self.event_id)
         if current and current.get("status") in {"prepared", "applying"}:
@@ -475,6 +630,110 @@ class MutationTransaction:
         return False
 
 
+def _authenticated_rollback_material(
+    event_id: str, record: dict,
+) -> tuple[list[Snapshot], dict[str, tuple[bytes, int]]]:
+    """Load rollback bytes through the ledger-bound manifest identity."""
+    manifest_value = record.get("rollback_manifest")
+    manifest_digest = record.get("rollback_manifest_sha256")
+    if not isinstance(manifest_value, str) or not manifest_value:
+        raise ValueError("event has no rollback manifest")
+    if (
+        not isinstance(manifest_digest, str)
+        or len(manifest_digest) != 64
+        or any(character not in "0123456789abcdef" for character in manifest_digest)
+    ):
+        raise ValueError("event has no authenticated rollback manifest")
+    manifest_path = Path(os.path.abspath(os.path.expanduser(manifest_value)))
+    expected_manifest = Path(os.path.abspath(str(
+        _root() / "rollback" / event_id / "manifest.json"
+    )))
+    if manifest_path != expected_manifest or manifest_path.is_symlink():
+        raise ValueError("event has an invalid rollback manifest path")
+    try:
+        manifest_bytes = manifest_path.read_bytes()
+    except OSError as exc:
+        raise ValueError("event has an unreadable rollback manifest") from exc
+    if hashlib.sha256(manifest_bytes).hexdigest() != manifest_digest:
+        raise ValueError("rollback manifest authentication failed")
+    try:
+        manifest = json.loads(manifest_bytes.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("event has an unreadable rollback manifest") from exc
+    if (
+        not isinstance(manifest, dict)
+        or set(manifest) != {
+            "schema_version", "event_id", "prepared_at", "snapshots",
+        }
+        or manifest.get("schema_version") != SCHEMA_VERSION
+        or manifest.get("event_id") != event_id
+        or not isinstance(manifest.get("prepared_at"), str)
+        or not isinstance(manifest.get("snapshots"), list)
+    ):
+        raise ValueError("event has an invalid rollback manifest")
+
+    snapshots: list[Snapshot] = []
+    restore_bytes: dict[str, tuple[bytes, int]] = {}
+    for index, value in enumerate(manifest["snapshots"]):
+        if not isinstance(value, dict) or set(value) != {
+            "path", "existed", "before_sha256", "backup",
+        }:
+            raise ValueError("rollback manifest has an invalid snapshot")
+        raw_path = value.get("path")
+        existed = value.get("existed")
+        before_sha256 = value.get("before_sha256")
+        backup_value = value.get("backup")
+        if not isinstance(raw_path, str) or not raw_path or not isinstance(existed, bool):
+            raise ValueError("rollback manifest has an invalid snapshot")
+        exact_path = str(Path(raw_path).expanduser().resolve())
+        if exact_path != raw_path:
+            raise ValueError("rollback manifest has a noncanonical snapshot path")
+        snapshot = Snapshot(raw_path, existed, before_sha256, backup_value)
+        if existed:
+            if (
+                not isinstance(before_sha256, str)
+                or len(before_sha256) != 64
+                or any(
+                    character not in "0123456789abcdef"
+                    for character in before_sha256
+                )
+                or not isinstance(backup_value, str)
+                or not backup_value
+            ):
+                raise ValueError("rollback manifest has an invalid before-image")
+            backup = Path(os.path.abspath(os.path.expanduser(backup_value)))
+            expected_backup = manifest_path.parent / f"{index:04d}.before"
+            if backup != expected_backup or backup.is_symlink() or not backup.is_file():
+                raise ValueError("rollback manifest has an invalid backup path")
+            payload = backup.read_bytes()
+            if hashlib.sha256(payload).hexdigest() != before_sha256:
+                raise ValueError(f"rollback refused after backup drift: {backup}")
+            restore_bytes[raw_path] = (
+                payload, backup.stat().st_mode & 0o7777,
+            )
+        elif before_sha256 is not None or backup_value is not None:
+            raise ValueError("rollback manifest has an invalid absent snapshot")
+        snapshots.append(snapshot)
+    paths = [snapshot.path for snapshot in snapshots]
+    if len(set(paths)) != len(paths) or paths != sorted(paths):
+        raise ValueError("rollback manifest has an invalid path set")
+    return snapshots, restore_bytes
+
+
+def _restore_snapshots(
+    snapshots: Iterable[Snapshot], restore_bytes: dict[str, tuple[bytes, int]],
+) -> None:
+    """Idempotently restore one authenticated before-image set."""
+    for snapshot in reversed(list(snapshots)):
+        path = Path(snapshot.path)
+        if snapshot.existed:
+            payload, mode = restore_bytes[snapshot.path]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            _rp.atomic_write_bytes(path, payload, mode=mode)
+        elif os.path.lexists(path):
+            path.unlink()
+
+
 def restore_incomplete_events(ledger: EventLedger | None = None) -> list[str]:
     """Roll back events interrupted after snapshot but before commit."""
     ledger = ledger or EventLedger()
@@ -482,6 +741,11 @@ def restore_incomplete_events(ledger: EventLedger | None = None) -> list[str]:
     restored: list[str] = []
     for event_id, record in state.get("events", {}).items():
         if record.get("status") == "claimed":
+            if record.get("event_type") == "watcher_router_delivery":
+                # The watcher owns retry. Its frozen router plan and any
+                # effects receipt must remain claimed until the event-log
+                # delivery marker is fsynced and explicitly acknowledged.
+                continue
             ledger.transition(
                 event_id, {"claimed"}, "failed",
                 error="restart recovery: interrupted before mutation",
@@ -489,54 +753,143 @@ def restore_incomplete_events(ledger: EventLedger | None = None) -> list[str]:
             )
             restored.append(event_id)
             continue
+        if record.get("status") == "rollback_applying":
+            rollback_completed_event(event_id, ledger)
+            restored.append(event_id)
+            continue
         if record.get("status") not in {"prepared", "applying"}:
             continue
-        manifest_path = record.get("rollback_manifest")
-        if not manifest_path:
+        if not record.get("rollback_manifest"):
             ledger.transition(event_id, {record["status"]}, "failed",
                               error="interrupted before rollback material was bound")
             continue
-        manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
-        tx = MutationTransaction(ledger, event_id, [])
-        tx.snapshots = [Snapshot(**value) for value in manifest["snapshots"]]
-        tx.rollback(reason="restart recovery of incomplete mutation")
+        snapshots, restore_bytes = _authenticated_rollback_material(
+            event_id, record,
+        )
+        with mutation_path_locks(snapshot.path for snapshot in snapshots):
+            _restore_snapshots(snapshots, restore_bytes)
+            current = ledger.get(event_id)
+            if current and current.get("status") in {"prepared", "applying"}:
+                ledger.transition(
+                    event_id, {current["status"]}, "failed",
+                    error="restart recovery of incomplete mutation",
+                    rolled_back_at=_now(),
+                )
         restored.append(event_id)
     return restored
 
 
 def rollback_completed_event(event_id: str, ledger: EventLedger | None = None) -> dict:
-    """Restore a completed event only while every after-identity still matches.
+    """Recoverably restore a completed event's authenticated before-images.
 
-    The drift check prevents a rollback from erasing later user work. Rollback
-    itself is an authenticated event-state transition and remains in the
-    append-only audit.
+    The event first enters a durable ``rollback_applying`` state.  A retry may
+    then encounter each target in either its recorded after-state or its
+    authenticated before-state, but no third state.  This makes partial file,
+    audit, or ledger failures resumable without authorizing overwrite of newer
+    work.
     """
     ledger = ledger or EventLedger()
-    record = ledger.get(event_id)
-    if record is None or record.get("status") != "completed":
-        raise ValueError("only a completed event can be rolled back")
-    for identity in record.get("after", []):
-        path = Path(identity["path"])
-        if path.exists() != bool(identity["exists"]):
-            raise ValueError(f"rollback refused after artifact drift: {path}")
-        if path.exists() and sha256_file(path) != identity["sha256"]:
-            raise ValueError(f"rollback refused after artifact drift: {path}")
-    manifest_path = record.get("rollback_manifest")
-    if not manifest_path:
-        raise ValueError("completed event has no rollback manifest")
-    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
-    snapshots = [Snapshot(**value) for value in manifest["snapshots"]]
-    for snapshot in reversed(snapshots):
-        path = Path(snapshot.path)
-        if snapshot.existed:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(snapshot.backup), path)
-        elif path.exists():
-            path.unlink()
-    return ledger.transition(
-        event_id, {"completed"}, "rolled_back", rolled_back_at=_now(),
-        rollback_reason="explicit authenticated rollback",
-    )
+
+    def rollback_paths(record: dict | None) -> tuple[str, ...]:
+        if record is None or record.get("status") not in {
+            "completed", "rollback_applying", "rolled_back",
+        }:
+            raise ValueError("only a completed event can be rolled back")
+        after = record.get("after")
+        if not isinstance(after, list):
+            raise ValueError("completed event has invalid after-identities")
+        paths: list[str] = []
+        for identity in after:
+            if not isinstance(identity, dict) or set(identity) != {
+                "path", "exists", "sha256",
+            }:
+                raise ValueError("completed event has invalid after-identities")
+            raw_path = identity.get("path")
+            exists = identity.get("exists")
+            digest = identity.get("sha256")
+            if not isinstance(raw_path, str) or not raw_path or not isinstance(exists, bool):
+                raise ValueError("completed event has invalid after-identities")
+            exact = str(Path(raw_path).expanduser().resolve())
+            if exact != raw_path:
+                raise ValueError("completed event has noncanonical mutation paths")
+            if exists:
+                if (
+                    not isinstance(digest, str)
+                    or len(digest) != 64
+                    or any(character not in "0123456789abcdef" for character in digest)
+                ):
+                    raise ValueError("completed event has invalid after-identities")
+            elif digest is not None:
+                raise ValueError("completed event has invalid after-identities")
+            paths.append(exact)
+        if len(set(paths)) != len(paths):
+            raise ValueError("completed event has duplicate mutation paths")
+        return tuple(sorted(paths))
+
+    def matches(path: str, identity: dict) -> bool:
+        if not identity["exists"]:
+            return not os.path.lexists(path)
+        try:
+            current = artifact_identity(path)
+        except (FileNotFoundError, OSError):
+            return False
+        return (
+            current.get("path") == path
+            and current.get("sha256") == identity["sha256"]
+        )
+
+    # The first read chooses only the lock set. Every decision is made again
+    # from the authoritative record while those exact path locks are held.
+    lock_paths = rollback_paths(ledger.get(event_id))
+    with mutation_path_locks(lock_paths) as locked_paths:
+        record = ledger.get(event_id)
+        current_paths = rollback_paths(record)
+        if tuple(locked_paths) != current_paths:
+            raise ValueError("completed event mutation paths changed before rollback")
+
+        snapshots, restore_bytes = _authenticated_rollback_material(
+            event_id, record,
+        )
+        snapshot_paths = tuple(snapshot.path for snapshot in snapshots)
+        if snapshot_paths != current_paths:
+            raise ValueError("rollback manifest path set does not match the event")
+        after_by_path = {
+            identity["path"]: identity for identity in record["after"]
+        }
+        before_by_path = {
+            snapshot.path: {
+                "path": snapshot.path,
+                "exists": snapshot.existed,
+                "sha256": snapshot.before_sha256,
+            }
+            for snapshot in snapshots
+        }
+
+        if record["status"] == "rolled_back":
+            if not all(matches(path, before_by_path[path]) for path in current_paths):
+                raise ValueError("rollback result drifted after completion")
+            return record
+
+        if record["status"] == "completed":
+            for path in current_paths:
+                if not matches(path, after_by_path[path]):
+                    raise ValueError(f"rollback refused after artifact drift: {path}")
+            record = ledger.transition(
+                event_id, {"completed"}, "rollback_applying",
+            )
+
+        for path in current_paths:
+            if not (
+                matches(path, after_by_path[path])
+                or matches(path, before_by_path[path])
+            ):
+                raise ValueError(f"rollback refused after artifact drift: {path}")
+
+        _restore_snapshots(snapshots, restore_bytes)
+        for path in current_paths:
+            if not matches(path, before_by_path[path]):
+                raise RuntimeError(f"rollback did not restore before-image: {path}")
+        return ledger.finalize_rollback(event_id)
 
 
 class DeadlineQueue:

@@ -752,6 +752,21 @@
       when.textContent = ageOf(last.finished_at || last.claimed_at);
       meta.appendChild(when);
     }
+    const pendingCompletions = Array.isArray(t.pending_completions)
+      ? t.pending_completions : [];
+    if (pendingCompletions.length) {
+      const blocked = pendingCompletions.filter(
+        item => item.state === 'blocked_by_trigger_change').length;
+      const completion = document.createElement('span');
+      completion.className = 'badge trigger-outcome';
+      completion.textContent = blocked
+        ? `${pendingCompletions.length} completion${pendingCompletions.length === 1 ? '' : 's'} pending (${blocked} blocked)`
+        : `${pendingCompletions.length} completion${pendingCompletions.length === 1 ? '' : 's'} pending`;
+      completion.title = blocked
+        ? 'An earlier approved Trigger version received this completion; Ora did not run the current action.'
+        : 'A successful source Trigger completion is waiting to be retried.';
+      meta.appendChild(completion);
+    }
     card.appendChild(meta);
 
     if (state.triggerExpanded === spec.trigger_id) {
@@ -829,6 +844,20 @@
         + (firings[0].error ? ` — ${firings[0].error}` : '')
       : 'Has never fired.';
     det.appendChild(history);
+
+    const pendingCompletions = Array.isArray(t.pending_completions)
+      ? t.pending_completions : [];
+    for (const pending of pendingCompletions) {
+      const completion = document.createElement('div');
+      completion.className = 'oversight-detail-reasoning';
+      const source = pending.source_trigger_id || 'an unknown Trigger';
+      const completedAt = whenOf(
+        pending.source_completed_at || pending.created_at) || 'an unknown time';
+      completion.textContent = pending.state === 'blocked_by_trigger_change'
+        ? `Completion from ${source} at ${completedAt} is blocked: it targeted an earlier approved version. Ora did not run this Trigger's current action; the delivery remains pending.`
+        : `Completion from ${source} at ${completedAt} is pending retry; Ora has not yet run this Trigger.`;
+      det.appendChild(completion);
+    }
 
     if (state.triggerReview
         && state.triggerReview.trigger_id === spec.trigger_id) {

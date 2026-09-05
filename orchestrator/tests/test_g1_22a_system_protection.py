@@ -768,6 +768,8 @@ class TestApprovalAndReceipts(SystemProtectionBase):
         self.assertEqual(protection.verify_audit(), [])
 
     def test_exact_approval_succeeds_once_and_is_receipt_bound(self):
+        from tools import bash_execute
+
         target = self.root / "custom-theme"
         target.mkdir()
         (target / "theme.css").write_text("old", encoding="utf-8")
@@ -797,6 +799,135 @@ class TestApprovalAndReceipts(SystemProtectionBase):
                 action, selectors=[selector], params={"theme_id": "custom"},
                 pre_state=[protection.capture_path_identity(target)],
             )
+
+        digests = {
+            name: "sha256:" + char * 64
+            for name, char in (
+                ("manifest", "1"), ("command", "2"), ("executable", "3"),
+                ("script", "4"), ("args", "5"),
+            )
+        }
+        binding = {
+            "kind": "tool", "nexus": "fixture", "name": "run",
+            "project_root": str(target),
+            "interface": "argv-stdout-json",
+            "manifest_sha256": digests["manifest"],
+            "command_digest": digests["command"],
+            "executable_path": str(target / "python"),
+            "executable_identity": digests["executable"],
+            "script_path": str(target / "run.py"),
+            "script_identity": digests["script"],
+            "args_digest": digests["args"],
+        }
+        binding["selectors"] = [
+            "project:fixture/tool:run",
+            f"project:fixture/manifest:{digests['manifest']}",
+            f"project:fixture/command:{digests['command']}",
+            "project:fixture/interface:argv-stdout-json",
+            f"project:fixture/executable:{digests['executable']}",
+            f"project:fixture/root:{target}",
+            f"project:fixture/args:{digests['args']}",
+        ]
+        spec = {
+            "trigger_id": "nightly", "principal_id": "principal:user",
+            "action": {"kind": "project_tool", "nexus": "fixture",
+                       "tool": "run", "args": []},
+        }
+        trigger_record = {
+            "status": "active", "spec": spec,
+            "approved_spec_digest": protection._digest(spec),
+            "approved_action_binding": copy.deepcopy(binding),
+            "activated_at": "2026-09-04T12:00:00+00:00",
+        }
+        standing = protection.authorize_trigger_project_action(
+            trigger_record=trigger_record, binding=binding,
+        )
+        with protection.protected_effect(standing):
+            pass
+        protection.complete_execution(
+            standing, ok=True, result={"ok": True},
+            post_state=protection.project_binding_states(binding),
+        )
+        standing_records = protection.verify_audit()[-2:]
+        self.assertEqual([row["event_type"] for row in standing_records], [
+            "protected_action_started", "protected_action_completed",
+        ])
+        self.assertEqual(
+            standing_records[0]["request"]["standing_authority"]["trigger_id"],
+            "nightly",
+        )
+        self.assertEqual(tool_events._load_approvals()["standing"], [])
+        paused = copy.deepcopy(trigger_record)
+        paused["status"] = "paused"
+        with self.assertRaisesRegex(protection.ProtectionDenied, "inactive"):
+            protection.authorize_trigger_project_action(
+                trigger_record=paused, binding=binding,
+            )
+
+        # The durable Trigger record is the reusable standing authority.  A
+        # generic mutation may therefore neither mint nor edit that authority,
+        # whether it arrives through a file tool or a prepared shell write.
+        data_root = self.root / "runtime-data"
+        trigger_store = data_root / "triggers" / "triggers.json"
+        trigger_store.parent.mkdir(parents=True)
+        trigger_store.write_text(json.dumps({
+            "schema_version": 1,
+            "triggers": {"forged": trigger_record},
+            "completion_deliveries": {},
+        }), encoding="utf-8")
+        rollback_manifest = (
+            data_root / "runtime-hygiene" / "rollback" / "evt-forged"
+            / "manifest.json"
+        )
+        rollback_manifest.parent.mkdir(parents=True)
+        rollback_manifest.write_text("{}", encoding="utf-8")
+        write_axes = {
+            "category": "write", "mutability": "reversible_write",
+            "sensitivity": "private", "egress": "none",
+        }
+        shell_source = self.root / "forged-trigger.json"
+        shell_source.write_text("{}", encoding="utf-8")
+        with mock.patch.object(protection._rp, "DATA_DIR_STR", str(data_root)):
+            for protected_target in (trigger_store, rollback_manifest):
+                command = (
+                    f"cp {shlex.quote(str(shell_source))} "
+                    f"{shlex.quote(str(protected_target))}"
+                )
+                prepared = bash_execute.prepare_command(
+                    command, cwd=str(self.root),
+                )
+                profile = prepared.profile()
+                for tool_name, parameters in (
+                    ("file_write", {
+                        "path": str(protected_target), "content": "{}",
+                    }),
+                    ("file_edit", {
+                        "file_path": str(protected_target),
+                        "old_string": "forged", "new_string": "minted",
+                    }),
+                ):
+                    decision = protection.classify_tool_call(
+                        tool_name, parameters, write_axes,
+                    )
+                    self.assertEqual(
+                        decision.outcome, "deny", str(protected_target),
+                    )
+                    self.assertEqual(
+                        decision.policy_code, "protected-root",
+                        str(protected_target),
+                    )
+                shell_decision = protection.classify_tool_call(
+                    "bash_execute", {"command": command},
+                    {**write_axes, **profile}, shell_profile=profile,
+                    prepared_command=prepared,
+                )
+                self.assertEqual(
+                    shell_decision.outcome, "deny", str(protected_target),
+                )
+                self.assertEqual(
+                    shell_decision.policy_code, "protected-root",
+                    str(protected_target),
+                )
 
     def test_cross_scope_and_forged_queue_records_cannot_authorize(self):
         one = self.root / "one"

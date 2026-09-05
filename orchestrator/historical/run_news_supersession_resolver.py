@@ -46,6 +46,8 @@ from typing import Optional
 
 import yaml
 
+from orchestrator.runtime_hygiene import mutation_path_locks
+
 
 VAULT_ROOT = os.path.expanduser("~/Documents/vault")
 RESOURCES_DIR = os.path.join(VAULT_ROOT, "Resources")
@@ -254,11 +256,21 @@ def add_supersedes_relationship(frontmatter: str, target_h1: str) -> str:
 
 
 def apply_supersession(survivor_slug: str, loser_slug: str,
-                       loser_h1: str, dry_run: bool) -> dict:
+                       loser_h1: str, dry_run: bool, *,
+                       already_locked: bool = False) -> dict:
     """Apply news supersession: survivor gets `supersedes` relationship;
     loser gets `superseded` tag (NOT archived — Schema rev 5.1 weight
     modifier preserving history at retrieval).
     """
+    if not dry_run and not already_locked:
+        with mutation_path_locks([
+            os.path.join(RESOURCES_DIR, f"{survivor_slug}.md"),
+            os.path.join(RESOURCES_DIR, f"{loser_slug}.md"),
+        ]):
+            return apply_supersession(
+                survivor_slug, loser_slug, loser_h1, dry_run,
+                already_locked=True,
+            )
     out: dict = {"mutated_files": [], "errors": []}
 
     survivor = read_resource(survivor_slug)
@@ -296,8 +308,14 @@ def apply_supersession(survivor_slug: str, loser_slug: str,
     return out
 
 
-def apply_wrong(slug: str, dry_run: bool) -> dict:
+def apply_wrong(slug: str, dry_run: bool, *,
+                already_locked: bool = False) -> dict:
     """Factually wrong article → add `archived` tag (same as Engram Cleaning)."""
+    if not dry_run and not already_locked:
+        with mutation_path_locks([
+            os.path.join(RESOURCES_DIR, f"{slug}.md"),
+        ]):
+            return apply_wrong(slug, dry_run, already_locked=True)
     out: dict = {"mutated_files": [], "errors": []}
     target = read_resource(slug)
     if target is None:
@@ -453,6 +471,11 @@ def run_resolver(dry_run: bool = False) -> dict:
     Returns a dict with: total_pairs, stats (per-resolution counts),
     affected_slugs_count, errors (list), queue_remaining_count.
     """
+    if not dry_run:
+        raise RuntimeError(
+            "legacy news resolver apply is retired; use a reviewed bounded "
+            "campaign or the authenticated event path"
+        )
     if not os.path.exists(QUEUE_FILE):
         raise FileNotFoundError(f"Queue file not found: {QUEUE_FILE}")
 
@@ -550,7 +573,11 @@ def main():
         print("  python3 run_news_supersession_detection.py", file=sys.stderr)
         sys.exit(1)
 
-    result = run_resolver(dry_run=args.dry_run)
+    try:
+        result = run_resolver(dry_run=args.dry_run)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(2)
 
     print(f"Total pairs: {result['total_pairs']}")
     print(f"Stats: {result['stats']}")

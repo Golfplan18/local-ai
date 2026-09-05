@@ -372,6 +372,7 @@ def append_managed_decision_log_entry(
     *,
     kind: str,
     action_record: dict | None = None,
+    idempotency_key: str | None = None,
 ) -> str | None:
     """Persist one conversation-owned Decision Log derivative.
 
@@ -388,10 +389,30 @@ def append_managed_decision_log_entry(
         return None
 
     target = Path(os.path.abspath(os.path.expanduser(str(ped_path))))
+    stable_key = str(idempotency_key or "").strip()
     if not conversation_id:
         # Daemon-originated oversight has no conversation lifecycle owner. It
-        # remains a normal PED audit entry, but still uses the safe writer.
+        # remains a normal PED audit entry. A watcher delivery reuses the
+        # existing managed-block marker with a deterministic id so a crash
+        # after the PED write but before upstream acknowledgement cannot add a
+        # second visible entry.
         try:
+            if stable_key:
+                derivative_id = hashlib.sha256(
+                    f"{kind}\0{target}\0{stable_key}".encode("utf-8")
+                ).hexdigest()[:32]
+                owner_key = hashlib.sha256(
+                    f"watcher-publication\0{stable_key}".encode("utf-8")
+                ).hexdigest()
+                _rewrite_regular_text(
+                    target,
+                    lambda content: _add_managed_block(
+                        content, derivative_id, owner_key, entry_text,
+                    ),
+                )
+                action_record["decision_log_derivative_id"] = derivative_id
+                action_record["decision_log_ped_path"] = str(target)
+                return derivative_id
             _rewrite_regular_text(
                 target,
                 lambda content: (_insert_into_decision_log(content, entry_text), 1),
@@ -402,7 +423,12 @@ def append_managed_decision_log_entry(
         return None
 
     owner_key = _owner_key(conversation_id)
-    derivative_id = uuid.uuid4().hex
+    derivative_id = (
+        hashlib.sha256(
+            f"{kind}\0{target}\0{conversation_id}\0{stable_key}".encode("utf-8")
+        ).hexdigest()[:32]
+        if stable_key else uuid.uuid4().hex
+    )
     private = _private_context(event, conversation_id)
     manifest_path = Path(_ped_derivatives_path())
     manifest_entry = {
@@ -419,8 +445,25 @@ def append_managed_decision_log_entry(
     try:
         with file_lock(str(manifest_path)):
             payload = _load_derivatives_manifest(manifest_path)
-            payload["derivatives"].append(manifest_entry)
-            _save_derivatives_manifest(manifest_path, payload)
+            existing = next((
+                item for item in payload["derivatives"]
+                if item.get("derivative_id") == derivative_id
+            ), None)
+            if existing is not None:
+                if (
+                    existing.get("conversation_id") != conversation_id
+                    or existing.get("owner_key") != owner_key
+                    or existing.get("ped_path") != str(target)
+                    or existing.get("kind") != str(kind)
+                ):
+                    raise ValueError(
+                        f"managed Decision Log identity collision: {derivative_id}"
+                    )
+                manifest_entry = existing
+                entry_text = str(existing.get("entry_text") or entry_text)
+            else:
+                payload["derivatives"].append(manifest_entry)
+                _save_derivatives_manifest(manifest_path, payload)
             if not private:
                 changed, _ = _rewrite_regular_text(
                     target,
@@ -428,8 +471,9 @@ def append_managed_decision_log_entry(
                         content, derivative_id, owner_key, entry_text,
                     ),
                 )
-                manifest_entry["visible"] = True
-                _save_derivatives_manifest(manifest_path, payload)
+                if not manifest_entry.get("visible"):
+                    manifest_entry["visible"] = True
+                    _save_derivatives_manifest(manifest_path, payload)
                 if changed:
                     action_record["decision_log_ped_path"] = str(target)
             action_record["decision_log_derivative_id"] = derivative_id

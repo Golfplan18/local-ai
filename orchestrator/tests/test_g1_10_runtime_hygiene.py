@@ -4,12 +4,17 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import sys
 import tempfile
 import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
+
+_ORCH = str(Path(__file__).resolve().parent.parent)
+if _ORCH not in sys.path:
+    sys.path.insert(0, _ORCH)
 
 from orchestrator import maintenance_scheduler as scheduler
 from orchestrator import runtime_hygiene as hygiene
@@ -521,9 +526,38 @@ class LedgerTests(RuntimeHygieneBase):
         self.assertEqual(state["mutation_count"], 0)
 
     def test_rollback_refuses_later_artifact_drift(self):
+        from orchestrator import slash_commands
+
+        def complete_mutation(event_id, path, before, after):
+            path.write_bytes(before)
+            ledger.claim(event_id=event_id, event_type="test",
+                         subject={"id": event_id})
+            with hygiene.MutationTransaction(ledger, event_id, [path]) as tx:
+                path.write_bytes(after)
+                tx.commit()
+            record = ledger.get(event_id)
+            return Path(record["rollback_manifest"])
+
+        exact = self.root / "exact.bin"
+        before_bytes = b"before\x00authenticated\xffbytes"
+        ledger = hygiene.EventLedger()
+        complete_mutation("evt-exact", exact, before_bytes, b"after")
+        result = slash_commands.run_runtime_command(
+            "/maintenance rollback evt-exact"
+        )
+        self.assertIn("Rolled back", result)
+        self.assertEqual(exact.read_bytes(), before_bytes)
+        self.assertEqual(ledger.get("evt-exact")["status"], "rolled_back")
+        exact_record = ledger.get("evt-exact")
+        self.assertNotIn("rollback_operation_id", exact_record)
+        self.assertNotIn("rollback_started_at", exact_record)
+        self.assertEqual(
+            exact_record["rollback_manifest_sha256"],
+            hygiene.sha256_file(Path(exact_record["rollback_manifest"])),
+        )
+
         subject = self.root / "subject.md"
         subject.write_text("before", encoding="utf-8")
-        ledger = hygiene.EventLedger()
         ledger.claim(event_id="evt-complete", event_type="test", subject={"id": 1})
         with hygiene.MutationTransaction(ledger, "evt-complete", [subject]) as tx:
             subject.write_text("after", encoding="utf-8")
@@ -532,6 +566,456 @@ class LedgerTests(RuntimeHygieneBase):
         with self.assertRaisesRegex(ValueError, "drift"):
             hygiene.rollback_completed_event("evt-complete", ledger)
         self.assertEqual(subject.read_text(encoding="utf-8"), "later user work")
+
+        # Mutation completion has one finalization boundary. If either its
+        # terminal audit or terminal state write fails, context exit restores
+        # the before-bytes and neither durable surface may claim completion.
+        for event_id, failure_surface in (
+            ("evt-commit-audit-failure", "audit"),
+            ("evt-commit-state-failure", "state"),
+        ):
+            with self.subTest(commit_failure=failure_surface):
+                commit_subject = self.root / f"{failure_surface}-commit.bin"
+                commit_subject.write_bytes(b"before-commit")
+                ledger.claim(
+                    event_id=event_id, event_type="test",
+                    subject={"id": event_id},
+                )
+                real_atomic_json = hygiene._atomic_json
+                real_write = hygiene.os.write
+                real_fsync = hygiene.os.fsync
+                terminal_audit_write = False
+                terminal_audit_fsync_failed = False
+
+                def write_with_terminal_marker(fd, payload):
+                    nonlocal terminal_audit_write
+                    if (
+                        failure_surface == "audit"
+                        and b'"kind": "event_completed"' in payload
+                        and event_id.encode("utf-8") in payload
+                    ):
+                        terminal_audit_write = True
+                    return real_write(fd, payload)
+
+                def fsync_with_failure(fd):
+                    nonlocal terminal_audit_fsync_failed
+                    if (
+                        terminal_audit_write
+                        and not terminal_audit_fsync_failed
+                    ):
+                        terminal_audit_fsync_failed = True
+                        raise OSError("injected mutation terminal audit failure")
+                    return real_fsync(fd)
+
+                def state_with_failure(path, value):
+                    current = value.get("events", {}).get(event_id, {})
+                    if (
+                        failure_surface == "state"
+                        and Path(path) == ledger.state_file
+                        and current.get("status") == "completed"
+                    ):
+                        raise OSError("injected mutation terminal state failure")
+                    return real_atomic_json(path, value)
+
+                with (
+                    mock.patch.object(
+                        hygiene.os, "write", side_effect=write_with_terminal_marker,
+                    ),
+                    mock.patch.object(
+                        hygiene.os, "fsync", side_effect=fsync_with_failure,
+                    ),
+                    mock.patch.object(
+                        hygiene, "_atomic_json", side_effect=state_with_failure,
+                    ),
+                ):
+                    with self.assertRaisesRegex(
+                        OSError, f"terminal {failure_surface} failure",
+                    ):
+                        with hygiene.MutationTransaction(
+                            ledger, event_id, [commit_subject],
+                        ) as tx:
+                            commit_subject.write_bytes(b"after-commit")
+                            tx.commit()
+                self.assertEqual(commit_subject.read_bytes(), b"before-commit")
+                self.assertEqual(ledger.get(event_id)["status"], "failed")
+                terminal_rows = [
+                    json.loads(line)
+                    for line in ledger.audit_file.read_text(
+                        encoding="utf-8",
+                    ).splitlines()
+                    if line.strip()
+                ]
+                self.assertFalse(any(
+                    row.get("kind") == "event_completed"
+                    and row.get("event_id") == event_id
+                    for row in terminal_rows
+                ))
+
+        for suffix, mutate_manifest, error in (
+            ("schema", lambda value: value.update({
+                "schema_version": hygiene.SCHEMA_VERSION + 1,
+            }), "manifest"),
+            ("event", lambda value: value.update({
+                "event_id": "evt-substituted",
+            }), "manifest"),
+            ("paths", lambda value: value["snapshots"][0].update({
+                "path": str((self.root / "outside.bin").resolve()),
+            }), "manifest"),
+        ):
+            with self.subTest(manifest=suffix):
+                path = self.root / f"manifest-{suffix}.bin"
+                event_id = f"evt-manifest-{suffix}"
+                manifest_path = complete_mutation(
+                    event_id, path, b"original", b"current",
+                )
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                mutate_manifest(manifest)
+                manifest_path.write_text(
+                    json.dumps(manifest), encoding="utf-8",
+                )
+                with self.assertRaisesRegex(ValueError, error):
+                    hygiene.rollback_completed_event(event_id, ledger)
+                self.assertEqual(path.read_bytes(), b"current")
+                self.assertEqual(ledger.get(event_id)["status"], "completed")
+
+        backup_subject = self.root / "backup-drift.bin"
+        backup_manifest_path = complete_mutation(
+            "evt-backup-drift", backup_subject, b"trusted", b"current",
+        )
+        backup_manifest = json.loads(
+            backup_manifest_path.read_text(encoding="utf-8")
+        )
+        Path(backup_manifest["snapshots"][0]["backup"]).write_bytes(b"substituted")
+        with self.assertRaisesRegex(ValueError, "backup drift"):
+            hygiene.rollback_completed_event("evt-backup-drift", ledger)
+        self.assertEqual(backup_subject.read_bytes(), b"current")
+        self.assertEqual(ledger.get("evt-backup-drift")["status"], "completed")
+
+        # The backup digest is not self-authenticating: replacing both the
+        # bytes and their adjacent digest still fails the independent digest
+        # bound into the EventLedger before mutation.
+        circular_subject = self.root / "circular-drift.bin"
+        circular_manifest_path = complete_mutation(
+            "evt-circular-drift", circular_subject, b"trusted", b"current",
+        )
+        circular_manifest = json.loads(
+            circular_manifest_path.read_text(encoding="utf-8")
+        )
+        substituted = b"attacker-controlled"
+        Path(circular_manifest["snapshots"][0]["backup"]).write_bytes(
+            substituted
+        )
+        circular_manifest["snapshots"][0]["before_sha256"] = (
+            hashlib.sha256(substituted).hexdigest()
+        )
+        circular_manifest_path.write_text(
+            json.dumps(circular_manifest), encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "manifest authentication"):
+            hygiene.rollback_completed_event("evt-circular-drift", ledger)
+        self.assertEqual(circular_subject.read_bytes(), b"current")
+        self.assertEqual(
+            ledger.get("evt-circular-drift")["status"], "completed",
+        )
+
+        # A later restore write can fail after an earlier path changed. The
+        # durable in-progress state accepts exactly that before/after mixture,
+        # and startup recovery finishes the same rollback.
+        partial_a = self.root / "partial-a.bin"
+        partial_b = self.root / "partial-b.bin"
+        partial_a.write_bytes(b"a-before")
+        partial_b.write_bytes(b"b-before")
+        ledger.claim(event_id="evt-partial-write", event_type="test",
+                     subject={"id": "partial-write"})
+        with hygiene.MutationTransaction(
+            ledger, "evt-partial-write", [partial_a, partial_b],
+        ) as tx:
+            partial_a.write_bytes(b"a-after")
+            partial_b.write_bytes(b"b-after")
+            tx.commit()
+        real_restore = hygiene._restore_snapshots
+
+        def restore_one_then_fail(snapshots, restore_bytes):
+            ordered = list(snapshots)
+            real_restore([ordered[1]], restore_bytes)
+            raise OSError("injected second restore failure")
+
+        with mock.patch.object(
+            hygiene, "_restore_snapshots", side_effect=restore_one_then_fail,
+        ):
+            with self.assertRaisesRegex(OSError, "second restore failure"):
+                hygiene.rollback_completed_event("evt-partial-write", ledger)
+        self.assertEqual(
+            ledger.get("evt-partial-write")["status"], "rollback_applying",
+        )
+        self.assertEqual(
+            {partial_a.read_bytes(), partial_b.read_bytes()},
+            {b"a-after", b"b-before"},
+        )
+        self.assertIn(
+            "evt-partial-write", hygiene.restore_incomplete_events(ledger),
+        )
+        self.assertEqual(partial_a.read_bytes(), b"a-before")
+        self.assertEqual(partial_b.read_bytes(), b"b-before")
+        self.assertEqual(
+            ledger.get("evt-partial-write")["status"], "rolled_back",
+        )
+
+        # An unlink failure is recoverable by the same operation: an already
+        # restored existing file remains valid while the created file waits
+        # for the retry to remove it.
+        created = self.root / "a-created.bin"
+        existing = self.root / "z-existing.bin"
+        existing.write_bytes(b"z-before")
+        ledger.claim(event_id="evt-partial-unlink", event_type="test",
+                     subject={"id": "partial-unlink"})
+        with hygiene.MutationTransaction(
+            ledger, "evt-partial-unlink", [created, existing],
+        ) as tx:
+            created.write_bytes(b"created-after")
+            existing.write_bytes(b"z-after")
+            tx.commit()
+        real_restore = hygiene._restore_snapshots
+
+        def restore_existing_then_fail_unlink(snapshots, restore_bytes):
+            existing_snapshot = next(
+                snapshot for snapshot in snapshots if snapshot.existed
+            )
+            real_restore([existing_snapshot], restore_bytes)
+            raise OSError("injected unlink failure")
+
+        with mock.patch.object(
+            hygiene, "_restore_snapshots",
+            side_effect=restore_existing_then_fail_unlink,
+        ):
+            with self.assertRaisesRegex(OSError, "unlink failure"):
+                hygiene.rollback_completed_event("evt-partial-unlink", ledger)
+        self.assertEqual(existing.read_bytes(), b"z-before")
+        self.assertEqual(created.read_bytes(), b"created-after")
+        self.assertEqual(
+            ledger.get("evt-partial-unlink")["status"], "rollback_applying",
+        )
+        hygiene.rollback_completed_event("evt-partial-unlink", ledger)
+        self.assertFalse(created.exists())
+        self.assertEqual(
+            ledger.get("evt-partial-unlink")["status"], "rolled_back",
+        )
+
+        # Terminal evidence is ordered before the terminal state. Either sink
+        # may fail after the bytes are restored; the in-progress state remains
+        # retryable and never claims a rollback that lacks durable evidence.
+        audit_subject = self.root / "terminal-audit.bin"
+        complete_mutation(
+            "evt-terminal-audit", audit_subject, b"before", b"after",
+        )
+        real_append = ledger._append
+
+        def fail_terminal_audit(record):
+            if record.get("kind") == "event_rolled_back":
+                raise OSError("injected terminal audit failure")
+            return real_append(record)
+
+        with mock.patch.object(
+            ledger, "_append", side_effect=fail_terminal_audit,
+        ):
+            with self.assertRaisesRegex(OSError, "terminal audit failure"):
+                hygiene.rollback_completed_event("evt-terminal-audit", ledger)
+        self.assertEqual(audit_subject.read_bytes(), b"before")
+        self.assertEqual(
+            ledger.get("evt-terminal-audit")["status"], "rollback_applying",
+        )
+        hygiene.rollback_completed_event("evt-terminal-audit", ledger)
+        self.assertEqual(
+            ledger.get("evt-terminal-audit")["status"], "rolled_back",
+        )
+
+        state_subject = self.root / "terminal-state.bin"
+        complete_mutation(
+            "evt-terminal-state", state_subject, b"before", b"after",
+        )
+        real_atomic_json = hygiene._atomic_json
+
+        def fail_terminal_state(path, value):
+            record = value.get("events", {}).get("evt-terminal-state", {})
+            if Path(path) == ledger.state_file and record.get("status") == "rolled_back":
+                raise OSError("injected terminal state failure")
+            return real_atomic_json(path, value)
+
+        with mock.patch.object(
+            hygiene, "_atomic_json", side_effect=fail_terminal_state,
+        ):
+            with self.assertRaisesRegex(OSError, "terminal state failure"):
+                hygiene.rollback_completed_event("evt-terminal-state", ledger)
+        self.assertEqual(state_subject.read_bytes(), b"before")
+        self.assertEqual(
+            ledger.get("evt-terminal-state")["status"], "rollback_applying",
+        )
+        terminal_rows = [
+            json.loads(line)
+            for line in ledger.audit_file.read_text(
+                encoding="utf-8",
+            ).splitlines()
+            if line.strip()
+        ]
+        self.assertFalse(any(
+            row.get("kind") == "event_rolled_back"
+            and row.get("event_id") == "evt-terminal-state"
+            for row in terminal_rows
+        ))
+        hygiene.rollback_completed_event("evt-terminal-state", ledger)
+        terminal_state = ledger.get("evt-terminal-state")
+        self.assertEqual(terminal_state["status"], "rolled_back")
+        self.assertNotIn("rollback_operation_id", terminal_state)
+        self.assertNotIn("rollback_started_at", terminal_state)
+        # Direct terminal retry is idempotent and cannot append duplicate
+        # evidence after the compensated state-write failure above.
+        self.assertEqual(
+            ledger.finalize_rollback("evt-terminal-state"), terminal_state,
+        )
+        terminal_rows = [
+            json.loads(line)
+            for line in ledger.audit_file.read_text(
+                encoding="utf-8",
+            ).splitlines()
+            if line.strip()
+        ]
+        self.assertEqual(sum(
+            row.get("kind") == "event_rolled_back"
+            and row.get("event_id") == "evt-terminal-state"
+            for row in terminal_rows
+        ), 1)
+
+        # A campaign's index refresh is derived from committed file/log
+        # truth. Refresh failure is recorded after commit and never causes a
+        # second refresh or rolls authenticated bytes back underneath it.
+        news_source = self.resources / "campaign-source.md"
+        news_target = self.resources / "campaign-target.md"
+        news_source.write_text("# Source\n\nnew", encoding="utf-8")
+        news_target.write_text("# Target\n\nold", encoding="utf-8")
+        candidate = {
+            "newer": {
+                "path": str(news_source), "slug": "campaign-source",
+                "h1": "Source", "date_created": "2026-08-02",
+            },
+            "older": {
+                "path": str(news_target), "slug": "campaign-target",
+                "h1": "Target", "date_created": "2026-08-01",
+            },
+            "similarity": 0.9, "entity_overlap": 2, "date_gap_days": 1,
+        }
+        campaign_id = "post-commit-index-failure"
+        campaign_event_id = hygiene.event_identity(
+            "news_supersession.historical_campaign",
+            {"campaign_id": campaign_id, "kind": "news_supersession",
+             "ceiling": supersession.MAX_NEWS_PAIRS},
+        )
+        refresh_states = []
+
+        def apply_campaign_mutation(**_kwargs):
+            news_target.write_text("committed target", encoding="utf-8")
+            return {"errors": [], "mutated_files": [str(news_target)]}
+
+        def fail_campaign_refresh(_slugs):
+            refresh_states.append(
+                hygiene.EventLedger().get(campaign_event_id)["status"]
+            )
+            raise RuntimeError("injected post-commit index failure")
+
+        with (
+            mock.patch.object(
+                supersession.news_det, "build_resources_index", return_value={},
+            ),
+            mock.patch.object(
+                supersession.news_det, "_load_resolved_pair_set",
+                return_value=set(),
+            ),
+            mock.patch.object(
+                supersession.news_det, "detect_topic_cluster",
+                return_value=[candidate],
+            ),
+            mock.patch.object(
+                supersession.judge, "judge_pair",
+                return_value=SimpleNamespace(
+                    decision="supersede", reason="newer", slot="test",
+                ),
+            ),
+            mock.patch.object(
+                supersession.news_res, "apply_supersession",
+                side_effect=apply_campaign_mutation,
+            ),
+            mock.patch.object(
+                supersession.news_res, "refresh_chromadb",
+                side_effect=fail_campaign_refresh,
+            ) as refresh,
+        ):
+            campaign_result = supersession.task_news_supersession(
+                campaign_id=campaign_id,
+            )
+        self.assertFalse(campaign_result.success)
+        self.assertIn("mutation committed", campaign_result.message)
+        self.assertEqual(refresh_states, ["completed"])
+        refresh.assert_called_once_with({"campaign-source", "campaign-target"})
+        self.assertEqual(
+            news_target.read_text(encoding="utf-8"), "committed target",
+        )
+        campaign_record = hygiene.EventLedger().get(campaign_event_id)
+        self.assertEqual(campaign_record["status"], "completed")
+        self.assertFalse(campaign_record["index_refreshed"])
+        self.assertIn("post-commit", campaign_record["index_error"])
+
+        with self.assertRaisesRegex(RuntimeError, "legacy news resolver apply"):
+            supersession.news_res.run_resolver(dry_run=False)
+
+        race_subject = self.root / "race.bin"
+        complete_mutation(
+            "evt-race", race_subject, b"before", b"after",
+        )
+        identity_checked = threading.Event()
+        writer_attempted = threading.Event()
+        errors = []
+        rollback_result = []
+        real_identity = hygiene.artifact_identity
+
+        def pause_after_locked_identity(path):
+            identity = real_identity(path)
+            if Path(path).resolve() == race_subject.resolve():
+                identity_checked.set()
+                if not writer_attempted.wait(2):
+                    raise AssertionError("cooperating writer did not attempt its lock")
+            return identity
+
+        def rollback_worker():
+            try:
+                rollback_result.append(
+                    hygiene.rollback_completed_event("evt-race", ledger)
+                )
+            except BaseException as exc:  # pragma: no cover - asserted below
+                errors.append(exc)
+
+        def later_writer():
+            try:
+                if not identity_checked.wait(2):
+                    raise AssertionError("rollback did not reach its locked identity check")
+                writer_attempted.set()
+                with hygiene.mutation_path_locks([race_subject]):
+                    race_subject.write_bytes(b"later writer")
+            except BaseException as exc:  # pragma: no cover - asserted below
+                errors.append(exc)
+
+        with mock.patch.object(
+            hygiene, "artifact_identity", side_effect=pause_after_locked_identity,
+        ):
+            rollback_thread = threading.Thread(target=rollback_worker)
+            writer_thread = threading.Thread(target=later_writer)
+            rollback_thread.start()
+            writer_thread.start()
+            rollback_thread.join(3)
+            writer_thread.join(3)
+        self.assertFalse(rollback_thread.is_alive())
+        self.assertFalse(writer_thread.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(rollback_result[0]["status"], "rolled_back")
+        self.assertEqual(race_subject.read_bytes(), b"later writer")
 
     def test_completed_autonomous_after_identity_suppresses_cascade(self):
         subject = self.root / "subject.md"
