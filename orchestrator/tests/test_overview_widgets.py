@@ -602,6 +602,28 @@ class DailyNoteOpenRouteTests(unittest.TestCase):
         runner.assert_called_once()
         generator.assert_not_called()
 
+    def test_revalidates_completed_day_after_obsidian_refusal_before_fallback(self):
+        self._note()
+        stack, runner, generator = self._launch_context(result=self._completed(1))
+        with (
+            stack,
+            mock.patch.object(
+                self.overview,
+                "completed_daily_note_day",
+                side_effect=[self.day, "2026-09-01"],
+            ),
+        ):
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+
+        self.assertEqual(response.status_code, 409)
+        payload = response.get_json()
+        self.assertEqual(payload["outcome"], "stale")
+        self.assertIn(self.day, payload["message"])
+        self.assertIn("2026-09-01", payload["message"])
+        self.assertIn("Reopen Overview", payload["message"])
+        runner.assert_called_once()
+        generator.assert_not_called()
+
     def test_definite_obsidian_refusal_uses_default_markdown_application(self):
         note = self._note()
         original = note.read_bytes()
@@ -669,6 +691,35 @@ class DailyNoteOpenRouteTests(unittest.TestCase):
         self.assertEqual(payload["application"], "obsidian")
         self.assertIn("No other application was tried", payload["message"])
         runner.assert_called_once()
+        generator.assert_not_called()
+        self.assertEqual(note.read_bytes(), original)
+
+    def test_signal_terminated_handoffs_are_uncertain(self):
+        note = self._note()
+        original = note.read_bytes()
+
+        stack, runner, generator = self._launch_context(result=self._completed(-9))
+        with stack:
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+        self.assertEqual(response.status_code, 502)
+        payload = response.get_json()
+        self.assertEqual(payload["outcome"], "uncertain")
+        self.assertEqual(payload["application"], "obsidian")
+        self.assertIn("No other application was tried", payload["message"])
+        runner.assert_called_once()
+        generator.assert_not_called()
+
+        stack, runner, generator = self._launch_context(
+            side_effect=[self._completed(1), self._completed(-9)],
+        )
+        with stack:
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+        self.assertEqual(response.status_code, 502)
+        payload = response.get_json()
+        self.assertEqual(payload["outcome"], "uncertain")
+        self.assertEqual(payload["application"], "default_markdown")
+        self.assertIn("cannot tell whether the fallback received it", payload["message"])
+        self.assertEqual(runner.call_count, 2)
         generator.assert_not_called()
         self.assertEqual(note.read_bytes(), original)
 
