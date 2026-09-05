@@ -1,4 +1,4 @@
-"""Native Windows AppContainer runner for evidence checks.
+"""Native Windows containment for evidence checks and Trigger action Jobs.
 
 This module is intentionally lazy: importing it on macOS/Linux never loads a
 Windows DLL.  On Windows it launches a child with three load-bearing controls:
@@ -31,6 +31,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -150,6 +151,31 @@ class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
     ]
 
 
+class FILETIME(ctypes.Structure):
+    _fields_ = [("dwLowDateTime", DWORD), ("dwHighDateTime", DWORD)]
+
+
+class JOBOBJECT_BASIC_ACCOUNTING_INFORMATION(ctypes.Structure):
+    _fields_ = [
+        ("TotalUserTime", ctypes.c_int64),
+        ("TotalKernelTime", ctypes.c_int64),
+        ("ThisPeriodTotalUserTime", ctypes.c_int64),
+        ("ThisPeriodTotalKernelTime", ctypes.c_int64),
+        ("TotalPageFaultCount", DWORD),
+        ("TotalProcesses", DWORD),
+        ("ActiveProcesses", DWORD),
+        ("TotalTerminatedProcesses", DWORD),
+    ]
+
+
+class JOBOBJECT_BASIC_PROCESS_ID_LIST(ctypes.Structure):
+    _fields_ = [
+        ("NumberOfAssignedProcesses", DWORD),
+        ("NumberOfProcessIdsInList", DWORD),
+        ("ProcessIdList", ULONG_PTR * 1),
+    ]
+
+
 class TRUSTEE_W(ctypes.Structure):
     _fields_ = [
         ("pMultipleTrustee", LPVOID),
@@ -189,11 +215,23 @@ ERROR_BROKEN_PIPE = 109
 ERROR_ALREADY_EXISTS = 183
 ERROR_FILE_NOT_FOUND = 2
 ERROR_NOT_FOUND = 1168
+ERROR_MORE_DATA = 234
 
 # Job constants.  No active-process limit: test runners/compilers may spawn.
+JobObjectBasicAccountingInformation = 1
+JobObjectBasicProcessIdList = 3
 JobObjectExtendedLimitInformation = 9
 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
 JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION = 0x00000400
+JOB_OBJECT_QUERY = 0x0004
+PROCESS_TERMINATE = 0x0001
+PROCESS_SET_QUOTA = 0x0100
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+SYNCHRONIZE = 0x00100000
+
+_TRIGGER_JOB_NAME_PREFIX = "Global\\ora.trigger."
+_MAX_DWORD = (1 << 32) - 1
+_MAX_FILETIME = (1 << 64) - 1
 
 # ACL constants.
 SE_FILE_OBJECT = 1
@@ -292,7 +330,12 @@ class _WinAPI:
             (k, "DeleteProcThreadAttributeList"),
             (k, "CreateJobObjectW"),
             (k, "SetInformationJobObject"),
+            (k, "AssignProcessToJobObject"),
+            (k, "OpenJobObjectW"),
+            (k, "QueryInformationJobObject"),
             (k, "TerminateJobObject"),
+            (k, "OpenProcess"),
+            (k, "GetProcessTimes"),
             (k, "CreatePipe"),
             (k, "SetHandleInformation"),
             (k, "CreateProcessW"),
@@ -325,7 +368,16 @@ class _WinAPI:
         _set_signature(k.CreateJobObjectW,
                        [ctypes.POINTER(SECURITY_ATTRIBUTES), LPCWSTR], HANDLE)
         _set_signature(k.SetInformationJobObject, [HANDLE, ctypes.c_int32, LPVOID, DWORD], BOOL)
+        _set_signature(k.AssignProcessToJobObject, [HANDLE, HANDLE], BOOL)
+        _set_signature(k.OpenJobObjectW, [DWORD, BOOL, LPCWSTR], HANDLE)
+        _set_signature(k.QueryInformationJobObject,
+                       [HANDLE, ctypes.c_int32, LPVOID, DWORD,
+                        ctypes.POINTER(DWORD)], BOOL)
         _set_signature(k.TerminateJobObject, [HANDLE, UINT], BOOL)
+        _set_signature(k.OpenProcess, [DWORD, BOOL, DWORD], HANDLE)
+        _set_signature(k.GetProcessTimes,
+                       [HANDLE, ctypes.POINTER(FILETIME), ctypes.POINTER(FILETIME),
+                        ctypes.POINTER(FILETIME), ctypes.POINTER(FILETIME)], BOOL)
         _set_signature(k.CreatePipe,
                        [ctypes.POINTER(HANDLE), ctypes.POINTER(HANDLE),
                         ctypes.POINTER(SECURITY_ATTRIBUTES), DWORD], BOOL)
@@ -407,6 +459,393 @@ def _close(api: _WinAPI, handle: HANDLE | int | None) -> None:
             api.kernel32.CloseHandle(HANDLE(value))
         except Exception:
             pass
+
+
+def _create_job_object(api: _WinAPI, *, name: str | None = None) -> HANDLE:
+    """Create the repository's non-breakaway, kill-on-close Job primitive."""
+    set_last_error = getattr(ctypes, "set_last_error", None)
+    if callable(set_last_error):
+        set_last_error(0)
+    job = api.kernel32.CreateJobObjectW(None, name)
+    creation_error = _last_error()
+    if not job:
+        raise _win_error("CreateJobObjectW", creation_error)
+    try:
+        if name is not None and creation_error == ERROR_ALREADY_EXISTS:
+            raise AppContainerError("unique Windows Job name unexpectedly exists")
+        # SECURITY_ATTRIBUTES is NULL, so the handle starts non-inheritable.
+        # Clear the flag explicitly as a second line of defence: only this
+        # parent may own the kill-on-close lifetime.
+        if not api.kernel32.SetHandleInformation(job, HANDLE_FLAG_INHERIT, 0):
+            raise _win_error("SetHandleInformation(Job)")
+        limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+        limits.BasicLimitInformation.LimitFlags = (
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            | JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION
+        )
+        # Neither BREAKAWAY_OK limit is set. Descendants therefore remain in
+        # this Job unless the host itself cannot enforce Job assignment, in
+        # which case assignment fails before Trigger action work is admitted.
+        if not api.kernel32.SetInformationJobObject(
+                job, JobObjectExtendedLimitInformation, ctypes.byref(limits),
+                ctypes.sizeof(limits)):
+            raise _win_error("SetInformationJobObject")
+        return job
+    except BaseException:
+        _close(api, job)
+        raise
+
+
+def _job_active_processes(api: _WinAPI, job: HANDLE) -> int:
+    accounting = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION()
+    returned = DWORD()
+    if not api.kernel32.QueryInformationJobObject(
+            job, JobObjectBasicAccountingInformation,
+            ctypes.byref(accounting), ctypes.sizeof(accounting),
+            ctypes.byref(returned)):
+        raise _win_error("QueryInformationJobObject(accounting)")
+    return int(accounting.ActiveProcesses)
+
+
+def _job_process_ids(api: _WinAPI, job: HANDLE, active_hint: int) -> set[int]:
+    """Read actual current Job membership with bounded buffer growth."""
+    capacity = max(1, int(active_hint) + 4)
+    for _attempt in range(5):
+        if capacity > 65_536:
+            raise AppContainerError("Windows Job membership exceeds safety bound")
+        size = (
+            ctypes.sizeof(JOBOBJECT_BASIC_PROCESS_ID_LIST)
+            + (capacity - 1) * ctypes.sizeof(ULONG_PTR)
+        )
+        buffer = ctypes.create_string_buffer(size)
+        returned = DWORD()
+        ok = api.kernel32.QueryInformationJobObject(
+            job, JobObjectBasicProcessIdList, ctypes.byref(buffer), size,
+            ctypes.byref(returned),
+        )
+        view = ctypes.cast(
+            buffer, ctypes.POINTER(JOBOBJECT_BASIC_PROCESS_ID_LIST),
+        ).contents
+        if ok:
+            listed = int(view.NumberOfProcessIdsInList)
+            if listed > capacity:
+                raise AppContainerError(
+                    "Windows Job returned an invalid process-id count"
+                )
+            base = ctypes.addressof(buffer) + (
+                JOBOBJECT_BASIC_PROCESS_ID_LIST.ProcessIdList.offset
+            )
+            values = ctypes.cast(base, ctypes.POINTER(ULONG_PTR))
+            return {int(values[index]) for index in range(listed)}
+        if _last_error() != ERROR_MORE_DATA:
+            raise _win_error("QueryInformationJobObject(process ids)")
+        capacity = max(
+            capacity * 2,
+            int(view.NumberOfAssignedProcesses) + 4,
+        )
+    raise AppContainerError("Windows Job membership did not stabilize")
+
+
+def _stable_job_membership(api: _WinAPI, job: HANDLE) -> tuple[int, set[int]]:
+    """Return one self-consistent kernel membership observation."""
+    for _attempt in range(5):
+        before = _job_active_processes(api, job)
+        process_ids = _job_process_ids(api, job, before)
+        after = _job_active_processes(api, job)
+        if before == after == len(process_ids):
+            return after, process_ids
+    raise AppContainerError("Windows Job membership changed during capture")
+
+
+def _creation_time_100ns(api: _WinAPI, process: HANDLE) -> int:
+    created = FILETIME()
+    exited = FILETIME()
+    kernel = FILETIME()
+    user = FILETIME()
+    if not api.kernel32.GetProcessTimes(
+            process, ctypes.byref(created), ctypes.byref(exited),
+            ctypes.byref(kernel), ctypes.byref(user)):
+        raise _win_error("GetProcessTimes")
+    return (int(created.dwHighDateTime) << 32) | int(created.dwLowDateTime)
+
+
+def _open_process(api: _WinAPI, process_id: int, access: int) -> HANDLE:
+    process = api.kernel32.OpenProcess(access, 0, process_id)
+    if not process:
+        raise _win_error(f"OpenProcess({process_id})")
+    return process
+
+
+def _member_identity(api: _WinAPI, process_id: int) -> dict[str, int]:
+    process = _open_process(api, process_id, PROCESS_QUERY_LIMITED_INFORMATION)
+    try:
+        return {
+            "pid": process_id,
+            "creation_time_100ns": _creation_time_100ns(api, process),
+        }
+    finally:
+        _close(api, process)
+
+
+class _WindowsJobBoundary:
+    """One owned Trigger Job handle and its accumulated kernel membership."""
+
+    def __init__(self, api: _WinAPI, job: HANDLE, *, name: str,
+                 root_pid: int, root_creation_time_100ns: int) -> None:
+        self._api = api
+        self._job = job
+        self.name = name
+        self.root_pid = root_pid
+        self.root_creation_time_100ns = root_creation_time_100ns
+        self._members: dict[int, dict[str, int]] = {}
+
+    @classmethod
+    def create(cls, root_pid: int) -> "_WindowsJobBoundary":
+        if (not isinstance(root_pid, int) or isinstance(root_pid, bool)
+                or not 0 < root_pid <= _MAX_DWORD):
+            raise AppContainerError("invalid Trigger wrapper process id")
+        api = _load_api()
+        # The Global namespace is recoverable from another Windows session.
+        # Failure to create there is terminal: a session-local fallback could
+        # later turn cross-session lookup failure into false proof of death.
+        name = f"{_TRIGGER_JOB_NAME_PREFIX}{uuid.uuid4().hex}"
+        job = _create_job_object(api, name=name)
+        boundary: _WindowsJobBoundary | None = None
+        process = HANDLE()
+        try:
+            process = _open_process(
+                api, root_pid,
+                PROCESS_SET_QUOTA | PROCESS_TERMINATE
+                | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE,
+            )
+            created = _creation_time_100ns(api, process)
+            if not api.kernel32.AssignProcessToJobObject(job, process):
+                raise _win_error("AssignProcessToJobObject")
+            boundary = cls(
+                api, job, name=name, root_pid=root_pid,
+                root_creation_time_100ns=created,
+            )
+            identity = boundary.identity(action_may_have_started=False)
+            active = {
+                item["pid"] for item in identity["active_member_identities"]
+            }
+            if root_pid not in active:
+                raise AppContainerError(
+                    "Trigger wrapper was not present in assigned Windows Job"
+                )
+            return boundary
+        except BaseException:
+            if boundary is not None:
+                boundary.close(suppress_errors=True)
+            else:
+                _close(api, job)
+            raise
+        finally:
+            _close(api, process)
+
+    def _capture_members(self) -> tuple[int, set[int]]:
+        for _attempt in range(5):
+            active_count, active_pids = _stable_job_membership(
+                self._api, self._job,
+            )
+            try:
+                current = {
+                    process_id: _member_identity(self._api, process_id)
+                    for process_id in active_pids
+                }
+            except AppContainerError:
+                # A member may have exited between the Job query and
+                # OpenProcess. Re-read the Job rather than accepting a partial
+                # PID graph as complete membership.
+                continue
+            after_count, after_pids = _stable_job_membership(
+                self._api, self._job,
+            )
+            if active_count == after_count and active_pids == after_pids:
+                self._members.update(current)
+                return after_count, after_pids
+        raise AppContainerError(
+            "Windows Job members changed before they could be authenticated"
+        )
+
+    def identity(self, *, action_may_have_started: bool) -> dict[str, Any]:
+        active_count, active_pids = self._capture_members()
+        active_members = [self._members[pid] for pid in sorted(active_pids)]
+        identity = {
+            "kind": "windows_job_object",
+            "root_pid": self.root_pid,
+            "root_creation_time_100ns": self.root_creation_time_100ns,
+            "job_name": self.name,
+            "containment_established": True,
+            "assignment_confirmed": True,
+            "kill_on_close": True,
+            "die_on_unhandled_exception": True,
+            "breakaway_allowed": False,
+            "owner_handle_inheritable": False,
+            # Creation-collision refusal plus explicit noninheritance means
+            # this held handle is the only owner Ora created or transferred.
+            "owner_handle_sole_owner": True,
+            "active_processes": active_count,
+            "active_member_identities": active_members,
+            "observed_member_identities": [
+                self._members[pid] for pid in sorted(self._members)
+            ],
+            # An identity carrying this true value came from a zero snapshot
+            # through this original held owner handle. Once the existing
+            # ledger callback persists the identity, recovery may trust it.
+            "owner_handle_zero_observed": active_count == 0,
+            "action_may_have_started": bool(action_may_have_started),
+        }
+        if not _valid_trigger_job_identity(identity):
+            raise AppContainerError(
+                "Windows Job produced an inconsistent process identity"
+            )
+        return identity
+
+    def terminate_and_wait(self, timeout: float, *, exit_code: int = 1) -> None:
+        if not self._api.kernel32.TerminateJobObject(self._job, exit_code):
+            raise _win_error("TerminateJobObject(Trigger)")
+        deadline = time.monotonic() + max(0.0, float(timeout))
+        while True:
+            if _job_active_processes(self._api, self._job) == 0:
+                return
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise AppContainerError(
+                    "Windows Job did not acknowledge complete termination"
+                )
+            wait_ms = max(1, min(int(remaining * 1000), 50))
+            result = self._api.kernel32.WaitForSingleObject(self._job, wait_ms)
+            if result not in (WAIT_OBJECT_0, WAIT_TIMEOUT):
+                raise _win_error("WaitForSingleObject(Trigger Job)")
+
+    def close(self, *, suppress_errors: bool = False) -> None:
+        value = self._job.value if isinstance(self._job, ctypes.c_void_p) else self._job
+        if not value:
+            return
+        try:
+            if not self._api.kernel32.CloseHandle(HANDLE(value)):
+                raise _win_error("CloseHandle(Trigger Job)")
+            self._job = HANDLE()
+        except BaseException:
+            if not suppress_errors:
+                raise
+
+
+def _create_trigger_job(root_pid: int) -> _WindowsJobBoundary:
+    """Assign one held Trigger wrapper to the shared Windows Job primitive."""
+    return _WindowsJobBoundary.create(root_pid)
+
+
+def _valid_trigger_job_identity(identity: Any) -> bool:
+    if not isinstance(identity, dict):
+        return False
+    root_pid = identity.get("root_pid")
+    created = identity.get("root_creation_time_100ns")
+    name = identity.get("job_name")
+    active_count = identity.get("active_processes")
+    active_members = identity.get("active_member_identities")
+    observed_members = identity.get("observed_member_identities")
+    if (
+        identity.get("kind") != "windows_job_object"
+        or identity.get("containment_established") is not True
+        or identity.get("assignment_confirmed") is not True
+        or identity.get("kill_on_close") is not True
+        or identity.get("die_on_unhandled_exception") is not True
+        or identity.get("breakaway_allowed") is not False
+        or identity.get("owner_handle_inheritable") is not False
+        or identity.get("owner_handle_sole_owner") is not True
+        or not isinstance(identity.get("owner_handle_zero_observed"), bool)
+        or not isinstance(identity.get("action_may_have_started"), bool)
+        or not isinstance(root_pid, int) or isinstance(root_pid, bool)
+        or not 0 < root_pid <= _MAX_DWORD
+        or not isinstance(created, int) or isinstance(created, bool)
+        or not 0 < created <= _MAX_FILETIME
+        or not isinstance(active_count, int) or isinstance(active_count, bool)
+        or not 0 <= active_count <= _MAX_DWORD
+        or not isinstance(active_members, list)
+        or not isinstance(observed_members, list)
+        or len(active_members) != active_count
+        or not observed_members
+        or not isinstance(name, str)
+        or not name.startswith(_TRIGGER_JOB_NAME_PREFIX)
+    ):
+        return False
+    suffix = name.removeprefix(_TRIGGER_JOB_NAME_PREFIX)
+    try:
+        parsed = uuid.UUID(hex=suffix)
+    except (ValueError, AttributeError):
+        return False
+    if parsed.hex != suffix:
+        return False
+
+    def parse_members(raw_members: list[Any]) -> dict[int, int] | None:
+        parsed_members: dict[int, int] = {}
+        for member in raw_members:
+            if not isinstance(member, dict) or set(member) != {
+                "pid", "creation_time_100ns",
+            }:
+                return None
+            pid = member.get("pid")
+            member_created = member.get("creation_time_100ns")
+            if (
+                not isinstance(pid, int) or isinstance(pid, bool)
+                or not 0 < pid <= _MAX_DWORD
+                or not isinstance(member_created, int)
+                or isinstance(member_created, bool)
+                or not 0 < member_created <= _MAX_FILETIME
+                or pid in parsed_members
+            ):
+                return None
+            parsed_members[pid] = member_created
+        return parsed_members
+
+    active_by_pid = parse_members(active_members)
+    observed_by_pid = parse_members(observed_members)
+    if active_by_pid is None or observed_by_pid is None:
+        return False
+    if observed_by_pid.get(root_pid) != created:
+        return False
+    if any(
+        observed_by_pid.get(pid) != member_created
+        for pid, member_created in active_by_pid.items()
+    ):
+        return False
+    return identity["owner_handle_zero_observed"] is (active_count == 0)
+
+
+def _trigger_job_death_confirmed(identity: dict[str, Any]) -> bool:
+    """Authenticate owner-zero or sole-owner absence; fail closed otherwise."""
+    if not _valid_trigger_job_identity(identity):
+        return False
+    if identity["owner_handle_zero_observed"]:
+        # Callers reach this helper only with the durable EventLedger identity.
+        # This zero was captured through the original held owner handle, not a
+        # later object obtained by name.
+        return True
+    api = _load_api()
+    set_last_error = getattr(ctypes, "set_last_error", None)
+    if callable(set_last_error):
+        set_last_error(0)
+    job = api.kernel32.OpenJobObjectW(
+        JOB_OBJECT_QUERY, 0, identity["job_name"],
+    )
+    open_error = _last_error()
+    if not job:
+        # The global name rules out a Windows-session namespace miss. Under
+        # the authenticated sole-owner facts, true absence means the original
+        # handle closed and kill-on-close applied to every member. Access
+        # errors and all other lookup failures remain ambiguous.
+        return open_error in {ERROR_FILE_NOT_FOUND, ERROR_NOT_FOUND}
+    try:
+        # A name is only a locator. The original Job may have been destroyed
+        # and an empty or live object recreated under the same name. Windows
+        # exposes no creation identity that lets this reopened handle prove it
+        # is the held object described by the ledger, so its count is never
+        # terminal evidence and the recovery path must not terminate it.
+        return False
+    finally:
+        _close(api, job)
 
 
 def _sid_text(api: _WinAPI, sid: LPVOID) -> str:
@@ -821,19 +1260,8 @@ def _launch(api: _WinAPI, argv: list[str], *, executable: str, cwd: str,
         for parent_end in (stdin_write, stdout_read, stderr_read):
             _make_parent_end_private(api, parent_end)
 
-        job = api.kernel32.CreateJobObjectW(None, None)
-        if not job:
-            raise _win_error("CreateJobObjectW")
+        job = _create_job_object(api)
         handles.append(job)
-        limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
-        limits.BasicLimitInformation.LimitFlags = (
-            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-            | JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION
-        )
-        if not api.kernel32.SetInformationJobObject(
-                job, JobObjectExtendedLimitInformation, ctypes.byref(limits),
-                ctypes.sizeof(limits)):
-            raise _win_error("SetInformationJobObject")
 
         needed = SIZE_T()
         first = api.kernel32.InitializeProcThreadAttributeList(None, 3, 0,

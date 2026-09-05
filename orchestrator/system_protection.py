@@ -510,6 +510,12 @@ def _authority_roots() -> dict[str, str]:
         "runtime framework instructions": _path_key(root / "frameworks"),
         "runtime configuration": _path_key(_rp.CONFIG_DIR),
         "oversight authority state": _path_key(_rp.DATA_DIR / "oversight"),
+        "Trigger standing authority state": _path_key(
+            Path(_rp.DATA_DIR_STR) / "triggers"
+        ),
+        "runtime-hygiene rollback authority state": _path_key(
+            Path(_rp.DATA_DIR_STR) / "runtime-hygiene"
+        ),
     }
 
 
@@ -1061,6 +1067,50 @@ def _append_audit(event_type: str, body: Mapping[str, Any]) -> dict[str, Any]:
         return record
 
 
+def _start_execution_receipt(
+    decision: PolicyDecision,
+    *,
+    request: Mapping[str, Any],
+    request_digest: str,
+    approval_id: str,
+    approval_action: str,
+    approval_args_hash: str,
+) -> ProtectionExecution:
+    """Persist one authenticated start record for an already-proved authority.
+
+    Ordinary protected calls prove a consumed one-shot token in
+    :func:`begin_execution`.  An active Trigger proves its narrower standing
+    authority in :func:`authorize_trigger_project_action`.  Both authorities
+    deliberately converge here so the effect and terminal-receipt paths stay
+    identical.
+    """
+
+    execution_id = hashlib.sha256(
+        f"{approval_id}\0{request_digest}\0{secrets.token_hex(16)}".encode("utf-8")
+    ).hexdigest()
+    record = _append_audit(
+        "protected_action_started",
+        {
+            "execution_id": execution_id,
+            "request": copy.deepcopy(dict(request)),
+            "request_digest": request_digest,
+            "approval_id": approval_id,
+            "approval_action": approval_action,
+            "approval_args_hash": approval_args_hash,
+        },
+    )
+    return ProtectionExecution(
+        execution_id=execution_id,
+        request_digest=request_digest,
+        start_digest=record["record_digest"],
+        action=decision.action,
+        selectors=decision.selectors,
+        approval_id=approval_id,
+        approval_action=approval_action,
+        approval_args_hash=approval_args_hash,
+    )
+
+
 def begin_execution(
     decision: PolicyDecision,
     *,
@@ -1076,7 +1126,7 @@ def begin_execution(
 
     if decision.outcome != "review" or not approval_id:
         raise ProtectionAuditError("protected execution requires exact consumed approval")
-    if surface in {"server_api", "slash_command", "channel"}:
+    if surface in {"server_api", "slash_command", "channel", "trigger"}:
         expected_approval_action = f"system_protection:{decision.action}"
     elif surface == "tool_dispatcher":
         if decision.action.startswith("bash:"):
@@ -1123,26 +1173,10 @@ def begin_execution(
         raise ProtectionAuditError(
             f"protected execution lacks an authenticated one-shot approval: {exc}"
         ) from exc
-    execution_id = hashlib.sha256(
-        f"{approval_id}\0{request_digest}\0{secrets.token_hex(16)}".encode("utf-8")
-    ).hexdigest()
-    record = _append_audit(
-        "protected_action_started",
-        {
-            "execution_id": execution_id,
-            "request": request,
-            "request_digest": request_digest,
-            "approval_id": approval_id,
-            "approval_action": approval_action,
-            "approval_args_hash": approval_args_hash,
-        },
-    )
-    return ProtectionExecution(
-        execution_id=execution_id,
+    return _start_execution_receipt(
+        decision,
+        request=request,
         request_digest=request_digest,
-        start_digest=record["record_digest"],
-        action=decision.action,
-        selectors=decision.selectors,
         approval_id=approval_id,
         approval_action=approval_action,
         approval_args_hash=approval_args_hash,
@@ -1450,19 +1484,23 @@ def _project_binding_states(binding: Mapping[str, Any]) -> list[dict[str, Any]]:
     return states
 
 
-def authorize_project_action(
-    action: str,
-    *,
-    binding: Mapping[str, Any],
-    surface: str = "slash_command",
-) -> ProtectionExecution:
-    """Authorize one exact Project tool or declared slash-command execution.
+def _public_project_binding(binding: Mapping[str, Any]) -> dict[str, Any]:
+    """Use the registry's single public/private binding definition."""
+    try:
+        import project_registry as _pr
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator import project_registry as _pr
+    try:
+        return _pr.public_execution_binding(binding)
+    except _pr.ProjectExecutionBindingError as exc:
+        raise ProtectionDenied(str(exc)) from exc
 
-    The binding is assembled from the live registered manifest and command by
-    ``project_registry``. Only its structural identities and input digest are
-    sent to the existing Paused queue; raw invocation arguments never enter
-    approval or audit state.
-    """
+
+def _validated_project_action(
+    action: str, binding: Mapping[str, Any],
+) -> tuple[str, tuple[str, ...], dict[str, str]]:
+    """Validate and reduce one registry-issued Project execution binding."""
+
     normalized = str(action or "").strip().lower()
     expected_kind = {
         "project_tool_execute": "tool",
@@ -1471,7 +1509,7 @@ def authorize_project_action(
     if expected_kind is None or binding.get("kind") != expected_kind:
         raise ProtectionDenied("unknown Project execution adapter fails closed")
     required = (
-        "nexus", "name", "interface", "manifest_sha256", "command_digest",
+        "nexus", "project_root", "name", "interface", "manifest_sha256", "command_digest",
         "executable_path", "executable_identity", "script_identity",
         "args_digest", "selectors",
     )
@@ -1493,6 +1531,18 @@ def authorize_project_action(
         binding["executable_path"]
     ):
         raise ProtectionDenied("Project executable identity is not absolute")
+    if not isinstance(binding["project_root"], str) or not os.path.isabs(
+        binding["project_root"]
+    ):
+        raise ProtectionDenied("registered Project root identity is not absolute")
+    try:
+        canonical_root = str(Path(binding["project_root"]).resolve(strict=True))
+    except (OSError, RuntimeError) as exc:
+        raise ProtectionDenied(
+            "registered Project root identity is unavailable"
+        ) from exc
+    if canonical_root != binding["project_root"] or not Path(canonical_root).is_dir():
+        raise ProtectionDenied("registered Project root identity is not canonical")
     if binding.get("script_path") and (
         not isinstance(binding["script_path"], str)
         or not os.path.isabs(binding["script_path"])
@@ -1503,7 +1553,7 @@ def authorize_project_action(
         raise ProtectionDenied("Project execution selectors are not exact")
     raw_selectors = tuple(str(item) for item in raw_selectors)
     selectors = tuple(sorted(raw_selectors))
-    if len(raw_selectors) != 6 or len(set(raw_selectors)) != 6:
+    if len(raw_selectors) != 7 or len(set(raw_selectors)) != 7:
         raise ProtectionDenied("Project execution selectors are not exact")
     target = "tool" if expected_kind == "tool" else "slash"
     expected_selectors = tuple(sorted((
@@ -1512,12 +1562,14 @@ def authorize_project_action(
         f"project:{binding['nexus']}/command:{binding['command_digest']}",
         f"project:{binding['nexus']}/interface:{binding['interface']}",
         f"project:{binding['nexus']}/executable:{binding['executable_identity']}",
+        f"project:{binding['nexus']}/root:{binding['project_root']}",
         f"project:{binding['nexus']}/args:{binding['args_digest']}",
     )))
     if selectors != expected_selectors:
         raise ProtectionDenied("Project execution selectors are not exact")
     params = {
         "nexus": str(binding["nexus"]),
+        "project_root": str(binding["project_root"]),
         "name": str(binding["name"]),
         "interface": str(binding["interface"]),
         "manifest_sha256": str(binding["manifest_sha256"]),
@@ -1527,13 +1579,121 @@ def authorize_project_action(
         "script_path": str(binding.get("script_path") or ""),
         "script_identity": str(binding["script_identity"]),
         "args_digest": str(binding["args_digest"]),
+        # This digest covers every public field, not a hand-maintained subset.
+        # Raw invocation input is represented only by args_digest.
+        "binding_digest": _digest(_public_project_binding(binding)),
     }
+    return normalized, selectors, params
+
+
+def authorize_project_action(
+    action: str,
+    *,
+    binding: Mapping[str, Any],
+    surface: str = "slash_command",
+) -> ProtectionExecution:
+    """Authorize one exact Project tool or declared slash-command execution.
+
+    The binding is assembled from the live registered manifest and command by
+    ``project_registry``. Only its structural identities and input digest are
+    sent to the existing Paused queue; raw invocation arguments never enter
+    approval or audit state.
+    """
+    normalized, selectors, params = _validated_project_action(action, binding)
     return authorize_server_action(
         normalized,
         selectors=selectors,
         params=params,
         pre_state=_project_binding_states(binding),
         surface=surface,
+    )
+
+
+def authorize_trigger_project_action(
+    *,
+    trigger_record: Mapping[str, Any],
+    binding: Mapping[str, Any],
+) -> ProtectionExecution:
+    """Start one Project-tool effect under an active Trigger's exact approval.
+
+    This is intentionally Trigger-specific rather than a general standing
+    allow.  The Trigger record itself is the revocable authority: it must be
+    active, its current specification must still be the approved digest, and
+    its approved Project binding must match the registry-issued live binding.
+    Raw tool input is covered by those digests but is not copied into the
+    protection audit.
+    """
+
+    action, selectors, params = _validated_project_action(
+        "project_tool_execute", binding,
+    )
+    spec = trigger_record.get("spec")
+    approved_binding = trigger_record.get("approved_action_binding")
+    if not isinstance(spec, Mapping) or not isinstance(approved_binding, Mapping):
+        raise ProtectionDenied("Trigger standing authority is incomplete")
+    trigger_id = str(spec.get("trigger_id") or "")
+    principal_id = str(spec.get("principal_id") or "")
+    trigger_action = spec.get("action")
+    spec_digest = _digest(spec)
+    if (
+        trigger_record.get("status") != "active"
+        or not trigger_id
+        or not principal_id
+        or trigger_record.get("approved_spec_digest") != spec_digest
+        or not isinstance(trigger_action, Mapping)
+        or trigger_action.get("kind") != "project_tool"
+        or trigger_action.get("nexus") != binding.get("nexus")
+        or trigger_action.get("tool") != binding.get("name")
+    ):
+        raise ProtectionDenied(
+            "Trigger standing authority is inactive or no longer matches its specification"
+        )
+    approved_public = _public_project_binding(approved_binding)
+    current_public = _public_project_binding(binding)
+    if approved_public != current_public:
+        raise ProtectionDenied(
+            "Trigger standing authority no longer matches the Project execution binding"
+        )
+    authority = {
+        "kind": "active_trigger",
+        "trigger_id": trigger_id,
+        "principal_id": principal_id,
+        "spec_digest": spec_digest,
+        "activated_at": str(trigger_record.get("activated_at") or ""),
+        "binding_digest": _digest(current_public),
+    }
+    if not authority["activated_at"]:
+        raise ProtectionDenied("Trigger standing authority has no activation identity")
+    decision = PolicyDecision(
+        outcome="review",
+        reason="active Trigger exact-spec standing authority",
+        action=action,
+        selectors=selectors,
+        policy_code="trigger-standing-authority",
+    )
+    pre_state = _authenticate_state_identities(
+        selectors, _project_binding_states(binding), phase="trigger-standing",
+    )
+    request = {
+        "action": action,
+        "selectors": list(selectors),
+        "policy_code": decision.policy_code,
+        "params_digest": _digest(params),
+        "pre_state": pre_state,
+        "surface": "trigger",
+        "standing_authority": authority,
+    }
+    request_digest = _digest(request)
+    authority_id = "trigger:" + hashlib.sha256(
+        _canonical_json(authority).encode("utf-8")
+    ).hexdigest()
+    return _start_execution_receipt(
+        decision,
+        request=request,
+        request_digest=request_digest,
+        approval_id=authority_id,
+        approval_action="trigger_activation",
+        approval_args_hash=spec_digest,
     )
 
 
@@ -1584,6 +1744,7 @@ __all__ = [
     "SystemProtectionError",
     "authorize_server_action",
     "authorize_project_action",
+    "authorize_trigger_project_action",
     "project_binding_states",
     "authorize_channel_action",
     "begin_execution",

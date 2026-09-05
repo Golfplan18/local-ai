@@ -374,11 +374,19 @@ class OversightDaemon:
             recover_retention_intents,
             restore_incomplete_events,
         )
+        from orchestrator import triggers
+        trigger_service = triggers.service()
+        unresolved = trigger_service.reconcile_unresolved_firings()
+        if unresolved["retained"]:
+            print("[oversight_daemon] retained unresolved Trigger firings: "
+                  f"{unresolved['retained']}")
+        if unresolved["errors"]:
+            print("[oversight_daemon] Trigger firing recovery errors: "
+                  f"{unresolved['errors']}")
         restored = restore_incomplete_events()
         if restored:
             print(f"[oversight_daemon] restored interrupted events: {restored}")
-        from orchestrator import triggers
-        replayed = triggers.service().replay_completion_deliveries()
+        replayed = trigger_service.replay_completion_deliveries()
         if replayed:
             print(f"[oversight_daemon] replayed Trigger completions: {replayed}")
 

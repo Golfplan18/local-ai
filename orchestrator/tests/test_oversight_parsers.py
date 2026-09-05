@@ -6,6 +6,7 @@ Reference — Meta-Layer Architecture §11.
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -485,32 +486,140 @@ class TestPEDWatcherDiff(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-                attempted = []
-                def fail_publication(event):
-                    attempted.append(event.publication_id)
+                event_log = root / "events.jsonl"
+                real_write = os.write
+                writes = 0
+
+                def partial_write_then_fail(fd, payload):
+                    nonlocal writes
+                    writes += 1
+                    if writes == 1:
+                        prefix = max(1, len(payload) // 2)
+                        return real_write(fd, payload[:prefix])
                     raise OSError("durable publication unavailable")
 
-                with self.assertRaisesRegex(OSError, "publication unavailable"):
-                    ped_watcher.sweep(emit_event=fail_publication)
+                with mock.patch.object(
+                    oversight_events.os, "write",
+                    side_effect=partial_write_then_fail,
+                ):
+                    with self.assertRaisesRegex(OSError, "publication unavailable"):
+                        ped_watcher.sweep(emit_event=emit)
                 self.assertFalse(
                     ped_watcher.load_last_state("fixture")["milestones"][
                         "Durable transition"
                     ]
                 )
+                self.assertTrue(event_log.read_bytes())
+                self.assertFalse(event_log.read_bytes().endswith(b"\n"))
 
-                delivered = []
+                handler_attempts = []
                 clear_handlers()
                 self.addCleanup(clear_handlers)
-                register_handler(lambda event: delivered.append(event))
+                def flaky_handler(event):
+                    handler_attempts.append(event["publication_id"])
+                    if len(handler_attempts) == 1:
+                        raise OSError("downstream handler unavailable")
+
+                register_handler(flaky_handler)
+                with self.assertRaisesRegex(
+                    OSError, "downstream handler unavailable",
+                ):
+                    ped_watcher.sweep(emit_event=emit)
+                self.assertFalse(
+                    ped_watcher.load_last_state("fixture")["milestones"][
+                        "Durable transition"
+                    ]
+                )
+                failed_records = [
+                    json.loads(line)
+                    for line in event_log.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                ]
+                self.assertFalse(any(
+                    oversight_events._DELIVERY_MARKER in record
+                    for record in failed_records
+                ))
+
                 events = ped_watcher.sweep(emit_event=emit)
-                self.assertEqual(events[0].publication_id, attempted[0])
-                self.assertEqual(len(delivered), 1)
+                self.assertEqual(len(handler_attempts), 2)
+                self.assertEqual(len(set(handler_attempts)), 1)
+                records = [
+                    json.loads(line)
+                    for line in event_log.read_text(encoding="utf-8").splitlines()
+                    if "publication_id" in json.loads(line)
+                ]
+                self.assertEqual(len(records), 1)
+                self.assertEqual(
+                    records[0]["publication_id"], events[0].publication_id,
+                )
+                acknowledgments = [
+                    json.loads(line)
+                    for line in event_log.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                    if oversight_events._DELIVERY_MARKER in json.loads(line)
+                ]
+                self.assertEqual(len(acknowledgments), 1)
                 self.assertEqual(ped_watcher.sweep(emit_event=emit), [])
 
     def test_stable_publication_is_idempotent_when_checkpoint_retries(self):
         import ped_watcher
         from oversight_events import clear_handlers, emit, register_handler
         import oversight_events
+        import oversight_relationships
+        import oversight_router
+        import runtime_hygiene
+        from orchestrator import oversight_router as qualified_router
+
+        # The installed router may have been imported through either supported
+        # module spelling (or may be the pre-reload function object). Match its
+        # normalized module plus exact qualified name, never its name alone.
+        self.assertIsNot(
+            qualified_router.process_event, oversight_router.process_event,
+        )
+        alternate_event = {
+            "event_type": "MilestoneClaimed",
+            "publication_id": "alternate-module-publication",
+        }
+        frozen_alternate_event = {
+            **alternate_event,
+            "milestone_text": "Frozen before publication",
+        }
+        clear_handlers()
+        register_handler(qualified_router.process_event)
+        with mock.patch.object(
+            oversight_router, "prepare_watcher_publication",
+            return_value={
+                "subject": {"publication_event": frozen_alternate_event},
+            },
+        ) as prepare:
+            self.assertTrue(
+                oversight_events._prepare_watcher_router(alternate_event),
+            )
+        prepare.assert_called_once()
+        self.assertEqual(alternate_event, frozen_alternate_event)
+
+        def unrelated_process_event(_event):
+            return None
+
+        unrelated_process_event.__qualname__ = (
+            oversight_router.process_event.__qualname__
+        )
+        unrelated_process_event.__module__ = "unrelated.oversight_router"
+        clear_handlers()
+        register_handler(unrelated_process_event)
+        with mock.patch.object(
+            oversight_router, "prepare_watcher_publication",
+        ) as prepare:
+            self.assertFalse(
+                oversight_events._prepare_watcher_router({
+                    "event_type": "MilestoneClaimed",
+                    "publication_id": "unrelated-module-publication",
+                })
+            )
+        prepare.assert_not_called()
+        clear_handlers()
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -527,6 +636,13 @@ class TestPEDWatcherDiff(unittest.TestCase):
                 mock.patch.object(
                     oversight_events, "EVENT_LOG_PATH", str(root / "events.jsonl"),
                 ),
+                mock.patch.object(
+                    oversight_router, "ROUTER_LOG_PATH", root / "router.jsonl",
+                ),
+                mock.patch.object(
+                    runtime_hygiene, "_root",
+                    side_effect=lambda: root / "runtime-hygiene",
+                ),
             ):
                 ped_watcher.write_ped_pointer("fixture", str(ped_path))
                 ped_watcher.sweep(emit_event=lambda _event: None)
@@ -534,22 +650,580 @@ class TestPEDWatcherDiff(unittest.TestCase):
                     "# Test\n\n## Active Milestones\n\n- [x] Stable identity\n",
                     encoding="utf-8",
                 )
-                delivered = []
+                handler_attempts = []
                 clear_handlers()
                 self.addCleanup(clear_handlers)
-                register_handler(lambda event: delivered.append(event))
+
+                def record_handler_attempt(event):
+                    handler_attempts.append(event["publication_id"])
+
+                register_handler(oversight_router.process_event)
+                register_handler(record_handler_attempt)
+
+                event_log = root / "events.jsonl"
+                real_fsync = os.fsync
+                event_fsync_calls = 0
+
+                def fail_first_fsync(fd):
+                    nonlocal event_fsync_calls
+                    is_event_log = (
+                        event_log.exists()
+                        and os.fstat(fd).st_ino == event_log.stat().st_ino
+                    )
+                    if is_event_log and event_fsync_calls == 0:
+                        event_fsync_calls += 1
+                        raise OSError("event fsync unavailable")
+                    return real_fsync(fd)
+
+                with mock.patch.object(
+                    oversight_events.os, "fsync", side_effect=fail_first_fsync,
+                ):
+                    with self.assertRaisesRegex(OSError, "fsync unavailable"):
+                        ped_watcher.sweep(emit_event=emit)
+                self.assertFalse(
+                    ped_watcher.load_last_state("fixture")["milestones"][
+                        "Stable identity"
+                    ]
+                )
+                self.assertEqual(len(event_log.read_text(
+                    encoding="utf-8",
+                ).splitlines()), 1)
+
+                event_inode = event_log.stat().st_ino
+                event_log_synced = False
+
+                def record_fsync(fd):
+                    nonlocal event_log_synced
+                    if os.fstat(fd).st_ino == event_inode:
+                        event_log_synced = True
+                    return real_fsync(fd)
+
+                with mock.patch.object(
+                    oversight_events.os, "fsync", side_effect=record_fsync,
+                ):
+                    ped_watcher.sweep(emit_event=emit)
+                self.assertTrue(event_log_synced)
+                # Seeing an already-written event line proves only byte
+                # publication. With no separate delivery acknowledgment, the
+                # stable identity still has to reach downstream once.
+                self.assertEqual(len(handler_attempts), 1)
+                self.assertEqual(
+                    len((root / "router.jsonl").read_text(
+                        encoding="utf-8",
+                    ).splitlines()),
+                    1,
+                )
+                ledger = runtime_hygiene.EventLedger()
+                first_delivery_id, _identity = (
+                    oversight_router._watcher_delivery_identity({
+                        "event_type": "MilestoneClaimed",
+                        "publication_id": handler_attempts[0],
+                    })
+                )
+                first_delivery = ledger.get(first_delivery_id)
+                self.assertEqual(first_delivery["status"], "completed")
+                self.assertIsInstance(first_delivery.get("receipt"), dict)
+                self.assertTrue(first_delivery.get("effects_completed_at"))
+
+                # A delivery-marker failure happens after every router sink and
+                # its receipt, but before the claim may become terminal.
+                ped_path.write_text(
+                    "# Test\n\n## Active Milestones\n\n"
+                    "- [x] Stable identity\n- [x] Second identity\n",
+                    encoding="utf-8",
+                )
+                with mock.patch.object(
+                    oversight_events, "_mark_publication_delivered",
+                    side_effect=OSError("delivery marker unavailable"),
+                ):
+                    with self.assertRaisesRegex(
+                        OSError, "delivery marker unavailable",
+                    ):
+                        ped_watcher.sweep(emit_event=emit)
+                self.assertNotIn(
+                    "Second identity",
+                    ped_watcher.load_last_state("fixture")["milestones"],
+                )
+                second_publication_id = handler_attempts[-1]
+                second_delivery_id, _identity = (
+                    oversight_router._watcher_delivery_identity({
+                        "event_type": "MilestoneClaimed",
+                        "publication_id": second_publication_id,
+                    })
+                )
+                second_delivery = ledger.get(second_delivery_id)
+                self.assertEqual(second_delivery["status"], "claimed")
+                self.assertIsInstance(second_delivery.get("receipt"), dict)
+                self.assertTrue(second_delivery.get("effects_completed_at"))
+                frozen_subject = second_delivery["subject"]
+
+                # Startup recovery leaves only this delivery kind claimed. A
+                # normal interrupted firing retains its existing terminal
+                # failure behavior.
+                ordinary_id = runtime_hygiene.event_identity(
+                    "trigger_firing", {"trigger_id": "restart-control"},
+                )
+                ledger.claim(
+                    event_id=ordinary_id,
+                    event_type="trigger_firing",
+                    subject={"trigger_id": "restart-control"},
+                )
+                restored = runtime_hygiene.restore_incomplete_events(ledger)
+                self.assertIn(ordinary_id, restored)
+                self.assertNotIn(second_delivery_id, restored)
+                self.assertEqual(ledger.get(ordinary_id)["status"], "failed")
+                self.assertEqual(
+                    ledger.get(second_delivery_id)["status"], "claimed",
+                )
+                self.assertEqual(
+                    ledger.get(second_delivery_id)["subject"], frozen_subject,
+                )
+
+                # The next retry sees the receipt and skips every router sink.
+                # Its marker and router acknowledgment become durable before a
+                # simulated watcher-checkpoint failure.
                 with mock.patch.object(
                     ped_watcher, "write_state",
                     side_effect=OSError("checkpoint unavailable"),
                 ):
-                    with self.assertRaisesRegex(OSError, "checkpoint unavailable"):
+                    with self.assertRaisesRegex(
+                        OSError, "checkpoint unavailable",
+                    ):
                         ped_watcher.sweep(emit_event=emit)
-                ped_watcher.sweep(emit_event=emit)
-                self.assertEqual(len(delivered), 1)
-                lines = (root / "events.jsonl").read_text(
-                    encoding="utf-8"
-                ).splitlines()
-                self.assertEqual(len(lines), 1)
+                self.assertNotIn(
+                    "Second identity",
+                    ped_watcher.load_last_state("fixture")["milestones"],
+                )
+                self.assertEqual(len(handler_attempts), 3)
+                self.assertEqual(handler_attempts[1], handler_attempts[2])
+                self.assertEqual(
+                    len((root / "router.jsonl").read_text(
+                        encoding="utf-8",
+                    ).splitlines()),
+                    2,
+                )
+                self.assertEqual(
+                    ledger.get(second_delivery_id)["status"], "completed",
+                )
+                self.assertEqual(
+                    ledger.get(second_delivery_id)["subject"], frozen_subject,
+                )
+
+                # Terminal retention may now prune that completed router
+                # claim while the watcher still owes its checkpoint.
+                with mock.patch.object(
+                    runtime_hygiene, "LEDGER_TERMINAL_RETENTION", 1,
+                ):
+                    for index in range(2):
+                        prune_id = runtime_hygiene.event_identity(
+                            "watcher-prune-fixture", {"index": index},
+                        )
+                        ledger.claim(
+                            event_id=prune_id,
+                            event_type="watcher-prune-fixture",
+                            subject={"index": index},
+                        )
+                        ledger.transition(
+                            prune_id, {"claimed"}, "completed",
+                            completed_at=ped_watcher._now_iso(),
+                        )
+                self.assertIsNone(ledger.get(second_delivery_id))
+
+                # The retry has deliberately different transient metadata.
+                # The durable marker is authoritative: it must suppress plan
+                # preparation, every handler/fan-out, and any claim recreation;
+                # the narrow missing-claim acknowledgment is idempotent success
+                # and lets the watcher checkpoint advance.
+                acknowledged = []
+                real_acknowledge = (
+                    oversight_router.acknowledge_watcher_publication
+                )
+
+                def record_acknowledgment(event):
+                    outcome = real_acknowledge(event)
+                    acknowledged.append(outcome)
+                    return outcome
+
+                changed_time = "2099-01-01T00:00:00+00:00"
+                with (
+                    mock.patch.object(
+                        oversight_router, "prepare_watcher_publication",
+                        side_effect=AssertionError(
+                            "durable marker must bypass plan preparation"
+                        ),
+                    ),
+                    mock.patch.object(
+                        oversight_router, "acknowledge_watcher_publication",
+                        side_effect=record_acknowledgment,
+                    ),
+                    mock.patch.object(
+                        ped_watcher, "_now_iso", return_value=changed_time,
+                    ),
+                ):
+                    ped_watcher.sweep(emit_event=emit)
+                self.assertEqual(acknowledged, [True])
+                self.assertEqual(
+                    ped_watcher.load_last_state("fixture")["snapshot_at"],
+                    changed_time,
+                )
+                self.assertIsNone(ledger.get(second_delivery_id))
+                self.assertEqual(len(handler_attempts), 3)
+                self.assertEqual(
+                    len((root / "router.jsonl").read_text(
+                        encoding="utf-8",
+                    ).splitlines()),
+                    2,
+                )
+                records = [
+                    json.loads(line)
+                    for line in event_log.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                ]
+                publications = [
+                    record for record in records if "publication_id" in record
+                ]
+                acknowledgments = [
+                    record for record in records
+                    if oversight_events._DELIVERY_MARKER in record
+                ]
+                self.assertEqual(len(publications), 2)
+                self.assertEqual(len(acknowledgments), 2)
+                self.assertEqual(
+                    {record["publication_id"] for record in publications},
+                    {record[oversight_events._DELIVERY_MARKER]
+                     for record in acknowledgments},
+                )
+
+        def write_child(path, parent_nexus, spawned_from, *, complete):
+            mark = "x" if complete else " "
+            path.write_text(dedent(f"""\
+                ---
+                nexus:
+                  - fixture
+                type: PED
+                parent_nexus: {parent_nexus}
+                spawned_from_milestone: {spawned_from}
+                ---
+
+                # Child
+
+                ## Active Milestones
+
+                - [{mark}] Stable parent identity
+
+                ## Decision Log
+
+                """), encoding="utf-8")
+
+        def write_parent(path, nexus):
+            path.write_text(dedent(f"""\
+                ---
+                nexus:
+                  - {nexus}
+                type: PED
+                ---
+
+                # Parent
+
+                ## Active Milestones
+
+                - [ ] Observe child
+
+                ## Decision Log
+
+                """), encoding="utf-8")
+
+        for original_available in (True, False):
+            with self.subTest(
+                stable_parent_destination_available=original_available,
+            ):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    data = root / "oversight"
+                    child_path = root / "child.md"
+                    parent_a_path = root / "parent-a.md"
+                    parent_b_path = root / "parent-b.md"
+                    fanout_events = root / "fanout-events.jsonl"
+                    fanout_actions = root / "fanout-actions.jsonl"
+                    write_parent(parent_a_path, "parent-a")
+                    write_parent(parent_b_path, "parent-b")
+                    write_child(
+                        child_path,
+                        "parent-a",
+                        "Original parent milestone",
+                        complete=False,
+                    )
+                    with (
+                        mock.patch.object(
+                            ped_watcher,
+                            "OVERSIGHT_DATA_DIR",
+                            str(data),
+                            create=True,
+                        ),
+                        mock.patch.object(
+                            oversight_events,
+                            "EVENT_LOG_PATH",
+                            str(root / "events.jsonl"),
+                        ),
+                        mock.patch.object(
+                            oversight_relationships,
+                            "EVENTS_LOG_PATH",
+                            str(fanout_events),
+                        ),
+                        mock.patch.object(
+                            oversight_relationships,
+                            "ACTIONS_LOG_PATH",
+                            str(fanout_actions),
+                        ),
+                        mock.patch.object(
+                            oversight_router,
+                            "ROUTER_LOG_PATH",
+                            root / "router.jsonl",
+                        ),
+                        mock.patch.object(
+                            runtime_hygiene,
+                            "_root",
+                            side_effect=lambda: root / "runtime-hygiene",
+                        ),
+                    ):
+                        ped_watcher.write_ped_pointer(
+                            "fixture", str(child_path),
+                        )
+                        ped_watcher.write_ped_pointer(
+                            "parent-a", str(parent_a_path),
+                        )
+                        ped_watcher.write_ped_pointer(
+                            "parent-b", str(parent_b_path),
+                        )
+                        ped_watcher.sweep(emit_event=lambda _event: None)
+                        write_child(
+                            child_path,
+                            "parent-a",
+                            "Original parent milestone",
+                            complete=True,
+                        )
+                        clear_handlers()
+                        register_handler(oversight_router.process_event)
+
+                        # The router's complete parent plan must already be
+                        # durable when the event-row write begins. A crash in
+                        # this exact gap may not run any visible sink, and a
+                        # later rescan must not re-read changed routing facts.
+                        event_log = root / "events.jsonl"
+                        real_write = os.write
+
+                        def fail_before_event_row(fd, payload):
+                            is_event_log = (
+                                event_log.exists()
+                                and os.fstat(fd).st_ino
+                                == event_log.stat().st_ino
+                            )
+                            if not is_event_log:
+                                return real_write(fd, payload)
+                            deliveries = runtime_hygiene.EventLedger().list_events(
+                                event_type="watcher_router_delivery",
+                            )
+                            self.assertEqual(len(deliveries), 1)
+                            subject = deliveries[0]["subject"]
+                            plan = subject["parent_notification"]
+                            self.assertEqual(plan["parent_nexus"], "parent-a")
+                            self.assertEqual(
+                                plan["parent_ped_path"],
+                                str(parent_a_path.resolve()),
+                            )
+                            self.assertEqual(
+                                plan["synthesized_event"]
+                                ["spawned_from_milestone"],
+                                "Original parent milestone",
+                            )
+                            self.assertEqual(
+                                subject["publication_event"]["milestone_text"],
+                                "Stable parent identity",
+                            )
+                            self.assertFalse((root / "router.jsonl").exists())
+                            self.assertNotIn(
+                                "Child Project Update: fixture",
+                                parent_a_path.read_text(encoding="utf-8"),
+                            )
+                            self.assertFalse(fanout_events.exists())
+                            self.assertFalse(fanout_actions.exists())
+                            raise OSError("event row unavailable")
+
+                        with mock.patch.object(
+                            oversight_events.os,
+                            "write",
+                            side_effect=fail_before_event_row,
+                        ):
+                            with self.assertRaisesRegex(
+                                OSError, "event row unavailable",
+                            ):
+                                ped_watcher.sweep(emit_event=emit)
+
+                        self.assertTrue(event_log.exists())
+                        self.assertEqual(event_log.read_bytes(), b"")
+                        self.assertFalse(
+                            ped_watcher.load_last_state("fixture")["milestones"]
+                            ["Stable parent identity"]
+                        )
+                        delivery = runtime_hygiene.EventLedger().list_events(
+                            event_type="watcher_router_delivery",
+                        )
+                        self.assertEqual(len(delivery), 1)
+                        delivery_record = delivery[0]
+                        delivery_id = delivery_record["event_id"]
+                        frozen_subject = delivery_record["subject"]
+                        self.assertEqual(delivery_record["status"], "claimed")
+                        self.assertNotIn("receipt", delivery_record)
+                        self.assertNotIn(
+                            "effects_completed_at", delivery_record,
+                        )
+                        plan = frozen_subject["parent_notification"]
+
+                        write_child(
+                            child_path,
+                            "parent-b",
+                            "Changed parent milestone",
+                            complete=True,
+                        )
+                        if not original_available:
+                            parent_a_path.unlink()
+                            with self.assertRaisesRegex(
+                                OSError,
+                                "bound parent PED destination is unavailable",
+                            ):
+                                ped_watcher.sweep(emit_event=emit)
+                            self.assertFalse(
+                                ped_watcher.load_last_state("fixture")
+                                ["milestones"]["Stable parent identity"]
+                            )
+                            self.assertNotIn(
+                                "Child Project Update: fixture",
+                                parent_b_path.read_text(encoding="utf-8"),
+                            )
+                            self.assertFalse(fanout_events.exists())
+                            self.assertFalse(fanout_actions.exists())
+                            retained = runtime_hygiene.EventLedger().get(
+                                delivery_id,
+                            )
+                            self.assertEqual(retained["status"], "claimed")
+                            self.assertEqual(retained["subject"], frozen_subject)
+                            self.assertNotIn("receipt", retained)
+                            self.assertEqual(
+                                runtime_hygiene.restore_incomplete_events(), [],
+                            )
+                            continue
+
+                        with mock.patch.object(
+                            oversight_relationships,
+                            "_append_events_log",
+                            side_effect=OSError("fan-out event log unavailable"),
+                        ):
+                            with self.assertRaisesRegex(
+                                OSError, "fan-out event log unavailable",
+                            ):
+                                ped_watcher.sweep(emit_event=emit)
+
+                        first_parent = parent_a_path.read_text(encoding="utf-8")
+                        self.assertEqual(
+                            first_parent.count("Child Project Update: fixture"),
+                            1,
+                        )
+                        self.assertIn(
+                            "Original parent milestone", first_parent,
+                        )
+                        self.assertFalse(
+                            ped_watcher.load_last_state("fixture")["milestones"]
+                            ["Stable parent identity"]
+                        )
+                        self.assertNotIn(
+                            delivery_id,
+                            runtime_hygiene.restore_incomplete_events(),
+                        )
+                        recovered_delivery = runtime_hygiene.EventLedger().get(
+                            delivery_id,
+                        )
+                        self.assertEqual(recovered_delivery["status"], "claimed")
+                        self.assertEqual(
+                            recovered_delivery["subject"], frozen_subject,
+                        )
+                        self.assertEqual(plan["parent_nexus"], "parent-a")
+                        self.assertEqual(
+                            plan["parent_ped_path"],
+                            str(parent_a_path.resolve()),
+                        )
+                        self.assertEqual(
+                            plan["synthesized_event"]
+                            ["spawned_from_milestone"],
+                            "Original parent milestone",
+                        )
+
+                        ped_watcher.sweep(emit_event=emit)
+                        completed_delivery = runtime_hygiene.EventLedger().get(
+                            delivery_id,
+                        )
+                        self.assertEqual(
+                            completed_delivery["status"], "completed",
+                        )
+                        self.assertEqual(
+                            completed_delivery["subject"], frozen_subject,
+                        )
+                        self.assertIsInstance(
+                            completed_delivery.get("receipt"), dict,
+                        )
+                        self.assertTrue(
+                            completed_delivery.get("effects_completed_at"),
+                        )
+                        final_parent_a = parent_a_path.read_text(
+                            encoding="utf-8",
+                        )
+                        final_parent_b = parent_b_path.read_text(
+                            encoding="utf-8",
+                        )
+                        self.assertEqual(
+                            final_parent_a.count(
+                                "Child Project Update: fixture",
+                            ),
+                            1,
+                        )
+                        self.assertIn(
+                            plan["decision_log_entry"].rstrip(),
+                            final_parent_a,
+                        )
+                        self.assertNotIn(
+                            "Changed parent milestone", final_parent_a,
+                        )
+                        self.assertNotIn(
+                            "Child Project Update: fixture", final_parent_b,
+                        )
+                        self.assertEqual(
+                            [
+                                json.loads(line)
+                                for line in fanout_events.read_text(
+                                    encoding="utf-8",
+                                ).splitlines()
+                            ],
+                            [plan["synthesized_event"]],
+                        )
+                        self.assertEqual(
+                            [
+                                json.loads(line)
+                                for line in fanout_actions.read_text(
+                                    encoding="utf-8",
+                                ).splitlines()
+                            ],
+                            [plan["actions_log_entry"]],
+                        )
+                        self.assertEqual(
+                            len((root / "router.jsonl").read_text(
+                                encoding="utf-8",
+                            ).splitlines()),
+                            1,
+                        )
+                        self.assertTrue(
+                            ped_watcher.load_last_state("fixture")["milestones"]
+                            ["Stable parent identity"]
+                        )
 
     def test_ped_and_corpus_checkpoints_preserve_prior_bytes_on_failure(self):
         import corpus_watcher

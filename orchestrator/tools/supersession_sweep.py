@@ -24,9 +24,10 @@ Campaign and runtime rules (reconciled 2026-07-21):
     and every decision — supersede AND skip — is appended to the
     existing vault resolution logs so nothing happens silently and
     judged pairs never resurface.
-  - Every judgment completes before mutation. A model, resolver, audit, or
-    index error fails the exact event or campaign and rolls back all subject
-    files and logs; it never schedules a fallback sweep.
+  - Every judgment completes before mutation. A model, resolver, or commit
+    audit error fails the exact event or campaign and rolls back all subject
+    files and logs. Derived index refresh begins only after that durable
+    commit; its failure is recorded separately and never rewrites file truth.
   - Historical work is bounded per explicitly identified campaign. The
     unjudged remainder is reported rather than silently deferred to a clock.
 """
@@ -354,15 +355,27 @@ def _restored_snapshot_receipt(event: dict) -> dict:
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     restored = []
     for snapshot in manifest.get("snapshots", []):
+        if not isinstance(snapshot, dict) or "before_mode" not in snapshot:
+            raise RuntimeError("index restoration lacks a mode-bound snapshot")
         path = Path(snapshot["path"])
         if snapshot.get("existed"):
-            if not path.is_file() or sha256_file(path) != snapshot.get("before_sha256"):
+            before_mode = snapshot.get("before_mode")
+            if (
+                type(before_mode) is not int
+                or not 0 <= before_mode <= 0o7777
+                or not path.is_file()
+                or sha256_file(path) != snapshot.get("before_sha256")
+                or (path.stat().st_mode & 0o7777) != before_mode
+            ):
                 raise RuntimeError(f"file rollback did not restore exact pre-state: {path}")
-            restored.append(artifact_identity(path))
+            restored.append({
+                **artifact_identity(path),
+                "mode": before_mode,
+            })
         else:
-            if path.exists():
+            if snapshot.get("before_mode") is not None or os.path.lexists(path):
                 raise RuntimeError(f"file rollback did not remove created artifact: {path}")
-            restored.append({"path": str(path), "exists": False})
+            restored.append({"path": str(path), "exists": False, "mode": None})
     return {
         "rollback_manifest": str(Path(manifest_path).resolve()),
         "restored_identities": restored,
@@ -527,6 +540,7 @@ def process_artifact_write(path: str, *, event_id: str | None = None) -> dict:
                                     os.path.realpath(older["path"])
                                 ].h1,
                                 dry_run=False,
+                                already_locked=True,
                             )
                             header = _news_log_header()
                         else:
@@ -708,17 +722,26 @@ def task_news_supersession(*, campaign_id: str) -> SweepResult:
         if not judgments:
             ledger.transition(event_id, {"claimed"}, "completed", stats=stats,
                               mutation_count=0, completed_at=datetime.now().isoformat())
+            result = SweepResult(True, (
+                f"news campaign {campaign_id}: 0 judged of "
+                f"{stats['candidates']} candidates (0 superseded, 0 skipped, "
+                f"{stats['remaining']} remaining)"
+            ), stats)
         else:
             transaction_paths = {news_res.LOG_FILE}
             for newer, older, _jr in judgments:
                 transaction_paths.update({newer["path"], older["path"]})
             mutated: list[str] = []
-            with MutationTransaction(ledger, event_id, transaction_paths) as tx:
+            with (
+                mutation_path_locks(transaction_paths),
+                MutationTransaction(ledger, event_id, transaction_paths) as tx,
+            ):
                 for newer, older, jr in judgments:
                     if jr.decision == "supersede":
                         outcome = news_res.apply_supersession(
                             survivor_slug=newer["slug"], loser_slug=older["slug"],
                             loser_h1=older["h1"], dry_run=False,
+                            already_locked=True,
                         )
                         if outcome.get("errors"):
                             raise RuntimeError(str(outcome["errors"]))
@@ -736,30 +759,55 @@ def task_news_supersession(*, campaign_id: str) -> SweepResult:
                         resolution=resolution, judge_result=jr,
                         mutated_files=outcome["mutated_files"], errors=[],
                     )
-                if affected:
+                tx.commit(stats=stats, mutation_count=len(mutated),
+                          autonomous_judgment=True, human_triage=False)
+            # Retrieval refresh is derived, optional work. It begins only
+            # after file/log bytes and their terminal ledger evidence are
+            # durable and after every mutation lock has been released.
+            if affected:
+                try:
                     refreshed = news_res.refresh_chromadb(affected)
                     if isinstance(refreshed, dict) and refreshed.get("errors"):
                         raise RuntimeError(f"index refresh failed: {refreshed}")
-                tx.commit(stats=stats, mutation_count=len(mutated),
-                          autonomous_judgment=True, human_triage=False)
-        result = SweepResult(True, (
-            f"news campaign {campaign_id}: {stats['judged']} judged of "
-            f"{stats['candidates']} candidates ({stats['superseded']} superseded, "
-            f"{stats['skipped']} skipped, {stats['remaining']} remaining)"
-        ), stats)
+                except Exception as refresh_exc:
+                    stats["errors"] += 1
+                    ledger.transition(
+                        event_id, {"completed"}, "completed",
+                        index_refreshed=False, index_error=str(refresh_exc),
+                        stats=stats,
+                    )
+                    result = SweepResult(
+                        False,
+                        f"news campaign mutation committed; index refresh failed: "
+                        f"{refresh_exc}",
+                        stats, [str(refresh_exc)],
+                    )
+                else:
+                    ledger.transition(
+                        event_id, {"completed"}, "completed",
+                        index_refreshed=True, stats=stats,
+                    )
+                    result = SweepResult(True, (
+                        f"news campaign {campaign_id}: {stats['judged']} judged of "
+                        f"{stats['candidates']} candidates "
+                        f"({stats['superseded']} superseded, "
+                        f"{stats['skipped']} skipped, "
+                        f"{stats['remaining']} remaining)"
+                    ), stats)
+            else:
+                result = SweepResult(True, (
+                    f"news campaign {campaign_id}: {stats['judged']} judged of "
+                    f"{stats['candidates']} candidates "
+                    f"({stats['superseded']} superseded, "
+                    f"{stats['skipped']} skipped, "
+                    f"{stats['remaining']} remaining)"
+                ), stats)
     except Exception as exc:
         stats["errors"] += 1
         current = ledger.get(event_id)
         if current and current.get("status") == "claimed":
             ledger.transition(event_id, {"claimed"}, "failed", error=str(exc),
                               stats=stats, mutation_count=0)
-        # A failed index refresh may have partially changed retrieval state;
-        # after file rollback, best-effort refresh restores those identities.
-        if affected:
-            try:
-                news_res.refresh_chromadb(affected)
-            except Exception:
-                pass
         result = SweepResult(False, f"news campaign failed: {exc}", stats, [str(exc)])
     result.duration_seconds = time.time() - start
     return result

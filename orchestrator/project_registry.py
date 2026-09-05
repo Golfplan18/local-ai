@@ -29,7 +29,7 @@ import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, BinaryIO, Optional
+from typing import Any, BinaryIO, Mapping, Optional
 
 try:
     import runtime_paths as _rp
@@ -1256,7 +1256,7 @@ def _resolve_executable_identity(
         if not os.access(executable, os.X_OK):
             raise PermissionError("executable has no execute permission")
         digest = hashlib.sha256(executable.read_bytes()).hexdigest()
-    except OSError as exc:
+    except (OSError, RuntimeError) as exc:
         raise ProjectExecutionBindingError(
             f"project executable {executable} cannot be authenticated: {exc}"
         ) from exc
@@ -1329,6 +1329,12 @@ def project_execution_binding(
         executable_path, executable_identity, script_path, script_identity,
     ) = _resolve_executable_identity(command)
     manifest_sha256 = _registered_manifest_digest(project, pointer_dir)
+    try:
+        project_root = str(project.root.resolve(strict=True))
+    except OSError as exc:
+        raise ProjectExecutionBindingError(
+            f"registered project root cannot be authenticated: {exc}"
+        ) from exc
     command_digest = "sha256:" + hashlib.sha256(
         json.dumps(
             {"kind": kind, "name": declaration.name,
@@ -1343,11 +1349,13 @@ def project_execution_binding(
         f"project:{project.nexus}/command:{command_digest}",
         f"project:{project.nexus}/interface:{declaration.interface}",
         f"project:{project.nexus}/executable:{executable_identity}",
+        f"project:{project.nexus}/root:{project_root}",
         f"project:{project.nexus}/args:{args_digest}",
     )
     return {
         "kind": kind,
         "nexus": project.nexus,
+        "project_root": project_root,
         "name": declaration.name,
         "interface": declaration.interface,
         "manifest_sha256": manifest_sha256,
@@ -1358,8 +1366,36 @@ def project_execution_binding(
         "script_identity": script_identity,
         "args_digest": args_digest,
         "selectors": selectors,
-        "_resolved_command": command,
+        # Launch the exact absolute executable whose bytes were authenticated
+        # above.  The manifest's original spelling remains bound through the
+        # command digest, but it is never resolved a second time by subprocess.
+        "_resolved_command": [executable_path, *command[1:]],
     }
+
+
+def public_execution_binding(binding: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the complete durable/public portion of an execution binding.
+
+    Registry bindings reserve underscore-prefixed fields for immediate
+    in-process runtime objects such as the resolved command. Every other field
+    is approval-visible and therefore participates automatically in authority
+    and invocation comparisons, including public fields added in the future.
+    """
+    if not isinstance(binding, Mapping) or any(
+        not isinstance(key, str) for key in binding
+    ):
+        raise ProjectExecutionBindingError("project execution binding is invalid")
+    public = {
+        key: value for key, value in binding.items() if not key.startswith("_")
+    }
+    try:
+        return json.loads(json.dumps(
+            public, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ))
+    except (TypeError, ValueError) as exc:
+        raise ProjectExecutionBindingError(
+            "project public execution binding is not serializable"
+        ) from exc
 
 
 def project_args_digest(
@@ -1384,14 +1420,9 @@ def _assert_expected_binding(
 ) -> None:
     if expected is None:
         return
-    public_keys = (
-        "kind", "nexus", "name", "interface", "manifest_sha256",
-        "command_digest", "executable_path", "executable_identity",
-        "script_path", "script_identity", "args_digest", "selectors",
-    )
-    if any(expected.get(key) != current.get(key) for key in public_keys):
+    if public_execution_binding(expected) != public_execution_binding(current):
         raise ProjectExecutionBindingError(
-            "project registration, command, executable, or arguments changed "
+            "project registration, root, command, executable, or arguments changed "
             "after approval"
         )
 
@@ -1557,6 +1588,7 @@ def invoke_project_tool(
             ensure_ascii=False,
         ).encode("utf-8")
     env = _build_subprocess_env(project, extra_env=extra_env)
+    env["ORA_PROJECT_ROOT"] = binding["project_root"]
 
     # Execution Review Phase 1: boundary events. The tool body is an opaque
     # subprocess (enforcement boundary_only); the parent records invocation
@@ -1576,6 +1608,7 @@ def invoke_project_tool(
                 "sensitivity": axes["sensitivity"], "egress": axes["egress"],
                 "mutated": ok,
                 "args_redacted": {
+                    "project_root": binding["project_root"],
                     "command_digest": binding["command_digest"],
                     "executable_identity": binding["executable_identity"],
                     "args_digest": binding["args_digest"],
@@ -1598,7 +1631,7 @@ def invoke_project_tool(
             input=proc_input,
             capture_output=True,
             timeout=timeout,
-            cwd=str(project.root),
+            cwd=binding["project_root"],
             env=env,
         )
     except subprocess.TimeoutExpired as e:
@@ -1704,10 +1737,11 @@ def invoke_project_slash_command(
         cmd = cmd + [str(a) for a in args]
 
     env = _build_subprocess_env(project)
+    env["ORA_PROJECT_ROOT"] = binding["project_root"]
     try:
         result = subprocess.run(
             cmd, capture_output=True, timeout=timeout,
-            cwd=str(project.root), env=env,
+            cwd=binding["project_root"], env=env,
         )
     except subprocess.TimeoutExpired as exc:
         raise ToolInvocationError(
@@ -1773,6 +1807,7 @@ __all__ = [
     "unregister_project",
     "project_args_digest",
     "project_execution_binding",
+    "public_execution_binding",
     "invoke_project_tool",
     "invoke_project_slash_command",
     "find_project_for_slash_command",

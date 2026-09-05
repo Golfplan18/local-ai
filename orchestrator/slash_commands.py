@@ -339,6 +339,21 @@ def _cmd_maintenance(
         return _cmd_deny(
             rest, conversation_id=conversation_id, principal_id=principal_id,
         )
+    if sub == "rollback":
+        if len(rest) != 1:
+            return "Usage: /maintenance rollback <event-id>"
+        try:
+            try:
+                from orchestrator.runtime_hygiene import rollback_completed_event
+            except ImportError:  # pragma: no cover - direct module context
+                from runtime_hygiene import rollback_completed_event
+            record = rollback_completed_event(rest[0])
+        except Exception as exc:
+            return f"[/maintenance rollback: {exc}]"
+        return (
+            f"Rolled back `{rest[0]}` to its authenticated before-bytes "
+            f"(ledger status: {record.get('status')})."
+        )
     if sub == "cleaning":
         return _cmd_cleaning(rest)
     if sub == "news":
@@ -1565,6 +1580,23 @@ def _trigger_line(view: dict) -> str:
     return " ".join(bits)
 
 
+def _pending_completion_line(pending: dict, *, target: str = "") -> str:
+    source = str(pending.get("source_trigger_id") or "unknown Trigger")
+    when = (
+        pending.get("source_completed_at")
+        or pending.get("created_at")
+        or "unknown time"
+    )
+    prefix = f"{target} — " if target else ""
+    if pending.get("state") == "blocked_by_trigger_change":
+        return (
+            f"{prefix}from `{source}` at {when} — **blocked by Trigger "
+            "change**. It targeted an earlier approved version, so Ora did "
+            "not run the current action."
+        )
+    return f"{prefix}from `{source}` at {when} — **pending retry**."
+
+
 def _cmd_trigger(args: list[str]) -> str:
     try:
         from orchestrator import triggers as _tr
@@ -1580,15 +1612,30 @@ def _cmd_trigger(args: list[str]) -> str:
             if not views:
                 return ("No Triggers yet. `/trigger create --help` shows how to "
                         "declare one.")
-            lines = [_trigger_line(view) for view in views]
+            sections = ["\n".join(
+                f"- {_trigger_line(view)}" for view in views
+            )]
+            pending_lines = []
+            for view in views:
+                spec = view["spec"]
+                target = f"**{spec['name']}** (`{spec['trigger_id']}`)"
+                pending_lines.extend(
+                    _pending_completion_line(pending, target=target)
+                    for pending in view.get("pending_completions") or []
+                )
+            if pending_lines:
+                sections.append(
+                    "**Pending completions**\n"
+                    + "\n".join(f"- {line}" for line in pending_lines)
+                )
             internal = service.internal_deadline_summary()
             if internal["total"]:
-                lines.append("")
-                lines.append(
+                sections.append(
                     f"_Plus {internal['total']} internal maintenance deadlines "
                     f"({', '.join(internal['by_event_type'])}) that Ora arms for "
-                    "itself._")
-            return "\n".join(f"- {line}" if line else line for line in lines)
+                    "itself._"
+                )
+            return "\n\n".join(sections)
 
         if sub == "show":
             if not rest:
@@ -1619,6 +1666,15 @@ def _cmd_trigger(args: list[str]) -> str:
                 lines.append(
                     f"- {firing.get('claimed_at')} — {firing.get('cause')} → "
                     f"**{outcome}**{(' — ' + detail) if detail else ''}")
+            pending_completions = view.get("pending_completions") or []
+            lines.append("")
+            lines.append(
+                f"**Pending completions ({len(pending_completions)})**"
+            )
+            if not pending_completions:
+                lines.append("- none")
+            for pending in pending_completions:
+                lines.append(f"- {_pending_completion_line(pending)}")
             return "\n".join(lines)
 
         if sub == "create":
@@ -1643,12 +1699,18 @@ def _cmd_trigger(args: list[str]) -> str:
             approved = flags.get("--approve")
             review = service.activation_review(trigger_id)
             if not approved:
+                binding = review["action_binding"]
+                binding_digest = (
+                    binding.get("command_digest")
+                    or binding.get("message_digest")
+                    or binding.get("mime_digest")
+                )
                 lines = [
                     f"### Review before activating `{trigger_id}`",
                     f"- Name: {review['name']}",
                     f"- Cause: {review['cause']} — `{json.dumps(review['condition'])}`",
                     f"- Will run: {review['will_run']}",
-                    f"- Bound identity: `{review['action_binding']['command_digest']}`",
+                    f"- Bound identity: `{binding_digest}`",
                 ]
                 if review.get("runtime_justification"):
                     lines.append(
@@ -1657,7 +1719,7 @@ def _cmd_trigger(args: list[str]) -> str:
                     lines.append(f"- {review['intermittency']}")
                 lines += [
                     "",
-                    "Approve exactly this specification with:",
+                    "Approve exactly this specification and bound action with:",
                     f"`/trigger activate {trigger_id} --approve {review['spec_digest']}`",
                 ]
                 return "\n".join(lines)

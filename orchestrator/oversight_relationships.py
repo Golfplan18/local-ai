@@ -42,6 +42,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from ped_parser import parse_ped_file
@@ -159,6 +160,80 @@ def should_fan_out(event: dict) -> bool:
     return True
 
 
+def prepare_parent_notification(child_event: dict) -> Optional[dict]:
+    """Freeze one watcher's complete parent fan-out plan without writing it.
+
+    The returned plain dictionary is suitable for the existing EventLedger
+    claim.  It binds the first resolved parent, canonical PED destination,
+    rendered Decision Log content, and both downstream audit payloads so a
+    retry never re-reads changed child or parent routing metadata.
+    """
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, conversation_id = resolve_lifecycle_context(child_event)
+    if stealth:
+        return None
+    child_event = dict(child_event)
+    if conversation_id and not child_event.get("conversation_id"):
+        child_event["conversation_id"] = conversation_id
+    if not should_fan_out(child_event):
+        return None
+
+    child_nexus = str(child_event.get("project_nexus") or "")
+    if not child_nexus:
+        return None
+    parent_nexus = get_parent_nexus(child_nexus)
+    if not parent_nexus:
+        return None
+    parent_ped_path = load_ped_path(parent_nexus)
+    if not parent_ped_path:
+        return None
+
+    destination = _canonical_ped_destination(parent_ped_path)
+    synthesized = _synthesize_parent_event(child_event, parent_nexus)
+    return {
+        "parent_nexus": parent_nexus,
+        "parent_ped_path": destination,
+        "decision_log_entry": _render_parent_decision_log_entry(synthesized),
+        "synthesized_event": synthesized,
+        "actions_log_entry": _parent_actions_log_entry(synthesized),
+    }
+
+
+def deliver_parent_notification(plan: dict) -> Optional[dict]:
+    """Deliver one previously claimed parent fan-out plan exactly as stored."""
+    if not isinstance(plan, dict):
+        raise ValueError("watcher parent fan-out plan is invalid")
+    parent_nexus = str(plan.get("parent_nexus") or "")
+    parent_ped_path = str(plan.get("parent_ped_path") or "")
+    decision_log_entry = plan.get("decision_log_entry")
+    synthesized = plan.get("synthesized_event")
+    actions_log_entry = plan.get("actions_log_entry")
+    if (
+        not parent_nexus
+        or not parent_ped_path
+        or not isinstance(decision_log_entry, str)
+        or not isinstance(synthesized, dict)
+        or not isinstance(actions_log_entry, dict)
+        or synthesized.get("project_nexus") != parent_nexus
+        or actions_log_entry.get("project_nexus") != parent_nexus
+    ):
+        raise ValueError("watcher parent fan-out plan is incomplete")
+
+    destination = _reauthenticate_ped_destination(parent_ped_path)
+    event_record = dict(synthesized)
+    _append_parent_decision_log(
+        destination,
+        event_record,
+        entry_text=decision_log_entry,
+    )
+    _append_events_log(dict(synthesized))
+    _append_actions_log(dict(actions_log_entry))
+    return dict(synthesized)
+
+
 def notify_parent(child_event: dict, parent_nexus: str) -> Optional[dict]:
     """Notify the parent project of a child event.
 
@@ -169,7 +244,9 @@ def notify_parent(child_event: dict, parent_nexus: str) -> Optional[dict]:
       - The synthesized event carries ``_oversight_meta: fan_out`` so it is
         not re-processed by the router.
 
-    Returns the synthesized event dict on success, None on failure.
+    Returns the synthesized event dict on success or when no fan-out applies.
+    A stable watcher publication propagates a failed durable parent-PED write
+    so its upstream delivery cannot be acknowledged prematurely.
     """
     try:
         from oversight_events import resolve_lifecycle_context
@@ -190,9 +267,48 @@ def notify_parent(child_event: dict, parent_nexus: str) -> Optional[dict]:
     if not parent_ped_path or not os.path.isfile(parent_ped_path):
         return None
 
+    synthesized = _synthesize_parent_event(child_event, parent_nexus)
+
+    _append_parent_decision_log(parent_ped_path, synthesized)
+    _append_events_log(synthesized)
+    _append_actions_log(_parent_actions_log_entry(synthesized))
+
+    return synthesized
+
+
+# ---------- Helpers ----------
+
+def _canonical_ped_destination(ped_path: str) -> str:
+    """Return the absolute resolved destination named by a parent pointer."""
+    candidate = Path(os.path.abspath(os.path.expanduser(str(ped_path))))
+    if candidate.is_symlink():
+        raise OSError(f"parent PED destination is a symlink: {candidate}")
+    return str(candidate.resolve(strict=False))
+
+
+def _reauthenticate_ped_destination(bound_path: str) -> str:
+    """Require the claimed canonical PED destination to remain available."""
+    destination = Path(bound_path)
+    if not destination.is_absolute():
+        raise OSError(f"bound parent PED destination is not absolute: {destination}")
+    if destination.is_symlink() or not destination.is_file():
+        raise OSError(f"bound parent PED destination is unavailable: {destination}")
+    try:
+        current = destination.resolve(strict=True)
+    except OSError as exc:
+        raise OSError(
+            f"bound parent PED destination is unavailable: {destination}",
+        ) from exc
+    if current != destination:
+        raise OSError(
+            f"bound parent PED destination is no longer canonical: {destination}",
+        )
+    return str(destination)
+
+
+def _synthesize_parent_event(child_event: dict, parent_nexus: str) -> dict:
     child_nexus = child_event.get("project_nexus", "")
     spawned_from = get_spawned_from_milestone(child_nexus)
-
     synthesized = {
         "event_type": f"Child{child_event.get('event_type', 'Event')}",
         "project_nexus": parent_nexus,
@@ -212,24 +328,27 @@ def notify_parent(child_event: dict, parent_nexus: str) -> Optional[dict]:
         ),
         FAN_OUT_META_KEY: FAN_OUT_META_VALUE,
     }
-
-    _append_parent_decision_log(parent_ped_path, synthesized)
-    _append_events_log(synthesized)
-    _append_actions_log({
-        "event_type": synthesized["event_type"],
-        "action": "fan_out_to_parent",
-        "project_nexus": parent_nexus,
-        "child_nexus": child_nexus,
-        "timestamp": synthesized["timestamp"],
-        "conversation_id": synthesized.get("conversation_id", ""),
-    })
-
+    publication_id = str(child_event.get("publication_id") or "")
+    if publication_id:
+        synthesized["source_publication_id"] = publication_id
     return synthesized
 
 
-# ---------- Helpers ----------
+def _parent_actions_log_entry(synthesized: dict) -> dict:
+    return {
+        "event_type": synthesized["event_type"],
+        "action": "fan_out_to_parent",
+        "project_nexus": synthesized.get("project_nexus", ""),
+        "child_nexus": synthesized.get("child_nexus", ""),
+        "timestamp": synthesized["timestamp"],
+        "conversation_id": synthesized.get("conversation_id", ""),
+        "source_publication_id": str(
+            synthesized.get("source_publication_id") or ""
+        ),
+    }
 
-def _append_parent_decision_log(parent_ped_path: str, synthesized: dict):
+
+def _render_parent_decision_log_entry(synthesized: dict) -> str:
     """Append a Decision Log entry to the parent PED summarizing the child event."""
     child_event_type = synthesized.get("child_event_type", "")
     child_nexus = synthesized.get("child_nexus", "")
@@ -252,7 +371,18 @@ def _append_parent_decision_log(parent_ped_path: str, synthesized: dict):
         f"- Source: cross-project oversight fan-out (no parent PC invocation in v1; "
         f"observe and decide manually whether parent milestones should advance)."
     )
-    entry_text = "\n".join(lines) + "\n\n"
+    return "\n".join(lines) + "\n\n"
+
+
+def _append_parent_decision_log(
+    parent_ped_path: str,
+    synthesized: dict,
+    *,
+    entry_text: str | None = None,
+):
+    """Append a Decision Log entry to the parent PED summarizing the child event."""
+    if entry_text is None:
+        entry_text = _render_parent_decision_log_entry(synthesized)
 
     action_record: dict = {}
     append_managed_decision_log_entry(
@@ -261,11 +391,62 @@ def _append_parent_decision_log(parent_ped_path: str, synthesized: dict):
         synthesized,
         kind="parent_project_fanout",
         action_record=action_record,
+        idempotency_key=(
+            str(synthesized.get("source_publication_id") or "") or None
+        ),
     )
     if action_record.get("decision_log_write_failed"):
         synthesized.setdefault("write_errors", []).append(
             action_record["decision_log_write_failed"],
         )
+        if synthesized.get("source_publication_id"):
+            raise OSError(action_record["decision_log_write_failed"])
+
+
+def _append_jsonl_record(log_path: str, record: dict) -> None:
+    """Append one fan-out record once for a stable watcher publication."""
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    encoded = (json.dumps(record, default=str) + "\n").encode("utf-8")
+    publication_id = str(record.get("source_publication_id") or "")
+    with file_lock(log_path):
+        flags = os.O_APPEND | os.O_CREAT
+        flags |= os.O_RDWR if publication_id else os.O_WRONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(log_path, flags, 0o600)
+        try:
+            if publication_id:
+                os.lseek(fd, 0, os.SEEK_SET)
+                existing = b""
+                while True:
+                    chunk = os.read(fd, 1024 * 1024)
+                    if not chunk:
+                        break
+                    existing += chunk
+                complete_end = existing.rfind(b"\n") + 1
+                if complete_end != len(existing):
+                    os.ftruncate(fd, complete_end)
+                    os.fsync(fd)
+                    existing = existing[:complete_end]
+                for raw in existing.splitlines():
+                    try:
+                        prior = json.loads(raw.decode("utf-8"))
+                    except (UnicodeError, json.JSONDecodeError):
+                        continue
+                    if prior.get("source_publication_id") == publication_id:
+                        os.fsync(fd)
+                        return
+                written = 0
+                while written < len(encoded):
+                    count = os.write(fd, encoded[written:])
+                    if count <= 0:
+                        raise OSError("fan-out audit write made no progress")
+                    written += count
+                os.fsync(fd)
+            else:
+                os.write(fd, encoded)
+        finally:
+            os.close(fd)
 
 
 def _append_events_log(record: dict):
@@ -279,18 +460,7 @@ def _append_events_log(record: dict):
     record = dict(record)
     if conversation_id and not record.get("conversation_id"):
         record["conversation_id"] = conversation_id
-    log_path = _events_log_path()
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    encoded = (json.dumps(record, default=str) + "\n").encode("utf-8")
-    with file_lock(log_path):
-        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        fd = os.open(log_path, flags, 0o600)
-        try:
-            os.write(fd, encoded)
-        finally:
-            os.close(fd)
+    _append_jsonl_record(_events_log_path(), record)
 
 
 def _append_actions_log(record: dict):
@@ -304,18 +474,7 @@ def _append_actions_log(record: dict):
     record = dict(record)
     if conversation_id and not record.get("conversation_id"):
         record["conversation_id"] = conversation_id
-    log_path = _actions_log_path()
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    encoded = (json.dumps(record, default=str) + "\n").encode("utf-8")
-    with file_lock(log_path):
-        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        fd = os.open(log_path, flags, 0o600)
-        try:
-            os.write(fd, encoded)
-        finally:
-            os.close(fd)
+    _append_jsonl_record(_actions_log_path(), record)
 
 
 def _now_iso() -> str:

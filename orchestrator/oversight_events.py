@@ -52,7 +52,10 @@ def _log_path() -> str:
 
 
 _handlers: list[Callable[[dict], None]] = []
-_log_lock = threading.Lock()
+_log_lock = threading.RLock()
+_DELIVERY_MARKER = "_watcher_delivery"
+_APPEND_DELIVER = "deliver"
+_APPEND_ALREADY_DELIVERED = "already_delivered"
 
 
 def register_handler(handler: Callable[[dict], None]):
@@ -69,7 +72,9 @@ def emit(event) -> dict:
     """Emit an event. Accepts a dict or a dataclass; normalizes to dict.
 
     Writes the event to the durable log, then calls each registered handler.
-    Handler exceptions are caught and logged but don't propagate.
+    Ordinary-event handler exceptions retain the historical fail-open behavior.
+    A watcher publication is acknowledged only after every handler succeeds;
+    its handler failure propagates so the watcher cannot advance its snapshot.
 
     Returns the normalized event dict.
 
@@ -104,22 +109,36 @@ def emit(event) -> dict:
     # for stealth-tagged conversation turns. When set, skip the durable log
     # write so events derived from stealth conversations leave no on-disk
     # residue in ~/ora/data/oversight/events.jsonl.
-    if stealth:
-        if event.get("publication_id"):
-            raise RuntimeError(
-                "watcher publication cannot be durably recorded in stealth context"
-            )
-        event["stealth"] = True
-    else:
-        appended = _append_to_log(event)
-        if not appended:
-            return event
+    publication_id = event.get("publication_id")
+    # A watcher publication's log-byte identity and downstream-delivery
+    # identity are distinct. Keep their check/delivery/ack sequence atomic to
+    # other emitter threads; the re-entrant lock lets a handler emit an
+    # ordinary nested event without deadlocking.
+    guard = _log_lock if publication_id and not stealth else contextlib.nullcontext()
+    with guard:
+        if stealth:
+            if publication_id:
+                raise RuntimeError(
+                    "watcher publication cannot be durably recorded in stealth context"
+                )
+            event["stealth"] = True
+        else:
+            append_outcome = _append_to_log(event)
+            if append_outcome == _APPEND_ALREADY_DELIVERED:
+                _acknowledge_watcher_router(event)
+                return event
 
-    for handler in list(_handlers):
-        try:
-            handler(event)
-        except Exception as e:
-            print(f"[oversight_events] handler failed: {e}")
+        for handler in list(_handlers):
+            try:
+                handler(event)
+            except Exception as e:
+                print(f"[oversight_events] handler failed: {e}")
+                if publication_id:
+                    raise
+
+        if publication_id and not stealth:
+            _mark_publication_delivered(publication_id)
+            _acknowledge_watcher_router(event)
 
     return event
 
@@ -375,13 +394,15 @@ def read_event_log(since_offset: int = 0, max_events: int = 1000) -> tuple[list[
     try:
         with open(log_path, "rb") as f:
             f.seek(since_offset)
-            for _ in range(max_events):
+            while len(events) < max_events:
                 line = f.readline()
                 if not line:
                     break
                 try:
-                    events.append(json.loads(line.decode("utf-8")))
-                except json.JSONDecodeError:
+                    event = json.loads(line.decode("utf-8"))
+                    if not isinstance(event, dict) or _DELIVERY_MARKER not in event:
+                        events.append(event)
+                except (UnicodeError, json.JSONDecodeError):
                     pass  # skip malformed line
                 new_offset = f.tell()
     except OSError:
@@ -390,37 +411,80 @@ def read_event_log(since_offset: int = 0, max_events: int = 1000) -> tuple[list[
     return (events, new_offset)
 
 
-def _append_to_log(event: dict) -> bool:
-    """Durably append one event, suppressing watcher redelivery duplicates.
+def _append_to_log(event: dict) -> str:
+    """Durably append one event and return its explicit delivery outcome.
 
     ``publication_id`` is intentionally a watcher-only contract. Ordinary
-    callers retain the existing append-every-emission behavior.
+    callers retain the existing append-every-emission behavior. A complete
+    event line without a separate delivery marker is retried downstream.
     """
     log_path = _log_path()
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    line = (json.dumps(event, default=str) + "\n").encode("utf-8")
     publication_id = event.get("publication_id")
     with _log_lock:
         with _rp.locked_file(log_path):
-            if publication_id and os.path.isfile(log_path):
-                try:
-                    with open(log_path, encoding="utf-8") as existing:
-                        for raw in existing:
-                            try:
-                                recorded = json.loads(raw)
-                            except json.JSONDecodeError:
-                                continue
-                            if recorded.get("publication_id") == publication_id:
-                                return False
-                except OSError:
-                    # The append below remains the authoritative failure path.
-                    pass
-            flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+            flags = os.O_APPEND | os.O_CREAT
+            flags |= os.O_RDWR if publication_id else os.O_WRONLY
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
             fd = os.open(log_path, flags, 0o600)
             try:
                 if publication_id:
+                    # A failed append may have left either a complete but
+                    # un-fsynced event or an unterminated JSON fragment.  Work
+                    # from the locked descriptor so the retry can prove the
+                    # former durable and remove the latter before appending.
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    chunks: list[bytes] = []
+                    while True:
+                        chunk = os.read(fd, 1024 * 1024)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                    existing = b"".join(chunks)
+                    complete_end = existing.rfind(b"\n") + 1
+                    if complete_end != len(existing):
+                        os.ftruncate(fd, complete_end)
+                        os.fsync(fd)
+                        existing = existing[:complete_end]
+                    event_recorded = None
+                    delivery_recorded = False
+                    for raw in existing.splitlines():
+                        try:
+                            recorded = json.loads(raw.decode("utf-8"))
+                        except (UnicodeError, json.JSONDecodeError):
+                            continue
+                        if (
+                            event_recorded is None
+                            and recorded.get("publication_id") == publication_id
+                        ):
+                            event_recorded = recorded
+                        if recorded.get(_DELIVERY_MARKER) == publication_id:
+                            delivery_recorded = True
+
+                    # The first durable event row is the publication payload.
+                    # Reuse it on every retry so changed watcher metadata can
+                    # neither alter the router identity nor retarget effects.
+                    if isinstance(event_recorded, dict):
+                        event.clear()
+                        event.update(event_recorded)
+                    if delivery_recorded:
+                        os.fsync(fd)
+                        return _APPEND_ALREADY_DELIVERED
+
+                    # Preparation sits under this same cross-process event-log
+                    # lock, after marker inspection and before a new row.  The
+                    # installed router freezes the complete original payload
+                    # and performs no sink effect here.
+                    _prepare_watcher_router(event)
+                    if event_recorded is not None:
+                        # A prior fsync may have reported failure even though
+                        # the complete line is visible. Prove it durable before
+                        # any handler is allowed to run.
+                        os.fsync(fd)
+                        return _APPEND_DELIVER
+
+                    line = (json.dumps(event, default=str) + "\n").encode("utf-8")
                     written = 0
                     while written < len(line):
                         count = os.write(fd, line[written:])
@@ -429,9 +493,97 @@ def _append_to_log(event: dict) -> bool:
                         written += count
                     os.fsync(fd)
                 else:
+                    line = (json.dumps(event, default=str) + "\n").encode("utf-8")
                     os.write(fd, line)
             finally:
                 os.close(fd)
+    return _APPEND_DELIVER
+
+
+def _mark_publication_delivered(publication_id) -> None:
+    """Durably acknowledge downstream delivery in the existing event log."""
+    log_path = _log_path()
+    marker = (json.dumps({
+        _DELIVERY_MARKER: publication_id,
+        "recorded_at": _now_iso(),
+    }, default=str) + "\n").encode("utf-8")
+    with _log_lock:
+        with _rp.locked_file(log_path):
+            flags = os.O_RDWR | os.O_APPEND | os.O_CREAT
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(log_path, flags, 0o600)
+            try:
+                os.lseek(fd, 0, os.SEEK_SET)
+                existing = b""
+                while True:
+                    chunk = os.read(fd, 1024 * 1024)
+                    if not chunk:
+                        break
+                    existing += chunk
+                for raw in existing.splitlines():
+                    try:
+                        recorded = json.loads(raw.decode("utf-8"))
+                    except (UnicodeError, json.JSONDecodeError):
+                        continue
+                    if recorded.get(_DELIVERY_MARKER) == publication_id:
+                        os.fsync(fd)
+                        return
+                written = 0
+                while written < len(marker):
+                    count = os.write(fd, marker[written:])
+                    if count <= 0:
+                        raise OSError(
+                            "watcher delivery acknowledgment made no progress"
+                        )
+                    written += count
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+
+
+def _acknowledge_watcher_router(event: dict) -> None:
+    """Close the matching router claim after its log marker is durable."""
+    try:
+        from oversight_router import acknowledge_watcher_publication
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_router import acknowledge_watcher_publication
+    acknowledge_watcher_publication(event)
+
+
+def _prepare_watcher_router(event: dict) -> bool:
+    """Freeze and reuse the installed router's full watcher plan.
+
+    This is deliberately router-specific.  Other in-process handlers retain
+    the historical post-publication call contract and gain no preparation
+    callback or persistence mechanism.
+    """
+    try:
+        import oversight_router
+    except ImportError:  # pragma: no cover
+        from orchestrator import oversight_router
+    expected_identity = (
+        oversight_router.process_event.__module__.removeprefix("orchestrator."),
+        oversight_router.process_event.__qualname__,
+    )
+    installed = any(
+        (
+            getattr(handler, "__module__", "").removeprefix("orchestrator."),
+            getattr(handler, "__qualname__", ""),
+        ) == expected_identity
+        for handler in _handlers
+    )
+    if not installed:
+        return False
+    record = oversight_router.prepare_watcher_publication(event)
+    subject = record.get("subject") if isinstance(record, dict) else None
+    planned_event = (
+        subject.get("publication_event") if isinstance(subject, dict) else None
+    )
+    if not isinstance(planned_event, dict):
+        raise RuntimeError("watcher router plan has no frozen publication event")
+    event.clear()
+    event.update(planned_event)
     return True
 
 

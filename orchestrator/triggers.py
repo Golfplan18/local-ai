@@ -115,6 +115,36 @@ class TriggerConflict(TriggerError):
     """The request conflicts with durable Trigger state."""
 
 
+class TriggerStaleEvent(TriggerConflict):
+    """An event names a Trigger admission that is no longer current."""
+
+
+class TriggerTerminationUnacknowledged(TriggerError):
+    """The action tree could not be proved stopped after termination."""
+
+    def __init__(self, message: str, *, process_identity: Mapping[str, Any] | None = None):
+        super().__init__(message)
+        self.process_identity = (
+            copy.deepcopy(dict(process_identity))
+            if isinstance(process_identity, Mapping)
+            else None
+        )
+
+
+def _termination_exception(
+    exc: BaseException,
+) -> TriggerTerminationUnacknowledged | None:
+    """Find a termination failure even when receipt code wrapped it."""
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        if isinstance(current, TriggerTerminationUnacknowledged):
+            return current
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return None
+
+
 # ── small helpers ────────────────────────────────────────────────────────
 
 
@@ -128,6 +158,76 @@ def _canonical_json(value: Any) -> str:
 
 def _digest(value: Any) -> str:
     return "sha256:" + hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _admission_identity(record: Mapping[str, Any]) -> str:
+    """Bind one event to the exact revocable Trigger admission it observed."""
+    spec = record.get("spec")
+    return _digest({
+        "spec_digest": _digest(spec) if isinstance(spec, Mapping) else None,
+        "status": record.get("status"),
+        "activated_at": record.get("activated_at"),
+        "approved_spec_digest": record.get("approved_spec_digest"),
+        "approved_action_binding": record.get("approved_action_binding"),
+    })
+
+
+def _completion_proof(
+    source_completion: Mapping[str, Any] | None,
+) -> dict[str, str] | None:
+    """Derive one complete, authenticated source-completion proof."""
+    if not isinstance(source_completion, Mapping):
+        return None
+    source_subject = source_completion.get("subject")
+    if (
+        source_completion.get("status") != "completed"
+        or not isinstance(source_subject, Mapping)
+    ):
+        return None
+    proof = {
+        "event_id": source_completion.get("event_id"),
+        "event_type": source_completion.get("event_type"),
+        "trigger_id": source_subject.get("trigger_id"),
+        "spec_digest": source_subject.get("spec_digest"),
+        "admission_identity": source_subject.get("admission_identity"),
+        "completed_at": source_completion.get("completed_at"),
+    }
+    if (
+        proof["event_type"] != FIRING_EVENT_TYPE
+        or any(
+            not isinstance(value, str) or not value.strip()
+            for value in proof.values()
+        )
+    ):
+        return None
+    return proof
+
+
+def _completion_proof_matches_delivery(
+    delivery: Mapping[str, Any],
+    proof: Mapping[str, Any] | None,
+) -> bool:
+    """Authenticate every source identity before exposing or running a delivery."""
+    if not isinstance(delivery, Mapping) or not isinstance(proof, Mapping):
+        return False
+    expected = {
+        "event_id": delivery.get("source_event_id"),
+        "event_type": delivery.get("source_event_type"),
+        "trigger_id": delivery.get("source_trigger_id"),
+        "spec_digest": delivery.get("source_spec_digest"),
+        "admission_identity": delivery.get("source_admission_identity"),
+    }
+    if (
+        expected["event_type"] != FIRING_EVENT_TYPE
+        or any(
+            not isinstance(value, str) or not value.strip()
+            for value in expected.values()
+        )
+        or not isinstance(proof.get("completed_at"), str)
+        or not str(proof.get("completed_at")).strip()
+    ):
+        return False
+    return all(proof.get(key) == value for key, value in expected.items())
 
 
 def _active_run_sleep_available() -> bool:
@@ -575,6 +675,25 @@ def _resolve_framework_action_binding(
     }, prepared)
 
 
+def _public_action_binding(binding: Mapping[str, Any]) -> dict:
+    """Return the stable, JSON-shaped part of an execution binding."""
+    try:
+        import project_registry as _pr
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator import project_registry as _pr
+    return _pr.public_execution_binding(binding)
+
+
+def _activation_approval_digest(spec: Mapping[str, Any],
+                                binding: Mapping[str, Any]) -> str:
+    """Bind one review token to both the Trigger and the program it names."""
+
+    return _digest({
+        "spec": spec,
+        "action_binding": _public_action_binding(binding),
+    })
+
+
 def resolve_action_binding(action: Mapping[str, Any]) -> dict:
     """Authenticate that the named unit of work exists, and bind its identity.
 
@@ -599,15 +718,34 @@ def resolve_action_binding(action: Mapping[str, Any]) -> dict:
                 f"project {action['nexus']!r} has no tool {action['tool']!r}; "
                 f"available: {sorted(project.tools.keys())}"
             )
-        command = _pr._resolve_command(project, tool.command)
-        return {
-            "kind": kind,
-            "nexus": project.nexus,
-            "tool": tool.name,
-            "interface": tool.interface,
-            "command": list(command),
-            "command_digest": _digest(list(command)),
-        }
+        if (tool.interface == _pr.TOOL_INTERFACE_STDIN_STDOUT
+                and action.get("args")):
+            raise TriggerConflict(
+                "a stdin-stdout-json project tool cannot also receive argv arguments"
+            )
+        if (tool.interface == _pr.TOOL_INTERFACE_ARGV_STDOUT
+                and "stdin" in action):
+            raise TriggerConflict(
+                "an argv-stdout-json project tool cannot also receive stdin input"
+            )
+        stdin_json = action["stdin"] if "stdin" in action else {}
+        try:
+            binding = _pr.project_execution_binding(
+                project,
+                tool,
+                kind="tool",
+                args_digest=_pr.project_args_digest(
+                    tool,
+                    args=list(action.get("args") or []),
+                    stdin_json=stdin_json,
+                ),
+                pointer_dir=_pr.POINTER_DIR,
+            )
+        except Exception as exc:
+            raise TriggerConflict(
+                f"project tool binding could not be authenticated: {exc}"
+            ) from exc
+        return _public_action_binding(binding)
     if kind == "framework":
         binding, _prepared = _resolve_framework_action_binding(action)
         return binding
@@ -634,7 +772,8 @@ def resolve_action_binding(action: Mapping[str, Any]) -> dict:
 # ── state views ──────────────────────────────────────────────────────────
 
 
-def _record_view(record: Mapping[str, Any], *, firings: list | None = None) -> dict:
+def _record_view(record: Mapping[str, Any], *, firings: list | None = None,
+                 completion_deliveries: Iterable[Mapping[str, Any]] = ()) -> dict:
     spec = record["spec"]
     view = {
         "spec": copy.deepcopy(spec),
@@ -648,6 +787,34 @@ def _record_view(record: Mapping[str, Any], *, firings: list | None = None) -> d
         "intermittency": INTERMITTENCY_NOTICE if spec["cause"] == "calendar" else "",
         "routine": _local_routine_descriptor(spec["action"]["kind"]),
     }
+    current_spec_digest = _digest(spec)
+    current_admission_identity = _admission_identity(record)
+    pending_completions = []
+    for delivery in completion_deliveries:
+        if delivery.get("dependent_trigger_id") != spec["trigger_id"]:
+            continue
+        proof = delivery.get("source_completion")
+        if not _completion_proof_matches_delivery(delivery, proof):
+            continue
+        unchanged = (
+            delivery.get("dependent_spec_digest") == current_spec_digest
+            and delivery.get("dependent_admission_identity")
+            == current_admission_identity
+        )
+        pending_completions.append({
+            "source_trigger_id": delivery.get("source_trigger_id"),
+            "source_event_id": delivery.get("source_event_id"),
+            "source_completed_at": proof.get("completed_at"),
+            "created_at": delivery.get("created_at"),
+            "state": (
+                "pending_retry" if unchanged
+                else "blocked_by_trigger_change"
+            ),
+        })
+    pending_completions.sort(key=lambda item: (
+        item.get("created_at") or "", item.get("source_event_id") or "",
+    ))
+    view["pending_completions"] = pending_completions
     if spec["cause"] == "calendar" and record.get("status") == "active":
         view["next_due_at"] = record.get("next_due_at")
     if firings is not None:
@@ -655,16 +822,41 @@ def _record_view(record: Mapping[str, Any], *, firings: list | None = None) -> d
     return view
 
 
-def _resolution_note(spec: Mapping[str, Any]) -> str:
-    """A one-line, human-readable description of what will run."""
+def _resolution_note(spec: Mapping[str, Any], *,
+                     binding: Mapping[str, Any] | None = None) -> str:
+    """A one-line review of the exact material action, including its input."""
     action = spec["action"]
     if action["kind"] == "project_tool":
-        args = " ".join(action.get("args") or [])
-        return f"project tool {action['nexus']}:{action['tool']} {args}".strip()
+        resolved = binding or resolve_action_binding(action)
+        if resolved.get("interface") == "stdin-stdout-json":
+            stdin_json = action["stdin"] if "stdin" in action else {}
+            invocation = f"stdin={_canonical_json(stdin_json)}"
+        else:
+            invocation = f"args={_canonical_json(action.get('args') or [])}"
+        return (
+            f"project tool {action['nexus']}:{action['tool']} with exact "
+            f"{invocation}"
+        )
     if action["kind"] == "email_send":
-        return (f"email via Fastmail to {', '.join(action['to'])}: "
-                f"{action['subject']}")
-    return f"framework {action['framework']}"
+        return (
+            f"email via Fastmail with exact action={_canonical_json(action)}"
+        )
+    resolved = binding or resolve_action_binding(action)
+    project_context = ""
+    if (
+        resolved.get("project_nexus") is not None
+        or resolved.get("project_profile") is not None
+    ):
+        project_context = (
+            " for resolved project nexus="
+            f"{json.dumps(resolved.get('project_nexus'), ensure_ascii=False)}"
+            " and profile="
+            f"{json.dumps(resolved.get('project_profile'), ensure_ascii=False)}"
+        )
+    return (
+        f"framework {action['framework']}{project_context} with exact "
+        f"input={json.dumps(action['input'], ensure_ascii=False)}"
+    )
 
 
 # ── the service ──────────────────────────────────────────────────────────
@@ -705,7 +897,11 @@ class TriggerService:
 
     def list_triggers(self, *, include_retired: bool = False) -> list[dict]:
         with _PROCESS_LOCK, _exclusive():
-            records = list(_load()["triggers"].values())
+            state = _load()
+            records = list(state["triggers"].values())
+            completion_deliveries = list(
+                state["completion_deliveries"].values()
+            )
         # One ledger read for the whole listing. Reading it per Trigger meant
         # re-parsing a multi-megabyte state file once per card on every poll.
         ledger_rows = self.ledger.list_events(event_type=FIRING_EVENT_TYPE)
@@ -713,14 +909,30 @@ class TriggerService:
         for record in sorted(records, key=lambda item: item["spec"]["trigger_id"]):
             if not include_retired and record.get("status") == "retired":
                 continue
-            views.append(_record_view(record, firings=self._firing_rows(
-                ledger_rows, record["spec"]["trigger_id"], limit=1)))
+            views.append(_record_view(
+                record,
+                firings=self._firing_rows(
+                    ledger_rows, record["spec"]["trigger_id"], limit=1,
+                ),
+                completion_deliveries=completion_deliveries,
+            ))
         return views
 
     def get(self, trigger_id: str, *, firing_limit: int = 25) -> dict:
-        record = self._require(_safe_id(trigger_id, "trigger_id"))
-        return _record_view(record, firings=self.firings(
-            record["spec"]["trigger_id"], limit=firing_limit))
+        trigger_id = _safe_id(trigger_id, "trigger_id")
+        with _PROCESS_LOCK, _exclusive():
+            state = _load()
+            record = state["triggers"].get(trigger_id)
+            if record is None:
+                raise TriggerConflict(f"no Trigger with id {trigger_id!r}")
+            completion_deliveries = list(
+                state["completion_deliveries"].values()
+            )
+        return _record_view(
+            record,
+            firings=self.firings(trigger_id, limit=firing_limit),
+            completion_deliveries=completion_deliveries,
+        )
 
     def inspect(self, trigger_id: str) -> dict:
         """Return the exact local email message, without provider contact."""
@@ -764,6 +976,10 @@ class TriggerService:
             # on its worker thread reads "running", not "claimed", because the
             # ledger's vocabulary is not the user's.
             status = record.get("status")
+            termination_pending = bool(
+                status == "claimed"
+                and record.get("termination_unacknowledged_at")
+            )
             rows.append({
                 "event_id": record.get("event_id"),
                 "trigger_id": subject.get("trigger_id"),
@@ -771,11 +987,18 @@ class TriggerService:
                 "source": subject.get("source"),
                 "status": status,
                 "outcome": receipt.get("outcome") or (
-                    "running" if status == "claimed" else status),
+                    "termination_unacknowledged" if termination_pending
+                    else "running" if status == "claimed" else status),
                 "claimed_at": record.get("claimed_at"),
-                "finished_at": record.get("completed_at") or record.get("updated_at"),
+                "finished_at": (
+                    None if status == "claimed"
+                    else record.get("completed_at") or record.get("updated_at")
+                ),
                 "receipt": receipt or None,
-                "error": record.get("error"),
+                "error": (
+                    record.get("termination_error") if termination_pending
+                    else record.get("error")
+                ),
             })
         rows.sort(key=lambda row: (row.get("claimed_at") or ""), reverse=True)
         return rows[:limit] if limit else rows
@@ -833,7 +1056,7 @@ class TriggerService:
             })
             _save(state)
         self._cancel_deadline(armed_key, "Trigger specification was edited")
-        return _record_view(record, firings=self.firings(trigger_id, limit=5))
+        return self.get(trigger_id, firing_limit=5)
 
     def _assert_no_completion_cycle(self, state: Mapping[str, Any],
                                     proposed: Mapping[str, Any]) -> None:
@@ -865,17 +1088,23 @@ class TriggerService:
     # ---- lifecycle ----
 
     def activation_review(self, trigger_id: str) -> dict:
-        """The exact rendered request a human approves before deployment."""
+        """The exact action and binding a human approves before deployment."""
         record = self._require(_safe_id(trigger_id, "trigger_id"))
         spec = record["spec"]
         binding = resolve_action_binding(spec["action"])
         return {
             "trigger_id": spec["trigger_id"],
             "name": spec["name"],
-            "spec_digest": _digest(spec),
+            # Keep the established wire name used by the browser and slash
+            # surfaces. The approval token now covers the public program
+            # binding as well as the normalized specification.
+            "spec_digest": _activation_approval_digest(spec, binding),
+            # Firings remain identified by the specification itself; program
+            # identity is authenticated independently by the binding.
+            "firing_spec_digest": _digest(spec),
             "cause": spec["cause"],
             "condition": copy.deepcopy(spec["condition"]),
-            "will_run": _resolution_note(spec),
+            "will_run": _resolution_note(spec, binding=binding),
             "action_binding": binding,
             "routine": _local_routine_descriptor(spec["action"]["kind"]),
             "runtime_justification": spec.get("runtime_justification"),
@@ -892,11 +1121,12 @@ class TriggerService:
             if record is None:
                 raise TriggerConflict(f"no Trigger with id {trigger_id!r}")
             spec = record["spec"]
-            digest = _digest(spec)
-            if expected_spec_digest != digest:
+            binding = resolve_action_binding(spec["action"])
+            approval_digest = _activation_approval_digest(spec, binding)
+            if expected_spec_digest != approval_digest:
                 raise TriggerConflict(
-                    "the Trigger changed since it was reviewed; re-read it and "
-                    "approve the current specification"
+                    "the Trigger specification or bound action changed since it "
+                    "was reviewed; re-read it and approve the current action"
                 )
             if record.get("status") != "draft":
                 raise TriggerConflict(
@@ -908,10 +1138,11 @@ class TriggerService:
                     "a calendar Trigger cannot be activated without a written "
                     "runtime-impossibility justification"
                 )
-            binding = resolve_action_binding(spec["action"])
+            spec_digest = _digest(spec)
             record.update({
                 "status": "active", "activated_at": _now(),
-                "approved_spec_digest": digest, "approved_action_binding": binding,
+                "approved_spec_digest": spec_digest,
+                "approved_action_binding": binding,
             })
             _save(state)
         self._arm_calendar(trigger_id)
@@ -934,6 +1165,11 @@ class TriggerService:
             if current not in allowed[action]:
                 raise TriggerConflict(f"a {current} Trigger cannot {action}")
             record["status"] = target
+            if action == "resume":
+                # Resuming mints a new admission identity. An event captured
+                # before authority was revoked must not become executable
+                # merely because the same specification is active again.
+                record["activated_at"] = _now()
             if action != "resume":
                 armed_key = record.get("armed_deadline_key")
                 record["armed_deadline_key"] = None
@@ -995,27 +1231,37 @@ class TriggerService:
     def _arm_calendar(self, trigger_id: str, *, after: datetime | None = None) -> str | None:
         """Arm exactly one persisted deadline for the next occurrence.
 
-        The payload carries no specification digest. The handler reloads the
-        current Trigger and re-authenticates at dispatch, so an edit can never
-        collide with an already-bound immutable deadline contract.
+        The payload carries the exact specification and admission identities
+        observed here. The handler may reload current state for display and
+        re-arming, but can execute only this immutable contract.
         """
         record = self._require(trigger_id)
         spec = record["spec"]
         if spec["cause"] != "calendar" or record.get("status") != "active":
             return None
+        expected_spec_digest = _digest(spec)
+        expected_admission_identity = _admission_identity(record)
         moment = after or datetime.now(timezone.utc)
         due = next_occurrence(spec["condition"]["schedule"], moment)
-        key = f"trigger:{trigger_id}:{due.isoformat()}"
+        key = (
+            f"trigger:{trigger_id}:{due.isoformat()}:"
+            f"{expected_admission_identity.removeprefix('sha256:')}"
+        )
         self.queue.put(key, due.isoformat(), DEADLINE_EVENT_TYPE, {
             "trigger_id": trigger_id,
             "scheduled_for": normalized_instant(due.isoformat()),
             "timezone": spec["condition"]["schedule"]["timezone"],
+            "expected_spec_digest": expected_spec_digest,
+            "expected_admission_identity": expected_admission_identity,
         })
         with _PROCESS_LOCK, _exclusive():
             state = _load()
             current = state["triggers"].get(trigger_id)
-            still_active = (current is not None
-                            and current.get("status") == "active")
+            still_active = (
+                current is not None
+                and current.get("status") == "active"
+                and _admission_identity(current) == expected_admission_identity
+            )
             if still_active:
                 current["armed_deadline_key"] = key
                 current["next_due_at"] = normalized_instant(due.isoformat())
@@ -1047,6 +1293,209 @@ class TriggerService:
 
     # ---- firing ----
 
+    def _close_recovered_protection(self, record: Mapping[str, Any]) -> None:
+        """Close one existing protected start only after its process is dead."""
+        execution_id = record.get("protection_execution_id")
+        if execution_id is None:
+            return
+        if not isinstance(execution_id, str) or not execution_id:
+            raise TriggerError(
+                "unresolved Trigger protection identity is invalid"
+            )
+        try:
+            try:
+                import system_protection as _sp
+            except ImportError:  # pragma: no cover - package context
+                from orchestrator import system_protection as _sp
+            audit = _sp.verify_audit()
+            starts = [
+                row for row in audit
+                if row.get("execution_id") == execution_id
+                and row.get("event_type") == "protected_action_started"
+            ]
+            terminals = [
+                row for row in audit
+                if row.get("execution_id") == execution_id
+                and row.get("event_type") in {
+                    "protected_action_completed", "protected_action_failed",
+                }
+            ]
+            if len(starts) != 1:
+                raise TriggerError(
+                    "unresolved Trigger lacks one authenticated protected start"
+                )
+            if len(terminals) > 1:
+                raise TriggerError(
+                    "unresolved Trigger has duplicate protected terminal receipts"
+                )
+            start = starts[0]
+            request = start.get("request")
+            if not isinstance(request, Mapping):
+                raise TriggerError(
+                    "unresolved Trigger protected start request is invalid"
+                )
+            raw_selectors = request.get("selectors")
+            if not isinstance(raw_selectors, list):
+                raise TriggerError(
+                    "unresolved Trigger protected selectors are invalid"
+                )
+            execution = _sp.ProtectionExecution(
+                execution_id=execution_id,
+                request_digest=str(start.get("request_digest") or ""),
+                start_digest=str(start.get("record_digest") or ""),
+                action=str(request.get("action") or ""),
+                selectors=tuple(str(value) for value in raw_selectors),
+                approval_id=str(start.get("approval_id") or ""),
+                approval_action=str(start.get("approval_action") or ""),
+                approval_args_hash=str(start.get("approval_args_hash") or ""),
+            )
+            if terminals:
+                terminal = terminals[0]
+                if (
+                    terminal.get("start_digest") != execution.start_digest
+                    or terminal.get("request_digest") != execution.request_digest
+                ):
+                    raise TriggerError(
+                        "unresolved Trigger protected terminal identity changed"
+                    )
+                return
+            raw_pre_state = request.get("pre_state")
+            if not isinstance(raw_pre_state, list) or not all(
+                isinstance(value, Mapping)
+                and value.get("kind") == "logical"
+                for value in raw_pre_state
+            ):
+                raise TriggerError(
+                    "unresolved Trigger protected logical state is invalid"
+                )
+            _sp.complete_execution(
+                execution,
+                ok=False,
+                result={
+                    "error": str(
+                        record.get("termination_error")
+                        or "Trigger action ended without an acknowledged termination"
+                    ),
+                    "process_tree_death_confirmed": True,
+                },
+                post_state=[copy.deepcopy(dict(value)) for value in raw_pre_state],
+            )
+        except TriggerError:
+            raise
+        except Exception as exc:
+            raise TriggerError(
+                f"unresolved Trigger protection receipt could not close: {exc}"
+            ) from exc
+
+    def reconcile_unresolved_firings(
+        self, trigger_id: str | None = None,
+    ) -> dict[str, list[str]]:
+        """Honor durable process claims until their trees are proved dead."""
+        selected = _safe_id(trigger_id, "trigger_id") if trigger_id else None
+        summary: dict[str, list[str]] = {
+            "retained": [], "released": [], "errors": [],
+        }
+        rows = self.ledger.list_events(event_type=FIRING_EVENT_TYPE)
+        rows.sort(key=lambda row: str(row.get("claimed_at") or ""))
+        for row in rows:
+            subject = row.get("subject") or {}
+            row_trigger_id = str(subject.get("trigger_id") or "")
+            event_id = str(row.get("event_id") or "")
+            process_identity = row.get("process_identity")
+            if (
+                row.get("status") != "claimed"
+                or not event_id
+                or not row_trigger_id
+                or (selected is not None and row_trigger_id != selected)
+                or not isinstance(process_identity, Mapping)
+            ):
+                continue
+            with _PROCESS_LOCK:
+                live_guard = _RUNNING.get(row_trigger_id)
+            if (
+                live_guard == event_id
+                and not row.get("termination_unacknowledged_at")
+            ):
+                summary["retained"].append(event_id)
+                continue
+            if not _process_identity_death_confirmed(process_identity):
+                if (
+                    live_guard != event_id
+                    and not row.get("termination_unacknowledged_at")
+                ):
+                    # A fresh process has an in-memory guard. Reaching this
+                    # branch without one means startup inherited the durable
+                    # identity but not the worker connection, so later
+                    # admission must re-check death rather than treating it as
+                    # a healthy worker forever.
+                    try:
+                        self.ledger.transition(
+                            event_id, {"claimed"}, "claimed",
+                            termination_unacknowledged_at=_now(),
+                            termination_error=(
+                                "restart recovery: Trigger action process tree "
+                                "is still live or its death cannot be proved"
+                            ),
+                        )
+                    except Exception as exc:
+                        summary["errors"].append(f"{event_id}: {exc}")
+                with _PROCESS_LOCK:
+                    if _RUNNING.get(row_trigger_id) in {None, event_id}:
+                        _RUNNING[row_trigger_id] = event_id
+                summary["retained"].append(event_id)
+                continue
+            try:
+                current = self.ledger.get(event_id)
+                if current is None or current.get("status") != "claimed":
+                    with _PROCESS_LOCK:
+                        if _RUNNING.get(row_trigger_id) == event_id:
+                            _RUNNING.pop(row_trigger_id, None)
+                    continue
+                self._close_recovered_protection(current)
+                confirmed_at = _now()
+                prior_error = str(
+                    current.get("termination_error")
+                    or "restart recovery: Trigger action process ended without "
+                       "an acknowledged termination"
+                )
+                self.ledger.transition(
+                    event_id, {"claimed"}, "failed",
+                    error=(f"{prior_error}; process-tree death was positively "
+                           "confirmed"),
+                    completed_at=confirmed_at,
+                )
+            except Exception as exc:
+                with _PROCESS_LOCK:
+                    if _RUNNING.get(row_trigger_id) in {None, event_id}:
+                        _RUNNING[row_trigger_id] = event_id
+                summary["retained"].append(event_id)
+                summary["errors"].append(f"{event_id}: {exc}")
+                continue
+            with _PROCESS_LOCK:
+                if _RUNNING.get(row_trigger_id) == event_id:
+                    _RUNNING.pop(row_trigger_id, None)
+            summary["released"].append(event_id)
+        return summary
+
+    def _reconcile_before_admission(self, trigger_id: str) -> None:
+        """Refresh only a durable unresolved guard, never a healthy worker."""
+        with _PROCESS_LOCK:
+            guarded_event_id = _RUNNING.get(trigger_id)
+        if guarded_event_id:
+            guarded = self.ledger.get(guarded_event_id)
+            if guarded is None:
+                # An opaque process-local guard may belong to a worker whose
+                # durable claim has not been observed yet. Retain it.
+                return
+            if guarded.get("status") == "claimed":
+                if not guarded.get("termination_unacknowledged_at"):
+                    return
+            else:
+                with _PROCESS_LOCK:
+                    if _RUNNING.get(trigger_id) == guarded_event_id:
+                        _RUNNING.pop(trigger_id, None)
+        self.reconcile_unresolved_firings(trigger_id)
+
     def run_manual(self, trigger_id: str, *, request_id: str | None = None) -> dict:
         """Fire one Trigger on an explicit human request.
 
@@ -1060,7 +1509,11 @@ class TriggerService:
             raise TriggerConflict("a retired Trigger cannot be run")
         request = _safe_text(
             request_id or f"{_now()}:{os.getpid()}", "request_id", limit=200)
-        return self._fire(record, "manual", {"request_id": request})
+        return self._fire(
+            record, "manual", {"request_id": request},
+            expected_spec_digest=_digest(record["spec"]),
+            expected_admission_identity=_admission_identity(record),
+        )
 
     def dispatch_paths(self, paths: Iterable[str]) -> dict:
         """Fire every active file-change Trigger matched by an exact write."""
@@ -1078,10 +1531,10 @@ class TriggerService:
             if not matched:
                 continue
             try:
-                record = self._require(spec["trigger_id"])
-                firing = self._fire(record, "file_change", {
+                firing = self._fire(view, "file_change", {
                     "paths": [_bound_identity(path) for path in matched],
-                })
+                }, expected_spec_digest=_digest(spec),
+                    expected_admission_identity=_admission_identity(view))
                 summary["fired"].append({
                     "trigger_id": spec["trigger_id"],
                     "event_id": firing.get("event_id"),
@@ -1100,6 +1553,10 @@ class TriggerService:
         trigger_id = _safe_id(payload.get("trigger_id"), "trigger_id")
         scheduled_for = normalized_instant(str(payload["scheduled_for"]))
         zone_name = str(payload.get("timezone") or "")
+        expected_spec_digest = str(payload.get("expected_spec_digest") or "")
+        expected_admission_identity = str(
+            payload.get("expected_admission_identity") or ""
+        )
         record = self._require(trigger_id)
         spec = record["spec"]
         try:
@@ -1109,6 +1566,14 @@ class TriggerService:
             if record.get("status") != "active":
                 return {"outcome": "stale",
                         "detail": f"Trigger is {record.get('status')}"}
+            if not expected_admission_identity:
+                return {
+                    "outcome": "stale",
+                    "detail": (
+                        "calendar deadline predates authenticated admission "
+                        "support; its action was not run"
+                    ),
+                }
             schedule = spec["condition"]["schedule"]
             late_by = time.time() - instant_timestamp(scheduled_for)
             overdue = late_by > int(schedule["grace_seconds"])
@@ -1120,14 +1585,19 @@ class TriggerService:
                     "reason": ("Ora was not running inside the declared grace "
                                "window and this Trigger's missed policy is skip"),
                     "late_by_seconds": int(late_by),
-                })
+                }, expected_spec_digest=expected_spec_digest,
+                    expected_admission_identity=expected_admission_identity)
                 return {"outcome": "skipped", "event_id": firing.get("event_id"),
                         "late_by_seconds": int(late_by)}
             firing = self._fire(record, "calendar", {
                 "scheduled_for": scheduled_for,
-            }, extra_receipt={"late_by_seconds": int(max(0.0, late_by))})
+            }, extra_receipt={"late_by_seconds": int(max(0.0, late_by))},
+                expected_spec_digest=expected_spec_digest,
+                expected_admission_identity=expected_admission_identity)
             return {"outcome": "dispatched", "event_id": firing.get("event_id"),
                     "late_by_seconds": int(max(0.0, late_by))}
+        except TriggerStaleEvent as exc:
+            return {"outcome": "stale", "detail": str(exc)}
         finally:
             # The next occurrence is a distinct time-caused contract, not a
             # retry of this one. Advancing past *now* rather than replaying
@@ -1145,59 +1615,100 @@ class TriggerService:
 
     def _fire(self, record: Mapping[str, Any], cause: str, source: Mapping[str, Any],
               *, forced_receipt: dict | None = None,
-              extra_receipt: dict | None = None) -> dict:
-        """Claim one firing in the shared ledger, then run it off-lane."""
+              extra_receipt: dict | None = None,
+              expected_spec_digest: str | None = None,
+              expected_admission_identity: str | None = None) -> dict:
+        """Admit and claim one immutable firing, then run it off-lane."""
         ledger = self.ledger
-        with _PROCESS_LOCK:
-            # Re-read under the same lock used by rollback.  The caller's
-            # earlier view may have been retired while it was preparing this
-            # firing, and must not be allowed to mint a claim afterward.
-            trigger_id = record["spec"]["trigger_id"]
-            current = self._require(trigger_id)
-            if current.get("status") == "retired":
+        trigger_id = record["spec"]["trigger_id"]
+        self._reconcile_before_admission(trigger_id)
+        if expected_spec_digest is None:
+            expected_spec_digest = _digest(record["spec"])
+        if expected_admission_identity is None:
+            expected_admission_identity = _admission_identity(record)
+        with _PROCESS_LOCK, _exclusive():
+            # Re-read while holding the Trigger store lock used by lifecycle
+            # changes.  The caller's earlier view may have been paused or
+            # retired while preparing this firing, and revocation must win
+            # before either a standing receipt or a firing claim is minted.
+            current = _load()["triggers"].get(trigger_id)
+            if current is None:
+                raise TriggerConflict(f"no Trigger with id {trigger_id!r}")
+            current_spec_digest = _digest(current["spec"])
+            current_admission_identity = _admission_identity(current)
+            if (
+                expected_spec_digest != current_spec_digest
+                or expected_admission_identity != current_admission_identity
+            ):
+                raise TriggerStaleEvent(
+                    "the event names an earlier Trigger specification or "
+                    "admission; current authority was not substituted"
+                )
+            status = current.get("status")
+            if status == "retired":
                 raise TriggerConflict("a retired Trigger cannot be fired")
-            spec = current["spec"]
-            framework_binding = None
+            if cause != "manual" and status != "active":
+                raise TriggerConflict(
+                    f"a nonmanual firing requires an active Trigger (this one is {status})"
+                )
+            spec = copy.deepcopy(current["spec"])
+            spec_digest = current_spec_digest
             framework_prepared = None
             if spec["action"]["kind"] == "framework":
                 # Resolve and compare the exact composed contract before a
                 # firing claim exists.  The same in-memory snapshot is handed
                 # to execution; neither step rereads the Framework.
-                framework_binding, framework_prepared = (
+                action_binding, framework_prepared = (
                     _resolve_framework_action_binding(spec["action"])
                 )
-                if current.get("status") == "active":
-                    if current.get("approved_spec_digest") != _digest(spec):
-                        raise TriggerConflict(
-                            "the approved specification no longer matches this "
-                            "Trigger; re-review and re-activate it"
-                        )
-                    approved = current.get("approved_action_binding")
-                    if approved != framework_binding:
-                        raise TriggerConflict(
-                            "action_definition_drifted: what this Trigger would run "
-                            "has changed since it was approved. Re-review and "
-                            "re-activate it."
-                        )
+                action_binding = _public_action_binding(action_binding)
+            else:
+                action_binding = resolve_action_binding(spec["action"])
+            if status == "active":
+                if current.get("approved_spec_digest") != spec_digest:
+                    raise TriggerConflict(
+                        "the approved specification no longer matches this "
+                        "Trigger; re-review and re-activate it"
+                    )
+                if current.get("approved_action_binding") != action_binding:
+                    raise TriggerConflict(
+                        "action_definition_drifted: what this Trigger would run "
+                        "has changed since it was approved. Re-review and "
+                        "re-activate it."
+                    )
             subject = {
                 "trigger_id": trigger_id,
-                "spec_digest": _digest(spec),
+                "spec_digest": spec_digest,
+                "admission_identity": current_admission_identity,
                 "cause": cause,
                 "source": copy.deepcopy(dict(source)),
             }
             event_id = event_identity(FIRING_EVENT_TYPE, subject)
-            claim, created = ledger.claim(
-                event_id=event_id, event_type=FIRING_EVENT_TYPE, subject=subject)
-            if not created:
-                return {"event_id": event_id, "status": claim.get("status"),
+            existing = ledger.get(event_id)
+            if existing is not None:
+                return {"event_id": event_id, "status": existing.get("status"),
                         "duplicate": True}
+            already = _RUNNING.get(trigger_id)
             if forced_receipt is not None:
+                claim, created = ledger.claim(
+                    event_id=event_id, event_type=FIRING_EVENT_TYPE,
+                    subject=subject,
+                )
+                if not created:
+                    return {"event_id": event_id, "status": claim.get("status"),
+                            "duplicate": True}
                 ledger.transition(event_id, {"claimed"}, "completed",
                                   receipt=forced_receipt, completed_at=_now())
                 return {"event_id": event_id, "status": "completed",
                         "receipt": forced_receipt}
-            already = _RUNNING.get(trigger_id)
             if already:
+                claim, created = ledger.claim(
+                    event_id=event_id, event_type=FIRING_EVENT_TYPE,
+                    subject=subject,
+                )
+                if not created:
+                    return {"event_id": event_id, "status": claim.get("status"),
+                            "duplicate": True}
                 receipt = {
                     "outcome": "skipped",
                     "reason": "a firing for this Trigger is already running",
@@ -1207,71 +1718,202 @@ class TriggerService:
                                   receipt=receipt, completed_at=_now())
                 return {"event_id": event_id, "status": "completed",
                         "receipt": receipt}
+
+            protection_execution = None
+            if spec["action"]["kind"] == "project_tool":
+                try:
+                    try:
+                        import system_protection as _sp
+                    except ImportError:  # pragma: no cover - package context
+                        from orchestrator import system_protection as _sp
+                    if status == "active":
+                        protection_execution = _sp.authorize_trigger_project_action(
+                            trigger_record=current,
+                            binding=action_binding,
+                        )
+                    else:
+                        # A manual draft/paused run is not covered by Trigger
+                        # activation. It uses the existing Paused one-shot path.
+                        protection_execution = _sp.authorize_project_action(
+                            "project_tool_execute",
+                            binding=action_binding,
+                            surface="trigger",
+                        )
+                except _sp.SystemProtectionError as exc:
+                    raise TriggerConflict(f"System Protection: {exc}") from exc
+
+            try:
+                claim, created = ledger.claim(
+                    event_id=event_id, event_type=FIRING_EVENT_TYPE,
+                    subject=subject,
+                )
+            except BaseException as exc:
+                if protection_execution is not None:
+                    try:
+                        _sp.complete_execution(
+                            protection_execution,
+                            ok=False,
+                            result={"error": f"firing claim failed: {exc}"},
+                            post_state=_sp.project_binding_states(action_binding),
+                        )
+                    except Exception as receipt_error:
+                        raise _sp.ProtectionAuditError(
+                            "Trigger firing claim failed and its failure receipt "
+                            f"could not persist: {receipt_error}"
+                        ) from exc
+                raise
+            if not created:
+                if protection_execution is not None:
+                    _sp.complete_execution(
+                        protection_execution,
+                        ok=False,
+                        result={"error": "duplicate firing identity"},
+                        post_state=_sp.project_binding_states(action_binding),
+                    )
+                return {"event_id": event_id, "status": claim.get("status"),
+                        "duplicate": True}
             _RUNNING[trigger_id] = event_id
-        self._executor(lambda: self._execute(
-            trigger_id, event_id, extra_receipt=extra_receipt,
-            framework_binding=framework_binding,
-            framework_prepared=framework_prepared,
-            claimed_spec_digest=_digest(spec),
-        ))
+        action_snapshot = copy.deepcopy(spec["action"])
+        binding_snapshot = copy.deepcopy(action_binding)
+        try:
+            self._executor(lambda: self._execute(
+                trigger_id,
+                event_id,
+                action_snapshot=action_snapshot,
+                binding_snapshot=binding_snapshot,
+                claimed_spec_digest=spec_digest,
+                claimed_admission_identity=current_admission_identity,
+                extra_receipt=extra_receipt,
+                framework_prepared=framework_prepared,
+                protection_execution=protection_execution,
+            ))
+        except BaseException as exc:
+            # Action and termination failures are consumed inside _execute.
+            # Reaching this branch means the executor itself failed to launch
+            # the worker, so retain the ordinary launch-failure behavior.
+            with contextlib.suppress(Exception):
+                ledger.transition(
+                    event_id, {"claimed"}, "failed",
+                    error=f"{type(exc).__name__}: {exc}", completed_at=_now(),
+                )
+            if protection_execution is not None:
+                try:
+                    _sp.complete_execution(
+                        protection_execution,
+                        ok=False,
+                        result={"error": f"{type(exc).__name__}: {exc}"},
+                        post_state=_sp.project_binding_states(binding_snapshot),
+                    )
+                except Exception as receipt_error:
+                    with _PROCESS_LOCK:
+                        if _RUNNING.get(trigger_id) == event_id:
+                            _RUNNING.pop(trigger_id, None)
+                    raise _sp.ProtectionAuditError(
+                        "Trigger worker launch failed and its failure receipt "
+                        f"could not persist: {receipt_error}"
+                    ) from exc
+            with _PROCESS_LOCK:
+                if _RUNNING.get(trigger_id) == event_id:
+                    _RUNNING.pop(trigger_id, None)
+            raise
         return {"event_id": event_id, "status": "claimed"}
 
     def _execute(self, trigger_id: str, event_id: str, *,
+                 action_snapshot: Mapping[str, Any],
+                 binding_snapshot: Mapping[str, Any],
+                 claimed_spec_digest: str,
+                 claimed_admission_identity: str,
                  extra_receipt: dict | None = None,
-                 framework_binding: dict | None = None,
                  framework_prepared=None,
-                 claimed_spec_digest: str | None = None) -> None:
+                 protection_execution=None) -> None:
         ledger = self.ledger
+        protection_closed = False
+        release_running = True
         try:
-            record = self._require(trigger_id)
-            spec = record["spec"]
-            if claimed_spec_digest and _digest(spec) != claimed_spec_digest:
-                raise TriggerConflict(
-                    "the Trigger specification changed after its firing was claimed"
-                )
-            binding = (
-                framework_binding
-                if framework_binding is not None
-                else resolve_action_binding(spec["action"])
-            )
-            approved = record.get("approved_action_binding")
-            if record.get("status") == "active":
-                if record.get("approved_spec_digest") != _digest(spec):
-                    raise TriggerConflict(
-                        "the approved specification no longer matches this "
-                        "Trigger; re-review and re-activate it"
-                    )
-                if approved and approved != binding:
-                    raise TriggerConflict(
-                        "action_definition_drifted: what this Trigger would run "
-                        "has changed since it was approved. Re-review and "
-                        "re-activate it."
-                    )
+            action = copy.deepcopy(dict(action_snapshot))
+            binding = copy.deepcopy(dict(binding_snapshot))
             # The Trigger identity scopes the email approval request but is
             # not part of the provider binding digest itself.
-            if spec["action"]["kind"] in {"email_send", "framework"}:
+            if action["kind"] in {"email_send", "framework"}:
                 binding = {**binding, "trigger_id": trigger_id}
             on_provider_contact = lambda: ledger.transition(
                 event_id, {"claimed"}, "claimed",
                 receipt={"outcome": "sending", "provider_contacted": True},
                 provider_contacted=True,
             )
-            if self._terminate_actions:
-                receipt = _execute_action_with_deadline(
-                    spec["action"], binding,
+
+            def on_process_started(process_identity: Mapping[str, Any]) -> None:
+                fields: dict[str, Any] = {
+                    "process_identity": copy.deepcopy(dict(process_identity)),
+                }
+                if protection_execution is not None:
+                    fields["protection_execution_id"] = (
+                        protection_execution.execution_id
+                    )
+                ledger.transition(
+                    event_id, {"claimed"}, "claimed", **fields,
+                )
+
+            def run_action():
+                if self._terminate_actions:
+                    return _execute_action_with_deadline(
+                        action, binding,
+                        prepared=framework_prepared,
+                        on_provider_contact=on_provider_contact,
+                        on_process_started=on_process_started,
+                        timeout_sec=self._firing_timeout_sec,
+                    )
+                return _execute_action(
+                    action, binding,
                     prepared=framework_prepared,
                     on_provider_contact=on_provider_contact,
-                    timeout_sec=self._firing_timeout_sec,
                 )
+
+            if protection_execution is not None:
+                try:
+                    try:
+                        import system_protection as _sp
+                    except ImportError:  # pragma: no cover - package context
+                        from orchestrator import system_protection as _sp
+                    with _sp.protected_effect(protection_execution):
+                        receipt = run_action()
+                    _sp.complete_execution(
+                        protection_execution,
+                        ok=True,
+                        result={"receipt_digest": _sp.params_digest(receipt)},
+                        post_state=_sp.project_binding_states(binding_snapshot),
+                    )
+                    protection_closed = True
+                except BaseException as action_error:
+                    if _termination_exception(action_error) is not None:
+                        # The protected start and firing claim both remain
+                        # nonterminal until the same process identity is later
+                        # proved dead. Calling complete_execution here would
+                        # falsely describe possibly-live work as finished.
+                        raise
+                    if not protection_closed:
+                        try:
+                            _sp.complete_execution(
+                                protection_execution,
+                                ok=False,
+                                result={"error": "Trigger project-tool execution failed"},
+                                post_state=_sp.project_binding_states(binding_snapshot),
+                            )
+                            protection_closed = True
+                        except Exception as receipt_error:
+                            raise _sp.ProtectionAuditError(
+                                "Trigger effect failed and its failure receipt "
+                                f"could not persist: {receipt_error}"
+                            ) from action_error
+                    raise
             else:
-                receipt = _execute_action(
-                    spec["action"], binding,
-                    prepared=framework_prepared,
-                    on_provider_contact=on_provider_contact,
-                )
+                receipt = run_action()
             if extra_receipt:
                 receipt.update(extra_receipt)
-            self._stage_completion_deliveries(trigger_id, event_id)
+            self._stage_completion_deliveries(
+                trigger_id, event_id, source_spec_digest=claimed_spec_digest,
+                source_admission_identity=claimed_admission_identity,
+            )
             completed = ledger.transition(
                 event_id, {"claimed"}, "completed",
                 receipt=receipt, completed_at=_now(),
@@ -1280,24 +1922,64 @@ class TriggerService:
                 trigger_id, event_id, source_completion=completed,
             )
         except BaseException as exc:
-            # Record before anything else: a firing that dies without evidence
-            # is indistinguishable from one that never ran.
-            with contextlib.suppress(Exception):
-                ledger.transition(event_id, {"claimed"}, "failed",
-                                  error=f"{type(exc).__name__}: {exc}",
-                                  completed_at=_now())
+            termination = _termination_exception(exc)
+            release_running = termination is None
+            if termination is not None:
+                current = ledger.get(event_id) or {}
+                process_identity = (
+                    termination.process_identity
+                    or current.get("process_identity")
+                    or {
+                        "kind": "unproven_process_tree",
+                        "root_pid": None,
+                        "complete": False,
+                    }
+                )
+                fields: dict[str, Any] = {
+                    "process_identity": copy.deepcopy(dict(process_identity)),
+                    "termination_unacknowledged_at": _now(),
+                    "termination_error": f"{type(exc).__name__}: {exc}",
+                }
+                if protection_execution is not None:
+                    fields.setdefault(
+                        "protection_execution_id",
+                        protection_execution.execution_id,
+                    )
+                try:
+                    ledger.transition(
+                        event_id, {"claimed"}, "claimed", **fields,
+                    )
+                except Exception as evidence_error:
+                    # The process-local guard remains. A start-barrier record
+                    # normally already carries the process identity, so
+                    # startup can still retain it if this later annotation
+                    # alone failed.
+                    print(
+                        "[triggers] unresolved termination evidence could not "
+                        f"be updated for {event_id}: {evidence_error}"
+                    )
+            else:
+                # Record before anything else: an ordinary firing that dies
+                # without evidence is indistinguishable from one that never ran.
+                with contextlib.suppress(Exception):
+                    ledger.transition(event_id, {"claimed"}, "failed",
+                                      error=f"{type(exc).__name__}: {exc}",
+                                      completed_at=_now())
             # An ordinary failure is this firing's business and stops here. An
             # interpreter-level exit is the process's business and must not be
             # swallowed by a worker thread.
             if not isinstance(exc, Exception):
                 raise
         finally:
-            with _PROCESS_LOCK:
-                if _RUNNING.get(trigger_id) == event_id:
-                    _RUNNING.pop(trigger_id, None)
+            if release_running:
+                with _PROCESS_LOCK:
+                    if _RUNNING.get(trigger_id) == event_id:
+                        _RUNNING.pop(trigger_id, None)
 
     def _stage_completion_deliveries(self, source_trigger_id: str,
-                                     source_event_id: str) -> None:
+                                     source_event_id: str, *,
+                                     source_spec_digest: str,
+                                     source_admission_identity: str) -> None:
         """Persist exact dependant deliveries before exposing completion."""
         with _PROCESS_LOCK, _exclusive():
             state = _load()
@@ -1306,7 +1988,6 @@ class TriggerService:
                 raise TriggerConflict(
                     f"completion source {source_trigger_id!r} no longer exists"
                 )
-            source_spec_digest = _digest(source_record["spec"])
             changed = False
             for record in state["triggers"].values():
                 spec = record["spec"]
@@ -1319,6 +2000,7 @@ class TriggerService:
                     "source_event_id": source_event_id,
                     "dependent_trigger_id": spec["trigger_id"],
                     "dependent_spec_digest": _digest(spec),
+                    "dependent_admission_identity": _admission_identity(record),
                 }
                 delivery_id = event_identity("trigger_completion_delivery", subject)
                 if delivery_id in state["completion_deliveries"]:
@@ -1328,6 +2010,7 @@ class TriggerService:
                     **subject,
                     "source_event_type": FIRING_EVENT_TYPE,
                     "source_spec_digest": source_spec_digest,
+                    "source_admission_identity": source_admission_identity,
                     "created_at": _now(),
                 }
                 changed = True
@@ -1354,20 +2037,47 @@ class TriggerService:
             if state["completion_deliveries"].pop(delivery_id, None) is not None:
                 _save(state)
 
+    def _persist_completion_proof(
+        self, source_event_id: str, proof: Mapping[str, Any],
+    ) -> list[dict]:
+        """Bind proof to every matching staged delivery in one atomic write."""
+        with _PROCESS_LOCK, _exclusive():
+            state = _load()
+            matching = [
+                delivery
+                for delivery in state["completion_deliveries"].values()
+                if delivery.get("source_event_id") == source_event_id
+            ]
+            for delivery in matching:
+                if not _completion_proof_matches_delivery(delivery, proof):
+                    raise TriggerConflict(
+                        "source completion does not authenticate its staged delivery"
+                    )
+                current = delivery.get("source_completion")
+                if current is not None and current != proof:
+                    raise TriggerConflict(
+                        "staged completion delivery carries conflicting proof"
+                    )
+            changed = False
+            for delivery in matching:
+                if delivery.get("source_completion") is None:
+                    delivery["source_completion"] = dict(proof)
+                    changed = True
+            if changed:
+                _save(state)
+            return [copy.deepcopy(delivery) for delivery in matching]
+
     def _deliver_completion(self, delivery: Mapping[str, Any]) -> None:
         target = str(delivery["dependent_trigger_id"])
         record = self._require(target)
-        spec = record["spec"]
-        if record.get("status") != "active" or _digest(spec) != delivery.get(
-            "dependent_spec_digest"
-        ):
-            raise TriggerConflict(
-                f"completion delivery target {target!r} changed after publication"
-            )
         self._fire(record, "trigger_completion", {
             "source_trigger_id": delivery["source_trigger_id"],
             "source_event_id": delivery["source_event_id"],
-        })
+        }, expected_spec_digest=str(
+            delivery.get("dependent_spec_digest") or ""
+        ), expected_admission_identity=str(
+            delivery.get("dependent_admission_identity") or ""
+        ))
         self._finish_completion_delivery(str(delivery["delivery_id"]))
 
     def _dispatch_completion(
@@ -1375,34 +2085,17 @@ class TriggerService:
         source_completion: Mapping[str, Any] | None = None,
     ) -> None:
         """Persist completion eligibility, then deliver each dependant."""
-        if source_completion is not None:
-            source_subject = source_completion.get("subject") or {}
-            proof = {
-                "event_id": source_completion.get("event_id"),
-                "event_type": source_completion.get("event_type"),
-                "trigger_id": source_subject.get("trigger_id"),
-                "spec_digest": source_subject.get("spec_digest"),
-                "completed_at": source_completion.get("completed_at"),
-            }
-            if (source_completion.get("status") != "completed"
-                    or proof["event_id"] != source_event_id
-                    or proof["event_type"] != FIRING_EVENT_TYPE
-                    or proof["trigger_id"] != source_trigger_id
-                    or not proof["spec_digest"]
-                    or not proof["completed_at"]):
-                raise TriggerConflict(
-                    "completion delivery requires a completed source firing"
-                )
-            with _PROCESS_LOCK, _exclusive():
-                state = _load()
-                changed = False
-                for delivery in state["completion_deliveries"].values():
-                    if delivery.get("source_event_id") == source_event_id:
-                        delivery["source_completion"] = proof
-                        changed = True
-                if changed:
-                    _save(state)
-        for delivery in self._pending_completion_deliveries(source_event_id):
+        proof = _completion_proof(source_completion)
+        if (
+            proof is None
+            or proof["event_id"] != source_event_id
+            or proof["trigger_id"] != source_trigger_id
+        ):
+            raise TriggerConflict(
+                "completion delivery requires a completed source firing"
+            )
+        deliveries = self._persist_completion_proof(source_event_id, proof)
+        for delivery in deliveries:
             try:
                 self._deliver_completion(delivery)
             except Exception as exc:
@@ -1412,32 +2105,57 @@ class TriggerService:
     def replay_completion_deliveries(self) -> list[str]:
         """Replay each unfinished dependant delivery once at process startup."""
         delivered: list[str] = []
-        for delivery in self._pending_completion_deliveries():
-            source_event_id = str(delivery.get("source_event_id") or "")
-            proof = delivery.get("source_completion")
-            source_completed = (
-                isinstance(proof, dict)
-                and proof.get("event_id") == source_event_id
-                and proof.get("event_type") == FIRING_EVENT_TYPE
-                and proof.get("trigger_id") == delivery.get("source_trigger_id")
-                and proof.get("spec_digest") == delivery.get(
-                    "source_spec_digest"
+        pending = self._pending_completion_deliveries()
+        source_event_ids = list(dict.fromkeys(
+            str(delivery.get("source_event_id") or "")
+            for delivery in pending
+        ))
+        for source_event_id in source_event_ids:
+            deliveries = [
+                delivery for delivery in pending
+                if delivery.get("source_event_id") == source_event_id
+            ]
+            proven = all(
+                _completion_proof_matches_delivery(
+                    delivery, delivery.get("source_completion"),
                 )
-                and bool(proof.get("completed_at"))
+                for delivery in deliveries
             )
-            source = None if source_completed else self.ledger.get(source_event_id)
-            if not source_completed and (
-                source is None or source.get("status") != "completed"
-            ):
-                if source is not None and source.get("status") == "failed":
-                    self._finish_completion_delivery(str(delivery["delivery_id"]))
-                continue
-            try:
-                self._deliver_completion(delivery)
-                delivered.append(str(delivery["delivery_id"]))
-            except Exception as exc:
-                print(f"[triggers] startup completion replay to "
-                      f"{delivery.get('dependent_trigger_id')} failed: {exc}")
+            if not proven:
+                # The pending snapshot was read after releasing the Trigger
+                # lock. Read the ledger independently, then acquire only the
+                # Trigger lock to make the exact proof durable for every child.
+                source = self.ledger.get(source_event_id)
+                proof = _completion_proof(source)
+                if proof is None or not all(
+                    _completion_proof_matches_delivery(delivery, proof)
+                    for delivery in deliveries
+                ):
+                    if source is not None and source.get("status") == "failed":
+                        for delivery in deliveries:
+                            self._finish_completion_delivery(
+                                str(delivery["delivery_id"])
+                            )
+                    continue
+                try:
+                    deliveries = self._persist_completion_proof(
+                        source_event_id, proof,
+                    )
+                except Exception as exc:
+                    print(f"[triggers] startup completion proof for "
+                          f"{source_event_id} failed: {exc}")
+                    continue
+            for delivery in deliveries:
+                if not _completion_proof_matches_delivery(
+                    delivery, delivery.get("source_completion"),
+                ):
+                    continue
+                try:
+                    self._deliver_completion(delivery)
+                    delivered.append(str(delivery["delivery_id"]))
+                except Exception as exc:
+                    print(f"[triggers] startup completion replay to "
+                          f"{delivery.get('dependent_trigger_id')} failed: {exc}")
         return delivered
 
     # ---- inspection ----
@@ -1478,9 +2196,10 @@ def _spawn_firing_thread(work: Callable[[], None]) -> None:
 
     The deadline lane also serves daily notes, log retention, and thousands of
     trace expirations; a framework run that takes minutes must not hold it.
-    The thread is a daemon and never outlives the process — a firing killed by
-    shutdown is failed by ``restore_incomplete_events`` at the next start, and
-    is terminal, because a failed event is not retried by a clock.
+    The thread is a daemon and never outlives the process. Restart recovery
+    fails an interrupted claim with no live process identity. A claim carrying
+    a spawned process identity instead remains nonterminal until Trigger
+    recovery positively confirms that its process tree is dead.
     """
     threading.Thread(target=work, daemon=True, name="ora-trigger-firing").start()
 
@@ -1539,7 +2258,145 @@ def _active_run_sleep_protection():
                 ) from exc
 
 
-def _action_process_main(connection, action: dict, binding: dict) -> None:
+def _action_process_identity() -> dict[str, Any]:
+    """Describe this action process with the platform's termination identity."""
+    if _uses_posix_process_groups():
+        return {
+            "kind": "posix_process_group",
+            "root_pid": os.getpid(),
+            "process_group_id": os.getpgrp(),
+            "complete": True,
+            "action_may_have_started": False,
+        }
+    return {
+        "kind": "windows_process_tree",
+        "root_pid": os.getpid(),
+        "process_ids": [os.getpid()],
+        # This pre-action wrapper identity is replaced by the parent with an
+        # assigned Job identity before the start barrier can open.
+        "complete": False,
+        "action_may_have_started": False,
+    }
+
+
+def _parent_process_identity(process) -> dict[str, Any]:
+    """Best available identity when the child start barrier did not finish."""
+    pid = process.pid
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return {
+            "kind": "unproven_process_tree",
+            "root_pid": None,
+            "complete": False,
+            "action_may_have_started": False,
+        }
+    if _uses_posix_process_groups():
+        return {
+            "kind": "posix_process_group",
+            "root_pid": pid,
+            "process_group_id": pid,
+            # Without the child acknowledgment, setsid may not have completed.
+            "complete": False,
+            "action_may_have_started": False,
+        }
+    return {
+        "kind": "windows_process_tree",
+        "root_pid": pid,
+        "process_ids": [pid],
+        "complete": False,
+        "action_may_have_started": False,
+    }
+
+
+def _process_exists(process_id: int) -> bool:
+    """Return whether one POSIX process identity still exists."""
+    try:
+        os.kill(process_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _process_identity_death_confirmed(identity: Mapping[str, Any]) -> bool:
+    """Prove an existing action-tree identity dead, or fail closed."""
+    kind = identity.get("kind")
+    try:
+        if kind == "windows_job_object":
+            if _uses_posix_process_groups():
+                return False
+            return _windows_job_identity_death_confirmed(identity)
+        if (
+            kind == "posix_process_group"
+            and identity.get("action_may_have_started") is not False
+        ):
+            # A post-start POSIX descendant can leave the recorded group with
+            # setsid().  Root/group absence therefore cannot prove that all
+            # action work ended, including for identities written by older code.
+            return False
+        if identity.get("complete") is not True:
+            # Before the durable start barrier, only the wrapper can exist. Its
+            # absence therefore proves no action work began. Once the barrier
+            # may have opened, an incomplete Windows tree cannot account for
+            # descendants and must remain blocked even if the root disappears.
+            if identity.get("action_may_have_started") is not False:
+                return False
+            root_pid = identity.get("root_pid")
+            if (
+                not isinstance(root_pid, int) or isinstance(root_pid, bool)
+                or root_pid <= 0
+            ):
+                return False
+            if kind == "posix_process_group":
+                return (
+                    _uses_posix_process_groups()
+                    and not _process_exists(root_pid)
+                )
+            if kind == "windows_process_tree":
+                return (
+                    not _uses_posix_process_groups()
+                    and not _windows_live_processes({root_pid})
+                )
+            return False
+        if kind == "posix_process_group":
+            if not _uses_posix_process_groups():
+                return False
+            root_pid = identity.get("root_pid")
+            group_id = identity.get("process_group_id")
+            if (
+                not isinstance(root_pid, int) or isinstance(root_pid, bool)
+                or root_pid <= 0
+                or not isinstance(group_id, int) or isinstance(group_id, bool)
+                or group_id <= 0
+            ):
+                return False
+            return (
+                not _process_exists(root_pid)
+                and not _process_group_exists(group_id)
+            )
+        if kind == "windows_process_tree":
+            if _uses_posix_process_groups():
+                return False
+            raw_process_ids = identity.get("process_ids")
+            if not isinstance(raw_process_ids, list) or not raw_process_ids:
+                return False
+            process_ids = set()
+            for value in raw_process_ids:
+                if (
+                    not isinstance(value, int) or isinstance(value, bool)
+                    or value <= 0
+                ):
+                    return False
+                process_ids.add(value)
+            return not _windows_live_processes(process_ids)
+    except Exception:
+        return False
+    return False
+
+
+def _action_process_main(
+    connection, action: dict, binding: dict, durable_start: bool = False,
+) -> None:
     """Process-side action entry point; reports provider contact and outcome."""
     if os.name == "posix":
         os.setsid()
@@ -1549,97 +2406,437 @@ def _action_process_main(connection, action: dict, binding: dict) -> None:
             # this supervisor exits; exec resets this caught handler to the
             # default disposition in the tool itself.
             signal.signal(signal.SIGTERM, lambda *_args: None)
+
+    hold_for_parent_release = False
+
+    def provider_contact_boundary() -> None:
+        # Provider I/O may begin only after the parent has durably recorded
+        # that rollback can no longer claim cancellation.  The acknowledgment
+        # turns the pipe into a write-ahead barrier rather than a notification.
+        connection.send(("provider_contact", None))
+        kind, _payload = connection.recv()
+        if kind != "provider_contact_ack":
+            raise RuntimeError("provider contact was not durably acknowledged")
+
     try:
+        if durable_start:
+            # No user action begins until the parent has durably attached the
+            # platform containment identity to the already-claimed firing.
+            connection.send(("process_started", _action_process_identity()))
+            kind, _payload = connection.recv()
+            if kind != "process_started_ack":
+                raise RuntimeError(
+                    "action process identity was not durably acknowledged"
+                )
+            # POSIX retains the independently addressable process group after
+            # this wrapper exits. On Windows the parent has now assigned this
+            # held wrapper to a non-breakaway Job. The duplex barrier remains
+            # through result/error handling so the parent can persist current
+            # Job membership, release the wrapper, and prove ActiveProcesses
+            # reached zero before terminal evidence.
+            hold_for_parent_release = not _uses_posix_process_groups()
         with _active_run_sleep_protection():
             receipt = _execute_action(
                 action, binding, prepared=None,
-                on_provider_contact=lambda: connection.send(
-                    ("provider_contact", None)
-                ),
+                on_provider_contact=provider_contact_boundary,
             )
         connection.send(("result", receipt))
     except BaseException as exc:
         with contextlib.suppress(Exception):
             connection.send(("error", f"{type(exc).__name__}: {exc}"))
     finally:
+        if hold_for_parent_release:
+            # Result/error serialization can itself fail.  The wrapper still
+            # waits on the same duplex boundary so parent cleanup can terminate
+            # the kernel-owned Windows Job instead of inferring descendant
+            # death from the wrapper's lifetime.
+            while True:
+                try:
+                    kind, _payload = connection.recv()
+                except (EOFError, OSError):
+                    break
+                if kind == "process_release":
+                    break
         connection.close()
 
 
-def _terminate_action_process(process) -> None:
+def _process_group_exists(process_group_id: int) -> bool:
+    """Return whether a POSIX action group still has any member."""
+    try:
+        os.killpg(process_group_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _uses_posix_process_groups() -> bool:
+    return os.name == "posix"
+
+
+def _create_windows_job_boundary(root_pid: int):
+    """Use the repository's existing native Windows Job primitive lazily."""
+    try:
+        import windows_appcontainer as _wac
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator import windows_appcontainer as _wac
+    return _wac._create_trigger_job(root_pid)
+
+
+def _windows_job_identity_death_confirmed(
+    identity: Mapping[str, Any],
+) -> bool:
+    """Ask the persisted named Job whether any contained process is active."""
+    try:
+        import windows_appcontainer as _wac
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator import windows_appcontainer as _wac
+    return _wac._trigger_job_death_confirmed(dict(identity))
+
+
+def _windows_live_processes(process_ids: set[int]) -> set[int]:
+    """Return captured Windows process identities that still exist."""
+    if not process_ids:
+        return set()
+    joined = ",".join(str(value) for value in sorted(process_ids))
+    result = subprocess.run(
+        [
+            "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+            f"Get-Process -Id {joined} -ErrorAction SilentlyContinue | "
+            "ForEach-Object { Write-Output $_.Id }",
+        ],
+        capture_output=True, text=True, check=False,
+        timeout=TERMINATION_GRACE_SEC,
+    )
+    if result.returncode != 0:
+        raise TriggerTerminationUnacknowledged(
+            "Windows process tree could not be verified after termination"
+        )
+    try:
+        return {
+            int(line.strip()) for line in result.stdout.splitlines()
+            if line.strip()
+        }
+    except ValueError as exc:
+        raise TriggerTerminationUnacknowledged(
+            "Windows process verification returned an invalid identity list"
+        ) from exc
+
+
+def _release_completed_windows_process(
+    process, connection, job_boundary, *,
+    on_process_identity: Callable[[Mapping[str, Any]], None] | None = None,
+) -> dict[str, Any]:
+    """Release the held wrapper, terminate its Job, and prove membership zero."""
+    try:
+        process_identity = job_boundary.identity(action_may_have_started=True)
+    except BaseException as exc:
+        raise TriggerTerminationUnacknowledged(
+            "Windows Job membership could not be captured before release",
+        ) from exc
+    if on_process_identity is not None:
+        try:
+            on_process_identity(process_identity)
+        except BaseException as exc:
+            raise TriggerTerminationUnacknowledged(
+                "Windows Job membership could not be durably recorded",
+                process_identity=process_identity,
+            ) from exc
+    try:
+        connection.send(("process_release", None))
+    except BaseException as exc:
+        raise TriggerTerminationUnacknowledged(
+            "Windows action wrapper release could not be acknowledged",
+            process_identity=process_identity,
+        ) from exc
+    persistence_error: BaseException | None = None
+    try:
+        process.join(TERMINATION_GRACE_SEC)
+        job_boundary.terminate_and_wait(TERMINATION_GRACE_SEC)
+        process.join(TERMINATION_GRACE_SEC)
+        final_identity = job_boundary.identity(action_may_have_started=True)
+        if on_process_identity is not None:
+            try:
+                on_process_identity(final_identity)
+            except BaseException as exc:
+                persistence_error = exc
+    except BaseException as exc:
+        raise TriggerTerminationUnacknowledged(
+            "Windows Job death could not be verified after wrapper release",
+            process_identity=process_identity,
+        ) from exc
+    if (
+        process.is_alive()
+        or final_identity.get("active_processes") != 0
+        or final_identity.get("owner_handle_zero_observed") is not True
+    ):
+        raise TriggerTerminationUnacknowledged(
+            "Windows Job remained live after wrapper release",
+            process_identity=final_identity,
+        )
+    if persistence_error is not None:
+        raise TriggerTerminationUnacknowledged(
+            "Windows Job terminal membership could not be durably recorded",
+            process_identity=final_identity,
+        ) from persistence_error
+    return final_identity
+
+
+def _terminate_action_process(
+    process, *,
+    on_process_identity: Callable[[Mapping[str, Any]], None] | None = None,
+    windows_job=None,
+    action_may_have_started: bool = False,
+    known_process_identity: Mapping[str, Any] | None = None,
+) -> None:
     """Terminate the whole action process group and wait for acknowledgment."""
     if process.pid is None:
+        if process.is_alive():
+            retained_identity = _parent_process_identity(process)
+            if (
+                _uses_posix_process_groups()
+                and action_may_have_started
+            ):
+                if isinstance(known_process_identity, Mapping):
+                    retained_identity = copy.deepcopy(dict(known_process_identity))
+                retained_identity["complete"] = False
+                retained_identity["action_may_have_started"] = True
+            raise TriggerTerminationUnacknowledged(
+                "Trigger action has no terminable process identity",
+                process_identity=retained_identity,
+            )
         return
-    if os.name == "posix":
+    if _uses_posix_process_groups():
         with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGTERM)
         # If the child had not reached setsid yet, there was no process group
         # to signal. Terminating the wrapper still closes that startup race.
         with contextlib.suppress(ProcessLookupError):
             process.terminate()
-    else:  # pragma: no cover - exercised at the Windows release checkpoint
-        with contextlib.suppress(OSError):
-            subprocess.run(
-                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                capture_output=True, check=False,
+    elif windows_job is not None:  # pragma: no cover - simulated on POSIX
+        try:
+            process_identity = windows_job.identity(
+                action_may_have_started=action_may_have_started,
             )
+        except BaseException as exc:
+            process_identity = (
+                copy.deepcopy(dict(known_process_identity))
+                if isinstance(known_process_identity, Mapping)
+                else None
+            )
+            try:
+                windows_job.terminate_and_wait(TERMINATION_GRACE_SEC)
+                process.join(TERMINATION_GRACE_SEC)
+            except BaseException as termination_error:
+                raise TriggerTerminationUnacknowledged(
+                    "Windows Job membership and termination could not be acknowledged",
+                    process_identity=process_identity,
+                ) from termination_error
+            raise TriggerTerminationUnacknowledged(
+                "Windows Job membership could not be captured before termination",
+                process_identity=process_identity,
+            ) from exc
+        # Persist the Job identity before terminating. Unlike a point-in-time
+        # parent graph, this identity still contains intermediate-parent exit
+        # and late-child creation because the kernel owns membership.
+        persistence_error: BaseException | None = None
+        if on_process_identity is not None:
+            try:
+                on_process_identity(process_identity)
+            except BaseException as exc:
+                persistence_error = exc
+        try:
+            windows_job.terminate_and_wait(TERMINATION_GRACE_SEC)
+            process.join(TERMINATION_GRACE_SEC)
+            final_identity = windows_job.identity(
+                action_may_have_started=action_may_have_started,
+            )
+            if on_process_identity is not None:
+                try:
+                    on_process_identity(final_identity)
+                except BaseException as exc:
+                    persistence_error = persistence_error or exc
+        except BaseException as exc:
+            raise TriggerTerminationUnacknowledged(
+                "Windows Job termination did not complete",
+                process_identity=process_identity,
+            ) from exc
+        if (
+            process.is_alive()
+            or final_identity.get("active_processes") != 0
+            or final_identity.get("owner_handle_zero_observed") is not True
+        ):
+            raise TriggerTerminationUnacknowledged(
+                "Windows Job did not acknowledge complete termination",
+                process_identity=final_identity,
+            )
+        if persistence_error is not None and action_may_have_started:
+            raise TriggerTerminationUnacknowledged(
+                "Windows Job membership could not be durably recorded",
+                process_identity=final_identity,
+            ) from persistence_error
+        return
+    else:
+        # No Job identity means the durable start barrier never opened. The
+        # held wrapper is the only possible process, so ordinary wrapper
+        # termination retains the established no-action recovery semantics.
+        with contextlib.suppress(ProcessLookupError):
+            process.terminate()
     process.join(TERMINATION_GRACE_SEC)
-    if process.is_alive():
-        if os.name == "posix":
+    group_exists = (
+        _uses_posix_process_groups() and _process_group_exists(process.pid)
+    )
+    if process.is_alive() or group_exists:
+        if _uses_posix_process_groups():
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(process.pid, signal.SIGKILL)
-        elif hasattr(process, "kill"):
-            process.kill()
-        else:  # pragma: no cover - old Python fallback
-            process.terminate()
-        process.join()
-    if process.is_alive():
-        raise RuntimeError("Trigger action did not acknowledge termination")
+        if process.is_alive():
+            if hasattr(process, "kill"):
+                process.kill()
+            else:  # pragma: no cover - old Python fallback
+                process.terminate()
+        deadline = time.monotonic() + TERMINATION_GRACE_SEC
+        while process.is_alive() and time.monotonic() < deadline:
+            process.join(min(0.05, max(0.0, deadline - time.monotonic())))
+        if _uses_posix_process_groups():
+            while (_process_group_exists(process.pid)
+                   and time.monotonic() < deadline):
+                time.sleep(0.01)
+    group_exists = (
+        _uses_posix_process_groups() and _process_group_exists(process.pid)
+    )
+    if process.is_alive() or group_exists:
+        process_identity = _parent_process_identity(process)
+        if action_may_have_started:
+            if isinstance(known_process_identity, Mapping):
+                process_identity = copy.deepcopy(dict(known_process_identity))
+            process_identity["complete"] = False
+            process_identity["action_may_have_started"] = True
+        elif group_exists:
+            process_identity["complete"] = True
+        raise TriggerTerminationUnacknowledged(
+            "Trigger action process group did not acknowledge termination",
+            process_identity=process_identity,
+        )
 
 
 def _execute_action_with_deadline(
     action: Mapping[str, Any], binding: Mapping[str, Any], *, prepared,
     on_provider_contact: Callable[[], None] | None, timeout_sec: float,
+    on_process_started: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> dict:
     """Run real action work across a boundary the deadline can terminate."""
     if timeout_sec <= 0:
         raise ValueError("Trigger firing timeout must be positive")
+    if not _uses_posix_process_groups() and on_process_started is None:
+        raise ValueError(
+            "Windows Job execution requires a durable process-identity callback"
+        )
     context = multiprocessing.get_context("spawn")
-    receive, send = context.Pipe(duplex=False)
+    parent_connection, child_connection = context.Pipe(duplex=True)
     process = context.Process(
         target=_action_process_main,
-        args=(send, dict(action), dict(binding)),
+        args=(child_connection, dict(action), dict(binding), True),
         daemon=True,
         name="ora-trigger-action",
     )
+    process_identity: dict[str, Any] | None = None
+    windows_job = None
+    windows_job_termination_acknowledged = False
+    action_start_acknowledged = False
+    posix_timeout_after_start = False
+
+    def persist_process_identity(identity: Mapping[str, Any]) -> None:
+        nonlocal process_identity
+        durable_identity = copy.deepcopy(dict(identity))
+        process_identity = durable_identity
+        if on_process_started is not None:
+            on_process_started(durable_identity)
+
     try:
         # Include start itself in the cleanup boundary: a platform launcher
         # can create the OS process and then fail while finishing the parent
         # bookkeeping. If a pid exists, finally must still reap it.
         process.start()
-        send.close()
+        child_connection.close()
         deadline = time.monotonic() + timeout_sec
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                _terminate_action_process(process)
+                posix_timeout_after_start = (
+                    _uses_posix_process_groups() and action_start_acknowledged
+                )
                 raise TimeoutError(
                     f"Trigger firing exceeded its {timeout_sec:g}s deadline"
                 )
-            if receive.poll(min(remaining, 0.1)):
+            if parent_connection.poll(min(remaining, 0.1)):
                 try:
-                    kind, payload = receive.recv()
+                    kind, payload = parent_connection.recv()
                 except EOFError:
                     kind, payload = "closed", None
+                if kind == "process_started":
+                    if not isinstance(payload, Mapping):
+                        raise RuntimeError(
+                            "Trigger action returned an invalid process identity"
+                        )
+                    if _uses_posix_process_groups():
+                        process_identity = copy.deepcopy(dict(payload))
+                        admitted_identity = {
+                            **process_identity,
+                            # Persist this conservative marker before granting
+                            # permission to cross the action-start barrier.
+                            "complete": False,
+                            "action_may_have_started": True,
+                        }
+                    else:
+                        if windows_job is not None:
+                            raise RuntimeError(
+                                "Trigger action repeated its process-start barrier"
+                            )
+                        if process.pid is None:
+                            raise RuntimeError(
+                                "Trigger action has no Windows process id"
+                            )
+                        # The wrapper is blocked on this duplex message. Attach
+                        # it to the repository's non-breakaway Job before any
+                        # durable start acknowledgment can reach the child.
+                        windows_job = _create_windows_job_boundary(process.pid)
+                        admitted_identity = windows_job.identity(
+                            action_may_have_started=True,
+                        )
+                    persist_process_identity(admitted_identity)
+                    # Persistence is the last point at which the parent can
+                    # still prove that no action work began. Once the ack is
+                    # attempted it may have reached the child even if the
+                    # local send reports an error, so every unwind from here
+                    # must retain the conservative post-start Job identity.
+                    action_start_acknowledged = True
+                    parent_connection.send(("process_started_ack", None))
+                    continue
                 if kind == "provider_contact":
                     if on_provider_contact is not None:
                         on_provider_contact()
+                    parent_connection.send(("provider_contact_ack", None))
                     continue
-                process.join(TERMINATION_GRACE_SEC)
-                if process.is_alive():
-                    _terminate_action_process(process)
-                    raise RuntimeError(
-                        "Trigger action returned without terminating"
+                if (
+                    not _uses_posix_process_groups()
+                    and windows_job is not None
+                    and action_start_acknowledged
+                ):
+                    process_identity = _release_completed_windows_process(
+                        process,
+                        parent_connection,
+                        windows_job,
+                        on_process_identity=persist_process_identity,
                     )
+                    windows_job_termination_acknowledged = True
+                else:
+                    process.join(TERMINATION_GRACE_SEC)
+                    if process.is_alive():
+                        raise RuntimeError(
+                            "Trigger action returned without terminating"
+                        )
                 if kind == "result":
                     return payload
                 if kind == "error":
@@ -1652,16 +2849,120 @@ def _execute_action_with_deadline(
                 )
     finally:
         with contextlib.suppress(Exception):
-            send.close()
-        receive.close()
-        # No parent-side failure may release TriggerService._RUNNING while
-        # action work still exists. This covers callback errors and all other
-        # exceptions outside the explicit timeout/result branches.
-        if process.pid is not None:
-            if process.is_alive():
-                _terminate_action_process(process)
-            else:
-                process.join()
+            child_connection.close()
+        try:
+            # Keep the duplex connection open through cleanup. A post-start
+            # Windows child waits on it while the parent snapshots and stops
+            # the kernel-owned Job on every unwind.
+            if process.pid is not None:
+                group_exists = (
+                    _uses_posix_process_groups()
+                    and _process_group_exists(process.pid)
+                )
+                needs_windows_job_cleanup = (
+                    windows_job is not None
+                    and not windows_job_termination_acknowledged
+                )
+                if process.is_alive() or group_exists or needs_windows_job_cleanup:
+                    try:
+                        _terminate_action_process(
+                            process,
+                            on_process_identity=persist_process_identity,
+                            windows_job=windows_job,
+                            action_may_have_started=action_start_acknowledged,
+                            known_process_identity=process_identity,
+                        )
+                    except TriggerTerminationUnacknowledged as exc:
+                        retained_identity = exc.process_identity
+                        if (
+                            _uses_posix_process_groups()
+                            and action_start_acknowledged
+                        ):
+                            if isinstance(process_identity, Mapping):
+                                retained_identity = copy.deepcopy(
+                                    dict(process_identity)
+                                )
+                            elif not isinstance(retained_identity, Mapping):
+                                retained_identity = _parent_process_identity(process)
+                            else:
+                                retained_identity = copy.deepcopy(
+                                    dict(retained_identity)
+                                )
+                            retained_identity["complete"] = False
+                            retained_identity["action_may_have_started"] = True
+                        if (
+                            not (
+                                _uses_posix_process_groups()
+                                and action_start_acknowledged
+                            )
+                            and isinstance(process_identity, Mapping)
+                            and (
+                                not isinstance(retained_identity, Mapping)
+                                or (
+                                    process_identity.get("kind")
+                                    == "windows_job_object"
+                                    and retained_identity.get("kind")
+                                    != "windows_job_object"
+                                )
+                                or (
+                                    retained_identity.get("kind")
+                                    != "windows_job_object"
+                                    and retained_identity.get("complete") is not True
+                                    and process_identity.get("complete") is True
+                                )
+                            )
+                        ):
+                            retained_identity = process_identity
+                        raise TriggerTerminationUnacknowledged(
+                            str(exc), process_identity=retained_identity,
+                        ) from exc
+                    except Exception as exc:
+                        raise TriggerTerminationUnacknowledged(
+                            "Trigger action termination could not be acknowledged",
+                            process_identity=(
+                                process_identity or _parent_process_identity(process)
+                            ),
+                        ) from exc
+                else:
+                    process.join()
+                if posix_timeout_after_start:
+                    retained_identity = (
+                        copy.deepcopy(dict(process_identity))
+                        if isinstance(process_identity, Mapping)
+                        else _parent_process_identity(process)
+                    )
+                    retained_identity["complete"] = False
+                    retained_identity["action_may_have_started"] = True
+                    raise TriggerTerminationUnacknowledged(
+                        f"Trigger firing exceeded its {timeout_sec:g}s deadline; "
+                        "the known POSIX process group was terminated, but "
+                        "descendant session escape cannot be excluded",
+                        process_identity=retained_identity,
+                    )
+        finally:
+            try:
+                if windows_job is not None:
+                    windows_job.close()
+                    if process.pid is not None and process.is_alive():
+                        process.join(TERMINATION_GRACE_SEC)
+                    if process.pid is not None and process.is_alive():
+                        raise RuntimeError(
+                            "wrapper remained live after Job handle closure"
+                        )
+            except BaseException as exc:
+                raise TriggerTerminationUnacknowledged(
+                    "Windows Job ownership handle could not be closed",
+                    process_identity=process_identity,
+                ) from exc
+            finally:
+                parent_connection.close()
+                if process.pid is not None and not process.is_alive():
+                    close_process = getattr(process, "close", None)
+                    if callable(close_process):
+                        # ``join`` reaps the child; ``close`` releases the
+                        # multiprocessing process handle on Windows.
+                        with contextlib.suppress(Exception):
+                            close_process()
 
 
 def _execute_action(
@@ -1678,10 +2979,14 @@ def _execute_action(
             from orchestrator import project_registry as _pr
         kwargs: dict[str, Any] = {}
         if binding.get("interface") == _pr.TOOL_INTERFACE_STDIN_STDOUT:
-            kwargs["stdin_json"] = action.get("stdin") or {}
+            kwargs["stdin_json"] = action["stdin"] if "stdin" in action else {}
         else:
             kwargs["args"] = list(action.get("args") or [])
-        result = _pr.invoke_project_tool(action["nexus"], action["tool"], **kwargs)
+        result = _pr.invoke_project_tool(
+            action["nexus"], action["tool"],
+            expected_binding=dict(binding),
+            **kwargs,
+        )
         return {
             "outcome": "ran", "kind": "project_tool",
             "nexus": action["nexus"], "tool": action["tool"],
