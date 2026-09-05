@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -112,6 +114,69 @@ class CodeExecuteDispatchBase(unittest.TestCase):
 
 
 class TestLifecycleHooks(unittest.TestCase):
+    def test_d30_relocated_install_uses_effective_hook_roots(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            relocated = root / "relocated install"
+            home = root / "home"
+            decoy = home / "ora"
+            cleanup_json = _ORCH.parent / "config/hooks/session-cleanup.json"
+            for install in (relocated, decoy):
+                (install / "config/hooks").mkdir(parents=True)
+                (install / "orchestrator/tools").mkdir(parents=True)
+                shutil.copyfile(cleanup_json,
+                                install / "config/hooks/session-cleanup.json")
+                # A harmless stand-in records which installation was imported
+                # and the working directory supplied by the real hook runner.
+                (install / "orchestrator/tools/bash_execute.py").write_text(
+                    "from pathlib import Path\n"
+                    "def cleanup_all():\n"
+                    "    install = Path(__file__).resolve().parents[2]\n"
+                    "    (install / 'cleanup-ran.txt').write_text(str(Path.cwd()))\n"
+                    "    return str(install)\n",
+                    encoding="utf-8",
+                )
+            for name in ("runtime_paths.py", "hooks.py"):
+                shutil.copyfile(_ORCH / name, relocated / "orchestrator" / name)
+            (relocated / "config/hooks/cwd.json").write_text(json.dumps({
+                "event": "pre_tool",
+                "command": 'python3 -c "from pathlib import Path; print(Path.cwd())"',
+                "inject_output": True,
+            }), encoding="utf-8")
+            (decoy / "config/hooks/cwd.json").write_text(json.dumps({
+                "event": "pre_tool",
+                "command": 'python3 -c "print(\'DECOY-HOOK\')"',
+                "inject_output": True,
+            }), encoding="utf-8")
+            decoy_before = {
+                p.relative_to(decoy): p.read_bytes()
+                for p in decoy.rglob("*") if p.is_file()
+            }
+            env = dict(os.environ, HOME=str(home), USERPROFILE=str(home),
+                       ORA_HOME=str(relocated),
+                       ORA_SCRATCH=str(root / "scratch"),
+                       ORA_RUNTIME_ROOT=str(root / "runtime"),
+                       PYTHONDONTWRITEBYTECODE="1")
+            # A fresh process exercises actual runtime-root resolution without
+            # changing imported module state used by the neighboring R48 tests.
+            result = subprocess.run(
+                [sys.executable, "-B", "-c",
+                 "import json, sys; "
+                 f"sys.path.insert(0, {str(relocated / 'orchestrator')!r}); "
+                 "import hooks; hooks.load_hooks(); "
+                 "outputs = hooks.fire_hooks('pre_tool'); "
+                 "hooks.fire_hooks('session_end'); print(json.dumps(outputs))"],
+                cwd=root, env=env, capture_output=True, text=True, timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(json.loads(result.stdout), [str(relocated)])
+            self.assertEqual((relocated / "cleanup-ran.txt").read_text(),
+                             str(relocated))
+            self.assertEqual({
+                p.relative_to(decoy): p.read_bytes()
+                for p in decoy.rglob("*") if p.is_file()
+            }, decoy_before)
+
     def test_r48_hook_receiverless_session_injection_refused(self):
         original_hooks = lifecycle_hooks._hooks
         try:

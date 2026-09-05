@@ -24,7 +24,9 @@ test('approved browser targets stay bound across page and document drift', async
   const fixture = new AsyncResource('independent fixture');
   const html = `<!doctype html><body>
     <button id="click" onclick="window.clicks++">Click</button>
-    <input id="text"><input id="other">
+    <a id="nestedLink" href="/nested" onclick="event.preventDefault();this.focus();window.nestedClicks++"><span id="nestedLinkChild">Nested link</span></a>
+    <input id="text"><textarea id="textarea"></textarea><input id="email" type="email"><input id="number" type="number"><input id="other">
+    <div id="repeat" contenteditable="true" role="checkbox" aria-checked="false">Original repeated</div>
     <form onsubmit="event.preventDefault();window.submissions++;document.querySelector('#other').focus()"><input id="submit"></form>
     <iframe id="frame" srcdoc="<input id='frameText'><button id='frameButton' onclick='window.clicks=(window.clicks||0)+1'>Frame button</button>"></iframe>
     <label id="label" for="text" onclick="window.labelClicks++">Text label</label>
@@ -37,7 +39,7 @@ test('approved browser targets stay bound across page and document drift', async
     <input id="slowDialog" onkeydown="if(event.key==='A')window.slowAnswer=prompt('Typing prompt')">
     <div id="editor" contenteditable="true"><span id="editableChild">Child text</span><span id="editableOther">Keep me</span></div>
     <button id="navigate" onclick="location.href='/clicked'">Navigate</button>
-    <script>window.clicks=0;window.dropped=0;window.keys=[];window.releases=[];window.labelClicks=0;window.submissions=0;window.mouseUps=0;window.keyUps=0;
+    <script>window.clicks=0;window.nestedClicks=0;window.dropped=0;window.keys=[];window.releases=[];window.labelClicks=0;window.submissions=0;window.mouseUps=0;window.keyUps=0;
     document.addEventListener('keydown',e=>keys.push([e.target.id,e.key,e.isTrusted]));
     document.addEventListener('keyup',e=>releases.push([e.target.id,e.key,e.isTrusted]));</script>`;
   try {
@@ -190,6 +192,64 @@ test('approved browser targets stay bound across page and document drift', async
     finally { guard.beforeSend = originalSend; focusFixture.emitDestroy(); }
     assert.ok(focusMoved, 'native fill reached its keyboard delivery await');
     assert.equal(await second.locator('#other').inputValue(), '');
+
+    // Native fill owns the whole approved text control at its final insertion
+    // or deletion. A same-control caret cannot narrow the approved effect.
+    for (const [target, initial] of [
+      ['#text', 'Original input'], ['#textarea', 'Original textarea'],
+    ]) {
+      for (const text of ['Collapsed replacement', '']) {
+        await second.locator(target).fill(initial);
+        const args = { target, text };
+        const approval = await prepare('browser_type', args);
+        let selectionCollapsed = false;
+        guard.beforeSend = async (session, method, params) => {
+          const mutation = text ? method === 'Input.insertText'
+            : method === 'Input.dispatchKeyEvent' && params.type !== 'keyUp' && params.key === 'Delete';
+          if (guard.active() && mutation && !selectionCollapsed) {
+            selectionCollapsed = true;
+            await fixture.runInAsyncScope(() => second.locator(target).evaluate(node => {
+              node.setSelectionRange(1, 1);
+            }));
+          }
+          return originalSend(session, method, params);
+        };
+        try { refused(await execute('browser_type', args, approval)); }
+        finally { guard.beforeSend = originalSend; }
+        assert.ok(selectionCollapsed, `collapsed ${target} selection reached native ${text ? 'insertion' : 'deletion'}`);
+        assert.equal(await second.locator(target).inputValue(), initial);
+      }
+    }
+    await second.locator('#text').fill('');
+    await second.locator('#textarea').fill('');
+
+    // Email and number inputs support native fill but intentionally expose no
+    // numeric selection range. Collapse their internal selection with a real
+    // key event; the final guard must reselect the exact bound control so both
+    // replacement and deletion still own the whole target.
+    for (const [target, initial, replacement] of [
+      ['#email', 'old@example.test', 'new@example.test'], ['#number', '17', '29'],
+    ]) {
+      for (const text of [replacement, '']) {
+        await second.locator(target).fill(initial);
+        const args = { target, text };
+        const approval = await prepare('browser_type', args);
+        let selectionCollapsed = false;
+        guard.beforeSend = async (session, method, params) => {
+          const mutation = text ? method === 'Input.insertText'
+            : method === 'Input.dispatchKeyEvent' && params.type !== 'keyUp' && params.key === 'Delete';
+          if (guard.active() && mutation && !selectionCollapsed) {
+            selectionCollapsed = true;
+            await fixture.runInAsyncScope(() => second.keyboard.press('ArrowRight'));
+          }
+          return originalSend(session, method, params);
+        };
+        try { okay(await execute('browser_type', args, approval)); }
+        finally { guard.beforeSend = originalSend; }
+        assert.ok(selectionCollapsed, `collapsed ${target} selection reached native ${text ? 'insertion' : 'deletion'}`);
+        assert.equal(await second.locator(target).inputValue(), text);
+      }
+    }
 
     // A refusal after Playwright marks Control pressed must not turn the next
     // independently approved A into Control+A or leave a repeating key behind.
@@ -358,6 +418,38 @@ test('approved browser targets stay bound across page and document drift', async
     await action('browser_type', { target: '#editableChild', text: '' });
     assert.equal(await second.locator('#editor').textContent(), 'Keep me');
     assert.equal(raw.keyboard._pressedKeys.size, 0);
+    for (const text of ['Collapsed replacement', '']) {
+      await resetEditable();
+      const args = { target: '#editableChild', text };
+      const approval = await prepare('browser_type', args);
+      let selectionCollapsed = false;
+      guard.beforeSend = async (session, method, params) => {
+        const mutation = text ? method === 'Input.insertText'
+          : method === 'Input.dispatchKeyEvent' && params.type !== 'keyUp' && params.key === 'Delete';
+        if (guard.active() && mutation && !selectionCollapsed) {
+          selectionCollapsed = true;
+          await fixture.runInAsyncScope(() => second.locator('#editableChild').evaluate(node => {
+            const range = document.createRange();
+            range.setStart(node.firstChild, 1); range.collapse(true);
+            const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+          }));
+        }
+        return originalSend(session, method, params);
+      };
+      try { refused(await execute('browser_type', args, approval)); }
+      finally { guard.beforeSend = originalSend; }
+      assert.ok(selectionCollapsed, `collapsed selection reached native ${text ? 'insertion' : 'deletion'}`);
+      assert.equal(await second.locator('#editor').textContent(), 'Child textKeep me');
+    }
+    await resetEditable();
+    await second.locator('#editor').focus();
+    await second.locator('#editableChild').evaluate(node => {
+      const range = document.createRange();
+      range.setStart(node.firstChild, 5); range.collapse(true);
+      const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    });
+    await action('browser_type', { target: '#editableChild', text: ' slow', slowly: true });
+    assert.equal(await second.locator('#editor').textContent(), 'Child slow textKeep me');
     await resetEditable();
     const editableApproval = await prepare('browser_fill_form', editableFill);
     let selectionMoved = false;
@@ -376,6 +468,39 @@ test('approved browser targets stay bound across page and document drift', async
     assert.ok(selectionMoved);
     assert.equal(await second.locator('#editableOther').textContent(), 'Keep me');
     await second.locator('#text').fill('');
+
+    // Every fill-form occurrence contributes to one target binding. The first
+    // field sees the same dual-role node as an already-unchecked checkbox; the
+    // later textbox fill must retain its stronger direct/native-fill requirements
+    // and reject a same-node caret for both insertion and deletion.
+    for (const text of ['Collapsed form replacement', '']) {
+      await second.locator('#repeat').evaluate(node => {
+        node.setAttribute('aria-checked', 'false'); node.textContent = 'Original repeated';
+      });
+      const repeatedFill = { fields: [
+        { name: 'Dual-role control', target: '#repeat', type: 'checkbox', value: 'false' },
+        { name: 'Same control as textbox', target: '#repeat', type: 'textbox', value: text },
+      ] };
+      const repeatedApproval = await prepare('browser_fill_form', repeatedFill);
+      let selectionCollapsed = false;
+      guard.beforeSend = async (session, method, params) => {
+        const mutation = text ? method === 'Input.insertText'
+          : method === 'Input.dispatchKeyEvent' && params.type !== 'keyUp' && params.key === 'Delete';
+        if (guard.active() && mutation && !selectionCollapsed) {
+          selectionCollapsed = true;
+          await fixture.runInAsyncScope(() => second.locator('#repeat').evaluate(node => {
+            const range = document.createRange();
+            range.setStart(node.firstChild, 1); range.collapse(true);
+            const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+          }));
+        }
+        return originalSend(session, method, params);
+      };
+      try { refused(await execute('browser_fill_form', repeatedFill, repeatedApproval)); }
+      finally { guard.beforeSend = originalSend; }
+      assert.ok(selectionCollapsed, `collapsed fill-form selection reached native ${text ? 'insertion' : 'deletion'}`);
+      assert.equal(await second.locator('#repeat').textContent(), 'Original repeated');
+    }
 
     // Native pointerdown may put an overlay over the still-connected target.
     // Recheck the release after that real handler, not concurrently with press.
@@ -594,9 +719,13 @@ test('approved browser targets stay bound across page and document drift', async
     await action('browser_fill_form', { fields: [
       { name: 'Text', target: '#text', type: 'textbox', value: 'filled' },
       { name: 'Check', target: '#check', type: 'checkbox', value: 'true' },
+      { name: 'Email', target: '#email', type: 'textbox', value: 'form@example.test' },
+      { name: 'Number', target: '#number', type: 'textbox', value: '41' },
     ] });
     assert.equal(await second.locator('#text').inputValue(), 'filled');
     assert.equal(await second.locator('#check').isChecked(), true);
+    assert.equal(await second.locator('#email').inputValue(), 'form@example.test');
+    assert.equal(await second.locator('#number').inputValue(), '41');
     await action('browser_drag', { startTarget: '#source', endTarget: '#drop' });
     await action('browser_drop', { target: '#drop', data: { 'text/plain': 'native drop' } });
     assert.ok(await second.evaluate(() => dropped) >= 1);
@@ -624,6 +753,37 @@ test('approved browser targets stay bound across page and document drift', async
     await second.locator('#text').focus();
     await action('browser_click', modifiedClick);
     assert.ok(await second.evaluate(() => keys.some(([id, key, trusted]) => id === 'text' && key === 'Alt' && trusted)));
+    assert.equal(raw.keyboard._pressedModifiers.size, 0);
+
+    // A label click can focus its captured associated control before modifier
+    // release. Keep that control-rooted receiver alongside pointer retargets.
+    const labelModifiedClick = { target: '#label', modifiers: ['Alt'] };
+    await second.locator('#other').focus();
+    const labelKeyStart = await second.evaluate(() => keys.length);
+    const labelReleaseStart = await second.evaluate(() => releases.length);
+    await action('browser_click', labelModifiedClick);
+    assert.equal(await second.evaluate(() => labelClicks), 2);
+    assert.equal(await second.evaluate(() => document.activeElement.id), 'text');
+    assert.ok(await second.evaluate(start => keys.slice(start).some(([id, key, trusted]) =>
+      id === 'other' && key === 'Alt' && trusted), labelKeyStart));
+    assert.ok(await second.evaluate(start => releases.slice(start).some(([id, key, trusted]) =>
+      id === 'text' && key === 'Alt' && trusted), labelReleaseStart));
+    assert.equal(raw.keyboard._pressedModifiers.size, 0);
+
+    // A nested click target can retarget to a link that receives focus before
+    // the modifier release. Bind that native receiver separately from the
+    // nested control so the completed click is not reported as a refusal.
+    const nestedModifiedClick = { target: '#nestedLinkChild', modifiers: ['Alt'] };
+    await second.locator('#text').focus();
+    const nestedKeyStart = await second.evaluate(() => keys.length);
+    const nestedReleaseStart = await second.evaluate(() => releases.length);
+    await action('browser_click', nestedModifiedClick);
+    assert.equal(await second.evaluate(() => nestedClicks), 1);
+    assert.equal(await second.evaluate(() => document.activeElement.id), 'nestedLink');
+    assert.ok(await second.evaluate(start => keys.slice(start).some(([id, key, trusted]) =>
+      id === 'text' && key === 'Alt' && trusted), nestedKeyStart));
+    assert.ok(await second.evaluate(start => releases.slice(start).some(([id, key, trusted]) =>
+      id === 'nestedLink' && key === 'Alt' && trusted), nestedReleaseStart));
     assert.equal(raw.keyboard._pressedModifiers.size, 0);
 
     // The modal response is a separate call, but the original native mouse or

@@ -6,8 +6,13 @@ import json
 import os
 import subprocess
 
-WORKSPACE = os.path.expanduser("~/ora/")
-HOOKS_DIR = os.path.join(WORKSPACE, "config/hooks/")
+try:
+    import runtime_paths as _rp
+except ImportError:
+    from orchestrator import runtime_paths as _rp
+
+WORKSPACE = _rp.WORKSPACE
+HOOKS_DIR = os.path.join(_rp.CONFIG_DIR, "hooks")
 
 _hooks: list[dict] = []
 
