@@ -20,7 +20,7 @@ body.overview-desktop-open { overflow: hidden; }
   z-index: 20000;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 16px;
   padding: clamp(18px, 3vw, 38px);
   color: var(--text-normal);
@@ -121,7 +121,22 @@ body.overview-desktop-open { overflow: hidden; }
 
 .overview-source__item p { margin: 0; }
 .overview-source__action { justify-self: start; margin-top: 4px; }
-.overview-desktop__status { min-height: 1.4em; margin: 0; }
+.overview-desktop__status {
+  position: fixed;
+  right: clamp(18px, 3vw, 38px);
+  bottom: clamp(18px, 3vw, 38px);
+  z-index: 20001;
+  box-sizing: border-box;
+  max-width: min(520px, calc(100vw - 36px));
+  min-height: 1.4em;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+.overview-desktop__status[hidden] { display: none; }
 
 @media (max-width: 760px) {
   .overview-desktop__sources { grid-template-columns: minmax(0, 1fr); }

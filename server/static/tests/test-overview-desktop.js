@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Focused jsdom coverage for the read-only Overview Desktop shell. */
+/* Focused jsdom coverage for the Overview Desktop shell and action handoffs. */
 'use strict';
 
 var assert = require('assert');
@@ -25,18 +25,27 @@ var launcherMatch = indexSource.match(
 var mountMatch = indexSource.match(
   /<section class="overview-desktop" id="overviewDesktop"[\s\S]*?<\/section>/
 );
+var statusMatch = indexSource.match(
+  /<p class="overview-desktop__status" id="overviewDesktopStatus"[\s\S]*?<\/p>/
+);
 assert(launcherMatch, 'index-v3.html carries the permanent Overview launcher');
 assert(mountMatch, 'index-v3.html carries the stable Overview mount');
+assert(statusMatch, 'index-v3.html carries the Overview-owned workspace status');
 assert(indexSource.includes('/static/js/overview-desktop.js'), 'Overview controller is loaded');
 
 var dom = new jsdom.JSDOM(
   '<!doctype html><html><body>'
   + '<div class="ora-shell" data-workspace="unchanged">'
   + launcherMatch[0]
-  + '<input id="workspaceInput" value="kept">'
-  + '<section id="priorSurface" hidden></section>'
+  + '<section id="activeDialogue" data-dialogue-id="dialogue-kept">'
+  + '<textarea id="workspaceInput">unfinished draft kept</textarea>'
+  + '</section>'
+  + '<section id="priorSurface" data-pane-owner="findings-kept" hidden></section>'
+  + '<section id="asideSurface" data-pane-owner="aside-kept"></section>'
+  + '<section id="exhibitsSurface" data-pane-owner="exhibits-kept"></section>'
   + '</div>'
   + mountMatch[0]
+  + statusMatch[0]
   + '</body></html>',
   { url: 'http://localhost/', pretendToBeVisual: true, runScripts: 'outside-only' }
 );
@@ -58,17 +67,33 @@ w.fetch = function (url, options) {
 };
 
 function ok(payload) {
-  return { ok: true, status: 200, json: function () { return Promise.resolve(payload); } };
+  return reply(200, payload);
+}
+function reply(status, payload) {
+  return {
+    ok: status >= 200 && status < 300,
+    status: status,
+    json: function () { return Promise.resolve(payload); },
+  };
+}
+function deferred() {
+  var resolve;
+  var reject;
+  var promise = new Promise(function (resolvePromise, rejectPromise) {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise: promise, resolve: resolve, reject: reject };
 }
 function flush() {
   return new Promise(function (resolve) { w.setTimeout(resolve, 0); });
 }
-function source(id, title, state, items, error) {
+function source(id, title, state, items, error, count) {
   return {
     source_id: id,
     title: title,
     state: state,
-    count: items.length,
+    count: Number.isFinite(count) ? count : items.length,
     available: state !== 'unavailable',
     freshness: {
       observed_at: '2026-09-01T12:30:00+00:00',
@@ -81,9 +106,10 @@ function source(id, title, state, items, error) {
 
 var overviewPayload = { sources: [
   source('daily-note', 'Prior-day Daily Note', 'missing', [{
+    source_id: 'daily-note', item_id: 'daily-note:2026-08-31',
     title: '2026-08-31', text: 'No completed Daily Note was found.', state: 'missing',
     time: null, count: null, scope: { path: '/notes/2026-08-31.md' }, actions: ['open_note'],
-  }]),
+  }], null, 0),
   source('triggers', 'Scheduled Triggers', 'ready', [{
     source_id: 'triggers', item_id: 'trigger:draft-email', title: 'Draft email',
     text: 'manual · email send', state: 'draft', time: null, count: null,
@@ -98,6 +124,15 @@ var overviewPayload = { sources: [
     count: null, scope: { project_nexus: 'ora' }, actions: ['open_conversation', 'discuss'],
   }], { code: 'operating_unavailable', message: 'Operating work could not be read.' }),
 ] };
+var availableOverviewPayload = JSON.parse(JSON.stringify(overviewPayload));
+var availableDaily = availableOverviewPayload.sources.find(function (entry) {
+  return entry.source_id === 'daily-note';
+});
+availableDaily.state = 'ready';
+availableDaily.count = 1;
+availableDaily.items[0].state = 'available';
+availableDaily.items[0].text = 'Dialogues · Overview planning';
+availableDaily.items[0].time = '2026-08-31';
 responses.push(ok(overviewPayload));
 
 var controllerSource = fs.readFileSync(
@@ -110,7 +145,23 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   var mount = w.document.getElementById('overviewDesktop');
   var workspace = w.document.querySelector('.ora-shell');
   var workspaceInput = w.document.getElementById('workspaceInput');
+  var activeDialogue = w.document.getElementById('activeDialogue');
   var priorSurface = w.document.getElementById('priorSurface');
+  var asideSurface = w.document.getElementById('asideSurface');
+  var exhibitsSurface = w.document.getElementById('exhibitsSurface');
+  var status = w.document.getElementById('overviewDesktopStatus');
+  var closeControl = mount.querySelector('[data-overview-close]');
+
+  function assertWorkspacePreserved(message) {
+    assert.strictEqual(workspace.dataset.workspace, 'unchanged', message + ': workspace identity');
+    assert.strictEqual(activeDialogue.dataset.dialogueId, 'dialogue-kept', message + ': Dialogue');
+    assert.strictEqual(workspaceInput.value, 'unfinished draft kept', message + ': draft');
+    assert.strictEqual(priorSurface.hidden, true, message + ': Findings visibility');
+    assert.strictEqual(priorSurface.dataset.paneOwner, 'findings-kept', message + ': Findings owner');
+    assert.strictEqual(asideSurface.dataset.paneOwner, 'aside-kept', message + ': Aside owner');
+    assert.strictEqual(exhibitsSurface.dataset.paneOwner, 'exhibits-kept', message + ': Exhibits owner');
+  }
+
   workspaceInput.focus();
   launcher.click();
   await flush();
@@ -136,9 +187,20 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   assert(mount.textContent.includes('Checked 2026-09-01T12:30:00+00:00'));
   assert(mount.textContent.includes('Last success 2026-09-01T12:29:00+00:00'));
   assert(mount.textContent.includes('Operating work could not be read.'));
+  assert.strictEqual(status.getAttribute('role'), 'status');
+  assert.strictEqual(status.getAttribute('aria-live'), 'polite');
+  assert.strictEqual(mount.contains(status), false, 'status survives closing the dialog');
+  assert.strictEqual(status.hidden, false, 'loading and source status is visible while open');
 
   var actions = Array.from(mount.querySelectorAll('[data-overview-action]'));
-  assert.strictEqual(actions.length, 2, 'only supported navigation entrances are shown');
+  assert.strictEqual(
+    actions.length, 2,
+    'a missing Daily Note stays non-actionable even when its fixture advertises open_note'
+  );
+  assert.strictEqual(
+    actions.some(function (action) { return action.dataset.overviewAction === 'open_note'; }),
+    false
+  );
   var scheduledAction = actions.find(function (action) {
     return action.dataset.overviewAction === 'open_scheduled';
   });
@@ -148,8 +210,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   assert.strictEqual(requests.length, 1, 'the handoff makes no Trigger or lifecycle request');
   assert.strictEqual(mount.hidden, true, 'Scheduled handoff closes Overview');
   assert.strictEqual(workspace.hasAttribute('inert'), false, 'workspace inert state is restored');
-  assert.strictEqual(workspaceInput.value, 'kept', 'underlying workspace content is preserved');
-  assert.strictEqual(priorSurface.hidden, true, 'underlying workspace visibility is preserved');
+  assertWorkspacePreserved('Scheduled handoff');
   assert.strictEqual(w.document.activeElement, workspaceInput, 'prior focus is restored before handoff');
 
   responses.push(ok(overviewPayload));
@@ -162,20 +223,199 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   assert.deepStrictEqual(projectOpens, [['ora', 'Ora']]);
   assert.strictEqual(mount.hidden, true, 'project handoff closes Overview');
   assert.strictEqual(workspace.hasAttribute('inert'), false, 'workspace inert state is restored');
-  assert.strictEqual(workspaceInput.value, 'kept', 'underlying workspace content is preserved');
-  assert.strictEqual(priorSurface.hidden, true, 'underlying workspace visibility is preserved');
+  assertWorkspacePreserved('project handoff');
   assert.strictEqual(w.document.activeElement, workspaceInput, 'prior focus is restored');
 
+  responses.push(ok(availableOverviewPayload));
+  launcher.click();
+  await flush();
+  await flush();
+  var dailyAction = Array.from(mount.querySelectorAll('[data-overview-action]'))
+    .find(function (action) { return action.dataset.overviewAction === 'open_note'; });
+  assert(dailyAction, 'an available Daily Note advertising open_note has an external action');
+  assert.strictEqual(dailyAction.textContent, 'Open externally');
+
+  var pending = deferred();
+  responses.push(pending.promise);
+  var pendingRequestIndex = requests.length;
+  dailyAction.click();
+  dailyAction.click();
+  assert.strictEqual(
+    requests.length, pendingRequestIndex + 1,
+    'the pending button suppresses a duplicate Daily Note dispatch'
+  );
+  assert.strictEqual(dailyAction.disabled, true);
+  assert.strictEqual(dailyAction.textContent, 'Opening…');
+  assert(status.textContent.includes('Sending the Daily Note open request'));
+  assert.strictEqual(closeControl.disabled, false, 'Close remains enabled while the action is pending');
+  Array.from(mount.querySelectorAll('[data-overview-action]')).forEach(function (action) {
+    if (action !== dailyAction) assert.strictEqual(action.disabled, false);
+  });
+  var openRequest = requests[pendingRequestIndex];
+  assert.strictEqual(openRequest[0], '/api/overview/daily-note/open');
+  assert.strictEqual(openRequest[1].method, 'POST');
+  assert.strictEqual(openRequest[1].headers.Accept, 'application/json');
+  assert.strictEqual(openRequest[1].headers['Content-Type'], 'application/json');
+  assert.deepStrictEqual(Object.keys(openRequest[1].headers).sort(), ['Accept', 'Content-Type']);
+  assert.deepStrictEqual(JSON.parse(openRequest[1].body), {
+    id: 'daily-note:2026-08-31',
+  });
+  assert.strictEqual(openRequest[1].body.includes('/notes/'), false, 'no client path is sent');
+
+  pending.resolve(ok({
+    ok: true,
+    identity: 'daily-note:2026-08-31',
+    application: 'obsidian',
+    outcome: 'sent',
+    message: 'Open request sent to Obsidian.',
+  }));
+  await flush();
+  await flush();
+  assert.strictEqual(mount.hidden, true, 'confirmed Obsidian dispatch uses the existing close path');
+  assert.strictEqual(status.hidden, false, 'the handoff result stays visibly available after close');
+  assert.strictEqual(status.textContent, 'Open request sent to Obsidian.');
+  assert.strictEqual(status.textContent.includes('opened'), false, 'dispatch is not described as display');
+  assert.strictEqual(workspace.hasAttribute('inert'), false);
+  assertWorkspacePreserved('Obsidian handoff');
+  assert.strictEqual(w.document.activeElement, workspaceInput, 'Daily Note success restores focus');
+
+  responses.push(ok(availableOverviewPayload));
+  launcher.click();
+  await flush();
+  await flush();
+  assert.strictEqual(status.textContent, 'Four sources checked.', 'opening clears prior handoff status');
+  dailyAction = mount.querySelector('[data-overview-action="open_note"]');
+  responses.push(ok({
+    ok: true,
+    identity: 'daily-note:2026-08-31',
+    application: 'default_markdown',
+    outcome: 'fallback_sent',
+    message: 'Obsidian could not accept the request. Open request sent to the default Markdown application.',
+  }));
+  dailyAction.click();
+  await flush();
+  await flush();
+  assert.strictEqual(mount.hidden, true, 'confirmed fallback dispatch also closes Overview');
+  assert.strictEqual(status.hidden, false, 'fallback explanation remains visible after close');
+  assert(status.textContent.includes('Obsidian could not accept the request'));
+  assert(status.textContent.includes('Open request sent to the default Markdown application'));
+  assert.strictEqual(status.textContent.includes('opened'), false);
+  assertWorkspacePreserved('default Markdown handoff');
+
+  responses.push(ok(availableOverviewPayload));
+  launcher.click();
+  await flush();
+  await flush();
+  dailyAction = mount.querySelector('[data-overview-action="open_note"]');
+  dailyAction.focus();
+  responses.push(reply(502, {
+    ok: false,
+    identity: 'daily-note:2026-08-31',
+    application: 'default_markdown',
+    outcome: 'failed',
+    message: 'Obsidian and the default Markdown application refused the request.',
+  }));
+  dailyAction.click();
+  await flush();
+  await flush();
+  assert.strictEqual(mount.hidden, false, 'failure leaves Overview usable and visible');
+  assert.strictEqual(mount.querySelectorAll('.overview-source').length, 4, 'failure preserves all cards');
+  assert.strictEqual(
+    status.textContent,
+    'Obsidian and the default Markdown application refused the request.'
+  );
+  assert.strictEqual(dailyAction.disabled, false, 'failure restores only the pending button');
+  assert.strictEqual(w.document.activeElement, dailyAction, 'failure restores action focus');
+  assert.strictEqual(workspace.hasAttribute('inert'), true, 'failed action keeps workspace inert');
+  var requestsAfterFailure = requests.length;
+  await flush();
+  assert.strictEqual(requests.length, requestsAfterFailure, 'failure starts no retry timer');
+
+  responses.push(reply(504, {
+    ok: false,
+    identity: 'daily-note:2026-08-31',
+    application: 'obsidian',
+    outcome: 'uncertain',
+    message: 'Ora cannot tell whether Obsidian received the request. No other application was tried.',
+  }));
+  dailyAction.click();
+  assert(status.textContent.includes('Sending the Daily Note open request'));
+  await flush();
+  await flush();
+  assert.strictEqual(mount.hidden, false, 'uncertain handoff leaves Overview visible');
+  assert(status.textContent.includes('cannot tell whether Obsidian received'));
+  assert(status.textContent.includes('No other application was tried'));
+  assert.strictEqual(dailyAction.disabled, false);
+  assert.strictEqual(w.document.activeElement, dailyAction, 'uncertainty restores action focus');
+  assert.strictEqual(workspace.hasAttribute('inert'), true, 'uncertain action keeps workspace inert');
+  assertWorkspacePreserved('failed and uncertain handoffs');
+
+  responses.push(ok({
+    ok: true,
+    identity: 'daily-note:2026-08-30',
+    application: 'obsidian',
+    outcome: 'sent',
+    message: 'Open request sent to Obsidian.',
+  }));
+  dailyAction.click();
+  await flush();
+  await flush();
+  assert.strictEqual(mount.hidden, false, 'a protocol-invalid success cannot close Overview');
+  assert.strictEqual(status.textContent, 'Ora returned an invalid Daily Note open response.');
+  assert.strictEqual(status.textContent.includes('Open request sent'), false);
+  assert.strictEqual(dailyAction.disabled, false);
+
+  responses.push(new Error('private network detail'));
+  dailyAction.click();
+  await flush();
+  await flush();
+  assert.strictEqual(mount.hidden, false, 'a network failure leaves Overview usable');
+  assert.strictEqual(status.textContent, 'The Daily Note open request could not reach Ora.');
+  assert.strictEqual(status.textContent.includes('private network detail'), false);
+  assert.strictEqual(dailyAction.disabled, false);
+
+  closeControl.click();
+  responses.push(ok(availableOverviewPayload));
+  launcher.click();
+  await flush();
+  await flush();
+  dailyAction = mount.querySelector('[data-overview-action="open_note"]');
+  var late = deferred();
+  responses.push(late.promise);
+  dailyAction.click();
+  closeControl.click();
+  responses.push(ok(availableOverviewPayload));
+  launcher.click();
+  await flush();
+  await flush();
+  var reopenedText = mount.textContent;
+  assert.strictEqual(mount.hidden, false);
+  assert.strictEqual(status.textContent, 'Four sources checked.');
+  late.resolve(ok({
+    ok: true,
+    identity: 'daily-note:2026-08-31',
+    application: 'obsidian',
+    outcome: 'sent',
+    message: 'Open request sent to Obsidian.',
+  }));
+  await flush();
+  await flush();
+  assert.strictEqual(mount.hidden, false, 'late success cannot close a reopened Overview');
+  assert.strictEqual(mount.textContent, reopenedText, 'late success cannot replace reopened state');
+  assert.strictEqual(status.textContent, 'Four sources checked.');
+
+  closeControl.click();
   responses.push(new Error('source connection failed'));
   launcher.focus();
   launcher.click();
   await flush();
   await flush();
   assert.strictEqual(mount.querySelectorAll('.overview-source').length, 0);
-  assert(mount.querySelector('#overviewDesktopStatus').textContent.includes('source connection failed'));
+  assert(status.textContent.includes('source connection failed'));
   w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   assert.strictEqual(mount.hidden, true, 'Escape closes Overview');
   assert.strictEqual(w.document.activeElement, launcher, 'launcher focus is restored after close');
+  assertWorkspacePreserved('final close');
 
   console.log('overview desktop tests passed');
 })().catch(function (error) {

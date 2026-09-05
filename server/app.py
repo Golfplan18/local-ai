@@ -8,12 +8,12 @@ Model-calling, tool execution, and pipeline logic live in orchestrator/boot.py.
 This file handles Flask routing, SSE streaming, conversation persistence, and UI APIs.
 """
 
-import os, sys, json, re, threading, time, uuid, shutil, io, zipfile, hashlib, copy, queue
+import os, sys, json, re, threading, time, uuid, shutil, io, zipfile, hashlib, copy, queue, subprocess
 from contextlib import ExitStack, contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 import requests
 
 # Every production launcher executes this file directly, so the running server
@@ -15094,6 +15094,229 @@ def overview_sources():
     from orchestrator.overview_widgets import load_overview_widget_sources
 
     return _json_response({"sources": load_overview_widget_sources()})
+
+
+def _overview_daily_note_open_response(
+    identity, application, outcome, message, *, status=200, ok=False,
+):
+    payload = {
+        "ok": ok,
+        "identity": identity,
+        "application": application,
+        "outcome": outcome,
+        "message": message,
+    }
+    if not ok:
+        payload["error"] = message
+    return _json_response(payload, status=status)
+
+
+@app.route("/api/overview/daily-note/open", methods=["POST"])
+def overview_daily_note_open():
+    """Ask macOS to open the exact completed-day Daily Note externally."""
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+
+    from orchestrator import overview_widgets as _overview
+
+    body = request.get_json(silent=True)
+    identity = body.get("id") if isinstance(body, dict) else None
+    match = (
+        re.fullmatch(r"daily-note:(\d{4}-\d{2}-\d{2})", identity)
+        if isinstance(identity, str) and identity == identity.strip()
+        else None
+    )
+    if request.args or not isinstance(body, dict) or set(body) != {"id"} or not match:
+        return _overview_daily_note_open_response(
+            identity if isinstance(identity, str) else None,
+            None,
+            "input_error",
+            "POST requires only a valid Daily Note id in YYYY-MM-DD form.",
+            status=400,
+        )
+
+    requested_day = match.group(1)
+    try:
+        parsed_day = datetime.strptime(requested_day, "%Y-%m-%d").date()
+    except ValueError:
+        parsed_day = None
+    if parsed_day is None or parsed_day.isoformat() != requested_day:
+        return _overview_daily_note_open_response(
+            identity,
+            None,
+            "input_error",
+            "POST requires only a valid Daily Note id in YYYY-MM-DD form.",
+            status=400,
+        )
+
+    expected_day = _overview.completed_daily_note_day()
+    if requested_day != expected_day:
+        return _overview_daily_note_open_response(
+            identity,
+            None,
+            "stale",
+            (
+                f"The Daily Note for {requested_day} is no longer the completed "
+                f"previous day ({expected_day}). Reopen Overview and try again."
+            ),
+            status=409,
+        )
+
+    try:
+        target, exists = _overview.inspect_daily_note_path(requested_day)
+    except (OSError, ValueError):
+        return _overview_daily_note_open_response(
+            identity,
+            None,
+            "failed",
+            "The Daily Note path is unavailable or unsafe, so nothing was opened.",
+            status=409,
+        )
+    if not exists:
+        return _overview_daily_note_open_response(
+            identity,
+            None,
+            "missing",
+            f"The Daily Note for {requested_day} is no longer available.",
+            status=404,
+        )
+    if sys.platform != "darwin":
+        return _overview_daily_note_open_response(
+            identity,
+            None,
+            "unsupported",
+            "Opening Daily Notes externally is supported only on the local macOS host.",
+            status=501,
+        )
+
+    obsidian_uri = "obsidian://open?path=" + quote(str(target), safe="")
+    try:
+        preferred = subprocess.run(
+            ["/usr/bin/open", "-a", "Obsidian", obsidian_uri],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return _overview_daily_note_open_response(
+            identity,
+            "obsidian",
+            "uncertain",
+            (
+                "The Obsidian handoff timed out, so Ora cannot tell whether it "
+                "received the request. No other application was tried."
+            ),
+            status=504,
+        )
+    except OSError:
+        return _overview_daily_note_open_response(
+            identity,
+            "obsidian",
+            "failed",
+            "macOS could not start the external-open request.",
+            status=502,
+        )
+
+    if preferred.returncode == 0:
+        return _overview_daily_note_open_response(
+            identity,
+            "obsidian",
+            "sent",
+            "Open request sent to Obsidian.",
+            ok=True,
+        )
+
+    try:
+        fallback_target, fallback_exists = _overview.inspect_daily_note_path(requested_day)
+    except (OSError, ValueError):
+        return _overview_daily_note_open_response(
+            identity,
+            "obsidian",
+            "failed",
+            (
+                "Obsidian could not accept the request, and the Daily Note path "
+                "became unavailable or unsafe before fallback."
+            ),
+            status=409,
+        )
+    if not fallback_exists:
+        return _overview_daily_note_open_response(
+            identity,
+            "obsidian",
+            "missing",
+            (
+                f"Obsidian could not accept the request, and the Daily Note for "
+                f"{requested_day} is no longer available."
+            ),
+            status=404,
+        )
+    if fallback_target != target:
+        return _overview_daily_note_open_response(
+            identity,
+            "obsidian",
+            "stale",
+            (
+                "The Daily Note location changed after Obsidian refused the "
+                "request. Reopen Overview and try again."
+            ),
+            status=409,
+        )
+
+    try:
+        fallback = subprocess.run(
+            ["/usr/bin/open", str(fallback_target)],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return _overview_daily_note_open_response(
+            identity,
+            "default_markdown",
+            "uncertain",
+            (
+                "The default Markdown application handoff timed out after "
+                "Obsidian refused the request. Ora cannot tell whether the "
+                "fallback received it."
+            ),
+            status=504,
+        )
+    except OSError:
+        return _overview_daily_note_open_response(
+            identity,
+            "default_markdown",
+            "failed",
+            (
+                "Obsidian could not accept the request, and macOS could not "
+                "start the default Markdown application handoff."
+            ),
+            status=502,
+        )
+
+    if fallback.returncode == 0:
+        return _overview_daily_note_open_response(
+            identity,
+            "default_markdown",
+            "fallback_sent",
+            (
+                "Obsidian could not accept the request. Open request sent to "
+                "the default Markdown application."
+            ),
+            ok=True,
+        )
+    return _overview_daily_note_open_response(
+        identity,
+        "default_markdown",
+        "failed",
+        (
+            "Obsidian could not accept the request, and the default Markdown "
+            "application also refused it."
+        ),
+        status=502,
+    )
 
 
 @app.route("/api/library/browser", methods=["GET"])

@@ -40,13 +40,50 @@ def load_overview_widget_sources(
     if local_now.tzinfo is None:
         local_now = local_now.astimezone()
     stamp = local_now.astimezone(timezone.utc).isoformat()
-    completed_day = (local_now.date() - timedelta(days=1)).isoformat()
+    completed_day = completed_daily_note_day(observed_at=local_now)
     return [
         _project_priority_source(stamp),
         _oversight_source(stamp),
         _trigger_source(stamp),
         _daily_note_source(stamp, completed_day),
     ]
+
+
+def completed_daily_note_day(*, observed_at: datetime | None = None) -> str:
+    """Return the completed previous local day used by the Daily Note source."""
+    local_now = observed_at or datetime.now().astimezone()
+    if local_now.tzinfo is None:
+        local_now = local_now.astimezone()
+    return (local_now.date() - timedelta(days=1)).isoformat()
+
+
+def inspect_daily_note_path(completed_day: str) -> tuple[Path, bool]:
+    """Resolve one canonical Daily Note without following a root or file link.
+
+    The boolean reports whether the target exists as a regular file.  A
+    missing root and a missing target are both honest missing-note states;
+    unsafe or unreadable filesystem objects raise instead.
+    """
+    parsed_day = datetime.strptime(completed_day, "%Y-%m-%d").date()
+    if parsed_day.isoformat() != completed_day:
+        raise ValueError("Daily Note date must use YYYY-MM-DD")
+
+    root = Path(daily_note.daily_dir()).expanduser().absolute()
+    target = root / f"{completed_day}.md"
+    try:
+        root_stat = root.lstat()
+    except FileNotFoundError:
+        return target, False
+    if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+        raise OSError(f"Daily Notes root is not a regular directory: {root}")
+
+    try:
+        target_stat = target.lstat()
+    except FileNotFoundError:
+        return target, False
+    if stat.S_ISLNK(target_stat.st_mode) or not stat.S_ISREG(target_stat.st_mode):
+        raise OSError(f"Daily Note is not a regular file: {target}")
+    return target, True
 
 
 def _source(
@@ -400,25 +437,8 @@ def _trigger_actions(state: str, action_kind: str) -> list[str]:
 def _daily_note_source(stamp: str, completed_day: str) -> dict[str, Any]:
     source_id = "daily-note"
     try:
-        root = Path(daily_note.daily_dir())
-        try:
-            root_stat = root.lstat()
-        except FileNotFoundError:
-            root_stat = None
-        if root_stat is not None and (
-            stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode)
-        ):
-            raise OSError(f"Daily Notes root is not a regular directory: {root}")
-        target = root / f"{completed_day}.md"
-        try:
-            target_stat = target.lstat()
-        except FileNotFoundError:
-            target_stat = None
-        if target_stat is not None and (
-            stat.S_ISLNK(target_stat.st_mode) or not stat.S_ISREG(target_stat.st_mode)
-        ):
-            raise OSError(f"Daily Note is not a regular file: {target}")
-        if target_stat is None:
+        target, exists = inspect_daily_note_path(completed_day)
+        if not exists:
             placeholder = _item(
                 source_id,
                 f"daily-note:{completed_day}",
@@ -477,4 +497,9 @@ def _daily_note_preview(body: str, *, limit: int = 280) -> str:
     return preview[: limit - 1].rstrip() + "…"
 
 
-__all__ = ["SOURCE_ORDER", "load_overview_widget_sources"]
+__all__ = [
+    "SOURCE_ORDER",
+    "completed_daily_note_day",
+    "inspect_daily_note_path",
+    "load_overview_widget_sources",
+]

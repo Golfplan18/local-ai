@@ -5,9 +5,11 @@ import os
 import sys
 import tempfile
 import unittest
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import quote
 from unittest import mock
 
 os.environ.setdefault("PYTHON_KEYRING_BACKEND", "keyring.backends.null.Keyring")
@@ -395,6 +397,308 @@ class OverviewRouteTests(unittest.TestCase):
         self.assertEqual(response.get_json(), {"sources": expected})
         loader.assert_called_once_with()
         self.assertEqual(client.post("/api/overview").status_code, 405)
+
+
+class DailyNoteOpenRouteTests(unittest.TestCase):
+    endpoint = "/api/overview/daily-note/open"
+    day = "2026-08-31"
+    identity = f"daily-note:{day}"
+
+    def setUp(self):
+        import orchestrator.overview_widgets as overview_module
+        import server.app as server_app
+
+        self.overview = overview_module
+        self.server = server_app
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.daily_root = Path(self.tmp.name) / "Daily Notes # 100% ? ü"
+        self.daily_root.mkdir()
+        self.client = server_app.app.test_client()
+
+        day_patch = mock.patch.object(
+            overview_module, "completed_daily_note_day", return_value=self.day,
+        )
+        root_patch = mock.patch.object(
+            overview_module.daily_note, "daily_dir", return_value=str(self.daily_root),
+        )
+        day_patch.start()
+        root_patch.start()
+        self.addCleanup(day_patch.stop)
+        self.addCleanup(root_patch.stop)
+
+    @staticmethod
+    def _completed(returncode):
+        return SimpleNamespace(returncode=returncode, stdout="", stderr="")
+
+    def _note(self):
+        note = self.daily_root / f"{self.day}.md"
+        note.write_bytes(b"private synthetic note bytes\n# kept exactly\n")
+        return note
+
+    def _launch_context(self, *, result=None, side_effect=None, platform="darwin"):
+        stack = ExitStack()
+        stack.enter_context(mock.patch.object(self.server.sys, "platform", platform))
+        runner = stack.enter_context(mock.patch.object(
+            self.server.subprocess,
+            "run",
+            return_value=result,
+            side_effect=side_effect,
+        ))
+        generator = stack.enter_context(mock.patch.object(
+            self.overview.daily_note,
+            "generate",
+            side_effect=AssertionError("external open must not generate a note"),
+        ))
+        return stack, runner, generator
+
+    def test_sends_exact_fully_encoded_obsidian_request_without_changing_note(self):
+        note = self._note()
+        original = note.read_bytes()
+        stack, runner, generator = self._launch_context(result=self._completed(0))
+        with stack:
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {
+            "ok": True,
+            "identity": self.identity,
+            "application": "obsidian",
+            "outcome": "sent",
+            "message": "Open request sent to Obsidian.",
+        })
+        expected_uri = "obsidian://open?path=" + quote(str(note), safe="")
+        runner.assert_called_once_with(
+            ["/usr/bin/open", "-a", "Obsidian", expected_uri],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        self.assertIn("%2F", expected_uri)
+        self.assertIn("%20", expected_uri)
+        self.assertIn("%23", expected_uri)
+        self.assertIn("%25", expected_uri)
+        self.assertIn("%3F", expected_uri)
+        self.assertIn("%C3%BC", expected_uri)
+        self.assertEqual(note.read_bytes(), original)
+        generator.assert_not_called()
+
+    def test_rejects_non_exact_json_and_hostile_origin_before_launch(self):
+        self._note()
+        stack, runner, generator = self._launch_context(result=self._completed(0))
+        with stack:
+            invalid_requests = [
+                self.client.post(self.endpoint, json={}),
+                self.client.post(
+                    self.endpoint,
+                    json={"id": self.identity, "path": "/tmp/not-authority.md"},
+                ),
+                self.client.post(self.endpoint, json={"id": "daily-note:2026-02-30"}),
+                self.client.post(self.endpoint, json={"id": "daily-note:/tmp/note.md"}),
+                self.client.post(self.endpoint, json={"id": f" {self.identity}"}),
+                self.client.post(
+                    self.endpoint + "?path=/tmp/not-authority.md",
+                    json={"id": self.identity},
+                ),
+                self.client.post(
+                    self.endpoint, data="{", content_type="application/json",
+                ),
+            ]
+            hostile = self.client.post(
+                self.endpoint,
+                json={"id": self.identity},
+                headers={"Origin": "https://attacker.example"},
+            )
+
+        for response in invalid_requests:
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.get_json()["outcome"], "input_error")
+        self.assertEqual(hostile.status_code, 403)
+        self.assertIn("cross-origin", hostile.get_data(as_text=True))
+        runner.assert_not_called()
+        generator.assert_not_called()
+
+    def test_refuses_stale_identity_after_completed_day_changes(self):
+        self._note()
+        stack, runner, generator = self._launch_context(result=self._completed(0))
+        with (
+            stack,
+            mock.patch.object(
+                self.overview, "completed_daily_note_day", return_value="2026-09-01",
+            ),
+        ):
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+
+        self.assertEqual(response.status_code, 409)
+        payload = response.get_json()
+        self.assertEqual(payload["outcome"], "stale")
+        self.assertIn(self.day, payload["message"])
+        self.assertIn("2026-09-01", payload["message"])
+        self.assertIn("Reopen Overview", payload["message"])
+        runner.assert_not_called()
+        generator.assert_not_called()
+
+    def test_refuses_missing_nonregular_and_symlink_paths_before_launch(self):
+        cases = ("missing", "nonregular_target", "symlink_target",
+                 "non_directory_root", "symlink_root")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
+                container = Path(tmp)
+                root = container / "Daily Notes"
+                if case == "non_directory_root":
+                    root.write_text("not a directory", encoding="utf-8")
+                elif case == "symlink_root":
+                    actual_root = container / "actual-notes"
+                    actual_root.mkdir()
+                    (actual_root / f"{self.day}.md").write_text(
+                        "synthetic", encoding="utf-8",
+                    )
+                    root.symlink_to(actual_root, target_is_directory=True)
+                else:
+                    root.mkdir()
+                    target = root / f"{self.day}.md"
+                    if case == "nonregular_target":
+                        target.mkdir()
+                    elif case == "symlink_target":
+                        actual = container / "actual.md"
+                        actual.write_text("synthetic", encoding="utf-8")
+                        target.symlink_to(actual)
+
+                stack, runner, generator = self._launch_context(
+                    result=self._completed(0),
+                )
+                with (
+                    stack,
+                    mock.patch.object(
+                        self.overview.daily_note, "daily_dir", return_value=str(root),
+                    ),
+                ):
+                    response = self.client.post(
+                        self.endpoint, json={"id": self.identity},
+                    )
+
+                self.assertEqual(response.status_code, 404 if case == "missing" else 409)
+                self.assertEqual(
+                    response.get_json()["outcome"],
+                    "missing" if case == "missing" else "failed",
+                )
+                runner.assert_not_called()
+                generator.assert_not_called()
+
+    def test_revalidates_after_obsidian_refusal_and_will_not_fallback_to_deleted_note(self):
+        note = self._note()
+
+        def refuse_then_delete(*_args, **_kwargs):
+            note.unlink()
+            return self._completed(1)
+
+        stack, runner, generator = self._launch_context(side_effect=refuse_then_delete)
+        with stack:
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json()["outcome"], "missing")
+        runner.assert_called_once()
+        generator.assert_not_called()
+
+    def test_definite_obsidian_refusal_uses_default_markdown_application(self):
+        note = self._note()
+        original = note.read_bytes()
+        stack, runner, generator = self._launch_context(
+            side_effect=[self._completed(1), self._completed(0)],
+        )
+        with stack:
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["identity"], self.identity)
+        self.assertEqual(payload["application"], "default_markdown")
+        self.assertEqual(payload["outcome"], "fallback_sent")
+        self.assertIn("Obsidian could not accept", payload["message"])
+        self.assertIn("Open request sent", payload["message"])
+        self.assertEqual(runner.call_count, 2)
+        self.assertEqual(runner.call_args_list[1].args[0], ["/usr/bin/open", str(note)])
+        self.assertEqual(runner.call_args_list[1].kwargs, {
+            "capture_output": True,
+            "text": True,
+            "timeout": 5,
+            "check": False,
+        })
+        self.assertEqual(note.read_bytes(), original)
+        generator.assert_not_called()
+
+    def test_launch_failures_are_bounded_and_visible(self):
+        note = self._note()
+        original = note.read_bytes()
+        scenarios = (
+            (OSError("open unavailable"), 1, "obsidian"),
+            ([self._completed(1), self._completed(2)], 2, "default_markdown"),
+        )
+        for side_effect, call_count, application in scenarios:
+            with self.subTest(application=application):
+                stack, runner, generator = self._launch_context(side_effect=side_effect)
+                with stack:
+                    response = self.client.post(
+                        self.endpoint, json={"id": self.identity},
+                    )
+                self.assertEqual(response.status_code, 502)
+                payload = response.get_json()
+                self.assertEqual(payload["outcome"], "failed")
+                self.assertEqual(payload["application"], application)
+                self.assertNotIn("open unavailable", payload["message"])
+                self.assertEqual(runner.call_count, call_count)
+                generator.assert_not_called()
+        self.assertEqual(note.read_bytes(), original)
+
+    def test_timeouts_report_uncertainty_without_unapproved_duplicate_dispatch(self):
+        note = self._note()
+        original = note.read_bytes()
+        timeout = self.server.subprocess.TimeoutExpired(
+            ["/usr/bin/open", "-a", "Obsidian"], 5,
+        )
+        stack, runner, generator = self._launch_context(side_effect=timeout)
+        with stack:
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+
+        self.assertEqual(response.status_code, 504)
+        payload = response.get_json()
+        self.assertEqual(payload["outcome"], "uncertain")
+        self.assertEqual(payload["application"], "obsidian")
+        self.assertIn("No other application was tried", payload["message"])
+        runner.assert_called_once()
+        generator.assert_not_called()
+        self.assertEqual(note.read_bytes(), original)
+
+    def test_fallback_timeout_is_uncertain_and_unsupported_hosts_do_not_launch(self):
+        note = self._note()
+        original = note.read_bytes()
+        timeout = self.server.subprocess.TimeoutExpired(
+            ["/usr/bin/open", str(note)], 5,
+        )
+        stack, runner, generator = self._launch_context(
+            side_effect=[self._completed(1), timeout],
+        )
+        with stack:
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+        self.assertEqual(response.status_code, 504)
+        self.assertEqual(response.get_json()["outcome"], "uncertain")
+        self.assertEqual(response.get_json()["application"], "default_markdown")
+        self.assertEqual(runner.call_count, 2)
+        generator.assert_not_called()
+
+        stack, runner, generator = self._launch_context(
+            result=self._completed(0), platform="linux",
+        )
+        with stack:
+            response = self.client.post(self.endpoint, json={"id": self.identity})
+        self.assertEqual(response.status_code, 501)
+        self.assertEqual(response.get_json()["outcome"], "unsupported")
+        runner.assert_not_called()
+        generator.assert_not_called()
+        self.assertEqual(note.read_bytes(), original)
 
 
 if __name__ == "__main__":
