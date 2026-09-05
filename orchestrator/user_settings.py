@@ -2,7 +2,8 @@
 
 Single source of truth for user-configurable defaults that don't
 belong in env vars or per-conversation state. Read/written through
-``~/ora/config/user-settings.json``. Secrets (API keys) are NOT
+``user-settings.json`` in the effective runtime configuration directory.
+Secrets (API keys) are NOT
 stored here; they live in the system keyring.
 
 Sections
@@ -49,9 +50,13 @@ try:  # pragma: no cover - import shim
 except ImportError:  # pragma: no cover
     from orchestrator import provider_registry as _registry
 
+try:  # pragma: no cover - import shim
+    from runtime_paths import CONFIG_DIR as _CONFIG_DIR
+except ImportError:  # pragma: no cover
+    from orchestrator.runtime_paths import CONFIG_DIR as _CONFIG_DIR
+
 # ── paths ────────────────────────────────────────────────────────────────────
 
-_CONFIG_DIR = Path.home() / "ora" / "config"
 _SETTINGS_PATH = _CONFIG_DIR / "user-settings.json"
 
 # ── defaults ────────────────────────────────────────────────────────────────
