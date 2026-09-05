@@ -11445,6 +11445,9 @@ def _browser_chroma_exact_rows(
     show_archived: bool = False,
     target_tag: str = "",
     error_sink: list[str] | None = None,
+    connection=None,
+    admitted_paths: set[str] | None = None,
+    metadata_segment_id: str | None = None,
 ) -> list[dict]:
     terms = _browser_terms(query)
     if not terms:
@@ -11478,7 +11481,8 @@ def _browser_chroma_exact_rows(
         )
     elif logical_collection == "knowledge":
         admitted_knowledge_paths = (
-            _browser_knowledge_admitted_path_inventory(target_tag)
+            admitted_paths if admitted_paths is not None
+            else _browser_knowledge_admitted_path_inventory(target_tag)
         )
         if admitted_knowledge_paths is None:
             if error_sink is not None:
@@ -11493,13 +11497,20 @@ def _browser_chroma_exact_rows(
             JOIN ora_browser_admitted_knowledge_paths admitted_path
               ON admitted_path.path = knowledge_path.string_value
         """
+        if connection is not None:
+            privacy_join = "JOIN embedding_metadata knowledge_path ON knowledge_path.id=embeddings.id AND knowledge_path.key='path'"
+            privacy_clause = "AND knowledge_path.string_value IN (SELECT value FROM json_each(?))"
+            privacy_params = (json.dumps(sorted(admitted_knowledge_paths)),)
+            if metadata_segment_id is not None:
+                privacy_clause += " AND embeddings.segment_id=?"
+                privacy_params += (metadata_segment_id,)
 
     out: dict[str, dict] = {}
     try:
         import sqlite3
-        con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+        con = connection if connection is not None else sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
         cur = con.cursor()
-        if admitted_knowledge_paths is not None:
+        if admitted_knowledge_paths is not None and connection is None:
             cur.execute(
                 "CREATE TEMP TABLE ora_browser_admitted_knowledge_paths "
                 "(path TEXT PRIMARY KEY)",
@@ -11586,7 +11597,8 @@ def _browser_chroma_exact_rows(
                     show_archived=show_archived,
                 ):
                     _browser_merge_best(out, candidate)
-        con.close()
+        if connection is None:
+            con.close()
     except Exception as exc:
         print(f"[conversation-browser] exact {logical_collection} search failed: {exc}", file=sys.stderr)
         if error_sink is not None:
@@ -11629,6 +11641,9 @@ def _browser_chroma_fuzzy_rows(
     show_archived: bool = False,
     target_tag: str = "",
     error_sink: list[str] | None = None,
+    connection=None,
+    admitted_paths: set[str] | None = None,
+    metadata_segment_id: str | None = None,
 ) -> list[dict]:
     fts_query = _browser_fuzzy_fts_query(query)
     if not fts_query:
@@ -11653,7 +11668,8 @@ def _browser_chroma_fuzzy_rows(
         )
     elif logical_collection == "knowledge":
         admitted_knowledge_paths = (
-            _browser_knowledge_admitted_path_inventory(target_tag)
+            admitted_paths if admitted_paths is not None
+            else _browser_knowledge_admitted_path_inventory(target_tag)
         )
         if admitted_knowledge_paths is None:
             if error_sink is not None:
@@ -11668,12 +11684,19 @@ def _browser_chroma_fuzzy_rows(
             JOIN ora_browser_admitted_knowledge_paths admitted_path
               ON admitted_path.path = knowledge_path.string_value
         """
+        if connection is not None:
+            privacy_join = "JOIN embedding_metadata knowledge_path ON knowledge_path.id=embeddings.id AND knowledge_path.key='path'"
+            privacy_clause = "AND knowledge_path.string_value IN (SELECT value FROM json_each(?))"
+            privacy_params = (json.dumps(sorted(admitted_knowledge_paths)),)
+            if metadata_segment_id is not None:
+                privacy_clause += " AND embeddings.segment_id=?"
+                privacy_params += (metadata_segment_id,)
     out: dict[str, dict] = {}
     try:
         import sqlite3
-        con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+        con = connection if connection is not None else sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
         cur = con.cursor()
-        if admitted_knowledge_paths is not None:
+        if admitted_knowledge_paths is not None and connection is None:
             cur.execute(
                 "CREATE TEMP TABLE ora_browser_admitted_knowledge_paths "
                 "(path TEXT PRIMARY KEY)",
@@ -11752,7 +11775,8 @@ def _browser_chroma_fuzzy_rows(
                 show_archived=show_archived,
             ):
                 _browser_merge_best(out, candidate)
-        con.close()
+        if connection is None:
+            con.close()
     except Exception as exc:
         print(f"[conversation-browser] fuzzy {logical_collection} search failed: {exc}", file=sys.stderr)
         if error_sink is not None:
@@ -12008,6 +12032,8 @@ def _browser_latest_archive_rows(
     limit: int | None,
     *,
     target_tag: str = "",
+    connection=None,
+    error_sink: list[str] | None = None,
 ) -> list[dict]:
     physical = _browser_physical_collection("conversations")
     allowed = _browser_allowed_turn_privacies(target_tag)
@@ -12017,7 +12043,7 @@ def _browser_latest_archive_rows(
     rows: list[dict] = []
     try:
         import sqlite3
-        con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+        con = connection if connection is not None else sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
         cur = con.cursor()
         limit_sql = "LIMIT ?" if limit is not None else ""
         params: tuple = (physical, *allowed)
@@ -12071,13 +12097,20 @@ def _browser_latest_archive_rows(
             )
             if row:
                 rows.append(row)
-        con.close()
+            elif connection is not None:
+                rows.append({"conversation_id": _browser_encode_source_id("archive", source_id),
+                             "source_conversation_id": source_id, "source_kind": "archive",
+                             "title": "Indexed Dialogue metadata", "last_activity_at": last_seen})
+        if connection is None:
+            con.close()
     except Exception as exc:
         print(f"[conversation-browser] latest archive scan failed: {exc}", file=sys.stderr)
+        if error_sink is not None:
+            error_sink.append("indexed Dialogue inventory is unavailable")
     return rows
 
 
-def _browser_enrich_archive_rows(rows: list[dict]) -> list[dict]:
+def _browser_enrich_archive_rows(rows: list[dict], *, connection=None, error_sink=None) -> list[dict]:
     """Attach source-wide indexed authority without changing matched text."""
     sources = {
         str(row.get("source_conversation_id") or "").strip()
@@ -12108,7 +12141,7 @@ def _browser_enrich_archive_rows(rows: list[dict]) -> list[dict]:
     con = None
     try:
         import sqlite3
-        con = sqlite3.connect(os.path.join(
+        con = connection if connection is not None else sqlite3.connect(os.path.join(
             _browser_chromadb_path(), "chroma.sqlite3",
         ))
         cur = con.cursor()
@@ -12159,9 +12192,11 @@ def _browser_enrich_archive_rows(rows: list[dict]) -> list[dict]:
             f"[conversation-browser] archive metadata summary failed: {exc}",
             file=sys.stderr,
         )
+        if error_sink is not None:
+            error_sink.append("indexed Dialogue source-wide authority is unavailable")
         return rows
     finally:
-        if con is not None:
+        if con is not None and connection is None:
             con.close()
 
     enriched: list[dict] = []
@@ -13019,6 +13054,8 @@ def _browser_archive_chunk_metadata(
     source_id: str,
     *,
     target_tag: str | None = None,
+    connection=None,
+    error_sink=None,
 ) -> list[dict]:
     physical = _browser_physical_collection("conversations")
     privacy_join = ""
@@ -13039,7 +13076,7 @@ def _browser_archive_chunk_metadata(
         )
     try:
         import sqlite3
-        con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+        con = connection if connection is not None else sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
         cur = con.cursor()
         rows = cur.execute(
             f"""
@@ -13067,10 +13104,13 @@ def _browser_archive_chunk_metadata(
                 continue
             meta["_row_id"] = row_id
             items.append(meta)
-        con.close()
+        if connection is None:
+            con.close()
         return items
     except Exception as exc:
         print(f"[conversation-browser] archive load failed: {exc}", file=sys.stderr)
+        if error_sink is not None:
+            error_sink.append("indexed Dialogue exchanges are unavailable")
         return []
 
 
@@ -13987,7 +14027,7 @@ def _library_read_image_preview(path: str) -> tuple[bytes, str]:
     return data, accepted[0]
 
 
-def _library_dialogue_provider(query: str = "") -> dict:
+def _library_dialogue_provider(query: str = "", *, show_archived: bool = False) -> dict:
     query = str(query or "").strip()
     skipped_authority: list[str] = []
     try:
@@ -14190,11 +14230,135 @@ def _library_dialogue_provider(query: str = "") -> dict:
     if admitted_identity_unavailable:
         reasons.append("one or more admitted Dialogue identities are unavailable")
     complete = not reasons
-    return {
+    provider = {
         "rows": rows,
         "complete": complete,
         "reason": "; ".join(reasons) if reasons else None,
+        "_retained_ids": {str(summary.get("conversation_id") or "") for summary in summaries},
+        "provenance_rows": [admitted_provider_row(str(item.get("conversation_id")), item)
+                            for item in map(_browser_contract_row, readable_rows)],
     }
+    if show_archived:
+        archive = _library_archive_provider(query, retained_ids={
+            str(summary.get("conversation_id") or "") for summary in summaries})
+        provider["rows"].extend(archive["rows"])
+        provider["provenance_rows"].extend(archive.get("provenance_rows", archive["rows"]))
+        provider["complete"] = complete and archive["complete"]
+        provider["reason"] = "; ".join(filter(None, (provider["reason"], archive["reason"]))) or None
+    return provider
+
+
+def _library_archive_pair(document: str) -> list[dict] | None:
+    """Only one explicit indexed exchange can establish speaker attribution."""
+    if not isinstance(document, str):
+        return None
+    headings = list(re.finditer(r"^### (User input|Assistant response)[ \t]*\r?$", document, re.M))
+    bold = list(re.finditer(r"^\*\*(User|Assistant):\*\*[ \t]*\r?$", document, re.M))
+    exchanges = list(re.finditer(r"^## Exchange[ \t]*\r?$", document, re.M))
+    if headings:
+        if (bold or len(exchanges) != 1 or len(headings) != 2
+                or [m.group(1) for m in headings] != ["User input", "Assistant response"]
+                or exchanges[0].end() > headings[0].start()):
+            return None
+        boundaries = headings
+    elif len(bold) == 2 and [m.group(1) for m in bold] == ["User", "Assistant"]:
+        boundaries = bold
+    else:
+        return None
+    # Remove format-owned newlines only; preserve source whitespace and Markdown.
+    user = document[boundaries[0].end():boundaries[1].start()].strip("\r\n")
+    assistant = document[boundaries[1].end():].strip("\r\n")
+    if not user.strip() or not assistant.strip():
+        return None
+    return [{"role": "user", "content": user}, {"role": "assistant", "content": assistant}]
+
+
+def _library_archive_connection():
+    import sqlite3
+    path = rp.chromadb_dir() / "chroma.sqlite3"
+    con = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+    con.execute("PRAGMA query_only=ON")
+    con.execute("BEGIN")
+    return con
+
+
+def _library_archive_turns(connection, source_id: str) -> tuple[list[dict], bool]:
+    errors = []
+    chunks = _browser_archive_chunk_metadata(source_id, target_tag="", connection=connection, error_sink=errors)
+    turns = []
+    authority = connection.execute("SELECT e.id, p.string_value FROM embeddings e "
+        "JOIN segments s ON s.id=e.segment_id JOIN collections c ON c.id=s.collection "
+        "JOIN embedding_metadata owner ON owner.id=e.id AND owner.key='conversation_id' "
+        "LEFT JOIN embedding_metadata p ON p.id=e.id AND p.key='turn_privacy' "
+        "WHERE c.name=? AND owner.string_value=?", (_browser_physical_collection("conversations"), source_id)).fetchall()
+    incomplete = bool(errors) or any(privacy not in {"standard", "private", "stealth"} for _rowid, privacy in authority)
+    for chunk in chunks:
+        # Duplicate authority/content fields are not an unambiguous record.
+        conflicts = connection.execute("SELECT key FROM embedding_metadata WHERE id=? "
+            "AND key IN ('conversation_id','turn_privacy','chroma:document','pair_num') "
+            "GROUP BY key HAVING COUNT(*) != 1", (chunk["_row_id"],)).fetchall()
+        pair = None if conflicts else _library_archive_pair(chunk.get("chroma:document"))
+        if pair is None or not _browser_turn_metadata_allowed(chunk, ""):
+            incomplete = True
+            continue
+        turns.extend(pair)
+    return turns, incomplete
+
+
+def _library_archive_provider(query: str = "", *, retained_ids=(), connection=None) -> dict:
+    rows, reasons = [], []
+    owns_connection = connection is None
+    try:
+        if connection is None:
+            connection = _library_archive_connection()
+        candidates = _browser_latest_archive_rows(None, target_tag="", connection=connection, error_sink=reasons)
+        candidates = _browser_enrich_archive_rows(candidates, connection=connection, error_sink=reasons)
+        matched_ids = None
+        if query:
+            matched_ids = set()
+            for helper in (_browser_chroma_exact_rows, _browser_chroma_fuzzy_rows):
+                matched_ids.update(row.get("conversation_id") for row in helper(query,
+                    logical_collection="conversations", limit=None, target_tag="", show_archived=True,
+                    connection=connection, error_sink=reasons))
+        provenance_rows, search_text = [], {}
+        for candidate in candidates:
+            source_id = str(candidate.get("source_conversation_id") or "")
+            if not source_id or source_id in retained_ids:
+                continue
+            turns, incomplete = _library_archive_turns(connection, source_id)
+            if incomplete:
+                reasons.append("some indexed exchanges have ambiguous or incomplete boundaries")
+            item = _browser_contract_row(candidate)
+            identity = str(item["conversation_id"])
+            row = {"identity": identity,
+                "title": " ".join(turns[0]["content"].split())[:60] if turns else "Indexed Dialogue metadata",
+                "metadata": {"item_type": "dialogue", "lifecycle": "indexed_archive",
+                    "project_ids": item.get("project_ids") or [], "tags": item.get("tags") or [],
+                    "privacy": None if incomplete else (item.get("privacy") or {}).get("state"),
+                    "modified_at": item.get("last_activity_at"), "content_type": "application/x-ora-dialogue"},
+                "provenance": {"available": bool(turns), "kind": "indexed-dialogue", "identity": identity},
+                "relationships": {"state": "fresh", "summaries": [
+                    {"type": kind, "direction": _LIBRARY_DIALOGUE_DIRECTIONS[kind]}
+                    for kind in (item.get("relationship") or {}).get("kinds", []) if kind in _LIBRARY_DIALOGUE_DIRECTIONS]},
+                "preview": {"kind": "text" if turns else "unsupported", "available": bool(turns),
+                    "reason": "some indexed exchanges are unavailable" if incomplete else None,
+                    "locator": {"dialogue_id": identity}},
+                "editability": {"available": True, "editable": False, "surface": "dialogue",
+                    "reason": "indexed historical Dialogues are read-only"}}
+            if turns:
+                provenance_rows.append(row)
+                search_text[identity] = "\n".join(turn["content"] for turn in turns)
+            if matched_ids is None or (identity in matched_ids and turns
+                    and _browser_match_score(query, row["title"], "\n".join(t["content"] for t in turns)) >= 58):
+                rows.append(row)
+        return {"rows": rows, "provenance_rows": provenance_rows, "complete": not reasons,
+                "reason": "; ".join(dict.fromkeys(reasons)) or None, "_search_text": search_text}
+    except Exception as exc:
+        print(f"[library] indexed Dialogue provider unavailable: {exc}", file=sys.stderr)
+        return {"rows": rows, "complete": False, "reason": "indexed Dialogue authority is unavailable"}
+    finally:
+        if connection is not None and owns_connection:
+            connection.close()
 
 
 def _library_same_filesystem_path(left: str, right: str) -> bool:
@@ -14208,9 +14372,9 @@ def _library_same_filesystem_path(left: str, right: str) -> bool:
     return left_key == right_key
 
 
-def _library_engram_provider(query: str = "") -> dict:
+def _library_engram_provider(query: str = "", *, show_archived: bool = False, snapshot_connection=None) -> dict:
     query = str(query or "").strip()
-    connection = None
+    connection = snapshot_connection
     try:
         import sqlite3
         from chromadb.config import DEFAULT_DATABASE, DEFAULT_TENANT
@@ -14228,13 +14392,15 @@ def _library_engram_provider(query: str = "") -> dict:
             "raw_path", "chunk_path", "obsidian_path", "nexus",
             "project_ids", "tags", "tag", "artifact_kind", "managed_by",
             "source_file", "source_chunk_id", "source_turn_index",
-            "turn_privacy",
+            "turn_privacy", "source_path", "source_document", "subtype",
+            "processed_date", "chunk_index", "total_chunks",
         }
 
         db_path = rp.chromadb_dir() / "chroma.sqlite3"
-        connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        connection.execute("PRAGMA query_only=ON")
-        connection.execute("BEGIN")
+        if connection is None:
+            connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+            connection.execute("PRAGMA query_only=ON")
+            connection.execute("BEGIN")
         authority_rows = connection.execute(
             """
             SELECT collections.id,
@@ -14267,8 +14433,9 @@ def _library_engram_provider(query: str = "") -> dict:
                 if not authority_segments else
                 "the mapped Engram index metadata authority is ambiguous"
             )
-            connection.commit()
-            connection.close()
+            if snapshot_connection is None:
+                connection.commit()
+                connection.close()
             connection = None
             return {"rows": [], "complete": False, "reason": reason}
 
@@ -14733,11 +14900,12 @@ def _library_engram_provider(query: str = "") -> dict:
             except OSError:
                 filesystem_stats[canonical_path] = None
 
-        connection.commit()
-        connection.close()
+        if snapshot_connection is None:
+            connection.commit()
+            connection.close()
         connection = None
     except Exception:
-        if connection is not None:
+        if connection is not None and snapshot_connection is None:
             try:
                 connection.rollback()
             except Exception:
@@ -14745,7 +14913,7 @@ def _library_engram_provider(query: str = "") -> dict:
         return {"rows": [], "complete": False,
                 "reason": "the Engram index could not be read"}
     finally:
-        if connection is not None:
+        if connection is not None and snapshot_connection is None:
             connection.close()
 
     rows = []
@@ -14766,7 +14934,7 @@ def _library_engram_provider(query: str = "") -> dict:
             )
         ]
         tags = _browser_normalize_tags([_browser_metadata_tags(row) for row in records])
-        if "archived" in tags:
+        if "archived" in tags and not show_archived:
             continue
         privacy_values = {
             _browser_knowledge_metadata_privacy(row) for row in records
@@ -14790,16 +14958,25 @@ def _library_engram_provider(query: str = "") -> dict:
             "project_ids": _browser_normalize_tags([
                 _browser_row_project_ids(row) for row in records
             ]),
-            "tags": tags, "lifecycle": "indexed",
+            "tags": tags, "lifecycle": "archived" if "archived" in tags else "indexed",
             "content_type": "text/markdown", "item_type": "engram",
         }
         if privacy is not None:
             source_meta["privacy"] = privacy
         if modified_at is not None:
             source_meta["modified_at"] = modified_at
+        for public, stored in (("epistemic_kind", "subtype"), ("extraction_date", "processed_date")):
+            values = {str(record[stored]) for record in records if record.get(stored) not in (None, "")}
+            if len(values) == 1:
+                source_meta[public] = next(iter(values))
         rows.append({
             "identity": path, "title": _browser_source_title(records[0]),
             "_unique_direct_authority": unique_direct_authority,
+            "_indexed_paths": sorted(source_paths),
+            "_provenance_candidates": [{key: record[key] for key in (
+                "source_file", "source_path", "source_document", "source_chunk_id",
+                "source_turn_index", "chunk_index", "total_chunks") if key in record}
+                for record in records],
             "metadata": source_meta,
             "unavailable_fields": (["privacy"] if privacy is None else [])
             + (["modified_at"] if modified_at is None else []),
@@ -14820,12 +14997,12 @@ def _library_engram_provider(query: str = "") -> dict:
                         if exists else "the indexed source file is unavailable"
                     ),
                 }
-                if unique_direct_authority else
+                if unique_direct_authority and "archived" not in tags else
                 {
                     "available": True,
                     "editable": False,
                     "surface": "external-file",
-                    "reason": "the indexed Engram has no unique direct source authority",
+                    "reason": "archived Engrams are read-only" if "archived" in tags else "the indexed Engram has no unique direct source authority",
                 }
             ),
         })
@@ -14839,7 +15016,7 @@ def _library_engram_provider(query: str = "") -> dict:
             try:
                 matches.extend(helper(
                     query, logical_collection="knowledge", limit=None,
-                    show_archived=False, target_tag="",
+                    show_archived=show_archived, target_tag="",
                     error_sink=search_errors,
                 ))
             except Exception:
@@ -14855,7 +15032,7 @@ def _library_engram_provider(query: str = "") -> dict:
                 search_errors.append("an Engram search result identity was invalid")
         rows = [
             row for row in rows
-            if canonicalize_path(row["identity"]) in matched_paths
+            if row["identity"] in matched_paths
         ]
         if search_errors:
             complete = False
@@ -14873,7 +15050,7 @@ def _library_engram_provider(query: str = "") -> dict:
                     "source authority is unavailable"
                 ),
             }
-    return {"rows": rows, "complete": complete, "reason": reason}
+    return {"rows": rows, "complete": complete, "reason": reason, "_metadata_segment_id": metadata_segment_id}
 
 
 def _library_file_provider() -> dict:
@@ -14936,25 +15113,31 @@ def _library_file_provider() -> dict:
             )
             file_declares_engram = False
             file_frontmatter_valid = True
-            if markdown_editable:
+            metadata = None
+            if (exists and Path(path).suffix.lower() == ".md"
+                    and not os.path.islink(path) and os.access(path, os.R_OK)):
                 metadata = _browser_read_frontmatter_metadata(path)
                 file_frontmatter_valid = metadata is not None
                 file_declares_engram = bool(
                     metadata is not None
                     and str(metadata.get("type") or "").lower() == "engram"
                 )
-                markdown_editable = bool(
+                markdown_editable = bool(markdown_editable and
                     file_frontmatter_valid and not file_declares_engram
                 )
             row = {
                 "identity": path, "title": item.get("name") or Path(path).name,
                 "metadata": {
-                    "project_ids": [project_id],
+                    "project_ids": [] if project_id == "commons" else [project_id],
                     "modified_at": item.get("mtime"),
                     "content_type": mimetypes.guess_type(path)[0]
                     or "application/octet-stream",
                     "item_type": "file",
                     "size_bytes": item.get("size"),
+                    "folder": str(Path(item.get("rel_path") or item.get("name") or "").parent),
+                    "category": [],
+                    "category_labels": {project_id + ":" + category["id"]: category["label"]
+                        for category in project.get("library_file_categories", [])},
                 },
                 "unavailable_fields": ["tags", "lifecycle", "privacy"],
                 "provenance": {
@@ -14980,14 +15163,24 @@ def _library_file_provider() -> dict:
             obsidian_uri = _obsidian_uri_for(path)
             if obsidian_uri is not None:
                 row["preview"]["locator"]["obsidian_uri"] = obsidian_uri
-            if Path(path).suffix.lower() == ".md":
-                row["_relationship_identity"] = Path(path).stem
-            else:
-                row["relationships"] = {
-                    "state": "unavailable",
-                    "reason": "this file type is outside the Markdown relationship authority",
-                    "summaries": [],
-                }
+            row["relationships"] = {
+                "state": "fresh", "summaries": [
+                    {"type": "project-membership", "direction": "outgoing"},
+                    {"type": "folder-containment", "direction": "outgoing"}],
+            }
+            if metadata is not None:
+                for key, field in (("tags", "tags"), ("type", "file_type"), ("nexus", "nexus"), ("subtype", "epistemic_kind")):
+                    if key in metadata:
+                        row["metadata"][field] = metadata[key]
+                row["metadata"]["category"] = [
+                    project_id + ":" + category["id"] for category in project.get("library_file_categories", [])
+                    if project_meta.library_file_category_matches(metadata, category["match"])]
+                row["_file_relationships"] = metadata.get("relationships") or []
+            warnings = project.get("library_category_warnings") or []
+            if warnings:
+                row["provenance"]["details"]["category_warning"] = " ".join(warnings)
+            if not file_frontmatter_valid:
+                row["provenance"]["details"]["metadata_warning"] = "Optional file metadata could not be read; the file remains available."
             rows.append(row)
     return {"rows": rows, "complete": complete, "reason": reason}
 
@@ -14996,6 +15189,84 @@ def _library_resolve_relationships(identities: set[str]) -> dict:
     from orchestrator.tools.relationship_graph import read_relationship_snapshot
 
     return read_relationship_snapshot(identities)
+
+
+def _library_join_provenance(providers: dict) -> None:
+    """Join only exact admitted source identities; unresolved names stay private."""
+    from orchestrator.library_browser import stable_item_id
+    aliases = {}
+    for source in ("dialogues", "files"):
+        result = providers.get(source) or {}
+        for row in result.get("provenance_rows", result.get("rows", [])):
+            if source == "dialogues" and row.get("preview", {}).get("available") is not True:
+                continue
+            identity = str(row.get("identity") or "")
+            item = {"id": stable_item_id(source, identity), "source": source,
+                    "title": row.get("title") or "(untitled)",
+                    "project_ids": row.get("metadata", {}).get("project_ids") or []}
+            keys = {identity, item["id"]}
+            if source == "files":
+                keys.update((Path(identity).stem, "[[" + Path(identity).stem + "]]"))
+            elif identity.startswith("archive:"):
+                owner = _browser_decode_source_id("archive", identity)
+                if owner:
+                    keys.add(owner)
+            for key in keys:
+                aliases.setdefault(key, {})[item["id"]] = item
+
+    for row in (providers.get("engrams") or {}).get("rows", []):
+        sources, unresolved = {}, False
+        details = []
+        for candidate in row.get("_provenance_candidates", []):
+            candidate_proven = False
+            for field in ("source_file", "source_path", "source_document"):
+                value = candidate.get(field)
+                if value in (None, "", []):
+                    continue
+                if isinstance(value, str) and value.startswith("[") and not value.startswith("[["):
+                    try:
+                        value = json.loads(value)
+                    except (TypeError, ValueError):
+                        pass
+                for identity in value if isinstance(value, list) else [value]:
+                    matched = aliases.get(str(identity), {})
+                    if len(matched) == 1:
+                        sources.update(matched)
+                        candidate_proven = True
+                    else:
+                        unresolved = True
+            if candidate_proven:
+                details.append({key: candidate[key] for key in (
+                    "source_chunk_id", "source_turn_index", "chunk_index", "total_chunks") if key in candidate})
+        metadata = row["metadata"]
+        metadata["provenance_ids"] = sorted(sources) if sources else None
+        metadata["project_ids"] = sorted(set(metadata.get("project_ids") or []) |
+                                          {project for source in sources.values() for project in source["project_ids"]})
+        row["provenance"] = {
+            "available": bool(sources), "kind": "extraction-source", "identity": next(iter(sources)) if len(sources) == 1 else None,
+            "sources": [{key: source[key] for key in ("id", "source", "title")} for source in sources.values()],
+            "reason": "Some extraction sources are unresolved." if unresolved else None if sources else "The indexed extraction source is unresolved.",
+            "details": {"exchanges": [detail for detail in details if detail]},
+        }
+
+    for row in (providers.get("files") or {}).get("rows", []):
+        summaries = row.setdefault("relationships", {"state": "fresh", "summaries": []})["summaries"]
+        summaries[:] = [summary for summary in summaries if summary.get("origin") != "derived-provenance"]
+        row_id = stable_item_id("files", row["identity"])
+        for engram in (providers.get("engrams") or {}).get("rows", []):
+            if row_id in (engram.get("metadata", {}).get("provenance_ids") or []):
+                summaries.append({"type": "derived-from", "direction": "incoming", "origin": "derived-provenance",
+                    "endpoint_id": stable_item_id("engrams", engram["identity"]), "endpoint_title": engram.get("title", "Engram")})
+        for declaration in row.get("_file_relationships", []):
+            if not isinstance(declaration, dict):
+                continue
+            targets = aliases.get(str(declaration.get("target") or ""), {})
+            if len(targets) == 1 and declaration.get("type"):
+                summary = {"type": str(declaration["type"]), "direction": "outgoing",
+                           "confidence": str(declaration.get("confidence", "medium")), "origin": "explicit-metadata",
+                           "endpoint_id": next(iter(targets)), "endpoint_title": next(iter(targets.values()))["title"]}
+                if summary not in summaries:
+                    summaries.append(summary)
 
 
 def _library_hydrate_returned_engram_access(rows: list[dict]) -> None:
@@ -15402,7 +15673,7 @@ def overview_daily_note_open():
 def library_browser():
     """Browse a complete, renderer-neutral Dialogue/Engram/File universe."""
     from orchestrator.library_browser import (
-        LibraryBrowserError, build_browser_response, parse_sources,
+        LibraryBrowserError, build_browser_response, parse_sources, validate_refinements, validate_item_id,
     )
     try:
         sources = parse_sources(request.args.getlist("source"))
@@ -15411,50 +15682,167 @@ def library_browser():
         query = (request.args.get("q") or "").strip()
         offset = int(request.args.get("offset") or 0)
         limit = int(request.args.get("limit") or 100)
-        providers = {}
-        loaders = {
-            "dialogues": lambda: _library_dialogue_provider(query),
-            "engrams": lambda: _library_engram_provider(query),
-            "files": lambda: (
-                {
-                    "rows": [],
-                    "complete": False,
-                    "reason": (
-                        "Files do not support body keyword search; Dialogue "
-                        "and Engram matches remain available"
-                    ),
-                }
-                if query else _library_file_provider()
-            ),
-        }
-        for source in sources:
-            try:
-                providers[source] = loaders[source]()
-            except Exception:
-                providers[source] = {
-                    "rows": [], "complete": False,
-                    "reason": f"the {source} provider could not be read",
-                }
-        payload = build_browser_response(
-            providers, requested_sources=sources, project_id=project_id,
-            query=query, offset=offset, limit=limit,
-            relationship_resolver=_library_resolve_relationships,
-        )
-        _library_hydrate_returned_engram_access(payload["rows"])
+        names = {"item_type", "tag", "date_from", "date_to", "lifecycle", "privacy",
+                 "local_restriction", "relationship", "relationship_family", "provenance_id",
+                 "epistemic_kind", "extraction_date_from", "extraction_date_to", "file_type",
+                 "folder", "category", "content_type"}
+        allowed = names | {"source", "project_id", "q", "offset", "limit", "stream",
+                           "show_archived", "trace_id", "trace_limit"}
+        if set(request.args) - allowed or any(len(request.args.getlist(key)) != 1
+                for key in request.args if key not in {"source", "tag"}):
+            raise LibraryBrowserError("unknown or repeated Library parameter")
+        refinements = validate_refinements({key: (_browser_parse_requested_tags(request.args.getlist(key))
+            if key == "tag" else request.args[key]) for key in names if key in request.args})
+        for key in ("stream", "show_archived"):
+            if request.args.get(key, "0") not in {"0", "1"}:
+                raise LibraryBrowserError(f"{key} must be 0 or 1")
+        show_archived = request.args.get("show_archived") == "1"
+        streaming = request.args.get("stream") == "1"
+        trace_id = request.args.get("trace_id")
+        if trace_id is not None:
+            validate_item_id(trace_id, ("engrams",))
+        trace_limit = int(request.args.get("trace_limit") or 50)
+        if trace_limit < 50 or trace_limit % 50:
+            raise LibraryBrowserError("Trace expands in batches of 50")
+        # Validate paging before headers are sent; the same adapter owns every frame.
+        build_browser_response({}, requested_sources=sources, offset=offset, limit=limit, refinements=refinements)
     except (LibraryBrowserError, TypeError, ValueError) as exc:
         return _json_response({"error": str(exc)}, status=400)
+
+    def snapshots():
+        providers = {source: {"rows": [], "complete": False, "reason": "source pending"} for source in sources}
+        pending = list(sources)
+        def frame(stage, final=False):
+            _library_join_provenance(providers)
+            payload = build_browser_response(providers, requested_sources=sources, project_id=project_id,
+                query=query, offset=offset, limit=limit, refinements=refinements,
+                relationship_resolver=_library_resolve_relationships if final else None,
+                trace_id=trace_id if final else None, trace_limit=trace_limit)
+            if final:
+                _library_hydrate_returned_engram_access(payload["rows"])
+            payload["progress"] = {"stage": stage, "final": final, "pending_sources": list(pending),
+                "failed_sources": [source for source in sources if source not in pending and providers[source].get("complete") is not True]}
+            if not final:
+                payload["universe"]["complete"] = False
+                payload["facets"]["complete"] = False
+                payload["pagination"].update(has_more=False, next_offset=None)
+            return {"event": "snapshot", "stage": stage, "final": final, "data": payload}
+
+        # Supporting sources establish provenance once, even when only Engrams are displayed.
+        needed = [source for source in ("dialogues", "files", "engrams") if source in sources or "engrams" in sources]
+        archive_connection = None
+        engram_connection = None
+        try:
+            for source in needed:
+                try:
+                    if source == "dialogues":
+                        provider = _library_dialogue_provider(query)
+                    elif source == "files":
+                        provider = _library_file_provider()
+                        if query:
+                            provider["provenance_rows"] = provider["rows"]
+                            provider = {**provider, "rows": [], "complete": False,
+                                "reason": "Files do not support body keyword search; Dialogue and Engram matches remain available"}
+                    else:
+                        if query:
+                            engram_connection = _library_archive_connection()
+                            provider = _library_engram_provider(show_archived=show_archived, snapshot_connection=engram_connection)
+                        else:
+                            provider = _library_engram_provider(show_archived=True) if show_archived else _library_engram_provider()
+                    providers[source] = provider
+                    if (source != "engrams" or not query) and not (source == "dialogues" and show_archived):
+                        if source in pending:
+                            pending.remove(source)
+                    elif source == "engrams" and query:
+                        inventory = list(provider["rows"])
+                        provider["rows"] = []
+                    yield frame(source)
+                    if source == "dialogues" and show_archived:
+                        archive_connection = _library_archive_connection()
+                        retained = provider.get("_retained_ids", {row["identity"] for row in provider.get("provenance_rows", provider["rows"])})
+                        archive = _library_archive_provider(retained_ids=retained, connection=archive_connection)
+                        provider.setdefault("provenance_rows", []).extend(archive.get("provenance_rows", []))
+                        provider["complete"] = provider["complete"] and archive["complete"]
+                        provider["reason"] = "; ".join(filter(None, (provider.get("reason"), archive.get("reason")))) or None
+                        if not query:
+                            provider["rows"].extend(archive["rows"])
+                            yield frame("dialogues-archive")
+                        else:
+                            matched = set()
+                            for stage, helper in (("exact", _browser_chroma_exact_rows), ("fuzzy", _browser_chroma_fuzzy_rows)):
+                                errors = []
+                                matches = helper(query, logical_collection="conversations", limit=None,
+                                    target_tag="", show_archived=True, connection=archive_connection, error_sink=errors)
+                                for match in matches:
+                                    identity = match.get("conversation_id")
+                                    text = archive.get("_search_text", {}).get(identity)
+                                    if text and _browser_match_score(query, "", text) >= 58:
+                                        matched.add(identity)
+                                provider["rows"] = [row for row in provider["rows"] if row["identity"] not in archive.get("_search_text", {})]
+                                provider["rows"].extend(row for row in archive["rows"] if row["identity"] in matched)
+                                if errors:
+                                    provider.update(complete=False, reason="indexed Dialogue keyword search is incomplete")
+                                yield frame("dialogues-" + stage)
+                        if source in pending:
+                            pending.remove(source)
+                    if source == "engrams" and query:
+                        matched, errors = set(), []
+                        admitted_paths = {path for row in inventory for path in row.get("_indexed_paths", [row["identity"]])}
+                        identities_by_index_path = {path: row["identity"] for row in inventory
+                            for path in row.get("_indexed_paths", [row["identity"]])}
+                        for stage, helper in (("exact", _browser_chroma_exact_rows), ("fuzzy", _browser_chroma_fuzzy_rows)):
+                            matches = helper(query, logical_collection="knowledge", limit=None, target_tag="",
+                                show_archived=show_archived, admitted_paths=admitted_paths, error_sink=errors,
+                                connection=engram_connection, metadata_segment_id=provider.get("_metadata_segment_id"))
+                            for match in matches:
+                                identity = _browser_decode_source_id("engram", match.get("conversation_id", ""))
+                                if identity in identities_by_index_path:
+                                    matched.add(identities_by_index_path[identity])
+                            provider["rows"] = [row for row in inventory if row["identity"] in matched]
+                            if errors:
+                                provider.update(complete=False, reason="Engram keyword search is incomplete")
+                            yield frame("engrams-" + stage)
+                        if source in pending:
+                            pending.remove(source)
+                except GeneratorExit:
+                    raise
+                except Exception as exc:
+                    print(f"[library] {source} stage failed: {exc}", file=sys.stderr)
+                    current = providers.get(source, {"rows": []})
+                    current.update(complete=False, reason=f"the {source} provider could not be fully read")
+                    providers[source] = current
+                    if source in pending:
+                        pending.remove(source)
+            yield frame("final", True)
+        finally:
+            if archive_connection is not None:
+                archive_connection.close()
+            if engram_connection is not None:
+                engram_connection.close()
+
+    if streaming:
+        response = Response(stream_with_context((json.dumps(frame, ensure_ascii=False) + "\n" for frame in snapshots())),
+                            mimetype="application/x-ndjson")
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    payload = None
+    for snapshot in snapshots():
+        payload = snapshot["data"]
     return _json_response(payload)
 
 
 def _library_current_item(
-        item_id: str, *, require_complete: bool = False) -> tuple[str, dict]:
+        item_id: str, *, require_complete: bool = False, show_archived: bool = False,
+        allow_dialogue: bool = False) -> tuple[str, dict]:
     """Resolve one stable Engram/File id through its current provider."""
     from orchestrator.library_browser import normalize_row
 
     source, separator, encoded = str(item_id or "").partition(":")
-    if not separator or not encoded or source not in {"engrams", "files"}:
+    allowed = {"engrams", "files", "dialogues"} if allow_dialogue and not require_complete else {"engrams", "files"}
+    if not separator or not encoded or source not in allowed:
         raise ValueError
-    provider = (_library_engram_provider() if source == "engrams"
+    provider = ((_library_engram_provider(show_archived=True) if show_archived and not require_complete else _library_engram_provider()) if source == "engrams"
+                else _library_dialogue_provider(show_archived=show_archived) if source == "dialogues"
                 else _library_file_provider())
     if require_complete and provider.get("complete") is not True:
         raise PermissionError
@@ -15467,15 +15855,18 @@ def _library_current_item(
 
 @app.route("/api/library/preview", methods=["GET"])
 def library_preview():
-    """Return one currently authorized Engram or project-file text body."""
+    """Read current admitted content without activation or edit authority."""
     item_ids = request.args.getlist("id")
-    if set(request.args) != {"id"} or len(item_ids) != 1:
+    if (set(request.args) - {"id", "show_archived"} or len(item_ids) != 1
+            or len(request.args.getlist("show_archived")) > 1
+            or request.args.get("show_archived", "0") not in {"0", "1"}):
         return _json_response({
             "error": "a valid Engram or File Library item id is required",
         }, status=400)
     item_id = str(item_ids[0] or "").strip()
     try:
-        source, raw = _library_current_item(item_id)
+        source, raw = _library_current_item(item_id, allow_dialogue=True,
+                                          show_archived=request.args.get("show_archived") == "1")
     except ValueError:
         return _json_response({
             "error": "a valid Engram or File Library item id is required",
@@ -15491,6 +15882,41 @@ def library_preview():
         _library_hydrate_returned_engram_access([row])
     preview = row["preview"]
     identity = str(raw.get("identity") or "").strip()
+    if source == "dialogues":
+        if preview.get("available") is not True:
+            return _json_response({"error": "this Dialogue has no admitted readable exchanges"}, 409)
+        connection = None
+        try:
+            archive_id = _browser_decode_source_id("archive", identity)
+            incomplete = False
+            if archive_id:
+                if request.args.get("show_archived") != "1":
+                    raise PermissionError
+                connection = _library_archive_connection()
+                turns, incomplete = _library_archive_turns(connection, archive_id)
+            else:
+                from conversation_memory import (read_conversation_history_envelope,
+                    resolve_effective_conversation_history, filter_conversation_history_for_tag)
+                envelope = read_conversation_history_envelope(identity)
+                if envelope is None:
+                    raise LookupError
+                history = resolve_effective_conversation_history(identity, _parsed_target_envelope=envelope)
+                admitted = filter_conversation_history_for_tag(history or [], "")
+                turns = [{"role": turn["role"], "content": turn["content"]} for turn in admitted
+                         if turn.get("role") in {"user", "assistant"} and isinstance(turn.get("content"), str)]
+            if not turns:
+                raise PermissionError
+            # The shared 4 MiB bound limits formatting, not admitted source
+            # delivery. The reader preserves larger turns as labelled literal text.
+            response = _json_response({"id": item_id, "source": source, "turns": turns,
+                "incomplete": incomplete, "reason": "some indexed exchanges are unavailable" if incomplete else None})
+            response.headers["Cache-Control"] = "no-store"
+            return response
+        except (OSError, ValueError, LookupError, PermissionError):
+            return _json_response({"error": "Dialogue reading authority is no longer available"}, 409)
+        finally:
+            if connection is not None:
+                connection.close()
     if preview.get("kind") == "visual":
         if (source != "files" or preview.get("available") is not True
                 or not identity):
@@ -15509,7 +15935,7 @@ def library_preview():
                     "type, and size validation"
                 ),
             }, status=409)
-        return _json_response({
+        response = _json_response({
             "id": item_id,
             "source": source,
             "image": {
@@ -15517,6 +15943,8 @@ def library_preview():
                 "data": base64.b64encode(image).decode("ascii"),
             },
         })
+        response.headers["Cache-Control"] = "no-store"
+        return response
     if (preview.get("kind") != "text" or preview.get("available") is not True
             or not identity):
         return _json_response({
@@ -15577,7 +16005,9 @@ def library_preview():
             "error": "text preview is unavailable after current authority validation",
         }, status=409)
 
-    return _json_response({"id": item_id, "source": source, "text": text})
+    response = _json_response({"id": item_id, "source": source, "text": text})
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 def _library_edit_target(item_id: str) -> tuple[str, str]:

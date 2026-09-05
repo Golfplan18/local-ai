@@ -74,6 +74,44 @@ class SchedulerBoundaryTests(unittest.TestCase):
         self.assertTrue(event_dispatcher._actionable(
             "/Users/example/Documents/vault/Engrams/exact.md"))
 
+    def test_relationship_refresh_receives_deleted_paths_without_changing_existing_dispatch_consumers(self):
+        from orchestrator.tools.relationship_graph import RelationshipGraph
+        with tempfile.TemporaryDirectory() as temp:
+            vault = Path(temp, "vault")
+            vault.mkdir()
+            deleted = str(vault / "Deleted.md")
+            existing = vault / "Kept.md"
+            existing.write_text("# Kept\n")
+            hidden = str(vault / ".git" / "HEAD")
+            sweeps = mock.Mock(return_value=[])
+            triggers = mock.Mock()
+            triggers.dispatch_paths.return_value = {"fired": [], "errors": []}
+            inert = {
+                "oversight_events": SimpleNamespace(emit=lambda _event: None),
+                "ped_watcher": SimpleNamespace(sweep=sweeps),
+                "corpus_watcher": SimpleNamespace(sweep=sweeps),
+                "workflow_spec_sweeper": SimpleNamespace(sweep=sweeps),
+                "revisit_sweeper": SimpleNamespace(sweep=sweeps, register_age_review_deadlines=lambda: []),
+            }
+            with (
+                mock.patch.dict("sys.modules", inert),
+                mock.patch.object(event_dispatcher._rp, "VAULT_STR", str(vault)),
+                mock.patch.object(event_dispatcher._rp, "DATA_DIR_STR", str(Path(temp, "data"))),
+                mock.patch.object(event_dispatcher._rp, "ORA_HOME", Path(temp, "runtime")),
+                mock.patch("orchestrator.triggers.service", return_value=triggers),
+                mock.patch.object(RelationshipGraph, "refresh_paths", return_value={"errors": []}) as refresh,
+            ):
+                result = event_dispatcher.dispatch_paths({deleted, str(existing), hidden})
+                refresh.assert_called_once_with({deleted, str(existing)})
+                ordinary = {str(Path(deleted).resolve()), str(existing.resolve())}
+                triggers.dispatch_paths.assert_called_once_with(ordinary)
+                self.assertEqual(sweeps.call_count, 4)
+                self.assertEqual(result["paths"], sorted(ordinary))
+                refresh.side_effect = RuntimeError("fixture graph unavailable")
+                result = event_dispatcher.dispatch_paths({deleted})
+                self.assertTrue(any("fixture graph unavailable" in error for error in result["errors"]))
+                self.assertEqual(sweeps.call_count, 8)
+
     def test_artifact_classification_is_top_level_and_scope_bound(self):
         with (
             mock.patch.object(event_dispatcher._rp, "VAULT_STR", "/vault"),
@@ -1665,6 +1703,27 @@ class MirrorExclusionTests(unittest.TestCase):
         self.assertEqual(result["paths"], [])
         self.assertIsNone(result["operational_hook"],
                           "a mirror refresh must not run the sync pipeline")
+
+    def test_relationship_mirror_observation_does_not_dispatch_existing_mirror_consumers(self):
+        from orchestrator.tools.relationship_graph import read_relationship_snapshot
+        article = self.vault / "MSI News" / "article.md"
+        article.write_text("---\nrelationships:\n  - target: Neighbor\n    type: supports\n---\n# Article\n")
+        data = Path(self.temp.name, "data")
+        service = mock.Mock()
+        service.dispatch_paths.return_value = {"fired": [], "errors": []}
+        with (
+            mock.patch.object(event_dispatcher._rp, "DATA_DIR_STR", str(data)),
+            mock.patch.object(event_dispatcher._rp, "ORA_HOME", Path(self.temp.name, "runtime")),
+            mock.patch("orchestrator.triggers.service", return_value=service),
+            mock.patch.object(event_dispatcher.subprocess, "run") as hook,
+        ):
+            result = event_dispatcher.dispatch_paths({str(article)})
+        self.assertEqual(result["paths"], [])
+        service.dispatch_paths.assert_called_once_with(set())
+        hook.assert_not_called()
+        self.assertEqual(result["ped_events"], 0)
+        snapshot = read_relationship_snapshot({"article"}, db_path=data / "relationship-graph.db", vault_path=self.vault)
+        self.assertEqual(snapshot["edges"], [{"source": "article", "target": "Neighbor", "type": "supports", "confidence": "medium"}])
 
 
 class EventRecordFormatTests(unittest.TestCase):

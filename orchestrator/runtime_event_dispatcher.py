@@ -139,6 +139,25 @@ def dispatch_paths(paths: set[str]) -> dict:
     """Dispatch one coalesced set of exact changed paths."""
     from oversight_events import emit
 
+    # Graph scope includes deletion and the root mirror. Other consumers keep
+    # their existing actionable set; a graph-only event never runs the hook.
+    graph_result = None
+    graph_errors = []
+    try:
+        from orchestrator.tools.relationship_graph import RelationshipGraph, _eligible_relative
+        graph_paths = {str(Path(path).absolute()) for path in paths
+                       if _eligible_relative(Path(path), Path(_rp.VAULT_STR)) is not None}
+        if graph_paths:
+            graph = RelationshipGraph(
+                db_path=str(Path(_rp.DATA_DIR_STR) / "relationship-graph.db"),
+                vault_path=_rp.VAULT_STR)
+            try:
+                graph_result = graph.refresh_paths(graph_paths)
+                graph_errors.extend(f"relationships: {error}" for error in graph_result.get("errors", []))
+            finally:
+                graph.close()
+    except Exception as exc:
+        graph_errors.append(f"relationships: {exc}")
     paths = {str(Path(path).resolve()) for path in paths if _actionable(path)}
 
     existing_markdown = {
@@ -156,7 +175,8 @@ def dispatch_paths(paths: set[str]) -> dict:
         "ped_events": 0, "corpus_events": 0,
         "workflow_checked": False, "revisit_checked": False,
         "resources_checked": False, "operational_hook": None,
-        "triggers_fired": [], "errors": [],
+        "triggers_fired": [], "errors": graph_errors,
+        "relationships": graph_result,
     }
 
     # User-authored file-change Triggers. Guarded like its six siblings: one
@@ -294,7 +314,7 @@ def run(stop_event: threading.Event) -> None:
     if not roots:
         raise RuntimeError("runtime event dispatcher has no existing watch root")
     for changes in watch(*roots, stop_event=stop_event, debounce=500, step=100):
-        paths = {path for _change, path in changes if _actionable(path)}
+        paths = {path for _change, path in changes}
         if not paths:
             continue
         summary = dispatch_paths(paths)

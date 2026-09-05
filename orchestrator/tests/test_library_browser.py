@@ -1227,6 +1227,8 @@ class TestLibraryBrowser(unittest.TestCase):
                 mock.patch.object(
                     server.os, "access", side_effect=returned_row_access,
                 ),
+                mock.patch.object(server, "_library_dialogue_provider", return_value={"rows": [], "complete": True}),
+                mock.patch.object(server, "_library_file_provider", return_value={"rows": [], "complete": True}),
                 server.app.test_client() as client,
             ):
                 page_response = client.get(
@@ -1249,8 +1251,9 @@ class TestLibraryBrowser(unittest.TestCase):
             )
             page_row = page_payload["rows"][0]
             self.assertEqual(
-                page_row["provenance"]["identity"], str(engram_path.resolve()),
+                page_row["preview"]["locator"]["path"], str(engram_path.resolve()),
             )
+            self.assertFalse(page_row["provenance"]["available"])
             self.assertTrue(page_row["preview"]["available"])
             self.assertTrue(page_row["editability"]["available"])
             self.assertFalse(page_row["editability"]["editable"])
@@ -2202,6 +2205,7 @@ class TestLibraryBrowser(unittest.TestCase):
             "dialogues": fixtures["dialogues"],
             "engrams": fixtures["engrams"],
         }
+        fixtures["engrams"]["rows"][0]["identity"] = "/fixture/engram.md"
         with (
             mock.patch.object(
                 server, "_library_dialogue_provider",
@@ -2211,7 +2215,7 @@ class TestLibraryBrowser(unittest.TestCase):
             ) as dialogue_provider,
             mock.patch.object(
                 server, "_library_engram_provider",
-                side_effect=lambda query="": (
+                side_effect=lambda query="", **_kwargs: (
                     searched["engrams"] if query else fixtures["engrams"]
                 ),
             ) as engram_provider,
@@ -2219,6 +2223,11 @@ class TestLibraryBrowser(unittest.TestCase):
                 server, "_library_file_provider",
                 return_value=fixtures["files"],
             ) as file_provider,
+            mock.patch.object(server, "_browser_chroma_exact_rows", return_value=[{
+                "conversation_id": server._browser_encode_source_id("engram", "/fixture/engram.md"),
+            }]),
+            mock.patch.object(server, "_browser_chroma_fuzzy_rows", return_value=[]),
+            mock.patch.object(server, "_library_archive_connection", return_value=mock.Mock()) as snapshot_connection,
             server.app.test_client() as client,
         ):
             response = client.get(
@@ -2271,8 +2280,10 @@ class TestLibraryBrowser(unittest.TestCase):
             }],
         )
         dialogue_provider.assert_any_call("budget forecast")
-        engram_provider.assert_any_call("budget forecast")
-        self.assertEqual(file_provider.call_count, 2)
+        self.assertEqual(engram_provider.call_count, 3)
+        self.assertEqual(engram_provider.call_args_list[:2], [mock.call(), mock.call()])
+        self.assertIs(engram_provider.call_args.kwargs["snapshot_connection"], snapshot_connection.return_value)
+        self.assertEqual(file_provider.call_count, 3)
 
     def test_creation_browser_preserves_repeated_included_context(self):
         server = _server_module()
@@ -2338,6 +2349,277 @@ class TestLibraryBrowser(unittest.TestCase):
             ["dialogue-a", engram_ref],
         )
         self.assertEqual(payload["total"], 2)
+
+
+class TestLibraryCompletion(unittest.TestCase):
+    def test_retained_nested_fork_preview_preserves_attribution_privacy_and_files(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        server = _server_module()
+        import conversation_memory as memory
+        def pair(text, privacy="standard"):
+            return [{"role": "user", "content": text, "turn_privacy": privacy, "secret_extra": "not returned"},
+                    {"role": "assistant", "content": "answer " + text, "turn_privacy": privacy}]
+        large_text = "## Complete large source\n" + "λ" * (1024 * 1024) + "\nFinal source line"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bodies = {
+                "parent": {"messages": pair("parent public") + pair("later parent")},
+                "child": {"parent_conversation_id": "parent", "fork_point_message_count": 2, "messages": pair("child public") + pair("later child")},
+                "nested": {"parent_conversation_id": "child", "fork_point_message_count": 2,
+                    "messages": pair("local public") + pair("SECRET", "private") + pair("UNKNOWN", None)
+                        + [{"role": "assistant", "content": "ORPHAN", "turn_privacy": "standard"}]},
+                "large": {"messages": pair(large_text) + pair("SECRET", "private") + pair("UNKNOWN", None)},
+            }
+            before = {}
+            for identity, body in bodies.items():
+                path = root / identity / "conversation.json"
+                path.parent.mkdir()
+                path.write_text(json.dumps({"conversation_id": identity, "project_ids": ["commons"], **body}))
+                before[path] = path.read_bytes()
+            raw = _row("nested", "Nested", tag="", modified_at="2026-09-01")
+            raw["metadata"].update(item_type="dialogue", content_type="application/x-ora-dialogue")
+            large_raw = {**raw, "identity": "large", "title": "Large Dialogue"}
+            with mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT", root), \
+                 mock.patch.object(server, "_library_dialogue_provider", return_value={"rows": [raw, large_raw], "complete": True}), \
+                 mock.patch.object(server, "_library_engram_provider", side_effect=AssertionError("wrong inventory")), \
+                 mock.patch.object(server, "_library_file_provider", side_effect=AssertionError("wrong inventory")):
+                client = server.app.test_client()
+                item_id = stable_item_id("dialogues", "nested")
+                response = client.get('/api/library/preview', query_string={"id": item_id})
+                self.assertEqual(response.status_code, 200)
+                payload = response.get_json()
+                self.assertEqual([turn["content"] for turn in payload["turns"]],
+                    ["parent public", "answer parent public", "child public", "answer child public", "local public", "answer local public"])
+                self.assertTrue(all(set(turn) == {"role", "content"} for turn in payload["turns"]))
+                self.assertEqual(response.headers['Cache-Control'], 'no-store')
+                self.assertNotIn("SECRET", str(payload))
+                self.assertNotIn("ORPHAN", str(payload))
+                self.assertEqual(client.get('/api/library/edit', query_string={"id": item_id}).status_code, 400)
+                self.assertEqual(client.get('/api/library/preview?id=' + item_id + '&id=' + item_id).status_code, 400)
+                large_response = client.get('/api/library/preview', query_string={"id": stable_item_id("dialogues", "large")})
+                self.assertEqual(large_response.status_code, 200)
+                large_turns = large_response.get_json()["turns"]
+                self.assertEqual(large_turns, [{"role": "user", "content": large_text},
+                                             {"role": "assistant", "content": "answer " + large_text}])
+                self.assertTrue(all(len(turn["content"].encode("utf-8")) < 4 * 1024 * 1024 for turn in large_turns))
+                self.assertGreater(sum(len(turn["content"].encode("utf-8")) for turn in large_turns), 4 * 1024 * 1024)
+                self.assertEqual(large_response.headers['Cache-Control'], 'no-store')
+            self.assertEqual({path: path.read_bytes() for path in before}, before)
+
+    def test_read_only_file_metadata_categories_and_explicit_relationships_are_optional(self):
+        import tempfile
+        from pathlib import Path
+        from orchestrator import project_meta
+        server = _server_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            note = root / 'Research.md'
+            note.write_text('---\ntype: paper\ntags: [read, kept]\nnexus: [ora]\nrelationships:\n  - type: supports\n    target: "[[Reference]]"\n    confidence: high\n---\nBODY MUST NOT BE SEARCHED\n')
+            reference = root / 'Reference.md'
+            reference.write_text('---\ntype: note\n---\nReference body\n')
+            note.chmod(0o444)
+            project = {"nexus": "ora", "folder_name": "Ora", "library_file_categories": [{"id": "papers", "label": "Research papers", "match": {"type": "paper", "tags": ["read", "kept"]}}], "library_category_warnings": ["Invalid category omitted"]}
+            inventory = {"exists": True, "complete": True, "total": 2, "offset": 0, "next_offset": None,
+                "files": [{"abs_path": str(path), "name": path.name, "rel_path": path.name} for path in (note, reference)]}
+            with mock.patch.object(project_meta, "list_project_meta", return_value=[project]), \
+                 mock.patch.object(project_meta, "list_project_files", return_value=inventory), \
+                 mock.patch.object(server.os, "access", side_effect=lambda path, mode: mode == server.os.R_OK), \
+                 mock.patch.object(server, "_browser_read_frontmatter_metadata", wraps=server._browser_read_frontmatter_metadata) as read_metadata:
+                provider = server._library_file_provider()
+                self.assertEqual(read_metadata.call_count, 2)
+                server._library_join_provenance({"files": provider})
+                payload = build_browser_response({"files": provider}, requested_sources=["files"], refinements={"category": "ora:papers", "file_type": "paper"})
+                self.assertEqual(payload["total"], 1)
+                row = payload["rows"][0]
+                self.assertFalse(row["editability"]["editable"])
+                self.assertEqual(row["metadata"]["item_type"], "file")
+                self.assertEqual(row["metadata"]["file_type"], "paper")
+                self.assertEqual(payload["facets"]["category"]["labels"]["ora:papers"], "Research papers")
+                self.assertNotIn("BODY MUST", str(payload))
+                self.assertTrue(any(summary.get("origin") == "explicit-metadata" for summary in row["relationships"]["summaries"]))
+                self.assertIn("Invalid category", row["provenance"]["details"]["category_warning"])
+
+    def test_full_universe_refinements_and_failed_relationship_filter_preserve_inventory(self):
+        rows = [_row(str(index), f"File {index}", tag="kept", modified_at="2026-09-01") for index in range(52)]
+        for row in rows:
+            row["metadata"].update(item_type="file", file_type="paper", tags=["kept", "read"])
+        rows[-1]["metadata"].update(tags=None, file_type=None)
+        providers = {"files": {"rows": rows, "complete": True}}
+        payload = build_browser_response(providers, requested_sources=["files"], limit=1,
+            refinements={"tag": ["kept", "read"], "file_type": "paper", "date_from": "2026-09-01", "date_to": "2026-09-01"})
+        self.assertEqual(payload["total"], 51)
+        self.assertEqual(payload["facets"]["file_type"]["counts"], {"paper": 51})
+        self.assertEqual(payload["refinements"]["file_type"]["unknown_count"], 1)
+        rows[0]["relationships"]["state"] = "unavailable"
+        payload = build_browser_response(providers, requested_sources=["files"], refinements={"relationship": "supports"})
+        self.assertEqual(payload["total"], 52)
+        self.assertFalse(payload["refinements"]["relationship"]["available"])
+        for refinements in ({"date_from": "2026-02-30"}, {"privacy": "guess"}):
+            with self.assertRaises(LibraryBrowserError):
+                build_browser_response(providers, refinements=refinements)
+
+    def test_provenance_preserves_multiple_proven_sources_and_inherits_only_admitted_projects(self):
+        server = _server_module()
+        dialogue = _row("d-1", "Public Dialogue", tag="", modified_at="2026-09-01")
+        dialogue["metadata"]["project_ids"] = ["source-project"]
+        file = _row("/fixture/Paper.md", "Paper", tag="", modified_at="2026-09-01")
+        engram = _row("/fixture/Claim.md", "Claim", tag="", modified_at="2026-09-01")
+        engram["_provenance_candidates"] = [{"source_file": "d-1", "source_document": '["[[Paper]]", "hidden-source"]', "source_turn_index": 3}]
+        providers = {"dialogues": {"rows": [dialogue]}, "files": {"rows": [file]}, "engrams": {"rows": [engram], "complete": True}}
+        server._library_join_provenance(providers)
+        payload = build_browser_response(providers, requested_sources=["engrams"], project_id="source-project",
+            refinements={"provenance_id": stable_item_id("dialogues", "d-1")})
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(len(payload["rows"][0]["provenance"]["sources"]), 2)
+        self.assertNotIn("hidden-source", str(payload))
+        self.assertIn("unresolved", payload["rows"][0]["provenance"]["reason"])
+
+    def test_trace_49_50_51_expansion_directions_pair_edges_and_private_non_disclosure(self):
+        for count in (49, 50, 51):
+            with self.subTest(count=count):
+                rows = []
+                for index in range(count + 1):
+                    row = _row(f"/fixture/N{index}.md", f"N{index}", tag="kept", modified_at="2026-09-01")
+                    row["metadata"]["item_type"] = "engram"
+                    row["_relationship_identity"] = f"N{index}"
+                    rows.append(row)
+                edges = [{"source": "N0", "target": f"N{index}", "type": ("supports", "extends", "requires", "parent", "custom")[index % 5], "confidence": ("high", ".8", "low", "nan")[index % 4]} for index in range(1, count + 1)]
+                edges += [{"source": "N1", "target": "N0", "type": "contradicts", "confidence": "medium"},
+                          {"source": "N1", "target": "N2", "type": "enables", "confidence": "high"},
+                          {"source": "N0", "target": "SECRET", "type": "supports", "confidence": "high"}]
+                calls = []
+                def resolve(identities):
+                    calls.append(identities)
+                    return {"state": "fresh", "edges": [edge for edge in edges if edge["source"] in identities or edge["target"] in identities]}
+                providers = {"engrams": {"rows": rows, "complete": True}, "files": {"rows": [dict(_row("/fixture/SECRET.md", "File", tag="", modified_at="2026-09-01"), _relationship_identity="SECRET")], "complete": True}}
+                selected = stable_item_id("engrams", "/fixture/N0.md")
+                payload = build_browser_response(providers, trace_id=selected, relationship_resolver=resolve, limit=1)
+                trace = payload["trace"]
+                self.assertEqual(trace["total_neighbors"], count)
+                self.assertEqual(len(trace["rows"]), min(count, 50) + 1)
+                self.assertEqual(trace["remaining"], max(0, count - 50))
+                self.assertNotIn("SECRET", str(trace))
+                expanded = build_browser_response(providers, trace_id=selected, trace_limit=100, relationship_resolver=resolve)["trace"]
+                self.assertEqual(len(expanded["rows"]), count + 1)
+                self.assertEqual(expanded["remaining"], 0)
+                self.assertTrue(any(edge["type"] == "enables" for edge in expanded["edges"]))
+                self.assertTrue(any(edge["family"] == "unclassified" for edge in expanded["edges"]))
+                self.assertTrue(all(len(call) <= count + 1 for call in calls))
+
+    def test_stream_is_finite_qualified_and_final_equals_json_with_failures_visible(self):
+        import json
+        import copy
+        server = _server_module()
+        with mock.patch.object(server, "_library_dialogue_provider", side_effect=lambda *a, **k: {"rows": [copy.deepcopy(_row("d1", "Dialogue", tag="kept", modified_at="2026-09-01"))], "complete": True}) as dialogues, \
+             mock.patch.object(server, "_library_engram_provider", side_effect=lambda *a, **k: {"rows": [], "complete": True}) as engrams, \
+             mock.patch.object(server, "_library_file_provider", side_effect=OSError("fixture unavailable")), \
+             mock.patch.object(server, "_library_resolve_relationships", return_value={"state": "unavailable"}):
+            client = server.app.test_client()
+            response = client.get('/api/library/browser?stream=1&tag=kept', buffered=False)
+            iterator = iter(response.response)
+            first = json.loads(next(iterator))
+            self.assertFalse(first["final"])
+            self.assertEqual(first["data"]["total"], 1)
+            self.assertFalse(first["data"]["universe"]["complete"])
+            self.assertEqual(engrams.call_count, 0)
+            frames = [first] + [json.loads(value) for value in iterator]
+            self.assertTrue(frames[-1]["final"])
+            self.assertEqual(dialogues.call_count, 1)
+            self.assertEqual(engrams.call_count, 1)
+            self.assertIn("files", frames[-1]["data"]["progress"]["failed_sources"])
+            normal = client.get('/api/library/browser?tag=kept').get_json()
+            self.assertEqual(frames[-1]["data"], normal)
+            response.close()
+
+    def test_indexed_archive_admission_pair_attribution_opt_in_and_read_only(self):
+        import sqlite3
+        server = _server_module()
+        connection = sqlite3.connect(':memory:')
+        connection.executescript("CREATE TABLE collections(id TEXT,name TEXT); CREATE TABLE segments(id TEXT,collection TEXT); CREATE TABLE embeddings(id INTEGER,segment_id TEXT,embedding_id TEXT); CREATE TABLE embedding_metadata(id INTEGER,key TEXT,string_value TEXT,int_value INTEGER,float_value REAL,bool_value INTEGER); INSERT INTO collections VALUES('c','conversations'); INSERT INTO segments VALUES('s','c');")
+        def add(index, source, privacy, text):
+            connection.execute('INSERT INTO embeddings VALUES(?,?,?)', (index, 's', str(index)))
+            for key, value in {'conversation_id': source, 'turn_privacy': privacy, 'chroma:document': text, 'timestamp_utc': '2026-09-01', 'pair_num': str(index)}.items():
+                connection.execute('INSERT INTO embedding_metadata(id,key,string_value) VALUES(?,?,?)', (index, key, value))
+        add(1, 'historical', 'standard', '# SECRET HEADER\n\n## Exchange\n\n### User input\n\n  public question  \n\n### Assistant response\n\npublic answer')
+        add(2, 'historical', 'private', '**User:**\nSECRET\n**Assistant:**\nSECRET')
+        add(3, 'bad', 'standard', '**User:**\norphan')
+        add(4, 'duplicate', 'standard', '**User:**\nu\n**Assistant:**\na\n**Assistant:**\nwrong')
+        add(5, 'retained', 'standard', '**User:**\nretained\n**Assistant:**\na')
+        with mock.patch.object(server, '_browser_physical_collection', return_value='conversations'):
+            provider = server._library_archive_provider(retained_ids={'retained'}, connection=connection)
+            self.assertFalse(provider['complete'])
+            self.assertEqual(len(provider['rows']), 3)
+            good = next(row for row in provider['rows'] if row['preview']['available'])
+            self.assertEqual(good['metadata']['lifecycle'], 'indexed_archive')
+            self.assertFalse(good['editability']['editable'])
+            turns, incomplete = server._library_archive_turns(connection, 'historical')
+            self.assertFalse(incomplete)
+            self.assertEqual(turns, [{'role': 'user', 'content': '  public question  '}, {'role': 'assistant', 'content': 'public answer'}])
+            self.assertNotIn('SECRET', str(provider))
+            self.assertNotIn('retained', str(provider))
+            self.assertIsNone(server._library_archive_pair('**User:**\nu\n**Assistant:**\na\n**User:**\nfake'))
+            add(6, 'historical', None, '**User:**\nUNKNOWN\n**Assistant:**\nUNKNOWN')
+            turns, incomplete = server._library_archive_turns(connection, 'historical')
+            self.assertTrue(incomplete)
+            self.assertNotIn('UNKNOWN', str(turns))
+        connection.close()
+
+    def test_archived_engram_opt_in_is_consistent_for_inventory_preview_and_not_edit(self):
+        import json
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+        from orchestrator import embedding
+        server = _server_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            note = root / 'Historical.md'
+            note.write_text('---\ntype: engram\ntags: [archived]\n---\nHistorical body\n')
+            alias = root / 'IndexedAlias.md'
+            alias.symlink_to(note)
+            database = root / 'chroma.sqlite3'
+            con = sqlite3.connect(database)
+            con.executescript("CREATE TABLE databases(id TEXT,name TEXT,tenant_id TEXT); CREATE TABLE collections(id TEXT,name TEXT,database_id TEXT); CREATE TABLE segments(id TEXT,collection TEXT,scope TEXT,type TEXT); CREATE TABLE embeddings(id INTEGER PRIMARY KEY,segment_id TEXT,embedding_id TEXT); CREATE TABLE embedding_metadata(id INTEGER,key TEXT,string_value TEXT,int_value INTEGER,float_value REAL,bool_value INTEGER,PRIMARY KEY(id,key)); CREATE TABLE embedding_metadata_array(id INTEGER,key TEXT,string_value TEXT,int_value INTEGER,float_value REAL,bool_value INTEGER); INSERT INTO databases VALUES('d','default_database','default_tenant'); INSERT INTO collections VALUES('c','knowledge','d'); INSERT INTO segments VALUES('s','c','METADATA','urn:chroma:segment/metadata/sqlite'); INSERT INTO embeddings VALUES(1,'s','chunk');")
+            con.executemany('INSERT INTO embedding_metadata(id,key,string_value) VALUES(1,?,?)', [('path', str(alias)), ('type', 'engram'), ('title', 'Historical'), ('tags', '["archived"]'), ('chroma:document', 'Historical body')])
+            con.execute('CREATE VIRTUAL TABLE embedding_fulltext_search USING fts5(string_value)')
+            con.execute('INSERT INTO embedding_fulltext_search(rowid,string_value) VALUES(1,?)', ('Historical body',))
+            con.commit(); con.close()
+            before = database.read_bytes()
+            with mock.patch.object(server.rp, 'chromadb_dir', return_value=root), \
+                 mock.patch.object(embedding, 'resolve_collection', return_value='knowledge'), \
+                 mock.patch.object(server, '_library_dialogue_provider', return_value={'rows': [], 'complete': True}), \
+                 mock.patch.object(server, '_library_file_provider', return_value={'rows': [], 'complete': True}), \
+                 mock.patch.object(server, '_library_resolve_relationships', return_value={'state': 'unavailable'}):
+                client = server.app.test_client()
+                self.assertEqual(client.get('/api/library/browser?source=engrams').get_json()['total'], 0)
+                payload = client.get('/api/library/browser?source=engrams&show_archived=1').get_json()
+                self.assertEqual(payload['total'], 1)
+                row = payload['rows'][0]
+                self.assertEqual(row['metadata']['lifecycle'], 'archived')
+                self.assertFalse(row['editability']['editable'])
+                archive_frames = [json.loads(line) for line in client.get(
+                    '/api/library/browser?source=dialogues&show_archived=1&stream=1').data.splitlines()]
+                self.assertEqual(archive_frames[0]['data']['progress']['pending_sources'], ['dialogues'])
+                self.assertEqual(archive_frames[-1]['data']['progress']['pending_sources'], [])
+                with mock.patch.object(server, '_browser_chroma_exact_rows', wraps=server._browser_chroma_exact_rows) as exact, \
+                     mock.patch.object(server, '_browser_chroma_fuzzy_rows', wraps=server._browser_chroma_fuzzy_rows) as fuzzy:
+                    searched = client.get('/api/library/browser?source=engrams&show_archived=1&q=Historical').get_json()
+                    self.assertEqual([item['id'] for item in searched['rows']], [row['id']])
+                    self.assertTrue(searched['universe']['complete'])
+                    exact_knowledge = [call for call in exact.call_args_list if call.kwargs['logical_collection'] == 'knowledge'][0]
+                    fuzzy_knowledge = [call for call in fuzzy.call_args_list if call.kwargs['logical_collection'] == 'knowledge'][0]
+                    self.assertEqual(exact_knowledge.kwargs['admitted_paths'], {str(alias)})
+                    self.assertIs(exact_knowledge.kwargs['connection'], fuzzy_knowledge.kwargs['connection'])
+                    with self.assertRaises(sqlite3.ProgrammingError):
+                        exact_knowledge.kwargs['connection'].execute('SELECT 1')
+                self.assertEqual(client.get('/api/library/preview', query_string={'id': row['id']}).status_code, 404)
+                preview = client.get('/api/library/preview', query_string={'id': row['id'], 'show_archived': '1'})
+                self.assertEqual(preview.status_code, 200)
+                self.assertEqual(preview.get_json()['text'], 'Historical body\n')
+                self.assertEqual(client.get('/api/library/edit', query_string={'id': row['id']}).status_code, 404)
+            self.assertEqual(database.read_bytes(), before)
 
 
 if __name__ == "__main__":

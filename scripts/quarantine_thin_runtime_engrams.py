@@ -151,8 +151,11 @@ def _delete_chroma_records(paths: list[Path], chromadb_path: Path) -> dict:
 
 
 def _delete_graph_rows(titles: list[str], graph_db: Path) -> dict:
+    from orchestrator.tools.relationship_graph import invalidate_relationship_coverage
+
     connection = sqlite3.connect(graph_db)
     try:
+        connection.execute("BEGIN IMMEDIATE")
         connection.execute(
             "CREATE TEMP TABLE quarantine_titles (title TEXT PRIMARY KEY)"
         )
@@ -170,10 +173,7 @@ def _delete_graph_rows(titles: list[str], graph_db: Path) -> dict:
         cursor = connection.execute(
             f"DELETE FROM relationships WHERE {predicate}"
         )
-        connection.execute(
-            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-            ("last_update_complete", "0"),
-        )
+        invalidate_relationship_coverage(connection, "quarantine graph cleanup requires canonical repair")
         connection.commit()
         return {"matched": before, "deleted": cursor.rowcount}
     finally:

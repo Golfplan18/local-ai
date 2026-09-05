@@ -95,6 +95,7 @@ var dom = new jsdom.JSDOM(
 
 var w = dom.window;
 w.TextEncoder = require('node:util').TextEncoder;
+w.TextDecoder = require('node:util').TextDecoder;
 w.ShadowRoot.prototype.getSelection = function () { return w.getSelection(); };
 // jsdom does not implement the browser's contenteditable inheritance getter.
 Object.defineProperty(w.HTMLElement.prototype, 'isContentEditable', { get: function () {
@@ -244,6 +245,7 @@ var queuedBrowserResponses = [];
 var libraryRequestUrls = [];
 var queuedLibraryResponses = [];
 var queuedPreviewResponses = [];
+var previewRequestUrls = [];
 var queuedEditResponses = [];
 var editRequests = [];
 var queuedRevealResponses = [];
@@ -431,6 +433,7 @@ w.fetch = function (url, opts) {
     return response(true, queuedEdit.payload || queuedEdit, queuedEdit.status);
   }
   if (decoded.indexOf('/api/library/preview?') === 0) {
+    previewRequestUrls.push(decoded);
     if (queuedPreviewResponses.length) {
       var queuedPreview = queuedPreviewResponses.shift();
       if (queuedPreview && queuedPreview.promise) {
@@ -453,6 +456,7 @@ w.fetch = function (url, opts) {
     libraryRequestUrls.push(decoded);
     if (queuedLibraryResponses.length) {
       var queuedLibrary = queuedLibraryResponses.shift();
+      if (queuedLibrary && queuedLibrary.stream) return Promise.resolve(queuedLibrary.stream);
       if (queuedLibrary && queuedLibrary.promise) {
         queuedLibrary.options = opts || {};
         return queuedLibrary.promise;
@@ -1116,15 +1120,18 @@ async function run() {
   var libraryTypeFilter = w.document.querySelector('[data-library-filter="type"]');
   var typeOptions = Array.from(libraryTypeFilter.options).map(function (option) { return option.value; });
   libraryTypeFilter.value = 'Dialogue';
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue, metadataDialogue], { item_type_counts: { Dialogue: 2 } }));
   libraryTypeFilter.dispatchEvent(new w.Event('change', { bubbles: true }));
-  record('Type filter exposes and positively matches authoritative item_type values only',
+  await flush(); await flush();
+  record('Type refinement asks the server to qualify the full universe before paging',
     typeOptions.indexOf('Dialogue') !== -1
       && typeOptions.indexOf('text/markdown') === -1
+      && new w.URL(libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href).searchParams.get('item_type') === 'Dialogue'
       && w.document.querySelectorAll('.library-list-row').length === 2);
-  queuedLibraryResponses.push(libraryPayload([contextEngram], {
-    total: 1,
-    source_counts: { dialogues: 0, engrams: 1, files: 0 },
-    item_type_counts: { Engram: 1 },
+  queuedLibraryResponses.push(libraryPayload([], {
+    total: 0,
+    source_counts: { dialogues: 0, engrams: 0, files: 0 },
+    item_type_counts: {},
   }));
   await w.OraLibraryWorkspace.refresh();
   await flush();
@@ -1146,7 +1153,11 @@ async function run() {
   }));
   await w.OraLibraryWorkspace.refresh();
   await flush();
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile], {
+    item_type_counts: { Dialogue: 2, Engram: 2, File: 1 },
+  }));
   w.document.querySelector('[data-library-command="clear-filters"]').click();
+  await flush(); await flush();
 
   var scopeAllRows = [
     visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
@@ -1172,7 +1183,9 @@ async function run() {
   await flush();
   await flush();
   libraryTypeFilter.value = 'Dialogue';
+  queuedLibraryResponses.push(libraryPayload(scopeMixedRows, { item_type_counts: { Dialogue: 2, Engram: 2 } }));
   libraryTypeFilter.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush(); await flush();
   partialGroupSelect.value = 'source';
   partialGroupSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
   var scopeSort = w.document.querySelector('[data-library-sort]');
@@ -2044,15 +2057,15 @@ async function run() {
     w.document.activeElement === w.document.querySelector('.library-relationships summary'));
 
   w.document.querySelector('[data-library-view="visual"]').click();
-  record('List and Visual share the pinned result through the native O without duplicating it',
+  record('List and Visual retain the pinned inventory node while the native O identifies it',
     w.OraLibraryWorkspace.getState().view === 'visual'
-      && w.document.querySelectorAll('.library-visual-node').length === 4
-      && !w.document.querySelector('[data-library-node-id="dialogues:metadata-only"]')
+      && w.document.querySelectorAll('.library-visual-node').length === 5
+      && !!w.document.querySelector('[data-library-node-id="dialogues:metadata-only"]')
       && w.document.getElementById('logo-o').getAttribute('aria-label').indexOf('Private Dialogue') !== -1);
   record('Visual invents no connector from relationship summaries without endpoints',
     w.document.querySelectorAll('.library-visual-connectors line').length === 0
       && w.document.querySelector('.library-visual-edge-state').textContent
-        .indexOf('privacy-safe Related locator') !== -1);
+        .indexOf('Related discovery stays below') !== -1);
 
   w.document.querySelector('[data-library-view="list"]').click();
   queuedRelatedResponses.push({
@@ -2097,18 +2110,14 @@ async function run() {
       && relatedParams.searchParams.get('conversations') === '1'
       && relatedParams.searchParams.get('engrams') === '1'
       && !relatedParams.searchParams.has('q'));
-  record('explicit Related endpoint authority draws from the live O and withholds semantic suggestions',
-    w.document.querySelectorAll('.library-visual-connectors line').length === 1
-      && w.document.querySelector('.library-visual-connectors line').dataset.relationshipType
-        .indexOf('direct-child') !== -1
-      && w.document.querySelectorAll('.library-visual-node--related').length === 1
-      && w.document.querySelector('.library-visual-edge-state').textContent
-        .indexOf('lacked edge authority') !== -1
+  record('Related arrival remains in disclosure without replacing inventory or acquiring graph connectors',
+    w.document.querySelectorAll('.library-visual-connectors line').length === 0
+      && w.document.querySelectorAll('.library-visual-node--related').length === 0
+      && w.document.querySelectorAll('.library-visual-node').length === 5
       && visualPlacementIsSafe());
-  w.document.querySelector('.library-visual-node--related').click();
-  record('related nodes are keyboard buttons with equivalent typed relationship disclosure',
-    w.document.querySelector('.library-visual-node--related').tagName === 'BUTTON'
-      && w.document.activeElement.dataset.relatedEndpointId === 'second-live'
+  w.OraLibraryWorkspace.activatePinned();
+  record('Related disclosure retains directional labels and keyboard access without graph admission',
+    w.document.activeElement.tagName === 'SUMMARY'
       && w.document.querySelector('.library-relationships').textContent.indexOf('outgoing direct-child') !== -1
       && w.document.querySelector('.library-relationships').textContent.indexOf('peer shared-project') !== -1
       && w.document.querySelector('.library-relationships').textContent.indexOf('family unavailable') !== -1
@@ -2585,6 +2594,183 @@ async function run() {
   record('Library Fork omits tag so the server inherits authoritative parent privacy',
     forkRequestBodies.length > 0
       && !Object.prototype.hasOwnProperty.call(forkRequestBodies[forkRequestBodies.length - 1], 'tag'));
+
+  // L1 completion: the same production controller consumes finite server snapshots.
+  function streamFixture() {
+    var controller;
+    var cancelled = false;
+    var body = new ReadableStream({ start(c) { controller = c; }, cancel() { cancelled = true; } });
+    return { stream: { ok: true, status: 200, headers: { get() { return 'application/x-ndjson'; } }, body: body },
+      send(frame) { controller.enqueue(new TextEncoder().encode(typeof frame === 'string' ? frame : JSON.stringify(frame) + '\n')); },
+      end() { controller.close(); }, cancelled() { return cancelled; } };
+  }
+  function frame(rows, final, options) {
+    var data = libraryPayload(rows, options);
+    data.progress = { final: final, pending_sources: final ? [] : ['files'], failed_sources: [] };
+    return { event: 'snapshot', stage: final ? 'final' : 'engrams', final: final, data: data };
+  }
+  var traceAnchor = libraryRow('engrams:TjA', 'engrams', 'Trace anchor', { metadata: { item_type: 'engram' } });
+  var traceNeighbor = libraryRow('engrams:TjE', 'engrams', 'Trace neighbor', { metadata: { item_type: 'engram' } });
+  var progressive = streamFixture();
+  queuedLibraryResponses.push(progressive);
+  var l1Requests = libraryRequestUrls.length;
+  w.OraLibraryWorkspace.open({ sources: ['engrams'], projectId: 'commons' });
+  await flush();
+  progressive.send(frame([traceAnchor], false));
+  await flush(); await flush();
+  record('a qualified progressive stage renders before final accounting and disables paging',
+    w.OraLibraryWorkspace.getState().loaded === 1 && !w.OraLibraryWorkspace.getState().universeComplete
+      && !w.OraLibraryWorkspace.getState().progressFinal && !w.document.querySelector('[data-library-command="load-more"]'));
+  w.document.querySelector('[data-library-view="visual"]').click();
+  await new Promise(function (resolve) { w.requestAnimationFrame(resolve); });
+  var earlyNode = w.document.querySelector('[data-library-node-id="' + traceAnchor.id + '"]');
+  var initialPosition = [earlyNode.style.left, earlyNode.style.top].join(':');
+  earlyNode.querySelector('input').checked = true;
+  earlyNode.querySelector('input').dispatchEvent(new w.Event('change', { bubbles: true }));
+  w.document.querySelector('[data-library-node-id="' + traceAnchor.id + '"] .library-visual-node__pin').click();
+  await flush(); await flush();
+  progressive.send(frame([traceNeighbor, traceAnchor], true));
+  progressive.end();
+  await flush(); await flush();
+  await new Promise(function (resolve) { w.requestAnimationFrame(resolve); });
+  var stableNode = w.document.querySelector('[data-library-node-id="' + traceAnchor.id + '"]');
+  record('pin, bulk selection and later snapshots retain the original Visual slot',
+    initialPosition === [stableNode.style.left, stableNode.style.top].join(':')
+      && w.OraLibraryWorkspace.getState().pinnedId === traceAnchor.id
+      && w.OraLibraryWorkspace.getState().selectedIds.includes(traceAnchor.id)
+      && w.OraLibraryWorkspace.getState().progressFinal);
+  w.OraLibraryWorkspace.open();
+  record('Sidebar focus-only open makes no duplicate request', libraryRequestUrls.length === l1Requests + 1);
+  var traceRows = [traceAnchor];
+  for (var neighborIndex = 1; neighborIndex <= 51; neighborIndex += 1) traceRows.push(libraryRow('engrams:T' + neighborIndex, 'engrams', 'Neighbor ' + neighborIndex, { metadata: { item_type: 'engram' } }));
+  var traceEdges = traceRows.slice(1, 51).map(function (row, index) { return {
+    source: traceAnchor.id, target: row.id, type: index % 2 ? 'requires' : 'supports', family: index % 2 ? 'causal' : 'evidence', confidence: index % 2 ? '0.7' : 'high',
+  }; });
+  var tracePayload = libraryPayload([traceAnchor, traceNeighbor]);
+  tracePayload.trace = { selected_id: traceAnchor.id, rows: traceRows.slice(0, 51), edges: traceEdges, total_neighbors: 51, remaining: 1, state: 'fresh', reason: null };
+  queuedLibraryResponses.push(tracePayload);
+  w.document.querySelector('[data-library-action="trace"]').click();
+  await flush(); await flush();
+  record('Trace exposes fifty distinct neighbors, direction, confidence and explicit remainder expansion',
+    w.document.querySelectorAll('[data-library-trace-neighbor]').length === 51
+      && w.document.querySelector('[data-library-trace-expand]').textContent.includes('1 more')
+      && w.document.querySelector('.library-trace').textContent.includes('confidence high')
+      && new w.URL(libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href).searchParams.get('trace_limit') === '50');
+  var tracedFrom = w.OraLibraryWorkspace.getState().traceId;
+  w.document.querySelectorAll('[data-library-trace-neighbor]')[1].click();
+  await flush();
+  record('reading a neighbor preserves the current Trace context', w.OraLibraryWorkspace.getState().traceId === tracedFrom
+    && w.OraLibraryWorkspace.getState().pinnedId === traceRows[1].id);
+  var expandedPayload = libraryPayload([traceAnchor]);
+  expandedPayload.trace = Object.assign({}, tracePayload.trace, { rows: traceRows, remaining: 0 });
+  queuedLibraryResponses.push(expandedPayload);
+  w.document.querySelector('[data-library-trace-expand]').click();
+  await flush(); await flush();
+  record('Trace expansion requests the next fifty and retains the selected neighbor',
+    new w.URL(libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href).searchParams.get('trace_limit') === '100'
+      && w.document.querySelectorAll('[data-library-trace-neighbor]').length === 52
+      && w.OraLibraryWorkspace.getState().pinnedId === traceRows[1].id);
+  var premature = streamFixture(); queuedLibraryResponses.push(premature);
+  var prematurePromise = w.OraLibraryWorkspace.refresh(); await flush();
+  premature.send(frame([traceAnchor], false)); premature.end(); await prematurePromise; await flush();
+  record('premature EOF keeps safe results and pin while making incompleteness and retry explicit',
+    w.OraLibraryWorkspace.getState().loaded > 0 && !w.OraLibraryWorkspace.getState().universeComplete
+      && w.OraLibraryWorkspace.getState().pinnedId === traceRows[1].id
+      && w.document.getElementById('libraryWorkspaceNotice').textContent.includes('without final accounting')
+      && !!w.document.querySelector('[data-library-command="retry"]'));
+  var malformedStream = streamFixture(); queuedLibraryResponses.push(malformedStream);
+  var malformedPromise = w.OraLibraryWorkspace.refresh(); await flush();
+  malformedStream.send('not JSON\n'); await malformedPromise; await flush();
+  record('malformed progress cancels its reader and retains safe rows', malformedStream.cancelled()
+    && w.OraLibraryWorkspace.getState().loaded > 0 && !w.OraLibraryWorkspace.getState().progressFinal);
+  var archiveDialogue = libraryRow('dialogues:aGlzdG9yeQ', 'dialogues', 'Historical Dialogue', {
+    metadata: { lifecycle: 'indexed_archive', item_type: 'dialogue', content_type: 'application/x-ora-dialogue' },
+  });
+  queuedLibraryResponses.push(libraryPayload([archiveDialogue]));
+  w.OraLibraryWorkspace.open({ sources: ['dialogues'], projectId: 'commons' });
+  await flush(); await flush();
+  var archiveToggle = w.document.querySelector('[data-library-archived]');
+  queuedLibraryResponses.push(libraryPayload([archiveDialogue])); archiveToggle.checked = true;
+  archiveToggle.dispatchEvent(new w.Event('change', { bubbles: true })); await flush(); await flush();
+  queuedPreviewResponses.push({ id: archiveDialogue.id, source: 'dialogues', turns: [
+    { role: 'user', content: '# Pretend Ora\n\nUser **source** text' }, { role: 'assistant', content: '# Pretend You\n\nAssistant source text' },
+  ] });
+  w.document.querySelector('[data-library-view="list"]').click();
+  w.document.querySelector('.library-list-row__pin').click(); await flush(); await flush();
+  record('Dialogue preview uses fixed external speaker labels and never turns archive reading into Edit or activation',
+    Array.from(w.document.querySelectorAll('[data-library-speaker]')).map(function (node) { return node.textContent; }).join(',') === 'You,Ora'
+      && w.document.querySelectorAll('.library-dialogue-turn').length === 2
+      && !w.document.querySelector('[data-library-edit="start"]')
+      && !w.document.querySelector('[data-library-action="continue"]')
+      && new w.URL(previewRequestUrls[previewRequestUrls.length - 1], w.location.href).searchParams.get('show_archived') === '1'
+      && w.document.querySelector('.library-preview-layer--findings').textContent.includes('read-only'));
+  var largeDialogueSource = '## Complete literal source\n' + 'x'.repeat(2 * 1024 * 1024) + '\nFinal source line';
+  var originalDialogueSurface = w.OraDocumentSurface;
+  var largeDialogueRenderCalls = 0;
+  w.OraDocumentSurface = Object.assign({}, originalDialogueSurface, { renderRead: function (options) {
+      largeDialogueRenderCalls += 1;
+      return originalDialogueSurface.renderRead(options);
+    } });
+  queuedPreviewResponses.push({ id: archiveDialogue.id, source: 'dialogues', turns: [
+    { role: 'user', content: largeDialogueSource }, { role: 'assistant', content: largeDialogueSource },
+  ] });
+  queuedLibraryResponses.push(libraryPayload([archiveDialogue]));
+  await w.OraLibraryWorkspace.refresh(); await flush(); await flush();
+  w.OraDocumentSurface = originalDialogueSurface;
+  var largeLiteralTurns = Array.from(w.document.querySelectorAll('.library-dialogue-turn .ora-document-literal'));
+  record('the aggregate Dialogue formatting bound preserves every turn as speaker-labelled literal source',
+    largeDialogueRenderCalls === 0 && largeLiteralTurns.length === 2
+      && largeLiteralTurns.every(function (node) { return node.textContent === largeDialogueSource; })
+      && Array.from(w.document.querySelectorAll('[data-library-speaker]')).map(function (node) { return node.textContent; }).join(',') === 'You,Ora'
+      && largeLiteralTurns.every(function (node) { return node.parentElement.textContent.includes('source text is shown literally'); })
+      && !w.document.querySelector('[data-library-edit="start"]'));
+  queuedLibraryResponses.push(libraryPayload([]));
+  var derivedRequests = libraryRequestUrls.length;
+  w.document.querySelector('[data-library-action="derived"]').click(); await flush(); await flush();
+  record('derived entry changes one controller scope exactly once and reports absent derivation honestly',
+    libraryRequestUrls.length === derivedRequests + 1
+      && w.OraLibraryWorkspace.getState().sources.join(',') === 'engrams'
+      && w.OraLibraryWorkspace.getState().filters.provenance_id === archiveDialogue.id
+      && !w.OraLibraryWorkspace.getState().pinnedId
+      && w.document.querySelector('.library-empty-state').textContent.includes('No admitted indexed derivation'));
+  queuedLibraryResponses.push(libraryPayload([traceAnchor]));
+  var chipRequests = libraryRequestUrls.length;
+  w.document.querySelector('[data-library-chip="provenance_id"]').click(); await flush(); await flush();
+  record('removing a refinement chip refreshes exactly once', libraryRequestUrls.length === chipRequests + 1
+    && !w.OraLibraryWorkspace.getState().filters.provenance_id);
+  var invalidEntryRejected = false;
+  try { w.OraLibraryWorkspace.open({ sources: ['not-a-source'] }); } catch (error) { invalidEntryRejected = true; }
+  record('invalid derived-source entry is rejected without a request or scope mutation', invalidEntryRejected
+    && libraryRequestUrls.length === chipRequests + 1);
+  queuedLibraryResponses.push(libraryPayload([contextEngram]));
+  await w.OraLibraryWorkspace.refresh(); await flush(); await flush();
+  w.document.querySelector('.library-list-row__pin').click(); await flush(); await flush();
+  queuedEditResponses.push({ id: contextEngram.id, source: 'engrams', text: rawMarkdown, digest: editDigest });
+  w.document.querySelector('[data-library-edit="start"]').click(); await flush(); await flush();
+  var archiveScopeEditParams = new w.URL(editRequests[editRequests.length - 1].url, w.location.href).searchParams;
+  record('archive inclusion preserves eligible current Markdown editing without sending archive read admission to Edit',
+    w.OraLibraryWorkspace.getState().showArchived && !!w.document.querySelector('[data-library-edit-draft]')
+      && Array.from(archiveScopeEditParams.keys()).join(',') === 'id'
+      && archiveScopeEditParams.get('id') === contextEngram.id
+      && new w.URL(previewRequestUrls[previewRequestUrls.length - 1], w.location.href).searchParams.get('show_archived') === '1');
+  w.document.querySelector('[data-library-edit="cancel"]').click(); await flush(); await flush();
+  w.document.querySelector('[data-library-view="visual"]').click();
+  record('only the last view is stored, with no source text, filters or history', w.localStorage.getItem('ora.library.last-view') === 'visual');
+  w.OraLibraryWorkspace.close({ focus: false });
+  var reload = new jsdom.JSDOM('<!doctype html><body>' + libraryMountMarkup + '</body>', { url: 'http://localhost/', runScripts: 'outside-only' });
+  reload.window.localStorage.setItem('ora.library.last-view', 'visual');
+  vm.runInContext(fs.readFileSync(path.resolve(__dirname, '..', 'js/library-workspace.js'), 'utf8'), reload.getInternalVMContext());
+  record('page reload restores Visual without persisting filters or grouping', reload.window.OraLibraryWorkspace.getState().view === 'visual'
+    && reload.window.OraLibraryWorkspace.getState().group === 'none');
+  reload.window.close();
+  var storageFailure = new jsdom.JSDOM('<!doctype html><body>' + libraryMountMarkup + '</body>', { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
+  Object.defineProperty(storageFailure.window, 'localStorage', { get() { throw new Error('blocked'); } });
+  storageFailure.window.fetch = function () { return Promise.resolve({ ok: true, json() { return Promise.resolve(libraryPayload([])); } }); };
+  vm.runInContext(fs.readFileSync(path.resolve(__dirname, '..', 'js/library-workspace.js'), 'utf8'), storageFailure.getInternalVMContext());
+  storageFailure.window.OraLibraryWorkspace.open(); await flush(); await flush();
+  record('unavailable view storage falls back visibly to List', storageFailure.window.OraLibraryWorkspace.getState().view === 'list'
+    && storageFailure.window.document.getElementById('libraryWorkspaceNotice').textContent.includes('storage is unavailable'));
+  storageFailure.window.OraLibraryWorkspace.close({ focus: false }); storageFailure.window.close();
 
   var passed = results.filter(function (r) { return r.ok; }).length;
   console.log('\n' + passed + ' / ' + results.length + ' tests passed');

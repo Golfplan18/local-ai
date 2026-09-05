@@ -419,6 +419,20 @@ class OversightDaemon:
               "no sweep cadence)")
 
     def _bootstrap_reconciliation(self):
+        try:
+            from orchestrator.tools.relationship_graph import RelationshipGraph
+            from orchestrator import runtime_paths as rp
+            graph = RelationshipGraph(
+                db_path=str(Path(rp.DATA_DIR_STR) / "relationship-graph.db"),
+                vault_path=rp.VAULT_STR)
+            try:
+                result = graph.catch_up_from_vault(stop_event=self._stop_event)
+                if result["errors"]:
+                    print(f"[oversight_daemon] relationship catch-up incomplete: {result['errors']}")
+            finally:
+                graph.close()
+        except Exception as exc:
+            print(f"[oversight_daemon] relationship catch-up failed: {exc}")
         self._initial_vault_scan()
         try:
             import revisit_sweeper

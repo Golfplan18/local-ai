@@ -49,6 +49,13 @@
     projectId: 'commons',
     query: '',
     filters: { type: '' },
+    showArchived: false,
+    refinementStatus: {},
+    progress: { final: true },
+    traceId: null,
+    traceLimit: 50,
+    trace: null,
+    storageNotice: '',
     group: 'none',
     sort: 'recent',
     selectedIds: new Set(),
@@ -99,6 +106,38 @@
   let editController = null;
   let savedLogo = null;
   const ownedUpperState = new Map();
+  const sceneSlots = new Map();
+  const scenePositions = new Map();
+  let sceneGeometry = '';
+  function clearScene() { sceneSlots.clear(); scenePositions.clear(); sceneGeometry = ''; }
+  const VIEW_STORAGE_KEY = 'ora.library.last-view';
+  try {
+    const savedView = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (savedView === 'list' || savedView === 'visual') state.view = savedView;
+    else if (savedView !== null) state.storageNotice = 'The saved Library view was invalid; List is being used.';
+  } catch (error) {
+    state.storageNotice = 'Saved view storage is unavailable; List is being used.';
+  }
+  const refinementLabels = { lifecycle: 'Lifecycle', privacy: 'Privacy', local_restriction: 'Local restriction',
+    relationship: 'Relationship kind', relationship_family: 'Relationship family', epistemic_kind: 'Epistemic kind',
+    file_type: 'Canonical File type', folder: 'Folder', category: 'Project category', content_type: 'Content type' };
+  const refinementControls = mount.querySelector('[data-library-refinement-controls]');
+  Object.entries(refinementLabels).forEach(([key, label]) => {
+    const host = document.createElement('label');
+    host.append(document.createTextNode(label + ' '));
+    const select = document.createElement('select');
+    select.dataset.libraryRefinement = key;
+    select.appendChild(new Option('Any', ''));
+    host.appendChild(select);
+    refinementControls.appendChild(host);
+  });
+  ['extraction_date_from', 'extraction_date_to'].forEach((key) => {
+    const label = document.createElement('label');
+    label.textContent = key.endsWith('from') ? 'Extracted from ' : 'Extracted through ';
+    const input = document.createElement('input');
+    input.type = 'date'; input.dataset.libraryRefinement = key;
+    label.appendChild(input); refinementControls.appendChild(label);
+  });
 
   function setStatus(message) {
     status.textContent = message;
@@ -211,7 +250,7 @@
 
   function rowProject(row) {
     const projects = row.metadata.project_ids;
-    return Array.isArray(projects) && projects.length ? projects[0] : 'Unassigned';
+    return Array.isArray(projects) && projects.length ? projects.join(', ') : 'Commons';
   }
 
   function rowFolder(row) {
@@ -245,11 +284,11 @@
   }
 
   function allReturnedPagesLoaded() {
-    return !state.pagination.has_more;
+    return state.progress.final !== false && !state.pagination.has_more;
   }
 
   function localQualificationRequested() {
-    return Boolean(state.filters.type || state.group !== 'none' || state.sort === 'title');
+    return Boolean(state.group !== 'none' || state.sort === 'title');
   }
 
   function qualificationAvailable() {
@@ -257,9 +296,8 @@
   }
 
   function visibleRows() {
-    let rows = state.rows.slice();
+    let rows = state.traceId && state.trace ? state.trace.rows.slice() : state.rows.slice();
     if (localQualificationRequested() && !qualificationAvailable()) return rows;
-    if (state.filters.type) rows = rows.filter((row) => rowType(row) === state.filters.type);
     if (state.sort === 'title') {
       rows.sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
     }
@@ -306,7 +344,7 @@
   }
 
   const textPreviewEligible = (row) => Boolean(row
-    && (row.source === 'engrams' || row.source === 'files')
+    && SOURCES.includes(row.source)
     && row.preview && row.preview.kind === 'text'
     && row.preview.available === true);
 
@@ -316,6 +354,7 @@
     && row.preview.available === true);
 
   const markdownEditEligible = (row) => Boolean(textPreviewEligible(row)
+    && row.source !== 'dialogues' && row.metadata.lifecycle !== 'archived'
     && row.metadata && row.metadata.content_type === 'text/markdown'
     && row.editability && row.editability.available === true
     && row.editability.editable === true);
@@ -453,6 +492,7 @@
     state.resolvedPreview.loading = true;
     try {
       const params = new URLSearchParams({ id: row.id });
+      if (state.showArchived) params.set('show_archived', '1');
       const response = await fetch(`/api/library/preview?${params.toString()}`, {
         headers: { Accept: 'application/json' },
         signal: controller.signal,
@@ -463,7 +503,12 @@
       if (payload.id !== row.id || payload.source !== row.source) {
         throw new Error('The preview response did not match the pinned Library item.');
       }
-      if (textPreviewEligible(row) && typeof payload.text === 'string') {
+      if (row.source === 'dialogues' && Array.isArray(payload.turns)
+          && payload.turns.length && payload.turns.length % 2 === 0
+          && payload.turns.every((turn, index) => turn && turn.role === (index % 2 ? 'assistant' : 'user') && typeof turn.content === 'string')) {
+        state.resolvedPreview.turns = payload.turns;
+        state.resolvedPreview.incomplete = payload.incomplete === true;
+      } else if (textPreviewEligible(row) && row.source !== 'dialogues' && typeof payload.text === 'string') {
         state.resolvedPreview.text = payload.text;
       } else if (imagePreviewEligible(row) && payload.image
           && ['image/png', 'image/jpeg', 'image/webp'].includes(payload.image.mime_type)
@@ -479,6 +524,7 @@
       state.resolvedPreview.error = error && error.message ? error.message : String(error);
       state.resolvedPreview.text = null;
       state.resolvedPreview.imageSrc = '';
+      state.resolvedPreview.turns = null;
     } finally {
       if (generation === state.previewGeneration) {
         state.resolvedPreview.loading = false;
@@ -516,7 +562,7 @@
     const params = new URLSearchParams({
       conversations: state.sources.has('dialogues') ? '1' : '0',
       engrams: state.sources.has('engrams') ? '1' : '0',
-      show_archived: '0',
+      show_archived: state.showArchived ? '1' : '0',
       limit: String(RELATED_LIMIT),
     });
     return `/api/conversation/${encodeURIComponent(locator)}/related?${params.toString()}`;
@@ -646,6 +692,11 @@
   }
 
   function groupValue(row) {
+    if (state.group === 'provenance') return ((row.provenance && row.provenance.sources) || []).map((source) => source.title).join(', ') || 'Unresolved extraction source';
+    if (['nexus', 'file_type', 'tags', 'category'].includes(state.group)) {
+      const value = row.metadata[state.group];
+      return Array.isArray(value) ? value.join(', ') : value || 'Unavailable';
+    }
     if (state.group === 'source') return sourceLabels[row.source] || row.source;
     if (state.group === 'type') return rowType(row);
     if (state.group === 'content-type') {
@@ -657,6 +708,24 @@
     return '';
   }
 
+  function groupOccurrences(row) {
+    if (state.group === 'project') return row.metadata.project_ids && row.metadata.project_ids.length ? row.metadata.project_ids : ['Commons'];
+    if (state.group === 'provenance') return ((row.provenance && row.provenance.sources) || []).map((source) => source.id);
+    if (['nexus', 'tags', 'category'].includes(state.group) && Array.isArray(row.metadata[state.group])) return row.metadata[state.group];
+    return [groupValue(row) || 'Unavailable'];
+  }
+
+  function groupLabel(value) {
+    if (state.group === 'category') return (state.facets.category && state.facets.category.labels && state.facets.category.labels[value]) || value;
+    if (state.group === 'provenance') {
+      for (const row of state.rows) {
+        const source = ((row.provenance && row.provenance.sources) || []).find((item) => item.id === value);
+        if (source) return `${source.title} (${sourceLabels[source.source] || 'source'})`;
+      }
+    }
+    return value;
+  }
+
   function renderList(rows) {
     const fragment = document.createDocumentFragment();
     const effectiveGroup = qualificationAvailable() ? state.group : 'none';
@@ -665,15 +734,17 @@
     } else {
       const groups = new Map();
       rows.forEach((row) => {
-        const value = groupValue(row) || 'Unavailable';
-        if (!groups.has(value)) groups.set(value, []);
-        groups.get(value).push(row);
+        const values = groupOccurrences(row);
+        (values.length ? values : ['Unresolved']).forEach((value) => {
+          if (!groups.has(value)) groups.set(value, []);
+          groups.get(value).push(row);
+        });
       });
       Array.from(groups.keys()).sort().forEach((name) => {
         const section = document.createElement('section');
         section.className = 'library-result-group';
         const heading = document.createElement('h2');
-        heading.textContent = `${name} (${groups.get(name).length})`;
+        heading.textContent = `${groupLabel(name)} (${groups.get(name).length})`;
         section.appendChild(heading);
         groups.get(name).forEach((row) => section.appendChild(buildListRow(row)));
         fragment.appendChild(section);
@@ -682,11 +753,23 @@
     results.appendChild(fragment);
   }
 
-  function buildVisualNode(row) {
-    const button = document.createElement('button');
-    button.type = 'button';
+  function buildVisualNode(row, occurrence = '') {
+    const button = document.createElement('div');
     button.className = `library-visual-node is-${row.source}`;
     button.dataset.libraryNodeId = row.id;
+    button.dataset.librarySlot = row.id + '::' + occurrence;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = state.selectedIds.has(row.id);
+    checkbox.setAttribute('aria-label', `Select ${row.title} for bulk actions`);
+    checkbox.addEventListener('change', () => selectRow(row, checkbox.checked));
+    checkbox.addEventListener('click', (event) => event.stopPropagation());
+    button.appendChild(checkbox);
+    const pin = document.createElement('button');
+    pin.type = 'button';
+    pin.className = 'library-visual-node__pin';
+    pin.setAttribute('aria-label', `Read ${row.title}`);
+    pin.setAttribute('aria-pressed', String(state.pinnedId === row.id));
     button.setAttribute('aria-pressed', state.pinnedId === row.id ? 'true' : 'false');
     const groupedAs = qualificationAvailable() && state.group !== 'none'
       ? ` Group: ${groupValue(row) || 'Unavailable'}.`
@@ -695,51 +778,16 @@
     button.append(sourceBadge(row));
     const title = document.createElement('span');
     title.textContent = row.title;
-    button.appendChild(title);
+    pin.appendChild(title);
+    button.appendChild(pin);
     if (qualificationAvailable() && state.group !== 'none') {
       const group = document.createElement('small');
       group.className = 'library-visual-node__group';
-      group.textContent = groupValue(row) || 'Unavailable';
+      group.textContent = groupLabel(occurrence) || groupValue(row) || 'Unavailable';
       button.appendChild(group);
     }
     button.addEventListener('click', () => pinRow(row));
     return button;
-  }
-
-  function focusRelatedEndpoint(endpointId) {
-    const details = previewTextLayer && previewTextLayer.querySelector('.library-relationships');
-    if (!details) return;
-    details.open = true;
-    const target = Array.from(details.querySelectorAll('[data-related-endpoint-id]'))
-      .find((item) => item.dataset.relatedEndpointId === endpointId);
-    if (target) {
-      target.tabIndex = -1;
-      target.focus();
-    } else {
-      const summary = details.querySelector('summary');
-      if (summary) summary.focus();
-    }
-  }
-
-  function buildRelatedNode(endpoint) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `library-visual-node library-visual-node--related is-${endpoint.source}`;
-    button.dataset.relatedEndpointId = endpoint.id;
-    const relationships = endpoint.kinds.map((kind) => `${relationshipDirections[kind]} ${kind}`).join(', ');
-    button.setAttribute('aria-label', `${sourceLabels[endpoint.source]} related endpoint: ${endpoint.title}. ${relationships}. Activate for relationship details.`);
-    button.append(sourceBadge(endpoint));
-    const title = document.createElement('span');
-    title.textContent = endpoint.title;
-    button.appendChild(title);
-    button.addEventListener('click', () => focusRelatedEndpoint(endpoint.id));
-    return button;
-  }
-
-  function drawableRelatedRows() {
-    const row = pinnedRow();
-    if (!row || state.related.anchorId !== row.id) return [];
-    return state.related.rows.filter((endpoint) => endpoint.drawable);
   }
 
   function renderVisual(rows) {
@@ -750,10 +798,15 @@
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
     visual.appendChild(svg);
-    rows.filter((row) => row.id !== state.pinnedId)
-      .forEach((row) => visual.appendChild(buildVisualNode(row)));
-    const endpoints = drawableRelatedRows();
-    endpoints.forEach((endpoint) => visual.appendChild(buildRelatedNode(endpoint)));
+    rows.forEach((row) => {
+      const groups = qualificationAvailable() && state.group !== 'none' ? groupOccurrences(row) : [''];
+      (groups.length ? groups : ['Unresolved']).forEach((group) => visual.appendChild(buildVisualNode(row, group)));
+    });
+    // Arrival and enrichment append slots; only an explicit scene change clears them.
+    Array.from(visual.querySelectorAll('[data-library-slot]')).sort((a, b) => {
+      [a, b].forEach((node) => { if (!sceneSlots.has(node.dataset.librarySlot)) sceneSlots.set(node.dataset.librarySlot, sceneSlots.size); });
+      return sceneSlots.get(a.dataset.librarySlot) - sceneSlots.get(b.dataset.librarySlot);
+    }).forEach((node) => visual.appendChild(node));
     if (state.group !== 'none') {
       const groupState = document.createElement('p');
       groupState.className = 'library-visual-group-state';
@@ -771,16 +824,9 @@
     visual.appendChild(capacityState);
     const edgeState = document.createElement('p');
     edgeState.className = 'library-visual-edge-state';
-    if (state.related.loading) {
-      edgeState.textContent = 'Loading explicit relationship endpoints for the selected O anchor…';
-    } else if (state.related.error) {
-      edgeState.textContent = `Relationship endpoints unavailable: ${state.related.error}. No connectors are drawn.`;
-    } else if (!endpoints.length) {
-      edgeState.textContent = state.related.reason
-        || 'No drawable connectors: inventory summaries do not identify authoritative endpoints.';
-    } else {
-      edgeState.textContent = `Laying out ${endpoints.length} explicit Related endpoint${endpoints.length === 1 ? '' : 's'} from the O anchor.`;
-    }
+    edgeState.textContent = state.traceId
+      ? 'Trace shows stored direction, type and confidence within the current Library filters. Every advertised neighbor remains in the relationship list below.'
+      : 'Browse keeps inventory positions stable. Related discovery stays below; use Trace from an Engram for typed connectors.';
     visual.appendChild(edgeState);
     results.appendChild(visual);
   }
@@ -811,6 +857,9 @@
       candidateAngles.push(270 - delta, 270 + delta);
     }
     candidateAngles.push(135, 405);
+    const geometry = [visualRect.width, visualRect.height, anchorX, anchorY].join(':');
+    if (geometry !== sceneGeometry) { scenePositions.clear(); sceneGeometry = geometry; }
+    scenePositions.forEach((placement) => { if (placement) occupied.push(placement); });
 
     function overlaps(candidate, placed) {
       return !(
@@ -826,7 +875,8 @@
       nodes.forEach((node) => {
         node.hidden = false;
         const nodeRect = node.getBoundingClientRect();
-        const placement = candidateAngles.map((degrees) => {
+        const slot = node.dataset.librarySlot;
+        const placement = scenePositions.get(slot) || candidateAngles.map((degrees) => {
           // 135°..405° is a 270° arc. It leaves the 90° downward cone clear.
           const angle = degrees * Math.PI / 180;
           const left = anchorX + Math.cos(angle) * radius - nodeRect.width / 2;
@@ -850,16 +900,14 @@
         }
         node.style.left = `${placement.left}px`;
         node.style.top = `${placement.top}px`;
-        occupied.push(placement);
+        if (!scenePositions.has(slot)) { scenePositions.set(slot, placement); occupied.push(placement); }
         visible.push(node);
       });
       return visible;
     }
 
-    // Reserve the inner O-centred arc for explicitly authoritative Related
-    // endpoints first; inventory overflow always retains its complete List.
-    const visibleRelatedNodes = placeArc(relatedNodes, Math.max(48, availableRadius * 0.56));
     const visibleInventoryNodes = placeArc(inventoryNodes, availableRadius);
+    const visibleRelatedNodes = [];
 
     const capacityState = visual.querySelector('.library-visual-capacity-state');
     const hiddenInventory = inventoryNodes.length - visibleInventoryNodes.length;
@@ -873,25 +921,36 @@
     const svg = visual.querySelector('.library-visual-connectors');
     svg.replaceChildren();
     let drawnConnectors = 0;
-    drawableRelatedRows().forEach((endpoint) => {
-      const to = visibleRelatedNodes.find((node) => node.dataset.relatedEndpointId === endpoint.id);
-      if (!to) return;
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.id = 'library-trace-arrow'; marker.setAttribute('viewBox', '0 0 10 10');
+    marker.setAttribute('refX', '9'); marker.setAttribute('refY', '5'); marker.setAttribute('markerWidth', '6'); marker.setAttribute('markerHeight', '6'); marker.setAttribute('orient', 'auto-start-reverse');
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    arrow.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); marker.appendChild(arrow); defs.appendChild(marker); svg.appendChild(defs);
+    ((state.traceId && state.trace && state.trace.edges) || []).forEach((edge) => {
+      const from = visibleInventoryNodes.find((node) => node.dataset.libraryNodeId === edge.source);
+      const to = visibleInventoryNodes.find((node) => node.dataset.libraryNodeId === edge.target);
+      if (!from || !to) return;
+      const fromRect = from.getBoundingClientRect();
       const toRect = to.getBoundingClientRect();
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', String(anchorX));
-      line.setAttribute('y1', String(anchorY));
+      line.setAttribute('x1', String(fromRect.left + fromRect.width / 2 - visualRect.left));
+      line.setAttribute('y1', String(fromRect.top + fromRect.height / 2 - visualRect.top));
       line.setAttribute('x2', String(toRect.left + toRect.width / 2 - visualRect.left));
       line.setAttribute('y2', String(toRect.top + toRect.height / 2 - visualRect.top));
-      line.dataset.relationshipType = endpoint.kinds.join(' ');
+      line.dataset.relationshipType = edge.type;
+      line.dataset.relationshipFamily = edge.family;
+      line.setAttribute('marker-end', 'url(#library-trace-arrow)');
+      line.setAttribute('stroke-dasharray', { evidence: 'none', building: '6 3', causal: '2 3', hierarchy: '8 3 2 3' }[edge.family] || '1 5');
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      label.textContent = `${edge.type}; ${edge.family}; confidence ${edge.confidence || 'unknown'}`;
+      line.appendChild(label);
       svg.appendChild(line);
       drawnConnectors += 1;
     });
-    const endpoints = drawableRelatedRows();
     const edgeState = visual.querySelector('.library-visual-edge-state');
-    if (edgeState && endpoints.length) {
-      const withheld = state.related.rows.length - endpoints.length;
-      const capacityWithheld = endpoints.length - drawnConnectors;
-      edgeState.textContent = `${drawnConnectors} of ${endpoints.length} explicit Related endpoint connector${endpoints.length === 1 ? '' : 's'} shown from the O${capacityWithheld ? `; ${capacityWithheld} remain in Findings because they exceed measured Visual capacity` : ''}${withheld ? `; ${withheld} returned suggestion${withheld === 1 ? '' : 's'} lacked edge authority and remain connector-free` : ''}.${state.related.reason ? ` ${state.related.reason}` : ''}`;
+    if (edgeState && state.traceId && state.trace) {
+      edgeState.textContent = `${drawnConnectors} stored connectors fit this screen. All ${state.trace.total_neighbors} admitted neighbors and the displayed endpoints' typed edges are disclosed below; ${state.trace.remaining} more neighbors await explicit expansion. State: ${state.trace.state}. ${state.trace.reason || ''}`;
     }
   }
 
@@ -905,6 +964,7 @@
   function render() {
     if (!state.open) return;
     syncGroupAvailability();
+    renderRefinementChips();
     const generation = ++state.renderGeneration;
     results.replaceChildren();
     sourceCount.textContent = String(state.sources.size);
@@ -945,6 +1005,8 @@
         'incomplete',
         'load-all'
       );
+    } else if (state.storageNotice) {
+      setNotice(state.storageNotice, 'incomplete');
     } else if (state.universe && !state.universe.complete) {
       const unavailable = (state.universe.unavailable_sources || [])
         .map((item) => `${sourceLabels[item.source] || item.source}: ${item.reason}`)
@@ -955,7 +1017,9 @@
     }
 
     if (!rows.length) {
-      renderEmpty(state.query
+      renderEmpty(state.filters.provenance_id && !state.query
+        ? 'No admitted indexed derivation exists for this source in the current scope. No Engram has been created.'
+        : state.query
         ? 'No eligible Dialogue or Engram body matches the current keyword query. Files do not support body keyword search.'
         : localQualificationRequested()
           ? 'No returned Library item matches the current metadata qualification.'
@@ -975,7 +1039,7 @@
     const loading = state.loading ? '; refresh in progress' : '';
     setStatus(`${state.rows.length} of ${state.total} items loaded from a ${completeness} source universe${query}${qualification}${paging}${loading}.`);
 
-    if (state.pagination.has_more && !state.loadingAll) {
+    if (state.progress.final !== false && state.pagination.has_more && !state.loadingAll) {
       const more = document.createElement('button');
       more.type = 'button';
       more.className = 'library-load-more';
@@ -988,12 +1052,14 @@
 
   function updateFacetOptions() {
     function update(select, counts) {
-      const current = state.filters.type || select.value;
+      const key = select.dataset.libraryRefinement || 'type';
+      const current = state.filters[key] || '';
       Array.from(select.options).slice(1).forEach((option) => option.remove());
       Object.keys(counts || {}).sort().forEach((value) => {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = `${value} (${counts[value]})`;
+        const label = key === 'category' ? ((state.facets.category || {}).labels || {})[value] || value : value;
+        option.textContent = `${label} (${counts[value]})`;
         select.appendChild(option);
       });
       if (current && !Object.prototype.hasOwnProperty.call(counts || {}, current)) {
@@ -1007,6 +1073,13 @@
     }
     update(typeFilter, state.facets.item_type && state.facets.item_type.counts);
     state.filters.type = typeFilter.value;
+    mount.querySelectorAll('select[data-library-refinement]').forEach((select) => {
+      const key = select.dataset.libraryRefinement;
+      const facet = state.facets[key] || {};
+      update(select, facet.counts);
+      select.disabled = !Object.keys(facet.counts || {}).length && !state.filters[key];
+      select.title = select.disabled ? 'No authoritative values are available in this scope. Unknown metadata is not inferred.' : '';
+    });
     Object.keys((state.facets.projects && state.facets.projects.counts) || {}).sort().forEach((value) => {
       if (!value || value === 'commons' || value === 'general') return;
       if (Array.from(projectScope.options).some((option) => option.value === value)) return;
@@ -1028,7 +1101,7 @@
       groupButton.setAttribute('aria-label', `Group and sort Library results. Current group: ${group}. Current sort: ${sort}.`);
     }
     if (filterButton) {
-      const count = Number(Boolean(state.filters.type));
+      const count = Object.values(state.filters).filter(Boolean).length + Number(state.showArchived);
       const scope = state.projectId === 'commons' ? 'Commons' : state.projectId;
       filterButton.textContent = `Scope: ${scope} · ${count}`;
       filterButton.setAttribute('aria-label', `Project scope: ${scope}. ${count} active metadata filter${count === 1 ? '' : 's'}.`);
@@ -1047,6 +1120,10 @@
   }
 
   function invalidateProjectScopeRows() {
+    clearScene();
+    state.traceId = null;
+    state.trace = null;
+    state.traceLimit = 50;
     state.loading = false;
     state.loadingAll = false;
     state.retryAppend = false;
@@ -1068,11 +1145,99 @@
   }
 
   function browserUrl(offset) {
-    const params = new URLSearchParams({ offset: String(offset), limit: String(PAGE_LIMIT) });
+    const params = new URLSearchParams({ offset: String(offset), limit: String(PAGE_LIMIT), stream: '1' });
     state.sources.forEach((source) => params.append('source', source));
     if (state.projectId !== 'commons') params.set('project_id', state.projectId);
     if (state.query.trim()) params.set('q', state.query.trim());
+    Object.entries(state.filters).forEach(([key, value]) => {
+      if (!value) return;
+      if (key === 'tag') String(value).split(',').map((tag) => tag.trim()).filter(Boolean).forEach((tag) => params.append('tag', tag));
+      else params.set(key === 'type' ? 'item_type' : key, value);
+    });
+    if (state.showArchived) params.set('show_archived', '1');
+    if (state.traceId) { params.set('trace_id', state.traceId); params.set('trace_limit', String(state.traceLimit)); }
     return `/api/library/browser?${params.toString()}`;
+  }
+
+  function renderRefinementChips() {
+    const host = mount.querySelector('[data-library-chips]');
+    host.replaceChildren();
+    Object.entries(state.filters).filter(([, value]) => value).forEach(([key, value]) => {
+      const chip = document.createElement('button');
+      chip.type = 'button'; chip.dataset.libraryChip = key;
+      const info = state.refinementStatus[key === 'type' ? 'item_type' : key];
+      chip.textContent = `${refinementLabels[key] || key}: ${value} ×${info && info.available === false ? ' (unavailable)' : ''}`;
+      chip.title = (info && info.reason) || 'Remove this refinement';
+      if (info && info.reason) chip.setAttribute('aria-label', chip.textContent + '. ' + info.reason);
+      chip.addEventListener('click', () => {
+        delete state.filters[key];
+        const control = mount.querySelector(`[data-library-refinement="${key}"]`);
+        if (control) control.value = '';
+        if (key === 'type') typeFilter.value = '';
+        changeCriteria();
+      });
+      host.appendChild(chip);
+      if (info && info.reason) {
+        const reason = document.createElement('small'); reason.textContent = info.reason; host.appendChild(reason);
+      }
+    });
+    if (state.showArchived) {
+      const chip = document.createElement('button'); chip.type = 'button'; chip.textContent = 'Archives included (read-only) ×';
+      chip.addEventListener('click', () => { state.showArchived = false; mount.querySelector('[data-library-archived]').checked = false; changeCriteria(); });
+      host.appendChild(chip);
+    }
+    if (state.group !== 'none') {
+      const note = document.createElement('small');
+      note.textContent = 'One grouping axis. Items with multiple memberships appear in each group; totals and bulk selection count each item once.';
+      host.appendChild(note);
+    }
+  }
+
+  function changeCriteria() {
+    invalidateProjectScopeRows();
+    fetchPage({ append: false });
+  }
+
+  function acceptSnapshot(payload, append, final) {
+    if (!payload || !Array.isArray(payload.rows) || !payload.universe || !payload.pagination
+        || payload.rows.some((row) => !row || typeof row.id !== 'string' || !row.metadata || !row.preview)) {
+      throw new Error('The Library response was malformed; safe earlier results have been retained.');
+    }
+    const previousPinnedId = state.pinnedId;
+    const nextRows = append || !final ? state.rows.slice() : [];
+    const nextRowsById = !final ? new Map(state.rowsById) : new Map(nextRows.map((row) => [row.id, row]));
+    payload.rows.forEach((row) => {
+      const old = nextRows.findIndex((item) => item.id === row.id);
+      if (old < 0) nextRows.push(row); else nextRows[old] = row;
+      nextRowsById.set(row.id, row);
+    });
+    state.rows = nextRows; state.rowsById = nextRowsById;
+    state.total = Number(payload.total || 0);
+    state.sourceCounts = payload.source_counts || {}; state.facets = payload.facets || {};
+    state.universe = Object.assign({}, payload.universe, { complete: final && payload.universe.complete === true });
+    state.refinementStatus = payload.refinements || {};
+    state.progress = Object.assign({}, payload.progress, { final });
+    state.pagination = final ? payload.pagination : { ...payload.pagination, has_more: false, next_offset: null };
+    state.retryAppend = false;
+    if (final && state.traceId) {
+      if (payload.trace && (!Array.isArray(payload.trace.rows) || !Array.isArray(payload.trace.edges)
+          || payload.trace.rows.some((row) => !row || typeof row.id !== 'string' || !row.preview || !row.metadata))) {
+        throw new Error('The Trace response was malformed; safe inventory remains available.');
+      }
+      state.trace = payload.trace || { rows: [], edges: [], state: 'unavailable', reason: 'Trace response unavailable', total_neighbors: 0, remaining: 0 };
+      state.trace.rows.forEach((row) => state.rowsById.set(row.id, row));
+    }
+    updateFacetOptions();
+    if (final) {
+      reconcileRows();
+      const row = pinnedRow();
+      if (row && (!append || previousPinnedId !== row.id || state.resolvedPreview.id !== row.id)) fetchPreview(row);
+      if (!row) resetResolvedPreview(null);
+      if (!append && (!state.related.anchorId || state.related.anchorId !== state.pinnedId)) {
+        resetRelated(row); if (state.related.locator) fetchRelated(row);
+      }
+    }
+    render();
   }
 
   function settleNoSources() {
@@ -1122,47 +1287,49 @@
     render();
     try {
       const response = await fetch(browserUrl(offset), {
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/x-ndjson, application/json' },
         signal: controller.signal,
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || `Library request failed (HTTP ${response.status})`);
-      if (generation !== state.requestGeneration || controller !== requestController) return false;
-      const nextRows = append ? state.rows.slice() : [];
-      const nextRowsById = append ? new Map(state.rowsById) : new Map();
-      (payload.rows || []).forEach((row) => {
-        if (!row || !row.id || nextRowsById.has(row.id)) return;
-        nextRowsById.set(row.id, row);
-        nextRows.push(row);
-      });
-      const previousPinnedId = state.pinnedId;
-      state.rows = nextRows;
-      state.rowsById = nextRowsById;
-      state.total = Number(payload.total || 0);
-      state.sourceCounts = payload.source_counts || {};
-      state.facets = payload.facets || {};
-      state.universe = payload.universe || { complete: false, unavailable_sources: [] };
-      state.pagination = payload.pagination || state.pagination;
-      state.retryAppend = false;
-      updateFacetOptions();
-      if (!append) {
-        state.selectedIds.forEach((id) => {
-          if (!state.rowsById.has(id)) state.selectedIds.delete(id);
-        });
-        if (state.pinnedId && !state.rowsById.has(state.pinnedId)) state.pinnedId = null;
-        const refreshedPin = pinnedRow();
-        resetRelated(refreshedPin, previousPinnedId && !refreshedPin
-          ? 'The previously pinned item is not present in the replacement inventory.'
-          : undefined);
-        fetchPreview(refreshedPin);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || `Library request failed (HTTP ${response.status})`);
       }
-      reconcileRows();
-      if (!append && state.related.locator) fetchRelated(pinnedRow());
+      const current = () => generation === state.requestGeneration && controller === requestController && state.open;
+      if (response.headers && (response.headers.get('content-type') || '').includes('application/x-ndjson')) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '', finalSeen = false;
+        try {
+          while (current()) {
+            const chunk = await reader.read();
+            if (!current()) return false;
+            buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+            let newline;
+            while ((newline = buffer.indexOf('\n')) >= 0) {
+              const line = buffer.slice(0, newline); buffer = buffer.slice(newline + 1);
+              if (!line.trim()) continue;
+              const frame = JSON.parse(line);
+              if (finalSeen || frame.event !== 'snapshot' || typeof frame.stage !== 'string' || typeof frame.final !== 'boolean') throw new Error('Malformed Library progress frame.');
+              acceptSnapshot(frame.data, append, frame.final);
+              finalSeen = frame.final;
+            }
+            if (chunk.done) break;
+          }
+          if (buffer.trim() || !finalSeen) throw new Error('The Library stream ended without final accounting. Safe results remain incomplete; retry to finish.');
+        } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+      } else {
+        const payload = await response.json();
+        if (!current()) return false;
+        acceptSnapshot(payload, append, true);
+      }
       return true;
     } catch (error) {
       if (error && error.name === 'AbortError') return false;
       if (generation !== state.requestGeneration) return false;
       state.error = error && error.message ? error.message : String(error);
+      state.progress = { final: false };
+      if (state.universe) state.universe.complete = false;
+      state.pagination = { ...state.pagination, has_more: false, next_offset: null };
       state.retryAppend = append;
       return false;
     } finally {
@@ -1238,7 +1405,7 @@
         const family = item.family || 'family unavailable';
         const confidence = item.confidence || 'confidence unavailable';
         const count = Number.isInteger(item.count) ? `${item.count} ` : '';
-        entry.textContent = `${count}${item.direction} ${item.type}; ${family}; ${confidence}. Endpoints are not supplied by this inventory summary.`;
+        entry.textContent = `${count}${item.direction} ${item.type}; ${family}; ${confidence}. ${item.endpoint_title ? `${item.origin || 'Stored relationship'}: ${item.endpoint_title}.` : 'Endpoints are not supplied by this inventory summary.'}`;
         list.appendChild(entry);
       });
       details.appendChild(list);
@@ -1282,6 +1449,44 @@
       details.appendChild(reason);
     }
     host.appendChild(details);
+    if (state.traceId && state.trace) {
+      const trace = document.createElement('details');
+      trace.className = 'library-trace'; trace.open = true;
+      const summary = document.createElement('summary');
+      summary.textContent = `Trace within current filters: ${state.trace.total_neighbors} admitted neighbors; ${state.trace.state}`;
+      trace.appendChild(summary);
+      const reason = document.createElement('p');
+      reason.textContent = [state.trace.reason, state.trace.ambiguity_reason].filter(Boolean).join(' ');
+      trace.appendChild(reason);
+      const list = document.createElement('ul');
+      state.trace.rows.forEach((neighbor) => {
+        const entry = document.createElement('li');
+        const select = document.createElement('input'); select.type = 'checkbox';
+        select.checked = state.selectedIds.has(neighbor.id);
+        select.setAttribute('aria-label', `Select ${neighbor.title} for bulk actions`);
+        select.addEventListener('change', () => selectRow(neighbor, select.checked));
+        const button = document.createElement('button'); button.type = 'button'; button.textContent = neighbor.title;
+        button.dataset.libraryTraceNeighbor = neighbor.id;
+        button.addEventListener('click', () => pinRow(neighbor));
+        entry.append(select, button); list.appendChild(entry);
+      });
+      trace.appendChild(list);
+      const edges = document.createElement('ul');
+      state.trace.edges.forEach((edge) => {
+        const entry = document.createElement('li');
+        const source = state.rowsById.get(edge.source), target = state.rowsById.get(edge.target);
+        entry.textContent = `${source ? source.title : 'Admitted source'} → ${target ? target.title : 'Admitted target'}: ${edge.type}; ${edge.family}; confidence ${edge.confidence || 'unknown'}.`;
+        edges.appendChild(entry);
+      });
+      trace.appendChild(edges);
+      if (state.trace.remaining) {
+        const more = document.createElement('button'); more.type = 'button'; more.dataset.libraryTraceExpand = '';
+        more.textContent = `${state.trace.remaining} more neighbors — show next 50`;
+        more.addEventListener('click', () => { state.traceLimit += 50; fetchPage({ append: false }); });
+        trace.appendChild(more);
+      }
+      host.appendChild(trace);
+    }
   }
 
   function ensurePreviewLayers() {
@@ -1436,6 +1641,34 @@
     }
   }
 
+  function renderDialogueDocument(row, turns) {
+    const signature = JSON.stringify(turns);
+    if (documentIdentity === row.id && documentText === signature && documentSession) return;
+    destroyDocument();
+    if (!turns) return;
+    const sessions = [];
+    const withinBound = new TextEncoder().encode(turns.map((turn) => turn.content).join('')).length <= 4 * 1024 * 1024;
+    turns.forEach((turn) => {
+      const section = document.createElement('section'); section.className = 'library-dialogue-turn';
+      const label = document.createElement('h3'); label.dataset.librarySpeaker = turn.role;
+      label.textContent = turn.role === 'user' ? 'You' : 'Ora';
+      const body = document.createElement('div'); section.append(label, body);
+      previewSlots.document.appendChild(section);
+      try {
+        if (!withinBound || !window.OraDocumentSurface) throw new Error('Safe labelled literal reading is being used.');
+        sessions.push(window.OraDocumentSurface.renderRead({ host: body, markdown: turn.content,
+          ariaLabel: `${label.textContent} — read-only Dialogue turn` }));
+      } catch (error) {
+        const literal = document.createElement('pre'); literal.className = 'ora-document-literal'; literal.textContent = turn.content;
+        body.replaceChildren(literal);
+        const notice = document.createElement('p'); notice.textContent = 'Rendered reading unavailable; source text is shown literally below its fixed speaker label.';
+        body.prepend(notice);
+      }
+    });
+    documentSession = { destroy() { sessions.forEach((session) => session.destroy()); } };
+    documentIdentity = row.id; documentText = signature;
+  }
+
   function appendEditStatus(host, row) {
     const edit = state.edit.id === row.id ? state.edit : null;
     const message = (edit && edit.error) || state.edit.notice;
@@ -1479,14 +1712,14 @@
       previewMessage.textContent = row.source === 'dialogues'
         ? `This Dialogue is intentionally metadata-only and cannot be read here. ${row.preview.reason || ''}`.trim()
         : `Preview unavailable. ${row.preview.reason || ''}`.trim();
-    } else if (row.source === 'dialogues') {
-      previewMessage.textContent = 'The active Dialogue and its draft have not changed. Use Continue to open this readable Dialogue in the normal reader.';
     } else if (currentPreview && currentPreview.loading) {
       previewMessage.textContent = row.preview.kind === 'visual'
         ? 'Loading the current image into Exhibits…'
         : 'Loading the current text body…';
     } else if (currentPreview && currentPreview.error) {
       previewMessage.textContent = `Preview unavailable. ${currentPreview.error}`;
+    } else if (row.source === 'dialogues' && currentPreview && currentPreview.turns) {
+      previewMessage.textContent = `Read-only Dialogue; the active Dialogue and draft have not changed.${currentPreview.incomplete ? ' Some indexed exchanges are unavailable.' : ''}`;
     } else if (currentPreview && typeof currentPreview.text === 'string') {
       previewMessage.textContent = state.edit.id === row.id && state.edit.digest
         ? 'Edit complete Markdown'
@@ -1498,7 +1731,17 @@
       previewMessage.textContent = 'Preview unavailable. The current content has not been loaded.';
     }
     previewSlots.metadata.append(heading, badges, previewMessage);
-    renderMarkdownDocument(row, previewBody);
+    if (row.source === 'dialogues') {
+      renderDialogueDocument(row, currentPreview && currentPreview.turns);
+      previewSlots.controls.textContent = 'Dialogues are read-only. Continue deliberately opens a retained Dialogue.';
+    } else renderMarkdownDocument(row, previewBody);
+    if (row.source === 'engrams') {
+      const provenance = document.createElement('p');
+      const sources = (row.provenance && row.provenance.sources) || [];
+      provenance.textContent = sources.length ? `Extracted from: ${sources.map((source) => source.title).join('; ')}.` : 'Extraction source is unresolved; no source is guessed.';
+      if (row.provenance && row.provenance.reason) provenance.textContent += ' ' + row.provenance.reason;
+      previewSlots.metadata.appendChild(provenance);
+    }
     appendEditStatus(previewSlots.status, row);
     appendRelationshipDisclosure(previewSlots.relationships, row);
 
@@ -1535,13 +1778,22 @@
   }
 
   function dialogueId(row) {
-    if (!row || row.source !== 'dialogues' || !row.preview.available) return '';
+    if (!row || row.source !== 'dialogues' || !row.preview.available || row.metadata.lifecycle === 'indexed_archive') return '';
     return String((row.preview.locator && row.preview.locator.dialogue_id) || '');
   }
 
   function builtinActions(row) {
     const actions = [];
     if (row) actions.push({ id: 'related', label: 'Show relationships', run: activatePinned });
+    if (row && ['dialogues', 'files'].includes(row.source) && row.preview.available) actions.push({
+      id: 'derived', label: 'Show derived Engrams', run: () => open({ sources: ['engrams'], provenanceId: row.id, projectId: state.projectId }),
+    });
+    if (row && row.source === 'engrams') actions.push({ id: 'trace', label: 'Trace from this Engram', run: () => {
+      state.traceId = row.id; state.traceLimit = 50; state.trace = null; clearScene(); fetchPage({ append: false });
+    } });
+    if (state.traceId) actions.push({ id: 'browse', label: 'Return to Browse', run: () => {
+      state.traceId = null; state.trace = null; clearScene(); fetchPage({ append: false });
+    } });
     const fileLocator = row && row.source === 'files' && row.preview && row.preview.locator;
     const obsidianUri = fileLocator && typeof fileLocator.obsidian_uri === 'string'
       && fileLocator.obsidian_uri.trim() ? fileLocator.obsidian_uri : '';
@@ -1719,7 +1971,28 @@
   }
 
   function open(options) {
+    options = options || {};
+    const project = options.projectId === undefined ? state.projectId : String(options.projectId).trim().toLowerCase();
+    const sources = options.sources === undefined ? Array.from(state.sources) : options.sources;
+    const provenance = options.provenanceId;
+    if (!/^[a-z0-9][a-z0-9_-]*$/.test(project) || !Array.isArray(sources)
+        || sources.some((source) => !SOURCES.includes(source))
+        || (provenance !== undefined && (typeof provenance !== 'string' || !/^(dialogues|files):[A-Za-z0-9_-]+$/.test(provenance)))) {
+      throw new Error('Library entry requires a valid project, source list and admitted-source identity.');
+    }
+    const changed = project !== state.projectId || sources.join(',') !== Array.from(state.sources).join(',')
+      || (provenance !== undefined && provenance !== state.filters.provenance_id);
+    if (changed) {
+      state.projectId = project; state.sources = new Set(sources);
+      if (provenance !== undefined) {
+        state.filters = { type: '', provenance_id: provenance }; state.query = ''; searchInput.value = ''; state.group = 'provenance';
+      }
+      mount.querySelectorAll('[data-library-source]').forEach((checkbox) => { checkbox.checked = state.sources.has(checkbox.value); });
+      mount.querySelectorAll('[data-library-refinement]').forEach((control) => { control.value = state.filters[control.dataset.libraryRefinement] || ''; });
+      invalidateProjectScopeRows();
+    }
     if (state.open) {
+      if (changed) fetchPage({ append: false });
       searchInput.focus();
       return;
     }
@@ -1803,6 +2076,8 @@
     const view = event.target.closest('[data-library-view]');
     if (view) {
       state.view = view.dataset.libraryView;
+      try { localStorage.setItem(VIEW_STORAGE_KEY, state.view); state.storageNotice = ''; }
+      catch (error) { state.storageNotice = 'This view works now, but saved view storage is unavailable.'; }
       closePopovers();
       render();
       return;
@@ -1813,12 +2088,13 @@
     else if (command.dataset.libraryCommand === 'clear-search') {
       state.query = '';
       searchInput.value = '';
-      fetchPage({ append: false });
+      changeCriteria();
       searchInput.focus();
     } else if (command.dataset.libraryCommand === 'clear-filters') {
       state.filters = { type: '' };
       typeFilter.value = '';
-      render();
+      mount.querySelectorAll('[data-library-refinement]').forEach((control) => { control.value = ''; });
+      changeCriteria();
     } else if (command.dataset.libraryCommand === 'load-more') fetchPage({ append: true });
     else if (command.dataset.libraryCommand === 'load-all') loadAll();
     else if (command.dataset.libraryCommand === 'retry') fetchPage({ append: state.retryAppend });
@@ -1826,13 +2102,14 @@
 
   searchInput.addEventListener('input', () => {
     state.query = searchInput.value;
-    fetchPage({ append: false });
+    changeCriteria();
   });
 
   mount.querySelectorAll('[data-library-source]').forEach((checkbox) => {
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) state.sources.add(checkbox.value);
       else state.sources.delete(checkbox.value);
+      invalidateProjectScopeRows();
       const pin = pinnedRow();
       if (pin && !state.sources.has(pin.source)) {
         resetEdit();
@@ -1852,6 +2129,7 @@
 
   groupSelect.addEventListener('change', (event) => {
     state.group = event.target.value;
+    clearScene();
     syncGroupAvailability();
     render();
   });
@@ -1861,7 +2139,14 @@
   });
   typeFilter.addEventListener('change', () => {
     state.filters.type = typeFilter.value;
-    render();
+    changeCriteria();
+  });
+  mount.querySelectorAll('[data-library-refinement]').forEach((control) => control.addEventListener('change', () => {
+    state.filters[control.dataset.libraryRefinement] = control.value;
+    changeCriteria();
+  }));
+  mount.querySelector('[data-library-archived]').addEventListener('change', (event) => {
+    state.showArchived = event.target.checked; changeCriteria();
   });
   projectScope.addEventListener('change', () => {
     const nextProjectId = projectScope.value || 'commons';
@@ -1924,6 +2209,10 @@
         drawable: state.related.rows.filter((endpoint) => endpoint.drawable).length,
       },
       renderGeneration: state.renderGeneration,
+      traceId: state.traceId,
+      traceLimit: state.traceLimit,
+      showArchived: state.showArchived,
+      progressFinal: state.progress.final,
     }),
   };
 })();

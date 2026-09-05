@@ -142,6 +142,39 @@ class RuntimePathTests(unittest.TestCase):
             ledger.transition(event_id, {"claimed"}, "completed")
             self.assertEqual(ledger.get(event_id)["status"], "completed")
 
+    def test_relationship_catchup_uses_existing_bootstrap_after_lanes_start_and_failure_is_isolated(self):
+        from orchestrator.tools.relationship_graph import RelationshipGraph
+        daemon = od.OversightDaemon()
+        order = []
+        trigger_service = mock.MagicMock()
+        trigger_service.reconcile_unresolved_firings.return_value = {"retained": [], "errors": []}
+        trigger_service.replay_completion_deliveries.return_value = []
+        def thread(*, target, name, **kwargs):
+            def start():
+                order.append(name)
+                if name == "oversight-startup-reconciliation":
+                    target()
+            return mock.Mock(start=start)
+        with (
+            tempfile.TemporaryDirectory() as temp,
+            mock.patch.dict("sys.modules", {"oversight_router": mock.MagicMock(), "revisit_sweeper": mock.MagicMock()}),
+            mock.patch.object(runtime_hygiene, "deadline_queue", return_value=mock.Mock()),
+            mock.patch.object(runtime_hygiene, "recover_retention_intents", return_value={"failed": []}),
+            mock.patch.object(runtime_hygiene, "restore_incomplete_events", return_value=[]),
+            mock.patch.object(triggers, "service", return_value=trigger_service),
+            mock.patch.object(daemon, "_ensure_daily_note_deadline"),
+            mock.patch.object(daemon, "_ensure_log_retention_deadline"),
+            mock.patch.object(daemon, "_initial_vault_scan") as initial,
+            mock.patch.object(od.threading, "Thread", side_effect=thread),
+            mock.patch("orchestrator.runtime_paths.DATA_DIR_STR", temp),
+            mock.patch.object(RelationshipGraph, "catch_up_from_vault", side_effect=RuntimeError("fixture refresh failure")) as refresh,
+        ):
+            daemon.start()
+        self.assertEqual(order[:3], ["oversight-file-events", "oversight-deadlines", "oversight-startup-reconciliation"])
+        refresh.assert_called_once_with(stop_event=daemon._stop_event)
+        initial.assert_called_once_with()
+        trigger_service.arm_active_calendar_triggers.assert_called_once_with()
+
     def test_run_once_keeps_manual_maintenance_paths(self):
         daemon = od.OversightDaemon()
         with mock.patch("oversight_events.emit"), mock.patch.multiple(
