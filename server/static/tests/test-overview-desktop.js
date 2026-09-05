@@ -511,6 +511,28 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   }
   w.OraDocumentSurface = sharedSurface;
 
+  // A document reports only the shadow host for an editor's focused content.
+  // Keep both hosts nonfocusable so restoring either host cannot pass this test.
+  closeControl.click();
+  var editorHost = w.document.createElement('div');
+  var editorRoot = editorHost.attachShadow({ mode: 'open' });
+  var innerHost = w.document.createElement('div');
+  var innerRoot = innerHost.attachShadow({ mode: 'open' });
+  var editorInput = w.document.createElement('input');
+  editorInput.value = 'unfinished editor draft kept';
+  innerRoot.appendChild(editorInput);
+  editorRoot.appendChild(innerHost);
+  workspace.appendChild(editorHost);
+  editorInput.focus();
+  editorInput.setSelectionRange(4, 12);
+  assert.strictEqual(w.document.activeElement, editorHost);
+  assert.strictEqual(editorRoot.activeElement, innerHost);
+  responses.push(ok(availableOverviewPayload));
+  launcher.click();
+  await flush();
+  await flush();
+  readAction = mount.querySelector('[data-overview-action="read_note"]');
+
   for (var closeKind of ['button', 'Escape']) {
     responses.push(ok(readPayload));
     readAction.click();
@@ -523,7 +545,11 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
     assert.strictEqual(reader.hidden, true);
     assert.strictEqual(readerHost.childNodes.length, 0);
     assert.strictEqual(workspace.hasAttribute('inert'), false);
-    assert.strictEqual(w.document.activeElement, workspaceInput);
+    assert.strictEqual(w.document.activeElement, editorHost);
+    assert.strictEqual(editorRoot.activeElement, innerHost);
+    assert.strictEqual(innerRoot.activeElement, editorInput, closeKind + ' restores the focused editor content');
+    assert.strictEqual(editorInput.value, 'unfinished editor draft kept');
+    assert.deepStrictEqual([editorInput.selectionStart, editorInput.selectionEnd], [4, 12]);
     assertWorkspacePreserved('reader ' + closeKind);
     responses.push(ok(availableOverviewPayload));
     launcher.click();
@@ -560,6 +586,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   back.click();
 
   closeControl.click();
+  editorHost.remove();
   responses.push(new Error('source connection failed'));
   launcher.focus();
   launcher.click();

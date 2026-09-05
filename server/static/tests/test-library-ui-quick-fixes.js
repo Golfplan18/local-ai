@@ -1521,54 +1521,71 @@ async function run() {
       && conflictRequest.body.text
         === savedRawMarkdown.replace(/\n/g, '\r\n'));
 
-  var editorRefresh = deferredResponse();
-  var editorPreview = deferredResponse();
-  var editorRelated = deferredResponse();
-  queuedLibraryResponses.push(editorRefresh);
-  queuedPreviewResponses.push(editorPreview);
-  queuedRelatedResponses.push(editorRelated);
-  var editorRefreshPromise = w.OraLibraryWorkspace.refresh();
-  editorRefresh.resolve(libraryPayload([
-    visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
-  ], { total: 5, source_counts: { dialogues: 2, engrams: 2, files: 1 } }));
-  await editorRefreshPromise;
-  editorPreview.resolve({ id: contextEngram.id, source: 'engrams', text: 'New canonical preview must not replace the draft' });
-  editorRelated.resolve({ rows: [], total: 0 });
-  await flush(); await flush();
-  record('same-row refresh and relationship/status changes preserve the same editor, draft, selection and focus',
-    draftView(editDraft) === originalView
-      && originalView.state.doc.toString() === savedRawMarkdown
-      && originalView.state.selection.main.anchor === 7
-      && originalView.root.activeElement === originalView.contentDOM);
+  var saveButton = w.document.querySelector('[data-library-edit="save"]');
+  var cancelButton = w.document.querySelector('[data-library-edit="cancel"]');
+  for (var focusTarget of [originalView.contentDOM, saveButton, cancelButton]) {
+    focusTarget.focus();
+    var focusLabel = focusTarget === originalView.contentDOM ? 'editor' : focusTarget.textContent;
+    var editorRefresh = deferredResponse();
+    var editorPreview = deferredResponse();
+    var editorRelated = deferredResponse();
+    queuedLibraryResponses.push(editorRefresh);
+    queuedPreviewResponses.push(editorPreview);
+    queuedRelatedResponses.push(editorRelated);
+    var editorRefreshPromise = w.OraLibraryWorkspace.refresh();
+    record('starting a same-row refresh preserves focused ' + focusLabel,
+      focusTarget.isConnected && focusTarget.getRootNode().activeElement === focusTarget);
+    editorRefresh.resolve(libraryPayload([
+      visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
+    ], { total: 5, source_counts: { dialogues: 2, engrams: 2, files: 1 } }));
+    await editorRefreshPromise;
+    editorPreview.resolve({ id: contextEngram.id, source: 'engrams', text: 'New canonical preview must not replace the draft' });
+    editorRelated.resolve({ rows: [], total: 0 });
+    await flush(); await flush();
+    record('same-row refresh and relationship/status updates preserve the draft and focused ' + focusLabel,
+      draftView(editDraft) === originalView
+        && originalView.state.doc.toString() === savedRawMarkdown
+        && originalView.state.selection.main.anchor === 7
+        && saveButton === w.document.querySelector('[data-library-edit="save"]')
+        && cancelButton === w.document.querySelector('[data-library-edit="cancel"]')
+        && focusTarget.getRootNode().activeElement === focusTarget);
+  }
 
   var pendingSave = deferredResponse();
   queuedEditResponses.push(pendingSave);
   var beforeDuplicate = editRequests.length;
-  var saveButton = w.document.querySelector('[data-library-edit="save"]');
+  saveButton.focus();
   saveButton.click();
   saveButton.click();
   w.document.querySelector('[data-library-edit="save"]').click();
-  record('pending Save disables the same editor and prevents duplicate PUTs',
+  record('pending Save preserves its focused control, disables the same editor and prevents duplicate PUTs',
     editRequests.length === beforeDuplicate + 1
       && editRequests[editRequests.length - 1].method === 'PUT'
       && draftView(editDraft) === originalView
+      && saveButton === w.document.querySelector('[data-library-edit="save"]')
+      && saveButton.getAttribute('aria-disabled') === 'true' && !saveButton.disabled
+      && saveButton.textContent === 'Saving…' && w.document.activeElement === saveButton
       && originalView.contentDOM.getAttribute('contenteditable') === 'false');
   pendingSave.resolve({ id: contextEngram.id, source: 'engrams', saved: true });
   await flush(); await flush();
-  record('malformed save success leaves the complete draft usable and reports an unknown outcome',
+  record('malformed save success preserves Save focus, leaves the draft usable and reports an unknown outcome',
     draftView(editDraft) === originalView
       && originalView.state.doc.toString() === savedRawMarkdown
+      && saveButton.getAttribute('aria-disabled') === 'false' && saveButton.textContent === 'Save'
+      && w.document.activeElement === saveButton
       && originalView.contentDOM.getAttribute('contenteditable') === 'true'
       && w.document.querySelector('[data-library-edit-status]').textContent.includes('outcome is unknown'));
 
   var transportSave = deferredResponse();
   queuedEditResponses.push(transportSave);
   w.document.querySelector('[data-library-edit="save"]').click();
+  cancelButton.focus();
   transportSave.reject(new Error('simulated connection loss'));
   await flush(); await flush();
-  record('transport failure preserves the same draft and digest without claiming no write',
+  record('transport failure preserves newer Cancel focus, the draft and digest without claiming no write',
     draftView(editDraft) === originalView
       && originalView.state.doc.toString() === savedRawMarkdown
+      && w.document.activeElement === cancelButton && cancelButton.isConnected
       && editRequests[editRequests.length - 1].body.expected_digest === editDigest
       && w.document.querySelector('[data-library-edit-status]').textContent.includes('outcome is unknown')
       && !w.document.querySelector('[data-library-edit-status]').textContent.includes('Nothing was written'));
@@ -1589,11 +1606,13 @@ async function run() {
   record('save timeout aborts the request while retaining the editor and an honest unknown outcome',
     timeoutSave.options.signal.aborted
       && draftView(editDraft) === originalView
+      && w.document.activeElement === cancelButton
       && originalView.state.doc.toString() === savedRawMarkdown
       && w.document.querySelector('[data-library-edit-status]').textContent.includes('timed out')
       && w.document.querySelector('[data-library-edit-status]').textContent.includes('outcome is unknown'));
 
   queuedEditResponses.push({ ok: false, status: 409, payload: { error: 'Current source is no longer editable', saved: false } });
+  saveButton.focus();
   w.document.querySelector('[data-library-edit="save"]').click();
   await flush(); await flush();
   originalView.contentDOM.dispatchEvent(new w.KeyboardEvent('keydown', {
@@ -1601,6 +1620,7 @@ async function run() {
   }));
   record('authority refusal retains undo history and complete original text in the same editor',
     draftView(editDraft) === originalView
+      && w.document.activeElement === saveButton
       && originalView.state.doc.toString() === rawMarkdownLf
       && w.document.querySelector('[data-library-edit-status]').textContent.includes('Nothing was written'));
   replaceDraft(editDraft, savedRawMarkdown);
@@ -1728,30 +1748,38 @@ async function run() {
   replaceDraft(overviewDraftHost, 'Unsaved Library draft beneath Overview');
   overviewDraft.dispatch({ selection: { anchor: 8 } });
   var returnControl = w.document.querySelector('[data-library-edit="save"]');
-  returnControl.focus();
-  w.document.getElementById('overviewDesktopOpen').click();
-  await flush(); await flush();
-  w.document.querySelector('[data-overview-action="read_note"]').click();
-  await flush(); await flush();
-  var backControl = w.document.querySelector('[data-overview-back]');
-  record('Daily reader opens over the real Library controller without replacing its unsaved editor',
-    w.document.activeElement === backControl
-      && !w.document.getElementById('overviewDailyNoteReader').hidden
-      && w.document.getElementById('overviewDailyNoteDocument').querySelector('h1').textContent === 'Daily fixture'
-      && draftView(overviewDraftHost) === overviewDraft
-      && overviewDraft.state.doc.toString() === 'Unsaved Library draft beneath Overview');
-  keyOn(backControl, 'Escape', { code: 'Escape' });
-  record('Escape from Daily Back closes Overview while preserving Library draft, selection, panes and focus',
-    w.document.getElementById('overviewDesktop').hidden
-      && w.document.getElementById('overviewDailyNoteDocument').childNodes.length === 0
-      && w.OraLibraryWorkspace.isOpen() && draftView(overviewDraftHost) === overviewDraft
-      && overviewDraft.state.doc.toString() === 'Unsaved Library draft beneath Overview'
-      && overviewDraft.state.selection.main.anchor === 8
-      && w.document.activeElement === returnControl
-      && !w.document.querySelector('.ora-shell').hasAttribute('inert')
-      && inquiryDraft.value === 'Composer draft survives Library preview'
-      && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
-      && preservedFinding.isConnected && preservedExhibit.isConnected);
+  for (var returnCase of [
+    { target: returnControl, close: 'Escape' },
+    { target: overviewDraft.contentDOM, close: 'Close' },
+    { target: overviewDraft.contentDOM, close: 'Escape' },
+  ]) {
+    returnCase.target.focus();
+    var returnLabel = returnCase.target === returnControl ? 'Save' : 'CodeMirror content';
+    w.document.getElementById('overviewDesktopOpen').click();
+    await flush(); await flush();
+    w.document.querySelector('[data-overview-action="read_note"]').click();
+    await flush(); await flush();
+    var backControl = w.document.querySelector('[data-overview-back]');
+    record('Daily reader entered from ' + returnLabel + ' preserves the real Library editor',
+      w.document.activeElement === backControl
+        && !w.document.getElementById('overviewDailyNoteReader').hidden
+        && w.document.getElementById('overviewDailyNoteDocument').querySelector('h1').textContent === 'Daily fixture'
+        && draftView(overviewDraftHost) === overviewDraft
+        && overviewDraft.state.doc.toString() === 'Unsaved Library draft beneath Overview');
+    if (returnCase.close === 'Escape') keyOn(backControl, 'Escape', { code: 'Escape' });
+    else w.document.querySelector('[data-overview-close]').click();
+    record(returnCase.close + ' returns focus to ' + returnLabel + ' and preserves Library draft, selection and panes',
+      w.document.getElementById('overviewDesktop').hidden
+        && w.document.getElementById('overviewDailyNoteDocument').childNodes.length === 0
+        && w.OraLibraryWorkspace.isOpen() && draftView(overviewDraftHost) === overviewDraft
+        && overviewDraft.state.doc.toString() === 'Unsaved Library draft beneath Overview'
+        && overviewDraft.state.selection.main.anchor === 8
+        && returnCase.target.getRootNode().activeElement === returnCase.target
+        && !w.document.querySelector('.ora-shell').hasAttribute('inert')
+        && inquiryDraft.value === 'Composer draft survives Library preview'
+        && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
+        && preservedFinding.isConnected && preservedExhibit.isConnected);
+  }
   overviewDraft.focus();
   keyOn(overviewDraft.contentDOM, 'z', { code: 'KeyZ', ctrlKey: true });
   record('Library undo history survives the complete Daily-reader Escape lifecycle',

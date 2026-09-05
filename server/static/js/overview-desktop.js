@@ -340,6 +340,10 @@
   function open() {
     if (!mount.hidden) return;
     priorFocus = document.activeElement;
+    // The document sees the editor's shadow host, not its focused content.
+    while (priorFocus && priorFocus.shadowRoot && priorFocus.shadowRoot.activeElement) {
+      priorFocus = priorFocus.shadowRoot.activeElement;
+    }
     workspaceWasInert = Boolean(workspace && workspace.hasAttribute('inert'));
     if (workspace) workspace.setAttribute('inert', '');
     mount.hidden = false;

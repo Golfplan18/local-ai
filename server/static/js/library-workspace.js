@@ -1380,17 +1380,16 @@
     else if (previewText !== null) showRead(host, row, previewText);
     else destroyDocument();
 
-    previewSlots.controls.replaceChildren();
-    if (active || (previewText !== null && markdownEditEligible(row))) {
-      const controls = document.createElement('div');
-      controls.className = 'library-edit-controls';
-      if (active) {
+    if (active) {
+      let saveButton = previewSlots.controls.querySelector('[data-library-edit="save"]');
+      if (!saveButton) {
+        const controls = document.createElement('div');
+        controls.className = 'library-edit-controls';
         ['Save', 'Cancel'].forEach((label) => {
           const button = document.createElement('button');
           button.type = 'button';
           button.dataset.libraryEdit = label.toLowerCase();
-          button.textContent = label === 'Save' && edit.busy ? 'Saving…' : label;
-          button.disabled = label === 'Save' && edit.busy;
+          button.textContent = label;
           button.addEventListener('click', () => {
             if (label === 'Save') saveMarkdownEdit(row);
             else {
@@ -1401,18 +1400,30 @@
           });
           controls.appendChild(button);
         });
-      } else {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.dataset.libraryEdit = 'start';
-        button.textContent = edit && edit.busy ? 'Opening editor…' : 'Edit';
-        button.disabled = Boolean(edit && edit.busy) || !documentEditingAvailable();
-        if (!documentEditingAvailable()) button.title = 'The local Markdown document surface is unavailable.';
-        button.addEventListener('click', () => startMarkdownEdit(row));
-        controls.appendChild(button);
+        previewSlots.controls.replaceChildren(controls);
+        saveButton = controls.querySelector('[data-library-edit="save"]');
       }
+      // Keep both controls mounted and Save focusable while its busy guard
+      // rejects repeat activation. Native disabled can blur the focused button.
+      saveButton.textContent = edit.busy ? 'Saving…' : 'Save';
+      saveButton.setAttribute('aria-disabled', String(edit.busy));
+      return;
+    }
+
+    previewSlots.controls.replaceChildren();
+    if (previewText !== null && markdownEditEligible(row)) {
+      const controls = document.createElement('div');
+      controls.className = 'library-edit-controls';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.libraryEdit = 'start';
+      button.textContent = edit && edit.busy ? 'Opening editor…' : 'Edit';
+      button.disabled = Boolean(edit && edit.busy) || !documentEditingAvailable();
+      if (!documentEditingAvailable()) button.title = 'The local Markdown document surface is unavailable.';
+      button.addEventListener('click', () => startMarkdownEdit(row));
+      controls.appendChild(button);
       previewSlots.controls.appendChild(controls);
-      if (!active && !documentEditingAvailable()) {
+      if (!documentEditingAvailable()) {
         const unavailable = document.createElement('p');
         unavailable.textContent = 'Edit is unavailable because the local document surface could not render this document.';
         previewSlots.controls.appendChild(unavailable);
