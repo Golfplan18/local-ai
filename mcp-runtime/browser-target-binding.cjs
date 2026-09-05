@@ -33,11 +33,35 @@ function editingHost(node) {
   return node;
 }
 
-function selectionWithin(node) {
-  if (!node.isContentEditable) return true;
+function selectionWithin(node, fullTarget = false) {
+  if (!node.isContentEditable) {
+    if (!fullTarget) return true;
+    if (typeof node.selectionStart === 'number')
+      return node.selectionStart === 0 && node.selectionEnd === node.value.length;
+    // Chromium supports native fill for email and number controls, but does
+    // not expose their internal selection through selectionStart/selectionEnd.
+    // Re-select the exact bound control at the final guard instead of treating
+    // an unobservable range as either trusted or unsupported.
+    if (node.nodeName !== 'INPUT' || !['email', 'number'].includes(node.type)) return false;
+    node.select();
+    for (let current = node; current;) {
+      const root = current.getRootNode();
+      if (root.activeElement !== current) return false;
+      current = root.host;
+    }
+    return true;
+  }
   const selection = node.ownerDocument.defaultView.getSelection();
-  return selection?.rangeCount === 1 && node.contains(selection.anchorNode)
-    && node.contains(selection.focusNode);
+  if (selection?.rangeCount !== 1 || !node.contains(selection.anchorNode)
+      || !node.contains(selection.focusNode)) return false;
+  if (!fullTarget) return true;
+  const actual = selection.getRangeAt(0);
+  const expected = node.ownerDocument.createRange();
+  expected.selectNodeContents(node);
+  return actual.startContainer === expected.startContainer
+    && actual.startOffset === expected.startOffset
+    && actual.endContainer === expected.endContainer
+    && actual.endOffset === expected.endOffset;
 }
 
 // One pending target belongs to the existing serialized backend. It is not an
@@ -135,8 +159,9 @@ function sent(method, params) {
       // Click modifiers are pressed against the reviewed old focus, while the
       // native click may then focus its reviewed target before releasing them.
       // Retain both approved receiver chains; no unrelated focus is admitted.
-      const clickedFocus = binding.pointerTarget.focusChain;
-      for (const key of input.keys.values()) key.focusChains.push([...clickedFocus]);
+      const target = binding.pointerTarget;
+      for (const clickedFocus of new Set([target.focusChain, target.receiverFocusChain]))
+        for (const key of input.keys.values()) key.focusChains.push([...clickedFocus]);
     }
     if (params.type === 'mouseReleased') input.buttons.delete(params.button);
   }
@@ -330,7 +355,19 @@ async function capture(backend, name, params, key) {
     : name === 'browser_fill_form' ? params.fields
     : params.target ? [params] : [];
   for (const item of targetParams) {
-    if (binding.targets.has(item.target)) continue;
+    const direct = name === 'browser_type' || name === 'browser_select_option'
+      || (name === 'browser_fill_form' && ['textbox', 'slider', 'combobox'].includes(item.type));
+    const nativeFill = (name === 'browser_type' && !params.slowly)
+      || (name === 'browser_fill_form' && ['textbox', 'slider'].includes(item.type));
+    const existing = binding.targets.get(item.target);
+    if (existing) {
+      // The form handler executes every field in order. A later occurrence of
+      // the same selector must not lose stronger target/fill requirements just
+      // because an earlier field used a weaker operation such as setChecked.
+      existing.direct ||= direct;
+      existing.nativeFill ||= nativeFill;
+      continue;
+    }
     const resolved = await tab.targetLocator(item);
     if (await resolved.locator.count() !== 1) fail();
     const handle = await resolved.locator.elementHandle({ timeout: 1000 });
@@ -348,11 +385,13 @@ async function capture(backend, name, params, key) {
     binding.handles.push(pointer);
     const host = await control.evaluateHandle(editingHost);
     binding.handles.push(host);
+    const sameReceiver = await pointer.evaluate((node, receiver) => node === receiver, host);
+    const focusChain = [host];
     const target = { ...resolved, handle, rawHandle, control, options: new Map(),
-      pointer, editingHost: host, focusChain: [host],
+      pointer, editingHost: host, focusChain,
+      receiverFocusChain: sameReceiver ? focusChain : [pointer],
       contentEditable: await control.evaluate(node => node.isContentEditable),
-      direct: name === 'browser_type' || name === 'browser_select_option'
-        || (name === 'browser_fill_form' && ['textbox', 'slider', 'combobox'].includes(item.type)),
+      direct, nativeFill,
       // Frame actions receive the original locator selector, not the generated
       // display-code selector returned by normalize().
       actionSelector: resolved.locator._selector, actionFrame: impl(resolved.locator._frame) };
@@ -362,6 +401,7 @@ async function capture(backend, name, params, key) {
       const owner = await rawPage.delegate.getFrameElement(frame);
       binding.handles.push(owner);
       target.focusChain.push(owner);
+      if (target.receiverFocusChain !== target.focusChain) target.receiverFocusChain.push(owner);
       rememberFrame(frame.parentFrame());
     }
     binding.targets.set(item.target, target);
@@ -588,7 +628,9 @@ async function beforeSend(session, method, params) {
       && params.type !== 'keyUp') {
     for (const focus of binding.inputTarget.focusChain)
       if (!await running.exit(() => hasFocus(focus))) fail();
-    if (!await running.exit(() => binding.inputTarget.control.evaluate(selectionWithin))) fail();
+    const fullTarget = binding.inputTarget.nativeFill && (method === 'Input.insertText'
+      || (method === 'Input.dispatchKeyEvent' && params.key === 'Delete'));
+    if (!await running.exit(() => binding.inputTarget.control.evaluate(selectionWithin, fullTarget))) fail();
   }
   // Native keyboard.press may intentionally move focus (Tab, Enter). Validate
   // every keydown (including modifiers); keyup still checks Page/documents.
