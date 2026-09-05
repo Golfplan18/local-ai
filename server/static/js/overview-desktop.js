@@ -1,4 +1,4 @@
-/* Read-only Overview Desktop renderer. */
+/* Overview Desktop renderer and scoped action entrances. */
 (function () {
   'use strict';
 
@@ -68,6 +68,75 @@
     row.appendChild(button);
   }
 
+  function addDailyNoteAction(row, item, sourceId) {
+    var actions = Array.isArray(item.actions) ? item.actions : [];
+    var itemId = typeof item.item_id === 'string' ? item.item_id : '';
+    if (sourceId !== 'daily-note' || itemState(item.state) !== 'available'
+        || !actions.includes('open_note')
+        || !/^daily-note:\d{4}-\d{2}-\d{2}$/.test(itemId)) return;
+
+    var button = element('button', 'overview-source__action', 'Open externally');
+    button.type = 'button';
+    button.dataset.overviewAction = 'open_note';
+    button.addEventListener('click', async function () {
+      if (button.disabled) return;
+      var activeRequest = requestId;
+      var buttonHadFocus = document.activeElement === button;
+      button.disabled = true;
+      button.textContent = 'Opening…';
+      status.hidden = false;
+      status.textContent = 'Sending the Daily Note open request…';
+      try {
+        var response = await window.fetch('/api/overview/daily-note/open', {
+          method: 'POST',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: itemId }),
+        });
+        var payload;
+        try {
+          payload = await response.json();
+        } catch (_error) {
+          payload = null;
+        }
+        if (activeRequest !== requestId || mount.hidden) return;
+
+        var message = payload && typeof payload.message === 'string'
+          ? payload.message.trim() : '';
+        var acceptedOutcome = payload && (
+          (payload.outcome === 'sent' && payload.application === 'obsidian')
+          || (payload.outcome === 'fallback_sent'
+              && payload.application === 'default_markdown')
+        );
+        if (response.ok && payload && payload.ok === true
+            && payload.identity === itemId && acceptedOutcome && message) {
+          close(message);
+          return;
+        }
+        if (payload && payload.ok === true) {
+          message = 'Ora returned an invalid Daily Note open response.';
+        } else if (!message && payload && typeof payload.error === 'string') {
+          message = payload.error.trim();
+        }
+        status.textContent = message || (
+          'The Daily Note could not be opened. Request failed with status '
+          + response.status + '.'
+        );
+      } catch (error) {
+        if (activeRequest !== requestId || mount.hidden) return;
+        status.textContent = 'The Daily Note open request could not reach Ora.';
+      } finally {
+        if (activeRequest === requestId && !mount.hidden && button.isConnected) {
+          button.disabled = false;
+          button.textContent = 'Open externally';
+          var currentFocus = document.activeElement;
+          if (buttonHadFocus && (!currentFocus || currentFocus === document.body
+              || currentFocus === button)) button.focus();
+        }
+      }
+    });
+    row.appendChild(button);
+  }
+
   function renderItem(item, sourceId) {
     var row = element('li', 'overview-source__item');
     row.dataset.state = itemState(item.state);
@@ -81,6 +150,7 @@
     if (details.length) row.appendChild(element('small', '', details.join(' · ')));
     addProjectAction(row, item);
     addScheduledAction(row, item, sourceId);
+    addDailyNoteAction(row, item, sourceId);
     return row;
   }
 
@@ -161,20 +231,23 @@
     workspaceWasInert = Boolean(workspace && workspace.hasAttribute('inert'));
     if (workspace) workspace.setAttribute('inert', '');
     mount.hidden = false;
+    status.hidden = false;
     launcher.setAttribute('aria-expanded', 'true');
     document.body.classList.add('overview-desktop-open');
     closeButton.focus();
     load();
   }
 
-  function close() {
+  function close(finalStatus) {
     if (mount.hidden) return;
     requestId += 1;
+    var hasFinalStatus = typeof finalStatus === 'string' && finalStatus.trim();
+    status.textContent = hasFinalStatus ? finalStatus.trim() : 'Overview closed.';
+    status.hidden = !hasFinalStatus;
     mount.hidden = true;
     launcher.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('overview-desktop-open');
     if (workspace && !workspaceWasInert) workspace.removeAttribute('inert');
-    status.textContent = 'Overview closed.';
     if (priorFocus && priorFocus.isConnected) priorFocus.focus();
   }
 
