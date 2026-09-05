@@ -36,6 +36,15 @@ if (!libraryMountMatch) {
   process.exit(2);
 }
 var libraryMountMarkup = libraryMountMatch[0];
+var overviewLauncherMarkup = indexSource.match(
+  /<button class="sidebar-dash-icon overview-desktop-launcher"[\s\S]*?<\/button>/
+)[0];
+var overviewMountMarkup = indexSource.match(
+  /<section class="overview-desktop" id="overviewDesktop"[\s\S]*?<\/section>/
+)[0];
+var overviewStatusMarkup = indexSource.match(
+  /<p class="overview-desktop__status" id="overviewDesktopStatus"[\s\S]*?<\/p>/
+)[0];
 
 var dom = new jsdom.JSDOM(
   '<!doctype html><html><body>' +
@@ -45,6 +54,7 @@ var dom = new jsdom.JSDOM(
   '    <button id="sidebarDashProject">Projects</button>' +
   '    <button id="sidebarDashModel">Model</button>' +
   '    <button id="sidebarDashOutputStyle">Output Style</button>' +
+  overviewLauncherMarkup +
   '  </div>' +
   '  <button class="sidebar-fork-thread-cmd" disabled>Fork</button>' +
   '  <button class="sidebar-browse-cmd">Library</button>' +
@@ -78,6 +88,7 @@ var dom = new jsdom.JSDOM(
   '</g><g id="logo-r" aria-hidden="true"></g>' +
   '<g id="logo-a" role="button" tabindex="0" aria-label="Open Dialogues sidebar"></g></svg>' +
   libraryMountMarkup +
+  overviewMountMarkup + overviewStatusMarkup +
   '</body></html>',
   { url: 'http://localhost/', pretendToBeVisual: true, runScripts: 'outside-only' }
 );
@@ -85,6 +96,11 @@ var dom = new jsdom.JSDOM(
 var w = dom.window;
 w.TextEncoder = require('node:util').TextEncoder;
 w.ShadowRoot.prototype.getSelection = function () { return w.getSelection(); };
+// jsdom does not implement the browser's contenteditable inheritance getter.
+Object.defineProperty(w.HTMLElement.prototype, 'isContentEditable', { get: function () {
+  var editable = this.closest('[contenteditable]');
+  return !!editable && editable.getAttribute('contenteditable') !== 'false';
+} });
 w.document.execCommand = function () { return false; };
 w.Range.prototype.getClientRects = function () { return []; };
 w.Range.prototype.getBoundingClientRect = function () {
@@ -378,6 +394,20 @@ function deferredResponse() {
 
 w.fetch = function (url, opts) {
   var decoded = decodeURIComponent(String(url));
+  if (decoded === '/api/overview') {
+    return response(true, { sources: ['project-priority', 'oversight', 'triggers'].map(function (sourceId) {
+      return { source_id: sourceId, title: sourceId, state: 'empty', available: true, count: 0, items: [] };
+    }).concat([{
+      source_id: 'daily-note', title: 'Prior-day Daily Note', state: 'ready', available: true,
+      count: 1, items: [{
+        source_id: 'daily-note', item_id: 'daily-note:2026-08-31', title: '2026-08-31',
+        state: 'available', text: 'Daily fixture preview', actions: ['read_note', 'open_note'],
+      }],
+    }]) });
+  }
+  if (decoded === '/api/overview/daily-note/read?id=daily-note:2026-08-31') {
+    return response(true, { id: 'daily-note:2026-08-31', source: 'daily-note', text: '# Daily fixture' });
+  }
   if (decoded === '/api/fs/reveal') {
     revealRequests.push({ url: decoded, method: opts.method, body: JSON.parse(opts.body) });
     var queuedReveal = queuedRevealResponses.shift() || { payload: { ok: true } };
@@ -626,11 +656,13 @@ function loadScript(rel) {
   vm.runInContext(fs.readFileSync(abs, 'utf8'), context, { filename: abs });
 }
 
+loadScript('keyboard-shortcuts.js');
 loadScript('js/sidebar.js');
 loadScript('js/v3-state.js');
 loadScript('js/v3-conversation.js');
 loadScript('vendor/document-surface/ora-document-surface.js');
 loadScript('js/library-workspace.js');
+loadScript('js/overview-desktop.js');
 w.document.dispatchEvent(new w.Event('DOMContentLoaded', { bubbles: true }));
 
 var results = [];
@@ -1399,6 +1431,44 @@ async function run() {
       && new w.URL(editRequests[editRequests.length - 1].url, w.location.href)
         .searchParams.get('id') === contextEngram.id);
   var cancelledShell = editDraft.querySelector('.ora-document-editor');
+
+  // Exercise the delivered global handlers, including Settings' capture
+  // listener, with events that actually cross CodeMirror's shadow boundary.
+  var settingsStub = w.OraSettingsPanel;
+  loadScript('settings-panel.js');
+  w.OraSettingsPanel.init();
+  loadScript('js/v3-toolbar-selector.js');
+  function keyOn(target, key, modifiers) {
+    var event = new w.KeyboardEvent('keydown', Object.assign({
+      key: key, bubbles: true, composed: true, cancelable: true,
+    }, modifiers || {}));
+    target.dispatchEvent(event);
+    return event;
+  }
+  var keyboardView = draftView(editDraft);
+  keyboardView.focus();
+  var helpKey = keyOn(keyboardView.contentDOM, '?', { code: 'Slash', shiftKey: true });
+  var toolbarKey = keyOn(keyboardView.contentDOM, 'T', { code: 'KeyT', shiftKey: true });
+  var newDialogueKey = keyOn(keyboardView.contentDOM, 'j', { code: 'KeyJ', ctrlKey: true });
+  record('composed typing keys cannot open Settings, toolbars, or New Dialogue through delivered handlers',
+    !helpKey.defaultPrevented && !toolbarKey.defaultPrevented && !newDialogueKey.defaultPrevented
+      && !w.OraSettingsPanel.getState().open && !w.OraV3ToolbarSelector.isOpen()
+      && !w.document.querySelector('.conversation-create-overlay.is-open')
+      && w.OraLibraryWorkspace.isOpen() && draftView(editDraft) === keyboardView
+      && keyboardView.root.activeElement === keyboardView.contentDOM
+      && keyboardView.state.doc.toString() === rawMarkdownLf);
+  // Verify the same installed handlers remain functional away from typing.
+  var helpOutside = keyOn(browseButton, '?', { code: 'Slash', shiftKey: true });
+  record('delivered Settings capture shortcut still opens shortcut help outside the editor',
+    helpOutside.defaultPrevented && w.OraSettingsPanel.getState().open
+      && w.OraSettingsPanel.getState().activeTab === 'shortcuts');
+  w.OraSettingsPanel.close();
+  var toolbarOutside = keyOn(browseButton, 'T', { code: 'KeyT', shiftKey: true });
+  record('delivered toolbar shortcut still opens outside the editor',
+    toolbarOutside.defaultPrevented && w.OraV3ToolbarSelector.isOpen());
+  w.OraV3ToolbarSelector.close();
+  w.OraSettingsPanel = settingsStub;
+
   replaceDraft(editDraft, 'Cancelled draft');
   queuedPreviewResponses.push({
     id: contextEngram.id, source: 'engrams', text: currentBody,
@@ -1653,6 +1723,39 @@ async function run() {
       && !w.document.querySelector('.library-preview-document textarea'));
 
   var indexedShell = await openCurrentEngram();
+  var overviewDraftHost = w.document.querySelector('[data-library-edit-draft]');
+  var overviewDraft = draftView(overviewDraftHost);
+  replaceDraft(overviewDraftHost, 'Unsaved Library draft beneath Overview');
+  overviewDraft.dispatch({ selection: { anchor: 8 } });
+  var returnControl = w.document.querySelector('[data-library-edit="save"]');
+  returnControl.focus();
+  w.document.getElementById('overviewDesktopOpen').click();
+  await flush(); await flush();
+  w.document.querySelector('[data-overview-action="read_note"]').click();
+  await flush(); await flush();
+  var backControl = w.document.querySelector('[data-overview-back]');
+  record('Daily reader opens over the real Library controller without replacing its unsaved editor',
+    w.document.activeElement === backControl
+      && !w.document.getElementById('overviewDailyNoteReader').hidden
+      && w.document.getElementById('overviewDailyNoteDocument').querySelector('h1').textContent === 'Daily fixture'
+      && draftView(overviewDraftHost) === overviewDraft
+      && overviewDraft.state.doc.toString() === 'Unsaved Library draft beneath Overview');
+  keyOn(backControl, 'Escape', { code: 'Escape' });
+  record('Escape from Daily Back closes Overview while preserving Library draft, selection, panes and focus',
+    w.document.getElementById('overviewDesktop').hidden
+      && w.document.getElementById('overviewDailyNoteDocument').childNodes.length === 0
+      && w.OraLibraryWorkspace.isOpen() && draftView(overviewDraftHost) === overviewDraft
+      && overviewDraft.state.doc.toString() === 'Unsaved Library draft beneath Overview'
+      && overviewDraft.state.selection.main.anchor === 8
+      && w.document.activeElement === returnControl
+      && !w.document.querySelector('.ora-shell').hasAttribute('inert')
+      && inquiryDraft.value === 'Composer draft survives Library preview'
+      && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
+      && preservedFinding.isConnected && preservedExhibit.isConnected);
+  overviewDraft.focus();
+  keyOn(overviewDraft.contentDOM, 'z', { code: 'KeyZ', ctrlKey: true });
+  record('Library undo history survives the complete Daily-reader Escape lifecycle',
+    overviewDraft.state.doc.toString() === rawMarkdownLf);
   queuedEditResponses.push({ id: contextEngram.id, source: 'engrams', saved: true, index_refreshed: true });
   queuedPreviewResponses.push({ id: contextEngram.id, source: 'engrams', text: '# Saved canonical' });
   w.document.querySelector('[data-library-edit="save"]').click();

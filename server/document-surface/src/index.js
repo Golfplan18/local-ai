@@ -104,7 +104,7 @@ function createEditor({ host, text, ariaLabel, onChange }) {
           highlightActiveLine(), highlightSpecialChars(), bracketMatching(),
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           markdownLanguage, EditorView.lineWrapping,
-          keymap.of([...defaultKeymap, ...historyKeymap, ...foldKeymap, ...markdownKeymap]),
+          keymap.of([...markdownKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap]),
           EditorView.contentAttributes.of({ 'aria-label': ariaLabel || 'Edit Markdown' }),
           disabled.of([EditorState.readOnly.of(false), EditorView.editable.of(true)]),
           EditorView.updateListener.of(update => {

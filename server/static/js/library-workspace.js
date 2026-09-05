@@ -1866,6 +1866,8 @@
   document.addEventListener('ora:fresh-conversation-started', () => close({ focus: false }));
   document.addEventListener('keydown', (event) => {
     if (!state.open || event.key !== 'Escape') return;
+    const overview = document.getElementById('overviewDesktop');
+    if (overview && !overview.hidden) return;
     const openPanel = mount.querySelector('[data-library-panel]:not([hidden])');
     event.preventDefault();
     event.stopPropagation();

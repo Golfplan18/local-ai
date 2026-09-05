@@ -115,7 +115,7 @@ const tick = () => new Promise(resolve => w.setTimeout(resolve, 0));
     assert.equal(content.getAttribute('aria-disabled'), 'true');
     assert.equal(view.state.selection.main.anchor, selection);
     editor.setDisabled(false);
-    content.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true }));
+    content.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, composed: true, cancelable: true }));
     assert.equal(editor.getText(), '# Complete draft\n\nText', 'undo survives disabling and re-enabling');
     assert.throws(() => surface.createEditor({ host: other, text: 'second' }), /already open/);
     assert.throws(() => surface.renderRead({ host, markdown: 'replace draft' }), /current editor/);
@@ -133,6 +133,31 @@ const tick = () => new Promise(resolve => w.setTimeout(resolve, 0));
     assert.ok(host.firstChild.shadowRoot.querySelector('style'), 'a later editor mounts fresh working styles');
     next.destroy();
     console.log('PASS: real CodeMirror editing, focus, disable/undo, one-editor ownership, host isolation and idempotent view/style teardown');
+
+    for (const [before, after] of [['- item', '- item\n- '], ['1. item', '1. item\n2. '], ['> quote', '> quote\n> ']]) {
+      const markdownEditor = surface.createEditor({ host, text: before });
+      const content = host.firstChild.shadowRoot.querySelector('.cm-content');
+      const view = EditorView.findFromDOM(content);
+      markdownEditor.focus();
+      view.dispatch({ selection: { anchor: view.state.doc.length } });
+      content.dispatchEvent(new w.KeyboardEvent('keydown', {
+        key: 'Enter', code: 'Enter', bubbles: true, composed: true, cancelable: true,
+      }));
+      assert.equal(markdownEditor.getText(), after, 'Enter continues the Markdown structure');
+      content.dispatchEvent(new w.KeyboardEvent('keydown', {
+        key: 'Backspace', code: 'Backspace', bubbles: true, composed: true, cancelable: true,
+      }));
+      const indentation = before.startsWith('>') ? '' : ' '.repeat(after.split('\n')[1].length);
+      assert.equal(markdownEditor.getText(), before + '\n' + indentation, 'Backspace removes the empty Markdown marker');
+      if (indentation) {
+        content.dispatchEvent(new w.KeyboardEvent('keydown', {
+          key: 'Backspace', code: 'Backspace', bubbles: true, composed: true, cancelable: true,
+        }));
+        assert.equal(markdownEditor.getText(), before + '\n', 'a second Backspace removes list indentation');
+      }
+      markdownEditor.destroy();
+    }
+    console.log('PASS: Markdown Enter continuation and Backspace marker removal take precedence over generic keys');
 
     const html = fs.readFileSync(path.resolve(__dirname, '../../index-v3.html'), 'utf8');
     const bundleIndex = html.indexOf('/static/vendor/document-surface/ora-document-surface.js');
