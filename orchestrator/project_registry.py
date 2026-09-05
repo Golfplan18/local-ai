@@ -1366,7 +1366,10 @@ def project_execution_binding(
         "script_identity": script_identity,
         "args_digest": args_digest,
         "selectors": selectors,
-        "_resolved_command": command,
+        # Launch the exact absolute executable whose bytes were authenticated
+        # above.  The manifest's original spelling remains bound through the
+        # command digest, but it is never resolved a second time by subprocess.
+        "_resolved_command": [executable_path, *command[1:]],
     }
 
 

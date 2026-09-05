@@ -412,13 +412,15 @@ class DriftTests(TriggerBase):
         # still a different execution: cwd and ORA_PROJECT_ROOT both change.
         # Use a command with no script path so the root is the only binding
         # field capable of distinguishing these registrations.
+        executable_alias = self.root / "authenticated-python-alias"
+        executable_alias.symlink_to(Path(sys.executable).resolve())
         manifest = {
             "nexus": "root-bound", "name": "Root-bound Project",
             "version": "1.0.0",
-            "tools": [{"name": "run", "command": [sys.executable],
+            "tools": [{"name": "run", "command": [str(executable_alias)],
                        "interface": "argv-stdout-json"}],
             "slash_commands": [{
-                "name": "root-status", "command": [sys.executable],
+                "name": "root-status", "command": [str(executable_alias)],
                 "interface": "argv-stdout-json",
             }],
         }
@@ -441,6 +443,9 @@ class DriftTests(TriggerBase):
             approved["approved_action_binding"]["project_root"],
             str(roots[0].resolve()),
         )
+        exact_executable = approved["approved_action_binding"]["executable_path"]
+        self.assertEqual(exact_executable, str(Path(sys.executable).resolve()))
+        self.assertNotEqual(exact_executable, str(executable_alias))
         pr.register_project(
             str(roots[1]), pointer_dir=str(self.data / "projects"),
         )
@@ -518,6 +523,8 @@ class DriftTests(TriggerBase):
                 "root-env", request_id="canonical-trigger-root",
             )
         tool_call = tool_spawn.call_args
+        self.assertEqual(tool_call.args[0][0], exact_executable)
+        self.assertTrue(Path(tool_call.args[0][0]).is_absolute())
         self.assertEqual(tool_call.kwargs["cwd"], str(roots[1].resolve()))
         self.assertEqual(
             tool_call.kwargs["env"]["ORA_PROJECT_ROOT"],
@@ -541,6 +548,8 @@ class DriftTests(TriggerBase):
                 "root status",
             )
         slash_call = slash_spawn.call_args
+        self.assertEqual(slash_call.args[0][0], exact_executable)
+        self.assertTrue(Path(slash_call.args[0][0]).is_absolute())
         self.assertEqual(slash_call.kwargs["cwd"], str(roots[1].resolve()))
         self.assertEqual(
             slash_call.kwargs["env"]["ORA_PROJECT_ROOT"],
@@ -1078,13 +1087,14 @@ class FiringTests(TriggerBase):
             "while True:\n"
             "    time.sleep(1)\n"
         )
-        _project, script = self.make_project(script_body=(
+        _project, _script = self.make_project(script_body=(
             "import signal, subprocess, sys, time\n"
             "from pathlib import Path\n"
             "subprocess.Popen(\n"
             f"    [sys.executable, '-c', {descendant_code!r}],\n"
             "    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,\n"
             "    stderr=subprocess.DEVNULL, close_fds=True,\n"
+            "    start_new_session=True,\n"
             ")\n"
             "def stop(*_):\n"
             f"    Path({str(acknowledged)!r}).write_text('stopped')\n"
@@ -1102,7 +1112,7 @@ class FiringTests(TriggerBase):
                     ).split()
                 )
                 if os.getpgid(pid) == process_group:
-                    os.kill(pid, signal.SIGKILL)
+                    os.killpg(process_group, signal.SIGKILL)
             except (FileNotFoundError, ProcessLookupError, ValueError):
                 pass
 
@@ -1118,37 +1128,86 @@ class FiringTests(TriggerBase):
         with mock.patch.dict(os.environ, {"ORA_HOME": str(self.root)}):
             service.run_manual("nightly", request_id="times-out")
             timed_out = service.firings("nightly")[0]
-            self.assertEqual(timed_out["status"], "failed")
+            self.assertEqual(timed_out["status"], "claimed")
+            self.assertEqual(timed_out["outcome"], "termination_unacknowledged")
             self.assertIn("deadline", timed_out["error"])
             self.assertTrue(acknowledged.is_file())
-            self.assertNotIn("nightly", triggers._RUNNING)
+            self.assertEqual(
+                triggers._RUNNING["nightly"], timed_out["event_id"],
+            )
+            timed_out_record = service.ledger.get(timed_out["event_id"])
+            process_identity = timed_out_record["process_identity"]
+            self.assertEqual(process_identity["kind"], "posix_process_group")
+            self.assertFalse(process_identity["complete"])
+            self.assertTrue(process_identity["action_may_have_started"])
             child_pid, child_group = (
                 int(value) for value in descendant_pid.read_text(
                     encoding="utf-8",
                 ).split()
             )
-            self.assertNotEqual(child_pid, child_group)
+            self.assertEqual(child_pid, child_group)
             group_deadline = time.monotonic() + 2
-            group_exists = True
-            while group_exists and time.monotonic() < group_deadline:
-                try:
-                    os.killpg(child_group, 0)
-                except ProcessLookupError:
-                    group_exists = False
-                if group_exists:
-                    time.sleep(0.02)
-            self.assertFalse(group_exists, "timed-out process group survived")
-            self.assertFalse(descendant_survived.exists())
+            while (
+                (
+                    triggers._process_exists(process_identity["root_pid"])
+                    or triggers._process_group_exists(
+                        process_identity["process_group_id"]
+                    )
+                )
+                and time.monotonic() < group_deadline
+            ):
+                time.sleep(0.02)
+            self.assertFalse(
+                triggers._process_exists(process_identity["root_pid"]),
+                "timed-out action wrapper survived",
+            )
+            self.assertFalse(
+                triggers._process_group_exists(
+                    process_identity["process_group_id"]
+                ),
+                "timed-out known process group survived",
+            )
+            survived_deadline = time.monotonic() + 3
+            while (
+                not descendant_survived.exists()
+                and time.monotonic() < survived_deadline
+            ):
+                time.sleep(0.02)
+            self.assertTrue(
+                descendant_survived.is_file(),
+                "detached descendant did not demonstrate POSIX session escape",
+            )
+            stop_descendant_if_needed()
 
-            script.write_text('print(\'{"ok": true}\')', encoding="utf-8")
-            service.lifecycle("nightly", "pause")
-            service.update("nightly", self.tool_spec())
-            review = service.activation_review("nightly")
-            service.activate("nightly", expected_spec_digest=review["spec_digest"])
-            service.run_manual("nightly", request_id="after-timeout")
-        latest = service.firings("nightly")[0]
-        self.assertEqual(latest["status"], "completed")
-        self.assertNotEqual(latest["receipt"]["outcome"], "skipped")
+            # Restart recovery must not turn known group absence into proof that
+            # the escaped session ended, and admission must keep skipping.
+            triggers._RUNNING.pop("nightly", None)
+            with (
+                mock.patch.object(triggers, "_process_exists", return_value=False),
+                mock.patch.object(
+                    triggers, "_process_group_exists", return_value=False,
+                ),
+            ):
+                recovery = service.reconcile_unresolved_firings("nightly")
+                blocked = service.run_manual(
+                    "nightly", request_id="after-posix-timeout",
+                )
+        self.assertEqual(recovery["retained"], [timed_out["event_id"]])
+        self.assertEqual(recovery["released"], [])
+        self.assertEqual(
+            service.ledger.get(timed_out["event_id"])["status"], "claimed",
+        )
+        self.assertEqual(triggers._RUNNING["nightly"], timed_out["event_id"])
+        blocked_record = next(
+            row for row in service.firings("nightly")
+            if row["event_id"] == blocked["event_id"]
+        )
+        self.assertEqual(blocked_record["status"], "completed")
+        self.assertEqual(blocked_record["receipt"]["outcome"], "skipped")
+        self.assertEqual(
+            blocked_record["receipt"]["blocking_event_id"],
+            timed_out["event_id"],
+        )
 
         # The same boundary is the provider write-ahead barrier: the action
         # cannot cross into provider work until the parent's durable callback
@@ -1938,11 +1997,22 @@ class FiringTests(TriggerBase):
         # If termination cannot be proved, neither evidence stream may call
         # possibly-live work finished. The durable process identity must hold
         # the same overlap claim across restart until death is proved.
+        service.create(self.tool_spec(
+            trigger_id="legacy-posix-identity",
+            name="Legacy POSIX identity",
+        ))
+        review = service.activation_review("legacy-posix-identity")
+        service.activate(
+            "legacy-posix-identity",
+            expected_spec_digest=review["spec_digest"],
+        )
         unresolved_identity = {
             "kind": "posix_process_group",
             "root_pid": 987654321,
             "process_group_id": 987654321,
             "complete": True,
+            # Deliberately omit action_may_have_started: a pre-fix durable
+            # identity must not become positive death evidence after upgrade.
         }
         with self.subTest("unacknowledged termination stays nonterminal"):
             with mock.patch.object(
@@ -1953,9 +2023,11 @@ class FiringTests(TriggerBase):
                 ),
             ):
                 stuck = service.run_manual(
-                    "nightly", request_id="unacknowledged",
+                    "legacy-posix-identity", request_id="unacknowledged",
                 )
-            self.assertEqual(triggers._RUNNING["nightly"], stuck["event_id"])
+            self.assertEqual(
+                triggers._RUNNING["legacy-posix-identity"], stuck["event_id"],
+            )
             stuck_record = service.ledger.get(stuck["event_id"])
             self.assertEqual(stuck_record["status"], "claimed")
             self.assertEqual(
@@ -1964,7 +2036,7 @@ class FiringTests(TriggerBase):
             self.assertNotIn("completed_at", stuck_record)
             self.assertNotIn("receipt", stuck_record)
             projected = next(
-                row for row in service.firings("nightly")
+                row for row in service.firings("legacy-posix-identity")
                 if row["event_id"] == stuck["event_id"]
             )
             self.assertEqual(projected["outcome"], "termination_unacknowledged")
@@ -1979,6 +2051,8 @@ class FiringTests(TriggerBase):
             pending_starts = [
                 row for row in audit
                 if row.get("event_type") == "protected_action_started"
+                and row.get("execution_id")
+                == stuck_record["protection_execution_id"]
                 and row.get("execution_id") not in terminal_execution_ids
             ]
             self.assertEqual(len(pending_starts), 1)
@@ -1991,32 +2065,36 @@ class FiringTests(TriggerBase):
             self.assertNotIn("protection_post_state", stuck_record)
 
         with self.subTest("restart and admission retain a live claim"):
-            triggers._RUNNING.clear()
+            triggers._RUNNING.pop("legacy-posix-identity", None)
             restarted = triggers.TriggerService(
                 queue=self.queue, ledger=service.ledger, executor=_inline,
                 firing_timeout_sec=1.0, terminate_actions=True,
             )
             with (
-                mock.patch.object(triggers, "_process_exists", return_value=True),
+                mock.patch.object(triggers, "_process_exists", return_value=False),
                 mock.patch.object(
-                    triggers, "_process_group_exists", return_value=True,
+                    triggers, "_process_group_exists", return_value=False,
                 ),
             ):
-                recovery = restarted.reconcile_unresolved_firings()
+                recovery = restarted.reconcile_unresolved_firings(
+                    "legacy-posix-identity"
+                )
                 self.assertEqual(recovery["retained"], [stuck["event_id"]])
                 self.assertNotIn(
                     stuck["event_id"],
                     hygiene.restore_incomplete_events(restarted.ledger),
                 )
                 blocked = restarted.run_manual(
-                    "nightly", request_id="blocked-after-restart",
+                    "legacy-posix-identity", request_id="blocked-after-restart",
                 )
-            self.assertEqual(triggers._RUNNING["nightly"], stuck["event_id"])
+            self.assertEqual(
+                triggers._RUNNING["legacy-posix-identity"], stuck["event_id"],
+            )
             self.assertEqual(
                 restarted.ledger.get(stuck["event_id"])["status"], "claimed",
             )
             blocked_record = next(
-                row for row in restarted.firings("nightly")
+                row for row in restarted.firings("legacy-posix-identity")
                 if row["event_id"] == blocked["event_id"]
             )
             self.assertEqual(blocked_record["receipt"]["outcome"], "skipped")
@@ -2032,42 +2110,65 @@ class FiringTests(TriggerBase):
                 for row in system_protection.verify_audit()
             ))
 
-        with self.subTest("positive death confirmation releases the claim"):
+        with self.subTest("POSIX group absence cannot release post-start work"):
             with (
                 mock.patch.object(triggers, "_process_exists", return_value=False),
                 mock.patch.object(
                     triggers, "_process_group_exists", return_value=False,
                 ),
             ):
-                recovery = restarted.reconcile_unresolved_firings()
-            self.assertEqual(recovery["released"], [stuck["event_id"]])
-            resolved = restarted.ledger.get(stuck["event_id"])
-            self.assertEqual(resolved["status"], "failed")
-            self.assertIn("completed_at", resolved)
-            self.assertNotIn("termination_confirmed_at", resolved)
-            terminals = [
-                row for row in system_protection.verify_audit()
-                if row.get("execution_id") == pending_execution_id
+                recovery = restarted.reconcile_unresolved_firings(
+                    "legacy-posix-identity"
+                )
+            self.assertEqual(recovery["retained"], [stuck["event_id"]])
+            self.assertEqual(recovery["released"], [])
+            unresolved = restarted.ledger.get(stuck["event_id"])
+            self.assertEqual(unresolved["status"], "claimed")
+            self.assertNotIn("completed_at", unresolved)
+            self.assertFalse(any(
+                row.get("execution_id") == pending_execution_id
                 and row.get("event_type") in {
                     "protected_action_completed", "protected_action_failed",
                 }
-            ]
-            self.assertEqual(len(terminals), 1)
-            self.assertEqual(terminals[0]["event_type"], "protected_action_failed")
-            self.assertEqual(
-                terminals[0]["post_state"],
-                pending_starts[0]["request"]["pre_state"],
-            )
-            self.assertNotIn("nightly", triggers._RUNNING)
+                for row in system_protection.verify_audit()
+            ))
 
-        with self.subTest("next firing starts only after positive death"):
-            with mock.patch.dict(os.environ, {"ORA_HOME": str(self.root)}):
-                restarted.run_manual(
-                    "nightly", request_id="after-positive-death",
+        with self.subTest("explicit pre-action identity can still release"):
+            pre_action_event = "evt-posix-pre-action-wrapper"
+            restarted.ledger.claim(
+                event_id=pre_action_event,
+                event_type=triggers.FIRING_EVENT_TYPE,
+                subject={
+                    "trigger_id": "posix-pre-action-wrapper",
+                    "cause": "manual",
+                },
+            )
+            restarted.ledger.transition(
+                pre_action_event, {"claimed"}, "claimed",
+                process_identity={
+                    "kind": "posix_process_group",
+                    "root_pid": 987654322,
+                    "process_group_id": 987654322,
+                    "complete": False,
+                    "action_may_have_started": False,
+                },
+                termination_unacknowledged_at=triggers._now(),
+                termination_error="injected pre-action wrapper loss",
+            )
+            with (
+                mock.patch.object(triggers, "_process_exists", return_value=False),
+                mock.patch.object(
+                    triggers, "_process_group_exists", return_value=False,
+                ),
+            ):
+                pre_action_recovery = restarted.reconcile_unresolved_firings(
+                    "posix-pre-action-wrapper"
                 )
-            latest = restarted.firings("nightly")[0]
-            self.assertEqual(latest["status"], "completed")
-            self.assertNotEqual(latest["receipt"]["outcome"], "skipped")
+            self.assertEqual(pre_action_recovery["released"], [pre_action_event])
+            self.assertEqual(
+                restarted.ledger.get(pre_action_event)["status"], "failed",
+            )
+            self.assertNotIn("posix-pre-action-wrapper", triggers._RUNNING)
 
     @unittest.skipUnless(os.name == "posix", "process assertion is POSIX-only")
     def test_parent_callback_error_reaps_work_before_next_firing(self):
@@ -2248,6 +2349,41 @@ class ActionTests(TriggerBase):
                 triggers.TriggerConflict, "bound action changed"):
             self.service.activate(
                 "nightly", expected_spec_digest=second["spec_digest"])
+
+        framework_spec = self.tool_spec(
+            trigger_id="project-framework-review",
+            name="Project framework review",
+            action={
+                "kind": "framework",
+                "framework": "process-formalization",
+                "input": "F-Audit Map the dependency",
+                "project_nexus": "fixture",
+            },
+        )
+        self.service.create(framework_spec)
+        resolved_framework_binding = {
+            "kind": "framework",
+            "framework": "process-formalization.md",
+            "path": str(self.root / "process-formalization.md"),
+            "command_digest": "sha256:" + "a" * 64,
+            "project_nexus": "fixture",
+            "project_profile": "fixture-analysis",
+        }
+        with mock.patch.object(
+            triggers, "resolve_action_binding",
+            return_value=resolved_framework_binding,
+        ):
+            framework_review = self.service.activation_review(
+                "project-framework-review"
+            )
+        self.assertIn(
+            'resolved project nexus="fixture" and profile="fixture-analysis"',
+            framework_review["will_run"],
+        )
+        self.assertIn(
+            'input="F-Audit Map the dependency"',
+            framework_review["will_run"],
+        )
 
         import slash_commands
         email_service = mock.Mock()

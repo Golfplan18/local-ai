@@ -527,6 +527,7 @@ class Snapshot:
     path: str
     existed: bool
     before_sha256: str | None
+    before_mode: int | None
     backup: str | None
 
 
@@ -566,10 +567,11 @@ class MutationTransaction:
                 mode = path.stat().st_mode & 0o7777
                 _rp.atomic_write_bytes(backup, payload, mode=mode)
                 self.snapshots.append(Snapshot(
-                    raw, True, hashlib.sha256(payload).hexdigest(), str(backup),
+                    raw, True, hashlib.sha256(payload).hexdigest(), mode,
+                    str(backup),
                 ))
             else:
-                self.snapshots.append(Snapshot(raw, False, None, None))
+                self.snapshots.append(Snapshot(raw, False, None, None, None))
         _atomic_json(self.manifest, {
             "schema_version": SCHEMA_VERSION,
             "event_id": self.event_id,
@@ -591,10 +593,12 @@ class MutationTransaction:
         after = []
         for snapshot in self.snapshots:
             path = Path(snapshot.path)
+            exists = path.exists()
             after.append({
                 "path": snapshot.path,
-                "exists": path.exists(),
-                "sha256": sha256_file(path) if path.exists() else None,
+                "exists": exists,
+                "sha256": sha256_file(path) if exists else None,
+                "mode": path.stat().st_mode & 0o7777 if exists else None,
             })
         result = self.ledger.finalize_mutation(
             self.event_id,
@@ -610,10 +614,17 @@ class MutationTransaction:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 backup = Path(str(snapshot.backup))
                 payload = backup.read_bytes()
+                backup_mode = backup.stat().st_mode & 0o7777
                 if hashlib.sha256(payload).hexdigest() != snapshot.before_sha256:
                     raise RuntimeError(f"rollback backup drifted: {backup}")
+                if (
+                    type(snapshot.before_mode) is not int
+                    or not 0 <= snapshot.before_mode <= 0o7777
+                    or backup_mode != snapshot.before_mode
+                ):
+                    raise RuntimeError(f"rollback backup mode drifted: {backup}")
                 _rp.atomic_write_bytes(
-                    path, payload, mode=backup.stat().st_mode & 0o7777,
+                    path, payload, mode=snapshot.before_mode,
                 )
             elif os.path.lexists(path):
                 path.unlink()
@@ -694,7 +705,7 @@ def _authenticated_rollback_material(
     restore_bytes: dict[str, tuple[bytes, int]] = {}
     for index, value in enumerate(manifest["snapshots"]):
         if not isinstance(value, dict) or set(value) != {
-            "path", "existed", "before_sha256", "backup",
+            "path", "existed", "before_sha256", "before_mode", "backup",
         }:
             raise _RollbackMaterialAuthenticationError(
                 "rollback manifest has an invalid snapshot"
@@ -702,6 +713,7 @@ def _authenticated_rollback_material(
         raw_path = value.get("path")
         existed = value.get("existed")
         before_sha256 = value.get("before_sha256")
+        before_mode = value.get("before_mode")
         backup_value = value.get("backup")
         if not isinstance(raw_path, str) or not raw_path or not isinstance(existed, bool):
             raise _RollbackMaterialAuthenticationError(
@@ -712,7 +724,9 @@ def _authenticated_rollback_material(
             raise _RollbackMaterialAuthenticationError(
                 "rollback manifest has a noncanonical snapshot path"
             )
-        snapshot = Snapshot(raw_path, existed, before_sha256, backup_value)
+        snapshot = Snapshot(
+            raw_path, existed, before_sha256, before_mode, backup_value,
+        )
         if existed:
             if (
                 not isinstance(before_sha256, str)
@@ -723,6 +737,8 @@ def _authenticated_rollback_material(
                 )
                 or not isinstance(backup_value, str)
                 or not backup_value
+                or type(before_mode) is not int
+                or not 0 <= before_mode <= 0o7777
             ):
                 raise _RollbackMaterialAuthenticationError(
                     "rollback manifest has an invalid before-image"
@@ -735,7 +751,7 @@ def _authenticated_rollback_material(
                 )
             try:
                 payload = backup.read_bytes()
-                mode = backup.stat().st_mode & 0o7777
+                backup_mode = backup.stat().st_mode & 0o7777
             except OSError as exc:
                 raise _RollbackMaterialAuthenticationError(
                     "rollback manifest has an unreadable backup"
@@ -744,10 +760,18 @@ def _authenticated_rollback_material(
                 raise _RollbackMaterialAuthenticationError(
                     f"rollback refused after backup drift: {backup}"
                 )
+            if backup_mode != before_mode:
+                raise _RollbackMaterialAuthenticationError(
+                    f"rollback refused after backup mode drift: {backup}"
+                )
             restore_bytes[raw_path] = (
-                payload, mode,
+                payload, before_mode,
             )
-        elif before_sha256 is not None or backup_value is not None:
+        elif (
+            before_sha256 is not None
+            or before_mode is not None
+            or backup_value is not None
+        ):
             raise _RollbackMaterialAuthenticationError(
                 "rollback manifest has an invalid absent snapshot"
             )
@@ -873,33 +897,50 @@ def rollback_completed_event(event_id: str, ledger: EventLedger | None = None) -
             raise ValueError("only a completed event can be rolled back")
         after = record.get("after")
         if not isinstance(after, list):
-            raise ValueError("completed event has invalid after-identities")
+            raise _RollbackMaterialAuthenticationError(
+                "completed event has invalid after-identities"
+            )
         paths: list[str] = []
         for identity in after:
             if not isinstance(identity, dict) or set(identity) != {
-                "path", "exists", "sha256",
+                "path", "exists", "sha256", "mode",
             }:
-                raise ValueError("completed event has invalid after-identities")
+                raise _RollbackMaterialAuthenticationError(
+                    "completed event has invalid after-identities"
+                )
             raw_path = identity.get("path")
             exists = identity.get("exists")
             digest = identity.get("sha256")
+            mode = identity.get("mode")
             if not isinstance(raw_path, str) or not raw_path or not isinstance(exists, bool):
-                raise ValueError("completed event has invalid after-identities")
+                raise _RollbackMaterialAuthenticationError(
+                    "completed event has invalid after-identities"
+                )
             exact = str(Path(raw_path).expanduser().resolve())
             if exact != raw_path:
-                raise ValueError("completed event has noncanonical mutation paths")
+                raise _RollbackMaterialAuthenticationError(
+                    "completed event has noncanonical mutation paths"
+                )
             if exists:
                 if (
                     not isinstance(digest, str)
                     or len(digest) != 64
                     or any(character not in "0123456789abcdef" for character in digest)
+                    or type(mode) is not int
+                    or not 0 <= mode <= 0o7777
                 ):
-                    raise ValueError("completed event has invalid after-identities")
-            elif digest is not None:
-                raise ValueError("completed event has invalid after-identities")
+                    raise _RollbackMaterialAuthenticationError(
+                        "completed event has invalid after-identities"
+                    )
+            elif digest is not None or mode is not None:
+                raise _RollbackMaterialAuthenticationError(
+                    "completed event has invalid after-identities"
+                )
             paths.append(exact)
         if len(set(paths)) != len(paths):
-            raise ValueError("completed event has duplicate mutation paths")
+            raise _RollbackMaterialAuthenticationError(
+                "completed event has duplicate mutation paths"
+            )
         return tuple(sorted(paths))
 
     def matches(path: str, identity: dict) -> bool:
@@ -907,11 +948,13 @@ def rollback_completed_event(event_id: str, ledger: EventLedger | None = None) -
             return not os.path.lexists(path)
         try:
             current = artifact_identity(path)
+            current_mode = Path(path).stat().st_mode & 0o7777
         except (FileNotFoundError, OSError):
             return False
         return (
             current.get("path") == path
             and current.get("sha256") == identity["sha256"]
+            and current_mode == identity["mode"]
         )
 
     # The first read chooses only the lock set. Every decision is made again
@@ -950,6 +993,7 @@ def rollback_completed_event(event_id: str, ledger: EventLedger | None = None) -
                 "path": snapshot.path,
                 "exists": snapshot.existed,
                 "sha256": snapshot.before_sha256,
+                "mode": snapshot.before_mode,
             }
             for snapshot in snapshots
         }

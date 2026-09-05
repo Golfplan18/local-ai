@@ -841,8 +841,20 @@ def _resolution_note(spec: Mapping[str, Any], *,
         return (
             f"email via Fastmail with exact action={_canonical_json(action)}"
         )
+    resolved = binding or resolve_action_binding(action)
+    project_context = ""
+    if (
+        resolved.get("project_nexus") is not None
+        or resolved.get("project_profile") is not None
+    ):
+        project_context = (
+            " for resolved project nexus="
+            f"{json.dumps(resolved.get('project_nexus'), ensure_ascii=False)}"
+            " and profile="
+            f"{json.dumps(resolved.get('project_profile'), ensure_ascii=False)}"
+        )
     return (
-        f"framework {action['framework']} with exact "
+        f"framework {action['framework']}{project_context} with exact "
         f"input={json.dumps(action['input'], ensure_ascii=False)}"
     )
 
@@ -2314,6 +2326,14 @@ def _process_identity_death_confirmed(identity: Mapping[str, Any]) -> bool:
             if _uses_posix_process_groups():
                 return False
             return _windows_job_identity_death_confirmed(identity)
+        if (
+            kind == "posix_process_group"
+            and identity.get("action_may_have_started") is not False
+        ):
+            # A post-start POSIX descendant can leave the recorded group with
+            # setsid().  Root/group absence therefore cannot prove that all
+            # action work ended, including for identities written by older code.
+            return False
         if identity.get("complete") is not True:
             # Before the durable start barrier, only the wrapper can exist. Its
             # absence therefore proves no action work began. Once the barrier
@@ -2573,9 +2593,18 @@ def _terminate_action_process(
     """Terminate the whole action process group and wait for acknowledgment."""
     if process.pid is None:
         if process.is_alive():
+            retained_identity = _parent_process_identity(process)
+            if (
+                _uses_posix_process_groups()
+                and action_may_have_started
+            ):
+                if isinstance(known_process_identity, Mapping):
+                    retained_identity = copy.deepcopy(dict(known_process_identity))
+                retained_identity["complete"] = False
+                retained_identity["action_may_have_started"] = True
             raise TriggerTerminationUnacknowledged(
                 "Trigger action has no terminable process identity",
-                process_identity=_parent_process_identity(process),
+                process_identity=retained_identity,
             )
         return
     if _uses_posix_process_groups():
@@ -2679,7 +2708,12 @@ def _terminate_action_process(
     )
     if process.is_alive() or group_exists:
         process_identity = _parent_process_identity(process)
-        if group_exists:
+        if action_may_have_started:
+            if isinstance(known_process_identity, Mapping):
+                process_identity = copy.deepcopy(dict(known_process_identity))
+            process_identity["complete"] = False
+            process_identity["action_may_have_started"] = True
+        elif group_exists:
             process_identity["complete"] = True
         raise TriggerTerminationUnacknowledged(
             "Trigger action process group did not acknowledge termination",
@@ -2711,6 +2745,7 @@ def _execute_action_with_deadline(
     windows_job = None
     windows_job_termination_acknowledged = False
     action_start_acknowledged = False
+    posix_timeout_after_start = False
 
     def persist_process_identity(identity: Mapping[str, Any]) -> None:
         nonlocal process_identity
@@ -2729,6 +2764,9 @@ def _execute_action_with_deadline(
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
+                posix_timeout_after_start = (
+                    _uses_posix_process_groups() and action_start_acknowledged
+                )
                 raise TimeoutError(
                     f"Trigger firing exceeded its {timeout_sec:g}s deadline"
                 )
@@ -2748,6 +2786,7 @@ def _execute_action_with_deadline(
                             **process_identity,
                             # Persist this conservative marker before granting
                             # permission to cross the action-start barrier.
+                            "complete": False,
                             "action_may_have_started": True,
                         }
                     else:
@@ -2836,7 +2875,27 @@ def _execute_action_with_deadline(
                     except TriggerTerminationUnacknowledged as exc:
                         retained_identity = exc.process_identity
                         if (
-                            isinstance(process_identity, Mapping)
+                            _uses_posix_process_groups()
+                            and action_start_acknowledged
+                        ):
+                            if isinstance(process_identity, Mapping):
+                                retained_identity = copy.deepcopy(
+                                    dict(process_identity)
+                                )
+                            elif not isinstance(retained_identity, Mapping):
+                                retained_identity = _parent_process_identity(process)
+                            else:
+                                retained_identity = copy.deepcopy(
+                                    dict(retained_identity)
+                                )
+                            retained_identity["complete"] = False
+                            retained_identity["action_may_have_started"] = True
+                        if (
+                            not (
+                                _uses_posix_process_groups()
+                                and action_start_acknowledged
+                            )
+                            and isinstance(process_identity, Mapping)
                             and (
                                 not isinstance(retained_identity, Mapping)
                                 or (
@@ -2866,6 +2925,20 @@ def _execute_action_with_deadline(
                         ) from exc
                 else:
                     process.join()
+                if posix_timeout_after_start:
+                    retained_identity = (
+                        copy.deepcopy(dict(process_identity))
+                        if isinstance(process_identity, Mapping)
+                        else _parent_process_identity(process)
+                    )
+                    retained_identity["complete"] = False
+                    retained_identity["action_may_have_started"] = True
+                    raise TriggerTerminationUnacknowledged(
+                        f"Trigger firing exceeded its {timeout_sec:g}s deadline; "
+                        "the known POSIX process group was terminated, but "
+                        "descendant session escape cannot be excluded",
+                        process_identity=retained_identity,
+                    )
         finally:
             try:
                 if windows_job is not None:

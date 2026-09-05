@@ -355,15 +355,27 @@ def _restored_snapshot_receipt(event: dict) -> dict:
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     restored = []
     for snapshot in manifest.get("snapshots", []):
+        if not isinstance(snapshot, dict) or "before_mode" not in snapshot:
+            raise RuntimeError("index restoration lacks a mode-bound snapshot")
         path = Path(snapshot["path"])
         if snapshot.get("existed"):
-            if not path.is_file() or sha256_file(path) != snapshot.get("before_sha256"):
+            before_mode = snapshot.get("before_mode")
+            if (
+                type(before_mode) is not int
+                or not 0 <= before_mode <= 0o7777
+                or not path.is_file()
+                or sha256_file(path) != snapshot.get("before_sha256")
+                or (path.stat().st_mode & 0o7777) != before_mode
+            ):
                 raise RuntimeError(f"file rollback did not restore exact pre-state: {path}")
-            restored.append(artifact_identity(path))
+            restored.append({
+                **artifact_identity(path),
+                "mode": before_mode,
+            })
         else:
-            if path.exists():
+            if snapshot.get("before_mode") is not None or os.path.lexists(path):
                 raise RuntimeError(f"file rollback did not remove created artifact: {path}")
-            restored.append({"path": str(path), "exists": False})
+            restored.append({"path": str(path), "exists": False, "mode": None})
     return {
         "rollback_manifest": str(Path(manifest_path).resolve()),
         "restored_identities": restored,

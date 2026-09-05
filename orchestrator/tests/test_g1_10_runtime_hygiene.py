@@ -528,12 +528,17 @@ class LedgerTests(RuntimeHygieneBase):
     def test_rollback_refuses_later_artifact_drift(self):
         from orchestrator import slash_commands
 
-        def complete_mutation(event_id, path, before, after):
+        def complete_mutation(
+            event_id, path, before, after, *,
+            before_mode=0o640, after_mode=0o600,
+        ):
             path.write_bytes(before)
+            path.chmod(before_mode)
             ledger.claim(event_id=event_id, event_type="test",
                          subject={"id": event_id})
             with hygiene.MutationTransaction(ledger, event_id, [path]) as tx:
                 path.write_bytes(after)
+                path.chmod(after_mode)
                 tx.commit()
             record = ledger.get(event_id)
             return Path(record["rollback_manifest"])
@@ -541,12 +546,25 @@ class LedgerTests(RuntimeHygieneBase):
         exact = self.root / "exact.bin"
         before_bytes = b"before\x00authenticated\xffbytes"
         ledger = hygiene.EventLedger()
-        complete_mutation("evt-exact", exact, before_bytes, b"after")
+        exact_manifest_path = complete_mutation(
+            "evt-exact", exact, before_bytes, b"after",
+        )
+        exact_manifest = json.loads(
+            exact_manifest_path.read_text(encoding="utf-8")
+        )
+        exact_snapshot = exact_manifest["snapshots"][0]
+        self.assertEqual(exact_snapshot["before_mode"], 0o640)
+        self.assertEqual(
+            Path(exact_snapshot["backup"]).stat().st_mode & 0o7777,
+            0o640,
+        )
+        self.assertEqual(ledger.get("evt-exact")["after"][0]["mode"], 0o600)
         result = slash_commands.run_runtime_command(
             "/maintenance rollback evt-exact"
         )
         self.assertIn("Rolled back", result)
         self.assertEqual(exact.read_bytes(), before_bytes)
+        self.assertEqual(exact.stat().st_mode & 0o7777, 0o640)
         self.assertEqual(ledger.get("evt-exact")["status"], "rolled_back")
         exact_record = ledger.get("evt-exact")
         self.assertNotIn("rollback_operation_id", exact_record)
@@ -739,8 +757,7 @@ class LedgerTests(RuntimeHygieneBase):
         refusal = slash_commands.run_runtime_command(
             "/maintenance rollback evt-legacy-completed"
         )
-        self.assertIn("predates authenticated rollback support", refusal)
-        self.assertIn("no rollback attempted", refusal)
+        self.assertIn("invalid after-identities", refusal)
         self.assertEqual(legacy_completed.read_bytes(), b"legacy-current")
         self.assertEqual(
             legacy_completed_manifest.read_bytes(), retained_manifest,
@@ -760,6 +777,18 @@ class LedgerTests(RuntimeHygieneBase):
         with self.assertRaisesRegex(ValueError, "drift"):
             hygiene.rollback_completed_event("evt-complete", ledger)
         self.assertEqual(subject.read_text(encoding="utf-8"), "later user work")
+
+        mode_drift = self.root / "mode-drift.bin"
+        complete_mutation(
+            "evt-mode-drift", mode_drift, b"mode-before", b"mode-after",
+            before_mode=0o640, after_mode=0o600,
+        )
+        mode_drift.chmod(0o644)
+        with self.assertRaisesRegex(ValueError, "artifact drift"):
+            hygiene.rollback_completed_event("evt-mode-drift", ledger)
+        self.assertEqual(mode_drift.read_bytes(), b"mode-after")
+        self.assertEqual(mode_drift.stat().st_mode & 0o7777, 0o644)
+        self.assertEqual(ledger.get("evt-mode-drift")["status"], "completed")
 
         # Mutation completion has one finalization boundary. If either its
         # terminal audit or terminal state write fails, context exit restores
@@ -884,6 +913,28 @@ class LedgerTests(RuntimeHygieneBase):
             hygiene.rollback_completed_event("evt-backup-drift", ledger)
         self.assertEqual(backup_subject.read_bytes(), b"current")
         self.assertEqual(ledger.get("evt-backup-drift")["status"], "completed")
+
+        backup_mode_subject = self.root / "backup-mode-drift.bin"
+        backup_mode_manifest_path = complete_mutation(
+            "evt-backup-mode-drift", backup_mode_subject,
+            b"trusted-mode", b"current-mode",
+        )
+        backup_mode_manifest = json.loads(
+            backup_mode_manifest_path.read_text(encoding="utf-8")
+        )
+        backup_mode_path = Path(
+            backup_mode_manifest["snapshots"][0]["backup"]
+        )
+        backup_mode_path.chmod(0o777)
+        with self.assertRaisesRegex(ValueError, "backup mode drift"):
+            hygiene.rollback_completed_event("evt-backup-mode-drift", ledger)
+        self.assertEqual(backup_mode_subject.read_bytes(), b"current-mode")
+        self.assertEqual(
+            backup_mode_subject.stat().st_mode & 0o7777, 0o600,
+        )
+        self.assertEqual(
+            ledger.get("evt-backup-mode-drift")["status"], "completed",
+        )
 
         # The backup digest is not self-authenticating: replacing both the
         # bytes and their adjacent digest still fails the independent digest
