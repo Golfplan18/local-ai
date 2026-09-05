@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
+import textwrap
 import threading
 import unittest
 import urllib.error
@@ -91,6 +93,55 @@ class UserSettingsModuleTests(unittest.TestCase):
         self.assertEqual(s["capture"]["frame_rate"], 60)
         # Other defaults still in place.
         self.assertEqual(s["whisper"]["default_language"], "auto")
+
+    def test_settings_persistence_uses_runtime_home(self):
+        relocated = self._tmp_path / "relocated-ora"
+        settings_path = relocated / "config" / "user-settings.json"
+        settings_path.parent.mkdir(parents=True)
+        settings_path.write_text(json.dumps({
+            "capture": {"frame_rate": 24},
+            "future_section": {"some_flag": True},
+        }), encoding="utf-8")
+        fake_home = self._tmp_path / "home"
+        decoy = fake_home / "ora" / "config" / "user-settings.json"
+        decoy.parent.mkdir(parents=True)
+        decoy_bytes = b'{"capture": {"frame_rate": 50}, "decoy": true}\n'
+        decoy.write_bytes(decoy_bytes)
+
+        # A fresh interpreter resolves the real roots without setUp's patched
+        # persistence constants or another test's imported runtime_paths.
+        script = textwrap.dedent("""
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, sys.argv[1])
+            import runtime_paths
+            import user_settings
+
+            expected = Path(sys.argv[2])
+            assert runtime_paths.CONFIG_DIR == expected.parent
+            assert user_settings._SETTINGS_PATH == expected
+            loaded = user_settings.load_settings()
+            assert loaded["capture"]["frame_rate"] == 24
+            assert "decoy" not in loaded
+            saved = user_settings.save_settings({"capture": {"frame_rate": 60}})
+            assert saved["future_section"]["some_flag"] is True
+            loaded = user_settings.load_settings()
+            assert loaded["capture"]["frame_rate"] == 60
+            assert loaded["future_section"]["some_flag"] is True
+            assert expected.is_file()
+            assert user_settings.reset_settings() == user_settings.DEFAULTS
+            assert not expected.exists()
+            assert user_settings.load_settings() == user_settings.DEFAULTS
+        """)
+        result = subprocess.run(
+            [sys.executable, "-B", "-c", script, str(ORCHESTRATOR),
+             str(settings_path)],
+            env={**os.environ, "ORA_HOME": str(relocated),
+                 "HOME": str(fake_home), "USERPROFILE": str(fake_home)},
+            cwd=REPO, capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(decoy.read_bytes(), decoy_bytes)
 
     def test_partial_update_doesnt_clobber_other_sections(self):
         self._mod.save_settings({"whisper": {"model_size": "small"}})
