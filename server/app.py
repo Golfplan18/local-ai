@@ -15096,6 +15096,49 @@ def overview_sources():
     return _json_response({"sources": load_overview_widget_sources()})
 
 
+@app.route("/api/overview/daily-note/read", methods=["GET"], provide_automatic_options=False)
+def overview_daily_note_read():
+    """Return body-only Markdown for the exact completed previous Daily Note."""
+    def reply(payload, status=200):
+        response = _json_response(payload, status=status)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    if request.method != "GET":
+        return reply({"error": "Only GET is supported."}, 405)
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+
+    from orchestrator import overview_widgets as _overview
+
+    identity = request.args.get("id")
+    match = re.fullmatch(r"daily-note:(\d{4}-\d{2}-\d{2})", identity or "")
+    if (set(request.args) != {"id"} or len(request.args.getlist("id")) != 1
+            or request.content_length or request.stream.read(1) or not match):
+        return reply({"error": "GET requires exactly one Daily Note id and no body."}, 400)
+    day = match.group(1)
+    try:
+        parsed_day = datetime.strptime(day, "%Y-%m-%d").date()
+    except ValueError:
+        parsed_day = None
+    if parsed_day is None or parsed_day.isoformat() != day:
+        return reply({"error": "The Daily Note id must contain a valid YYYY-MM-DD date."}, 400)
+    if day != _overview.completed_daily_note_day():
+        return reply({"error": "The Daily Note is no longer the completed previous day. Reopen Overview and try again."}, 409)
+    try:
+        text = _overview.read_daily_note(day)
+    except FileNotFoundError:
+        return reply({"error": "The Daily Note is no longer available."}, 404)
+    except OSError:
+        return reply({"error": "The Daily Note is unavailable or unsafe."}, 409)
+    except ValueError as exc:
+        return reply({"error": str(exc)}, 409)
+    if day != _overview.completed_daily_note_day():
+        return reply({"error": "The Daily Note is no longer the completed previous day. Reopen Overview and try again."}, 409)
+    return reply({"id": identity, "source": "daily-note", "text": text})
+
+
 def _overview_daily_note_open_response(
     identity, application, outcome, message, *, status=200, ok=False,
 ):

@@ -91,6 +91,12 @@
   let resizeObserver = null;
   let previewTextLayer = null;
   let previewVisualLayer = null;
+  let previewSlots = null;
+  let documentSession = null;
+  let documentIdentity = null;
+  let documentText = null;
+  let editorSession = null;
+  let editController = null;
   let savedLogo = null;
   const ownedUpperState = new Map();
 
@@ -315,21 +321,44 @@
     && row.editability.editable === true);
 
   function resetEdit(notice) {
+    if (editController) editController.abort();
+    editController = null;
+    if (editorSession) {
+      editorSession.destroy();
+      editorSession = null;
+      documentSession = null;
+      documentIdentity = null;
+      documentText = null;
+      if (previewSlots) previewSlots.document.removeAttribute('data-library-edit-draft');
+    }
     state.edit = { id: null, text: '', digest: '', crlf: false, busy: false, error: '', notice: notice || '' };
   }
 
   async function libraryEditRequest(url, options) {
-    const response = await fetch(url, options);
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = new Error(payload.error || `Library edit failed (HTTP ${response.status})`);
-      error.conflict = payload.code === 'conflict';
-      throw error;
+    const controller = new AbortController();
+    editController = controller;
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+      const payload = await response.json();
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw new Error('The edit response was incomplete.');
+      }
+      if (!response.ok) {
+        const error = new Error(payload.error || `Library edit failed (HTTP ${response.status})`);
+        error.notSaved = payload.saved === false || [400, 403, 404, 409].includes(response.status);
+        throw error;
+      }
+      return payload;
+    } finally {
+      clearTimeout(timeout);
+      if (editController === controller) editController = null;
     }
-    return payload;
   }
 
   async function startMarkdownEdit(row) {
+    if (!state.open || state.pinnedId !== row.id || state.edit.busy || state.edit.digest
+        || !markdownEditEligible(row) || !documentEditingAvailable()) return;
     resetEdit();
     const edit = state.edit;
     edit.id = row.id;
@@ -340,8 +369,8 @@
       const payload = await libraryEditRequest(`/api/library/edit?${params.toString()}`, {
         headers: { Accept: 'application/json' },
       });
-      if (edit !== state.edit || state.pinnedId !== row.id) return;
-      if (payload.id !== row.id || typeof payload.text !== 'string'
+      if (edit !== state.edit || !state.open || state.pinnedId !== row.id) return;
+      if (payload.id !== row.id || payload.source !== row.source || typeof payload.text !== 'string'
           || !/^[0-9a-f]{64}$/.test(payload.digest || '')) {
         throw new Error('The edit response did not match the pinned Library item.');
       }
@@ -361,6 +390,9 @@
 
   async function saveMarkdownEdit(row) {
     const edit = state.edit;
+    if (!state.open || edit.id !== row.id || state.pinnedId !== row.id
+        || !edit.digest || edit.busy || !editorSession) return;
+    edit.text = editorSession.getText();
     edit.busy = true;
     edit.error = '';
     renderPreview();
@@ -375,8 +407,10 @@
           text: edit.crlf ? edit.text.replace(/\n/g, '\r\n') : edit.text,
         }),
       });
-      if (edit !== state.edit || state.pinnedId !== row.id) return;
-      if (payload.id !== row.id || payload.saved !== true) throw new Error('The save response was incomplete.');
+      if (edit !== state.edit || !state.open || state.pinnedId !== row.id) return;
+      if (payload.id !== row.id || payload.source !== row.source || payload.saved !== true
+          || (row.source === 'files' ? payload.index_refreshed !== null
+            : typeof payload.index_refreshed !== 'boolean')) throw new Error('The save response was incomplete.');
       const message = payload.index_refreshed === false
         ? `File saved, but the Engram index refresh failed. ${payload.index_error || ''}`.trim()
         : payload.index_refreshed === true
@@ -387,8 +421,9 @@
       fetchPreview(row);
     } catch (error) {
       if (edit === state.edit) {
-        edit.error = (error.message || String(error))
-          + (error.conflict ? ' Your draft is still here.' : '');
+        edit.error = (error.name === 'AbortError' ? 'The save request timed out.' : error.message || String(error))
+          + (error.notSaved ? ' Nothing was written. Your draft is still here.'
+            : ' The save outcome is unknown. Your draft is still here; check the source before retrying.');
       }
     } finally {
       if (edit === state.edit) { edit.busy = false; renderPreview(); }
@@ -1005,7 +1040,7 @@
       if (!state.rowsById.has(id)) state.selectedIds.delete(id);
     });
     if (state.pinnedId && !state.rowsById.has(state.pinnedId)) state.pinnedId = null;
-    if (state.edit.id && state.edit.id !== state.pinnedId) resetEdit();
+    if (state.edit.id && (state.edit.id !== state.pinnedId || !textPreviewEligible(pinnedRow()))) resetEdit();
     updateLogo();
     renderPreview();
     renderActions();
@@ -1256,6 +1291,13 @@
         previewTextLayer = document.createElement('section');
         previewTextLayer.className = 'library-preview-layer library-preview-layer--findings';
         previewTextLayer.setAttribute('aria-label', 'Selected Library item in Findings');
+        previewSlots = {};
+        ['metadata', 'document', 'controls', 'status', 'relationships'].forEach((name) => {
+          const slot = document.createElement('div');
+          slot.className = `library-preview-${name}`;
+          previewSlots[name] = slot;
+          previewTextLayer.appendChild(slot);
+        });
         pane.appendChild(previewTextLayer);
       }
     }
@@ -1270,23 +1312,76 @@
     }
   }
 
-  function appendMarkdownEditor(host, row, previewText) {
-    const edit = state.edit.id === row.id ? state.edit : null;
-    const active = Boolean(edit && edit.digest);
-    const body = document.createElement(active ? 'textarea' : 'pre');
-    body.className = active ? 'library-edit-textarea' : 'library-preview-body';
-    if (active) {
-      body.dataset.libraryEditDraft = '';
-      body.setAttribute('aria-label', `Edit complete Markdown for ${row.title}`);
-      body.value = edit.text;
-      body.disabled = edit.busy;
-      body.addEventListener('input', () => { edit.text = body.value; });
-    } else {
-      body.textContent = previewText;
+  function destroyDocument() {
+    if (documentSession) documentSession.destroy();
+    documentSession = null;
+    editorSession = null;
+    documentIdentity = null;
+    documentText = null;
+    if (previewSlots) {
+      previewSlots.document.replaceChildren();
+      previewSlots.document.removeAttribute('data-library-edit-draft');
     }
-    host.appendChild(body);
+  }
 
-    if (active || markdownEditEligible(row)) {
+  function showRead(host, row, text) {
+    if (documentIdentity === row.id && documentText === text && documentSession) return;
+    destroyDocument();
+    const body = document.createElement('div');
+    body.className = 'library-preview-body';
+    host.appendChild(body);
+    try {
+      if (!window.OraDocumentSurface) throw new Error('The local document bundle is unavailable.');
+      documentSession = window.OraDocumentSurface.renderRead({
+        host: body, markdown: text, ariaLabel: `Read ${row.title}`,
+      });
+    } catch (error) {
+      body.classList.add('ora-document-read--unavailable');
+      const diagnostic = document.createElement('p');
+      diagnostic.textContent = 'Rendered Read is unavailable. Showing the complete literal text; Edit is unavailable.';
+      diagnostic.setAttribute('role', 'status');
+      const literal = document.createElement('pre');
+      literal.className = 'ora-document-literal';
+      literal.textContent = text;
+      body.replaceChildren(diagnostic, literal);
+      documentSession = { destroy() { body.remove(); } };
+      console.error('Library document surface unavailable:', error);
+    }
+    documentIdentity = row.id;
+    documentText = text;
+  }
+
+  function documentEditingAvailable() {
+    return Boolean(window.OraDocumentSurface && previewSlots
+      && !previewSlots.document.querySelector('.ora-document-read--unavailable'));
+  }
+
+  function renderMarkdownDocument(row, previewText) {
+    const host = previewSlots.document;
+    const edit = state.edit.id === row.id ? state.edit : null;
+    if (edit && edit.digest && !editorSession) {
+      destroyDocument();
+      try {
+        editorSession = window.OraDocumentSurface.createEditor({
+          host, text: edit.text, ariaLabel: `Edit complete Markdown for ${row.title}`,
+          onChange(text) { if (edit === state.edit) edit.text = text; },
+        });
+        documentSession = editorSession;
+        documentIdentity = row.id;
+        host.dataset.libraryEditDraft = '';
+        editorSession.focus();
+      } catch (error) {
+        edit.digest = '';
+        edit.error = `Edit is unavailable. ${error.message || error}`;
+      }
+    }
+    const active = Boolean(edit && edit.digest && editorSession);
+    if (active) editorSession.setDisabled(edit.busy);
+    else if (previewText !== null) showRead(host, row, previewText);
+    else destroyDocument();
+
+    previewSlots.controls.replaceChildren();
+    if (active || (previewText !== null && markdownEditEligible(row))) {
       const controls = document.createElement('div');
       controls.className = 'library-edit-controls';
       if (active) {
@@ -1295,7 +1390,7 @@
           button.type = 'button';
           button.dataset.libraryEdit = label.toLowerCase();
           button.textContent = label === 'Save' && edit.busy ? 'Saving…' : label;
-          button.disabled = edit.busy;
+          button.disabled = label === 'Save' && edit.busy;
           button.addEventListener('click', () => {
             if (label === 'Save') saveMarkdownEdit(row);
             else {
@@ -1311,11 +1406,22 @@
         button.type = 'button';
         button.dataset.libraryEdit = 'start';
         button.textContent = edit && edit.busy ? 'Opening editor…' : 'Edit';
-        button.disabled = Boolean(edit && edit.busy);
+        button.disabled = Boolean(edit && edit.busy) || !documentEditingAvailable();
+        if (!documentEditingAvailable()) button.title = 'The local Markdown document surface is unavailable.';
         button.addEventListener('click', () => startMarkdownEdit(row));
         controls.appendChild(button);
       }
-      host.appendChild(controls);
+      previewSlots.controls.appendChild(controls);
+      if (!active && !documentEditingAvailable()) {
+        const unavailable = document.createElement('p');
+        unavailable.textContent = 'Edit is unavailable because the local document surface could not render this document.';
+        previewSlots.controls.appendChild(unavailable);
+      }
+    } else {
+      const reason = document.createElement('p');
+      reason.textContent = row.source === 'dialogues' ? 'Dialogues are read-only.'
+        : `Edit unavailable. ${(row.editability && row.editability.reason) || 'This source does not grant Markdown write authority.'}`;
+      previewSlots.controls.appendChild(reason);
     }
   }
 
@@ -1335,11 +1441,15 @@
     if (!state.open) return;
     ensurePreviewLayers();
     if (!previewTextLayer || !previewVisualLayer) return;
-    previewTextLayer.replaceChildren();
+    previewSlots.metadata.replaceChildren();
+    previewSlots.status.replaceChildren();
+    previewSlots.relationships.replaceChildren();
     previewVisualLayer.replaceChildren();
     const row = pinnedRow();
     if (!row) {
-      previewTextLayer.textContent = 'Pin a Library item to inspect its metadata and relationships without replacing the active Dialogue.';
+      destroyDocument();
+      previewSlots.controls.replaceChildren();
+      previewSlots.metadata.textContent = 'Pin a Library item to inspect its metadata and relationships without replacing the active Dialogue.';
       previewVisualLayer.textContent = 'No Library item is pinned.';
       return;
     }
@@ -1376,10 +1486,10 @@
     } else {
       previewMessage.textContent = 'Preview unavailable. The current content has not been loaded.';
     }
-    previewTextLayer.append(heading, badges, previewMessage);
-    if (previewBody !== null) appendMarkdownEditor(previewTextLayer, row, previewBody);
-    appendEditStatus(previewTextLayer, row);
-    appendRelationshipDisclosure(previewTextLayer, row);
+    previewSlots.metadata.append(heading, badges, previewMessage);
+    renderMarkdownDocument(row, previewBody);
+    appendEditStatus(previewSlots.status, row);
+    appendRelationshipDisclosure(previewSlots.relationships, row);
 
     const visualHeading = document.createElement('h2');
     visualHeading.textContent = 'Exhibits preview';
@@ -1635,6 +1745,7 @@
     requestController = null;
     resetResolvedPreview(null);
     resetEdit();
+    destroyDocument();
     resetRelated(null);
     state.loading = false;
     state.loadingAll = false;
@@ -1648,6 +1759,7 @@
     if (previewVisualLayer) previewVisualLayer.remove();
     previewTextLayer = null;
     previewVisualLayer = null;
+    previewSlots = null;
     restoreUpperWorkspace();
     if (logoO && savedLogo) {
       if (savedLogo.role === null) logoO.removeAttribute('role');
@@ -1710,6 +1822,16 @@
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) state.sources.add(checkbox.value);
       else state.sources.delete(checkbox.value);
+      const pin = pinnedRow();
+      if (pin && !state.sources.has(pin.source)) {
+        resetEdit();
+        state.pinnedId = null;
+        resetResolvedPreview(null);
+        resetRelated(null);
+        renderPreview();
+        renderActions();
+        updateLogo();
+      }
       syncGroupAvailability();
       sourceCount.textContent = String(state.sources.size);
       closePopover('sources');

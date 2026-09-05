@@ -8,7 +8,7 @@ var path = require('path');
 var vm = require('vm');
 
 var nodeModules = process.env.COMPILER_TEST_NODE_MODULES || path.resolve(
-  __dirname, '..', 'ora-visual-compiler', 'tests', 'node_modules'
+  __dirname, '..', '..', 'document-surface', 'node_modules'
 );
 var jsdom;
 try {
@@ -54,6 +54,25 @@ var projectOpens = [];
 var scheduledOpens = [];
 var requests = [];
 var responses = [];
+var readViews = [];
+w.OraDocumentSurface = {
+  renderRead: function (options) {
+    var content = w.document.createElement('article');
+    content.textContent = options.markdown;
+    content.setAttribute('aria-label', options.ariaLabel);
+    options.host.replaceChildren(content);
+    var view = {
+      mode: 'read', options: options, destroyed: false,
+      destroy: function () {
+        view.destroyed = true;
+        options.host.replaceChildren();
+      },
+    };
+    readViews.push(view);
+    return view;
+  },
+  createEditor: function () { throw new Error('Daily Notes must never enter Edit'); },
+};
 w.OraProjectModal = {
   open: function (nexus, title) { projectOpens.push([nexus, title]); },
 };
@@ -108,7 +127,7 @@ var overviewPayload = { sources: [
   source('daily-note', 'Prior-day Daily Note', 'missing', [{
     source_id: 'daily-note', item_id: 'daily-note:2026-08-31',
     title: '2026-08-31', text: 'No completed Daily Note was found.', state: 'missing',
-    time: null, count: null, scope: { path: '/notes/2026-08-31.md' }, actions: ['open_note'],
+    time: null, count: null, scope: { path: '/notes/2026-08-31.md' }, actions: ['read_note', 'open_note'],
   }], null, 0),
   source('triggers', 'Scheduled Triggers', 'ready', [{
     source_id: 'triggers', item_id: 'trigger:draft-email', title: 'Draft email',
@@ -403,6 +422,142 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   assert.strictEqual(mount.hidden, false, 'late success cannot close a reopened Overview');
   assert.strictEqual(mount.textContent, reopenedText, 'late success cannot replace reopened state');
   assert.strictEqual(status.textContent, 'Four sources checked.');
+
+  // The reader is another view inside this same Overview, with the original
+  // source cards and prior workspace held intact throughout its lifecycle.
+  var cardsHost = w.document.getElementById('overviewDesktopSources');
+  var reader = w.document.getElementById('overviewDailyNoteReader');
+  var readerHost = w.document.getElementById('overviewDailyNoteDocument');
+  var back = mount.querySelector('[data-overview-back]');
+  var cards = Array.from(cardsHost.children);
+  var readAction = mount.querySelector('[data-overview-action="read_note"]');
+  var readPayload = {
+    id: 'daily-note:2026-08-31', source: 'daily-note', text: '\n# Daily Note\n\nA synthetic body.\n',
+  };
+  assert(readAction, 'an available Daily Note advertises Read in Ora');
+  assert.strictEqual(readAction.textContent, 'Read in Ora');
+  readAction.focus();
+  var readPending = deferred();
+  responses.push(readPending.promise);
+  var readRequestIndex = requests.length;
+  readAction.click();
+  readAction.click();
+  assert.strictEqual(requests.length, readRequestIndex + 1, 'duplicate Read is suppressed');
+  var readRequest = requests[readRequestIndex];
+  assert.strictEqual(readRequest[0], '/api/overview/daily-note/read?id=daily-note%3A2026-08-31');
+  assert.strictEqual(readRequest[1].method, 'GET');
+  assert.strictEqual(readRequest[1].headers.Accept, 'application/json');
+  assert.strictEqual(readRequest[1].body, undefined, 'the exact Read sends no body or path');
+  assert(readRequest[1].signal, 'Read supplies an abort signal');
+  assert.strictEqual(readAction.disabled, true);
+  assert.strictEqual(cardsHost.hidden, false, 'cards remain usable while Read is pending');
+  assert.strictEqual(mount.querySelector('[data-overview-action="open_note"]').disabled, false);
+  assert.strictEqual(closeControl.disabled, false);
+  readPending.resolve(ok(readPayload));
+  await flush();
+  await flush();
+  assert.strictEqual(reader.hidden, false);
+  assert.strictEqual(cardsHost.hidden, true);
+  assert.deepStrictEqual(Array.from(cardsHost.children), cards, 'Read never rebuilds the four cards');
+  assert.strictEqual(readViews.length, 1);
+  assert.strictEqual(readViews[0].options.host, readerHost);
+  assert.strictEqual(readViews[0].options.markdown, readPayload.text, 'body is passed unchanged to the shared reader');
+  assert.strictEqual(readViews[0].options.ariaLabel, 'Daily Note 2026-08-31');
+  assert.strictEqual(reader.querySelector('textarea, .cm-editor, [data-overview-action="edit"]'), null);
+  assert.strictEqual(w.document.activeElement, back);
+  assertWorkspacePreserved('Daily Note Read');
+  back.click();
+  assert.strictEqual(readViews[0].destroyed, true);
+  assert.strictEqual(readerHost.childNodes.length, 0);
+  assert.strictEqual(reader.hidden, true);
+  assert.strictEqual(cardsHost.hidden, false);
+  assert.strictEqual(w.document.activeElement, readAction, 'Back returns to the initiating action');
+  assert.deepStrictEqual(Array.from(cardsHost.children), cards);
+
+  for (var failure of [
+    reply(409, { error: 'This Daily Note exceeds Ora\'s safe 4 MiB rendered-document bound. Open externally to read it.' }),
+    ok({ id: 'daily-note:2026-08-30', source: 'daily-note', text: 'stale body' }),
+    ok({ id: readPayload.id, source: 'file', text: 'wrong source' }),
+    ok({ id: readPayload.id, source: 'daily-note', text: null }),
+    { ok: true, status: 200, json: function () { return Promise.reject(new Error('private parser detail')); } },
+    new Error('private network detail'),
+  ]) {
+    responses.push(failure);
+    readAction.click();
+    await flush();
+    await flush();
+    assert.strictEqual(reader.hidden, true, 'failed Read keeps the cards visible');
+    assert.strictEqual(cardsHost.hidden, false);
+    assert.strictEqual(readAction.disabled, false);
+    assert.strictEqual(w.document.activeElement, readAction);
+    assert.strictEqual(status.textContent.includes('private'), false);
+    assert.deepStrictEqual(Array.from(cardsHost.children), cards);
+    assert.strictEqual(readViews.length, 1, 'failed responses never enter the renderer');
+    assert.strictEqual(mount.querySelector('[data-overview-action="open_note"]').disabled, false);
+  }
+
+  // Missing/broken bundles preserve an authorized body as inert literal text.
+  var sharedSurface = w.OraDocumentSurface;
+  for (var surface of [undefined, { renderRead: function () { throw new Error('renderer unavailable'); } }]) {
+    w.OraDocumentSurface = surface;
+    responses.push(ok(readPayload));
+    readAction.click();
+    await flush();
+    await flush();
+    assert.strictEqual(reader.hidden, false);
+    assert.strictEqual(reader.querySelector('pre').textContent, readPayload.text);
+    assert(reader.textContent.includes('Formatted Read is unavailable'));
+    back.click();
+  }
+  w.OraDocumentSurface = sharedSurface;
+
+  for (var closeKind of ['button', 'Escape']) {
+    responses.push(ok(readPayload));
+    readAction.click();
+    await flush();
+    await flush();
+    var view = readViews[readViews.length - 1];
+    if (closeKind === 'button') closeControl.click();
+    else w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.strictEqual(view.destroyed, true, closeKind + ' destroys the mounted reader');
+    assert.strictEqual(reader.hidden, true);
+    assert.strictEqual(readerHost.childNodes.length, 0);
+    assert.strictEqual(workspace.hasAttribute('inert'), false);
+    assert.strictEqual(w.document.activeElement, workspaceInput);
+    assertWorkspacePreserved('reader ' + closeKind);
+    responses.push(ok(availableOverviewPayload));
+    launcher.click();
+    await flush();
+    await flush();
+    assert.strictEqual(reader.hidden, true, 'next opening starts with cards');
+    assert.strictEqual(cardsHost.hidden, false);
+    readAction = mount.querySelector('[data-overview-action="read_note"]');
+  }
+
+  var lateRead = deferred();
+  responses.push(lateRead.promise);
+  readAction.click();
+  var lateSignal = requests[requests.length - 1][1].signal;
+  closeControl.click();
+  assert.strictEqual(lateSignal.aborted, true, 'closing aborts the pending read');
+  responses.push(ok(availableOverviewPayload));
+  launcher.click();
+  await flush();
+  await flush();
+  readAction = mount.querySelector('[data-overview-action="read_note"]');
+  responses.push(ok(readPayload));
+  readAction.click();
+  await flush();
+  await flush();
+  var currentRead = readViews[readViews.length - 1];
+  var readCount = readViews.length;
+  lateRead.resolve(ok({ id: readPayload.id, source: 'daily-note', text: 'late body with same identity' }));
+  await flush();
+  await flush();
+  assert.strictEqual(readViews.length, readCount, 'a late same-identity response cannot enter a newer session');
+  assert.strictEqual(currentRead.destroyed, false);
+  assert.strictEqual(readerHost.textContent, readPayload.text);
+  back.click();
 
   closeControl.click();
   responses.push(new Error('source connection failed'));

@@ -193,7 +193,7 @@ date: 2026-08-31
         note = by_id["daily-note"]["items"][0]
         self.assertEqual(note["item_id"], "daily-note:2026-08-31")
         self.assertIn("Dialogues", note["text"])
-        self.assertEqual(note["actions"], ["open_note"])
+        self.assertEqual(note["actions"], ["read_note", "open_note"])
         self.assertEqual(
             by_id["daily-note"]["freshness"],
             {
@@ -750,6 +750,200 @@ class DailyNoteOpenRouteTests(unittest.TestCase):
         runner.assert_not_called()
         generator.assert_not_called()
         self.assertEqual(note.read_bytes(), original)
+
+
+class DailyNoteReadRouteTests(unittest.TestCase):
+    endpoint = "/api/overview/daily-note/read"
+    day = "2026-08-31"
+    identity = f"daily-note:{day}"
+    setUp = DailyNoteOpenRouteTests.setUp
+
+    def _note(self, content=None):
+        note = self.daily_root / f"{self.day}.md"
+        if content is None:
+            content = f"---\ntype: daily-note\ndate: {self.day}\n---\n\n# Synthetic Daily Note\n\nBody only.\n".encode()
+        note.write_bytes(content)
+        return note
+
+    def _get(self, **kwargs):
+        return self.client.get(self.endpoint, query_string={"id": self.identity}, **kwargs)
+
+    def _assert_refused(self, response, status=409):
+        self.assertEqual(response.status_code, status)
+        self.assertEqual(set(response.get_json()), {"error"})
+        self.assertNotIn(str(self.daily_root), response.get_data(as_text=True))
+        self.assertNotIn("private synthetic", response.get_data(as_text=True))
+
+    def test_reads_only_matching_frontmatter_body_without_mutation_or_launch(self):
+        for newline, date_text in (("\n", self.day), ("\r\n", f'"{self.day}"')):
+            with self.subTest(newline=newline):
+                body = newline + "# Synthetic note" + newline + "private synthetic ü" + newline
+                original = (newline.join(["---", "type: daily-note", f"date: {date_text}", "---", ""]) + body).encode()
+                note = self._note(original)
+                before = note.stat()
+                with (
+                    mock.patch.object(self.server.subprocess, "run") as launch,
+                    mock.patch.object(self.overview.daily_note, "generate") as generate,
+                    mock.patch.object(Path, "write_text", side_effect=AssertionError("read must not write")),
+                    mock.patch.object(Path, "write_bytes", side_effect=AssertionError("read must not write")),
+                    mock.patch.object(os, "replace", side_effect=AssertionError("read must not replace")),
+                ):
+                    response = self._get(headers={"Origin": "http://localhost"})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.get_json(), {
+                    "id": self.identity, "source": "daily-note", "text": body,
+                })
+                self.assertEqual(response.headers["Cache-Control"], "no-store")
+                self.assertEqual(note.read_bytes(), original)
+                self.assertEqual(note.stat().st_mtime_ns, before.st_mtime_ns)
+                launch.assert_not_called()
+                generate.assert_not_called()
+
+    def test_exact_identity_query_body_origin_and_method_boundary_before_file_access(self):
+        with mock.patch.object(self.overview, "read_daily_note") as reader:
+            for query, body in (
+                ({}, None), ({"id": "daily-note:2026-02-30"}, None),
+                ({"id": "daily-note:2026-8-31"}, None),
+                ({"id": f" {self.identity}"}, None),
+                ({"id": "daily-note:/tmp/private.md"}, None),
+                ({"id": self.identity, "path": "/tmp/private.md"}, None),
+                ([("id", self.identity), ("id", self.identity)], None),
+                ({"id": self.identity}, b"{}"),
+            ):
+                with self.subTest(query=query, body=body):
+                    self._assert_refused(self.client.get(self.endpoint, query_string=query, data=body), 400)
+            hostile = self._get(headers={"Origin": "https://attacker.example"})
+            self.assertEqual(hostile.status_code, 403)
+            for method in ("POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"):
+                with self.subTest(method=method):
+                    self.assertEqual(self.client.open(self.endpoint, method=method).status_code, 405)
+            with mock.patch.object(self.overview, "completed_daily_note_day", return_value="2026-09-01"):
+                self._assert_refused(self._get())
+            reader.assert_not_called()
+
+    def test_missing_unsafe_and_unreadable_notes_never_disclose_content(self):
+        self._assert_refused(self._get(), 404)
+        target = self.daily_root / f"{self.day}.md"
+        target.mkdir()
+        self._assert_refused(self._get())
+        target.rmdir()
+        secret = Path(self.tmp.name) / "private.md"
+        secret.write_text("private synthetic outside body", encoding="utf-8")
+        target.symlink_to(secret)
+        self._assert_refused(self._get())
+        target.unlink()
+        self._note()
+        with mock.patch.object(os, "open", side_effect=PermissionError(str(secret))):
+            self._assert_refused(self._get())
+        actual_root = self.daily_root.with_name("actual-notes")
+        self.daily_root.rename(actual_root)
+        self.daily_root.symlink_to(actual_root, target_is_directory=True)
+        self._assert_refused(self._get())
+
+    def test_invalid_utf8_and_untrusted_or_mismatched_frontmatter_are_refused(self):
+        contents = [
+            b"\xffprivate synthetic", b"# Missing frontmatter\nprivate synthetic",
+            b"---\ntype: daily-note\ndate: 2026-08-31\nprivate synthetic",
+            b"---\n[broken: yaml\n---\nprivate synthetic",
+            b"---\n- daily-note\n---\nprivate synthetic",
+            b"---\ntype: other\ndate: 2026-08-31\n---\nprivate synthetic",
+            b"---\ntype: daily-note\ndate: 2026-08-30\n---\nprivate synthetic",
+            b"---\ntype: daily-note\ndate: [2026-08-31]\n---\nprivate synthetic",
+            b"---\n!!python/object/apply:os.system [echo forbidden]\n---\nprivate synthetic",
+        ]
+        for content in contents:
+            with self.subTest(content=content[:50]):
+                self._note(content)
+                self._assert_refused(self._get())
+
+    def test_exact_four_mib_limit_keeps_oversize_preview_and_external_open_usable(self):
+        header = f"---\ntype: daily-note\ndate: {self.day}\n---\n".encode()
+        limit = self.overview.DAILY_NOTE_READ_MAX_BYTES
+        note = self._note(header + b"x" * (limit - len(header)))
+        accepted = self._get()
+        self.assertEqual(accepted.status_code, 200)
+        self.assertEqual(len(accepted.get_json()["text"].encode()), limit - len(header))
+        note.write_bytes(note.read_bytes() + b"x")
+        refused = self._get()
+        self._assert_refused(refused)
+        self.assertIn("4 MiB", refused.get_json()["error"])
+        self.assertIn("Open externally", refused.get_json()["error"])
+        projection = self.overview._daily_note_source("synthetic", self.day)
+        self.assertEqual(projection["items"][0]["actions"], ["read_note", "open_note"])
+        self.assertTrue(projection["items"][0]["text"])
+        with (
+            mock.patch.object(self.server.sys, "platform", "darwin"),
+            mock.patch.object(self.server.subprocess, "run", return_value=SimpleNamespace(returncode=0)) as launch,
+        ):
+            opened = self.client.post("/api/overview/daily-note/open", json={"id": self.identity})
+        self.assertEqual(opened.status_code, 200)
+        launch.assert_called_once()
+
+    def test_rejects_file_or_directory_swaps_before_opening_the_descriptor(self):
+        real_open = os.open
+        for swap in ("file_link", "file_replacement", "directory_link"):
+            with self.subTest(swap=swap):
+                note = self._note()
+                replacement = Path(self.tmp.name) / "replacement.md"
+                replacement.write_bytes(note.read_bytes().replace(b"Body only.", b"private synthetic"))
+                actual_root = self.daily_root.with_name("held-notes")
+                swapped = False
+
+                def opening(path, flags, **kwargs):
+                    nonlocal swapped
+                    if not swapped and ("dir_fd" in kwargs if swap != "directory_link" else Path(path) == self.daily_root):
+                        swapped = True
+                        if swap == "file_link":
+                            note.unlink()
+                            note.symlink_to(replacement)
+                        elif swap == "file_replacement":
+                            replacement.replace(note)
+                        else:
+                            self.daily_root.rename(actual_root)
+                            self.daily_root.symlink_to(actual_root, target_is_directory=True)
+                    return real_open(path, flags, **kwargs)
+
+                with mock.patch.object(os, "open", side_effect=opening):
+                    self._assert_refused(self._get())
+                if swap == "directory_link":
+                    self.daily_root.unlink()
+                    actual_root.rename(self.daily_root)
+                elif swap == "file_link":
+                    note.unlink()
+
+    def test_changes_during_read_and_midnight_rollover_withhold_the_body(self):
+        real_fdopen = os.fdopen
+        for change in ("replace", "modify", "delete"):
+            with self.subTest(change=change):
+                note = self._note()
+                original = note.read_bytes()
+
+                def stream_open(*args, **kwargs):
+                    stream = real_fdopen(*args, **kwargs)
+                    actual_read = stream.read
+
+                    def changed_read(size):
+                        data = actual_read(size)
+                        if change == "replace":
+                            replacement = note.with_name("replacement.md")
+                            replacement.write_bytes(original)
+                            replacement.replace(note)
+                        elif change == "modify":
+                            before = note.stat()
+                            note.write_bytes(original.replace(b"Body", b"Edit"))
+                            os.utime(note, ns=(before.st_atime_ns, before.st_mtime_ns + 1))
+                        else:
+                            note.unlink()
+                        return data
+
+                    stream.read = changed_read
+                    return stream
+
+                with mock.patch.object(os, "fdopen", side_effect=stream_open):
+                    self._assert_refused(self._get())
+        self._note()
+        with mock.patch.object(self.overview, "completed_daily_note_day", side_effect=[self.day, "2026-09-01"]):
+            self._assert_refused(self._get())
 
 
 if __name__ == "__main__":

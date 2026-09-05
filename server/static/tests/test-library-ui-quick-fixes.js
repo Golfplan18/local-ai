@@ -15,7 +15,10 @@ var vm = require('vm');
 var COMPILER_TEST_NODE_MODULES = process.env.COMPILER_TEST_NODE_MODULES || path.resolve(
   __dirname, '..', 'ora-visual-compiler', 'tests', 'node_modules'
 );
-var JSDOM_PATH = path.join(COMPILER_TEST_NODE_MODULES, 'jsdom');
+var DOCUMENT_TEST_NODE_MODULES = path.resolve(__dirname, '..', '..', 'document-surface', 'node_modules');
+var JSDOM_PATH = path.join(process.env.COMPILER_TEST_NODE_MODULES
+  || (fs.existsSync(path.join(DOCUMENT_TEST_NODE_MODULES, 'jsdom'))
+    ? DOCUMENT_TEST_NODE_MODULES : COMPILER_TEST_NODE_MODULES), 'jsdom');
 var jsdom;
 try {
   jsdom = require(JSDOM_PATH);
@@ -80,6 +83,22 @@ var dom = new jsdom.JSDOM(
 );
 
 var w = dom.window;
+w.TextEncoder = require('node:util').TextEncoder;
+w.ShadowRoot.prototype.getSelection = function () { return w.getSelection(); };
+w.document.execCommand = function () { return false; };
+w.Range.prototype.getClientRects = function () { return []; };
+w.Range.prototype.getBoundingClientRect = function () {
+  return { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+};
+var EditorView = require(path.join(DOCUMENT_TEST_NODE_MODULES, '@codemirror/view')).EditorView;
+function draftView(host) {
+  var shell = host && host.querySelector('.ora-document-editor');
+  return shell && EditorView.findFromDOM(shell.shadowRoot.querySelector('.cm-content'));
+}
+function replaceDraft(host, text) {
+  var view = draftView(host);
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, userEvent: 'input.type' });
+}
 var nativeAnchorHandoffs = [];
 w.HTMLAnchorElement.prototype.click = function () {
   nativeAnchorHandoffs.push({
@@ -342,8 +361,9 @@ function response(ok, payload, status, headerValues) {
 
 function deferredResponse() {
   var resolve;
+  var reject;
   var item = {
-    promise: new Promise(function (done) { resolve = done; }),
+    promise: new Promise(function (done, fail) { resolve = done; reject = fail; }),
     options: null,
     resolve: function (payload, status, headerValues) {
       resolve(responseObject(true, payload, status || 200, headerValues));
@@ -351,6 +371,7 @@ function deferredResponse() {
     resolveError: function (payload, status) {
       resolve(responseObject(false, payload, status || 500));
     },
+    reject: function (error) { reject(error); },
   };
   return item;
 }
@@ -608,6 +629,7 @@ function loadScript(rel) {
 loadScript('js/sidebar.js');
 loadScript('js/v3-state.js');
 loadScript('js/v3-conversation.js');
+loadScript('vendor/document-surface/ora-document-surface.js');
 loadScript('js/library-workspace.js');
 w.document.dispatchEvent(new w.Event('DOMContentLoaded', { bubbles: true }));
 
@@ -1343,11 +1365,12 @@ async function run() {
   await flush();
   await flush();
   var renderedPreviewBody = w.document.querySelector('.library-preview-body');
-  record('text body preview is literal and preserves active Dialogue, draft, and lower owners',
+  record('text body Read renders Markdown safely and preserves active Dialogue, draft, and lower owners',
     !!renderedPreviewBody
-      && renderedPreviewBody.textContent === visibleBody
+      && renderedPreviewBody.querySelector('h1').textContent === 'Atomic Claim Title'
+      && renderedPreviewBody.querySelector('strong').textContent === 'older pin preview'
+      && renderedPreviewBody.textContent.includes('<em>literal HTML</em>')
       && renderedPreviewBody.querySelector('em') === null
-      && w.getComputedStyle(renderedPreviewBody).whiteSpace === 'pre-wrap'
       && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
       && inquiryDraft.value === 'Composer draft survives Library preview'
       && preservedFinding.parentElement === w.document.querySelector('.output-content')
@@ -1367,16 +1390,16 @@ async function run() {
   await flush();
   var editDraft = w.document.querySelector('[data-library-edit-draft]');
   var putsBeforeCancel = editRequests.filter(function (item) { return item.method === 'PUT'; }).length;
-  record('eligible Markdown preview exposes Edit and a plain textarea with Save and Cancel',
+  record('eligible Markdown Edit mounts the real CodeMirror with complete text, Save and Cancel',
     !!editDraft
-      && editDraft.tagName === 'TEXTAREA'
-      && editDraft.value === rawMarkdownLf
+      && editDraft.querySelector('textarea') === null
+      && draftView(editDraft).state.doc.toString() === rawMarkdownLf
       && !!w.document.querySelector('[data-library-edit="save"]')
       && !!w.document.querySelector('[data-library-edit="cancel"]')
       && new w.URL(editRequests[editRequests.length - 1].url, w.location.href)
         .searchParams.get('id') === contextEngram.id);
-  editDraft.value = 'Cancelled draft';
-  editDraft.dispatchEvent(new w.Event('input', { bubbles: true }));
+  var cancelledShell = editDraft.querySelector('.ora-document-editor');
+  replaceDraft(editDraft, 'Cancelled draft');
   queuedPreviewResponses.push({
     id: contextEngram.id, source: 'engrams', text: currentBody,
   });
@@ -1385,7 +1408,8 @@ async function run() {
   await flush();
   record('Cancel refetches the current preview without writing or restoring the older pin text',
     !w.document.querySelector('[data-library-edit-draft]')
-      && w.document.querySelector('.library-preview-body').textContent === currentBody
+      && !cancelledShell.isConnected
+      && w.document.querySelector('.library-preview-body strong').textContent === 'newer current Markdown'
       && queuedPreviewResponses.length === 0
       && editRequests.filter(function (item) { return item.method === 'PUT'; }).length
         === putsBeforeCancel);
@@ -1398,8 +1422,10 @@ async function run() {
   await flush();
   editDraft = w.document.querySelector('[data-library-edit-draft]');
   var savedRawMarkdown = rawMarkdownLf.replace('newer current Markdown', 'edited Markdown');
-  editDraft.value = savedRawMarkdown;
-  editDraft.dispatchEvent(new w.Event('input', { bubbles: true }));
+  replaceDraft(editDraft, savedRawMarkdown);
+  var originalView = draftView(editDraft);
+  originalView.dispatch({ selection: { anchor: 7 } });
+  originalView.focus();
   queuedEditResponses.push({
     ok: false,
     status: 409,
@@ -1412,7 +1438,11 @@ async function run() {
   var conflictRequest = editRequests[editRequests.length - 1];
   record('a save conflict retains the complete draft and exact digest contract',
     !!conflictedDraft
-      && conflictedDraft.value === savedRawMarkdown
+      && conflictedDraft === editDraft
+      && draftView(conflictedDraft) === originalView
+      && originalView.state.doc.toString() === savedRawMarkdown
+      && originalView.state.selection.main.anchor === 7
+      && originalView.root.activeElement === originalView.contentDOM
       && w.document.querySelector('[data-library-edit-status]').textContent
         .indexOf('draft is still here') !== -1
       && Object.keys(conflictRequest.body).sort().join(',') === 'expected_digest,id,text'
@@ -1420,6 +1450,90 @@ async function run() {
       && conflictRequest.body.expected_digest === editDigest
       && conflictRequest.body.text
         === savedRawMarkdown.replace(/\n/g, '\r\n'));
+
+  var editorRefresh = deferredResponse();
+  var editorPreview = deferredResponse();
+  var editorRelated = deferredResponse();
+  queuedLibraryResponses.push(editorRefresh);
+  queuedPreviewResponses.push(editorPreview);
+  queuedRelatedResponses.push(editorRelated);
+  var editorRefreshPromise = w.OraLibraryWorkspace.refresh();
+  editorRefresh.resolve(libraryPayload([
+    visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
+  ], { total: 5, source_counts: { dialogues: 2, engrams: 2, files: 1 } }));
+  await editorRefreshPromise;
+  editorPreview.resolve({ id: contextEngram.id, source: 'engrams', text: 'New canonical preview must not replace the draft' });
+  editorRelated.resolve({ rows: [], total: 0 });
+  await flush(); await flush();
+  record('same-row refresh and relationship/status changes preserve the same editor, draft, selection and focus',
+    draftView(editDraft) === originalView
+      && originalView.state.doc.toString() === savedRawMarkdown
+      && originalView.state.selection.main.anchor === 7
+      && originalView.root.activeElement === originalView.contentDOM);
+
+  var pendingSave = deferredResponse();
+  queuedEditResponses.push(pendingSave);
+  var beforeDuplicate = editRequests.length;
+  var saveButton = w.document.querySelector('[data-library-edit="save"]');
+  saveButton.click();
+  saveButton.click();
+  w.document.querySelector('[data-library-edit="save"]').click();
+  record('pending Save disables the same editor and prevents duplicate PUTs',
+    editRequests.length === beforeDuplicate + 1
+      && editRequests[editRequests.length - 1].method === 'PUT'
+      && draftView(editDraft) === originalView
+      && originalView.contentDOM.getAttribute('contenteditable') === 'false');
+  pendingSave.resolve({ id: contextEngram.id, source: 'engrams', saved: true });
+  await flush(); await flush();
+  record('malformed save success leaves the complete draft usable and reports an unknown outcome',
+    draftView(editDraft) === originalView
+      && originalView.state.doc.toString() === savedRawMarkdown
+      && originalView.contentDOM.getAttribute('contenteditable') === 'true'
+      && w.document.querySelector('[data-library-edit-status]').textContent.includes('outcome is unknown'));
+
+  var transportSave = deferredResponse();
+  queuedEditResponses.push(transportSave);
+  w.document.querySelector('[data-library-edit="save"]').click();
+  transportSave.reject(new Error('simulated connection loss'));
+  await flush(); await flush();
+  record('transport failure preserves the same draft and digest without claiming no write',
+    draftView(editDraft) === originalView
+      && originalView.state.doc.toString() === savedRawMarkdown
+      && editRequests[editRequests.length - 1].body.expected_digest === editDigest
+      && w.document.querySelector('[data-library-edit-status]').textContent.includes('outcome is unknown')
+      && !w.document.querySelector('[data-library-edit-status]').textContent.includes('Nothing was written'));
+
+  var timeoutSave = deferredResponse();
+  queuedEditResponses.push(timeoutSave);
+  var normalSetTimeout = w.setTimeout;
+  var saveTimeout;
+  w.setTimeout = function (callback, delay) {
+    if (delay === 30000) { saveTimeout = callback; return -1; }
+    return normalSetTimeout.apply(w, arguments);
+  };
+  w.document.querySelector('[data-library-edit="save"]').click();
+  w.setTimeout = normalSetTimeout;
+  saveTimeout();
+  timeoutSave.reject(new w.DOMException('Aborted', 'AbortError'));
+  await flush(); await flush();
+  record('save timeout aborts the request while retaining the editor and an honest unknown outcome',
+    timeoutSave.options.signal.aborted
+      && draftView(editDraft) === originalView
+      && originalView.state.doc.toString() === savedRawMarkdown
+      && w.document.querySelector('[data-library-edit-status]').textContent.includes('timed out')
+      && w.document.querySelector('[data-library-edit-status]').textContent.includes('outcome is unknown'));
+
+  queuedEditResponses.push({ ok: false, status: 409, payload: { error: 'Current source is no longer editable', saved: false } });
+  w.document.querySelector('[data-library-edit="save"]').click();
+  await flush(); await flush();
+  originalView.contentDOM.dispatchEvent(new w.KeyboardEvent('keydown', {
+    key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true,
+  }));
+  record('authority refusal retains undo history and complete original text in the same editor',
+    draftView(editDraft) === originalView
+      && originalView.state.doc.toString() === rawMarkdownLf
+      && w.document.querySelector('[data-library-edit-status]').textContent.includes('Nothing was written'));
+  replaceDraft(editDraft, savedRawMarkdown);
 
   var savedBody = currentBody.replace('newer current Markdown', 'edited Markdown');
   queuedEditResponses.push({
@@ -1459,7 +1573,7 @@ async function run() {
   var bodyWhileRefreshPending = w.document.querySelector('.library-preview-body');
   record('same-scope replacement keeps a settled text body visible while pending',
     !!bodyWhileRefreshPending
-      && bodyWhileRefreshPending.textContent === visibleBody
+      && bodyWhileRefreshPending.querySelector('strong').textContent === 'edited Markdown'
       && !!failedBodyRefresh.options
       && failedBodyRefresh.options.signal.aborted === false);
   failedBodyRefresh.resolveError({ error: 'replacement failed' }, 503);
@@ -1468,7 +1582,7 @@ async function run() {
   var bodyAfterRefreshFailure = w.document.querySelector('.library-preview-body');
   record('failed same-scope replacement keeps the settled text body visible',
     !!bodyAfterRefreshFailure
-      && bodyAfterRefreshFailure.textContent === visibleBody
+      && bodyAfterRefreshFailure.querySelector('strong').textContent === 'edited Markdown'
       && w.document.getElementById('libraryWorkspaceNotice').textContent
         .indexOf('replacement failed') !== -1);
 
@@ -1496,7 +1610,103 @@ async function run() {
   record('successful same-scope replacement revalidates the matching pinned body',
     !!revalidatedBodyPreview.options
       && !!bodyAfterRefreshSuccess
-      && bodyAfterRefreshSuccess.textContent === freshBody);
+      && bodyAfterRefreshSuccess.textContent.trim() === freshBody);
+
+  async function pinCurrentEngram() {
+    queuedPreviewResponses.push({ id: contextEngram.id, source: 'engrams', text: freshBody });
+    Array.from(w.document.querySelectorAll('.library-list-row__pin')).find(function (button) {
+      return button.textContent.includes('Atomic Claim Title');
+    }).click();
+    await flush(); await flush();
+  }
+  async function openCurrentEngram() {
+    await pinCurrentEngram();
+    queuedEditResponses.push({ id: contextEngram.id, source: 'engrams', text: rawMarkdown, digest: editDigest });
+    w.document.querySelector('[data-library-edit="start"]').click();
+    await flush(); await flush();
+    return w.document.querySelector('.ora-document-editor');
+  }
+  var savedSurface = w.OraDocumentSurface;
+  w.OraDocumentSurface = undefined;
+  var normalConsoleError = console.error;
+  console.error = function () {};
+  await pinCurrentEngram();
+  console.error = normalConsoleError;
+  record('a missing bundle retains the complete literal preview and visibly disables Edit',
+    w.document.querySelector('.ora-document-literal').textContent === freshBody
+      && w.document.querySelector('[data-library-edit="start"]').disabled
+      && !w.document.querySelector('[data-library-edit-draft]'));
+  w.OraDocumentSurface = savedSurface;
+  var innerHtmlDescriptor = Object.getOwnPropertyDescriptor(w.Element.prototype, 'innerHTML');
+  Object.defineProperty(w.Element.prototype, 'innerHTML', { configurable: true,
+    get: innerHtmlDescriptor.get, set: function (value) {
+      if (this.className === 'ora-document-read') throw new Error('simulated rendered Read failure');
+      return innerHtmlDescriptor.set.call(this, value);
+    } });
+  console.error = function () {};
+  await pinCurrentEngram();
+  console.error = normalConsoleError;
+  Object.defineProperty(w.Element.prototype, 'innerHTML', innerHtmlDescriptor);
+  record('a renderer failure leaves literal Read available and disables Edit without a textarea fallback',
+    w.document.querySelector('.ora-document-literal').textContent === freshBody
+      && w.document.querySelector('[data-library-edit="start"]').disabled
+      && !w.document.querySelector('.library-preview-document textarea'));
+
+  var indexedShell = await openCurrentEngram();
+  queuedEditResponses.push({ id: contextEngram.id, source: 'engrams', saved: true, index_refreshed: true });
+  queuedPreviewResponses.push({ id: contextEngram.id, source: 'engrams', text: '# Saved canonical' });
+  w.document.querySelector('[data-library-edit="save"]').click();
+  await flush(); await flush();
+  record('successful saved-and-indexed outcome destroys the editor and returns to a freshly rendered Read',
+    !indexedShell.isConnected
+      && !w.document.querySelector('[data-library-edit-draft]')
+      && w.document.querySelector('.library-preview-body h1').textContent === 'Saved canonical'
+      && w.document.querySelector('[data-library-edit-status]').textContent.includes('index refreshed'));
+
+  var repinnedShell = await openCurrentEngram();
+  var lateSave = deferredResponse();
+  queuedEditResponses.push(lateSave);
+  w.document.querySelector('[data-library-edit="save"]').click();
+  w.document.querySelector('[data-library-row-id="dialogues:metadata-only"] .library-list-row__pin').click();
+  lateSave.resolve({ id: contextEngram.id, source: 'engrams', saved: true, index_refreshed: true });
+  await flush(); await flush();
+  record('repinning destroys the editor and ignores a late dispatched Save response',
+    !repinnedShell.isConnected && lateSave.options.signal.aborted
+      && w.OraLibraryWorkspace.getState().pinnedId === metadataDialogue.id
+      && !w.document.querySelector('[data-library-edit-draft]')
+      && !w.document.querySelector('[data-library-edit-status]'));
+
+  await pinCurrentEngram();
+  var lateEdit = deferredResponse();
+  queuedEditResponses.push(lateEdit);
+  w.document.querySelector('[data-library-edit="start"]').click();
+  w.document.querySelector('[data-library-row-id="dialogues:metadata-only"] .library-list-row__pin').click();
+  lateEdit.resolve({ id: contextEngram.id, source: 'engrams', text: 'Late edit body', digest: editDigest });
+  await flush(); await flush();
+  record('repinning aborts and rejects a late authoritative Edit response',
+    lateEdit.options.signal.aborted
+      && w.OraLibraryWorkspace.getState().pinnedId === metadataDialogue.id
+      && !w.document.querySelector('[data-library-edit-draft]'));
+
+  var closedShell = await openCurrentEngram();
+  var closeSave = deferredResponse();
+  queuedEditResponses.push(closeSave);
+  w.document.querySelector('[data-library-edit="save"]').click();
+  w.OraLibraryWorkspace.close();
+  closeSave.resolve({ id: contextEngram.id, source: 'engrams', saved: true, index_refreshed: true });
+  await flush(); await flush();
+  record('close destroys the editor, rejects late Save and restores Dialogue, draft and lower panes',
+    !closedShell.isConnected && closeSave.options.signal.aborted
+      && !w.document.querySelector('.library-preview-layer')
+      && !w.document.querySelector('.input-pane').hasAttribute('inert')
+      && inquiryDraft.value === 'Composer draft survives Library preview'
+      && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
+      && preservedFinding.isConnected && preservedExhibit.isConnected);
+  queuedLibraryResponses.push(libraryPayload([
+    visibleDialogue, metadataDialogue, contextEngram, nonAtomicEngram, contextFile,
+  ], { total: 5, source_counts: { dialogues: 2, engrams: 2, files: 1 } }));
+  w.OraLibraryWorkspace.open({ returnFocus: browseButton });
+  await flush(); await flush();
 
   var staleBodyPreview = deferredResponse();
   queuedPreviewResponses.push(staleBodyPreview);

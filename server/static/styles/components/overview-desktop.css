@@ -70,6 +70,24 @@ body.overview-desktop-open { overflow: hidden; }
   min-height: 0;
 }
 
+.overview-desktop__sources[hidden],
+.overview-desktop__reader[hidden] { display: none; }
+
+.overview-desktop__reader {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+}
+
+.overview-desktop__document {
+  min-width: 0;
+  overflow: auto;
+  padding: 0 0 56px;
+}
+
+.overview-desktop__literal { white-space: pre-wrap; overflow-wrap: anywhere; }
+
 .overview-source {
   min-width: 0;
   padding: 15px;

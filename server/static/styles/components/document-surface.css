@@ -1,0 +1,51 @@
+/* Shared Library/Overview document presentation. Document content owns no CSS. */
+.ora-document-read {
+  max-width: 80ch;
+  margin-inline: auto;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.ora-document-read > :first-child { margin-top: 0; }
+.ora-document-read h1, .ora-document-read h2, .ora-document-read h3,
+.ora-document-read h4, .ora-document-read h5, .ora-document-read h6 {
+  line-height: 1.25;
+  margin-block: 1.4em .6em;
+}
+.ora-document-read pre, .ora-document-literal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: .9em/1.55 ui-monospace, monospace;
+}
+.ora-document-read pre {
+  padding: .8em 1em;
+  background: rgb(127 127 127 / .08);
+  border-radius: 4px;
+}
+.ora-document-read code { font-family: ui-monospace, monospace; }
+.ora-document-read blockquote {
+  margin-inline: 0;
+  padding-inline: 1em;
+  border-inline-start: 3px solid currentColor;
+}
+.ora-document-read table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+.ora-document-read th, .ora-document-read td {
+  padding: .4em .7em;
+  border: 1px solid rgb(127 127 127 / .3);
+  text-align: start;
+}
+.ora-document-read a { color: inherit; text-decoration: underline; }
+.ora-document-diagnostic { font-size: .9em; }
+.ora-document-editor {
+  min-height: 220px;
+  padding: 8px;
+  border: 1px solid rgb(127 127 127 / .35);
+  border-radius: 4px;
+  background: var(--ora-surface, transparent);
+  color: inherit;
+  font: 14px/1.5 ui-monospace, monospace;
+}
