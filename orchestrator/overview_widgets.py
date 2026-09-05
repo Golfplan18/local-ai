@@ -8,8 +8,10 @@ store, scheduler, or mutation path.
 from __future__ import annotations
 
 import json
+import os
+import re
 import stat
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +26,7 @@ except ImportError:  # pragma: no cover - package-qualified import context
 
 
 SOURCE_ORDER = ("project-priority", "oversight", "triggers", "daily-note")
+DAILY_NOTE_READ_MAX_BYTES = 4 * 1024 * 1024
 
 
 def load_overview_widget_sources(
@@ -84,6 +87,80 @@ def inspect_daily_note_path(completed_day: str) -> tuple[Path, bool]:
     if stat.S_ISLNK(target_stat.st_mode) or not stat.S_ISREG(target_stat.st_mode):
         raise OSError(f"Daily Note is not a regular file: {target}")
     return target, True
+
+
+def read_daily_note(completed_day: str) -> str:
+    """Read only the body of one authenticated, bounded completed-day note."""
+    import yaml
+
+    target, exists = inspect_daily_note_path(completed_day)
+    if not exists:
+        raise FileNotFoundError("The Daily Note is no longer available.")
+
+    def identity(item):
+        return (item.st_dev, item.st_ino, item.st_size, item.st_mtime_ns)
+
+    changed = "The Daily Note is unsafe or changed while being read. Reopen Overview and try again."
+    try:
+        # Bind the directory as well as the file: O_NOFOLLOW on the final file
+        # alone would still follow a Daily Notes directory swapped to a link.
+        root_before = target.parent.lstat()
+        before = target.lstat()
+        if (not stat.S_ISDIR(root_before.st_mode)
+                or not stat.S_ISREG(before.st_mode)):
+            raise ValueError(changed)
+        if before.st_size > DAILY_NOTE_READ_MAX_BYTES:
+            raise ValueError("This Daily Note exceeds Ora's safe 4 MiB rendered-document bound. Open externally to read it.")
+        if not hasattr(os, "O_NOFOLLOW"):
+            raise ValueError("Safe Daily Note reading is unavailable on this host. Open externally to read it.")
+        root_fd = os.open(target.parent, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0))
+        try:
+            root_opened = os.fstat(root_fd)
+            if (not stat.S_ISDIR(root_opened.st_mode)
+                    or identity(root_before) != identity(root_opened)):
+                raise ValueError(changed)
+            descriptor = os.open(
+                target.name, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+                dir_fd=root_fd,
+            )
+            try:
+                opened = os.fstat(descriptor)
+                if not stat.S_ISREG(opened.st_mode) or identity(before) != identity(opened):
+                    raise ValueError(changed)
+                with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                    data = stream.read(DAILY_NOTE_READ_MAX_BYTES + 1)
+                after = os.fstat(descriptor)
+            finally:
+                os.close(descriptor)
+            current = target.lstat()
+            if (identity(opened) != identity(after)
+                    or identity(after) != identity(current)
+                    or identity(root_opened) != identity(os.fstat(root_fd))
+                    or identity(root_opened) != identity(target.parent.lstat())
+                    or len(data) != after.st_size
+                    or len(data) > DAILY_NOTE_READ_MAX_BYTES):
+                raise ValueError(changed)
+        finally:
+            os.close(root_fd)
+    except OSError as exc:
+        raise ValueError(changed) from exc
+
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("This Daily Note is not valid UTF-8 text.") from exc
+    frontmatter = re.match(r"\A---\r?\n(.*?)^---(?:\r?\n|\Z)", text, re.DOTALL | re.MULTILINE)
+    if frontmatter is None:
+        raise ValueError("This Daily Note has invalid or mismatched frontmatter.")
+    try:
+        metadata = yaml.safe_load(frontmatter.group(1))
+    except (yaml.YAMLError, ValueError, RecursionError) as exc:
+        raise ValueError("This Daily Note has invalid or mismatched frontmatter.") from exc
+    if (not isinstance(metadata, dict) or metadata.get("type") != "daily-note"
+            or not isinstance(metadata.get("date"), (str, date))
+            or str(metadata["date"]) != completed_day):
+        raise ValueError("This Daily Note has invalid or mismatched frontmatter.")
+    return text[frontmatter.end():]
 
 
 def _source(
@@ -462,7 +539,7 @@ def _daily_note_source(stamp: str, completed_day: str) -> dict[str, Any]:
             "available",
             time=completed_day,
             scope={"date": completed_day, "path": str(target)},
-            actions=["open_note"],
+            actions=["read_note", "open_note"],
         )
     except Exception as exc:
         return _source(
@@ -501,5 +578,6 @@ __all__ = [
     "SOURCE_ORDER",
     "completed_daily_note_day",
     "inspect_daily_note_path",
+    "read_daily_note",
     "load_overview_widget_sources",
 ]

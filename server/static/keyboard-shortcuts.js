@@ -485,6 +485,11 @@
 
   function _isTypingTarget(target) {
     if (!target) return false;
+    // Composed key events expose the shadow host even to document capture
+    // listeners. Follow its focused descendant to find the real typing field.
+    while (target.shadowRoot && target.shadowRoot.activeElement) {
+      target = target.shadowRoot.activeElement;
+    }
     var tag = (target.tagName || '').toUpperCase();
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
     return !!target.isContentEditable;

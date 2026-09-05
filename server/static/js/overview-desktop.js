@@ -15,6 +15,40 @@
   var priorFocus = null;
   var workspaceWasInert = false;
   var requestId = 0;
+  var readController = null;
+  var readView = null;
+  var readButton = null;
+  var reader = element('section', 'overview-desktop__reader');
+  reader.hidden = true;
+  reader.id = 'overviewDailyNoteReader';
+  var backButton = element('button', 'overview-source__action', 'Back to Overview');
+  backButton.type = 'button';
+  backButton.dataset.overviewBack = '';
+  var readerHost = element('div', 'overview-desktop__document');
+  readerHost.id = 'overviewDailyNoteDocument';
+  reader.append(backButton, readerHost);
+  host.after(reader);
+
+  function resetReader(restoreFocus) {
+    if (readController) readController.abort();
+    readController = null;
+    if (readView) readView.destroy();
+    readView = null;
+    readerHost.replaceChildren();
+    reader.hidden = true;
+    host.hidden = false;
+    if (readButton && readButton.isConnected) {
+      readButton.disabled = false;
+      readButton.textContent = 'Read in Ora';
+      if (restoreFocus) readButton.focus();
+    }
+    readButton = null;
+  }
+
+  backButton.addEventListener('click', function () {
+    resetReader(true);
+    status.textContent = 'Four sources checked.';
+  });
 
   function element(tag, className, text) {
     var node = document.createElement(tag);
@@ -137,6 +171,83 @@
     row.appendChild(button);
   }
 
+  function addDailyNoteReadAction(row, item, sourceId) {
+    var actions = Array.isArray(item.actions) ? item.actions : [];
+    var itemId = typeof item.item_id === 'string' ? item.item_id : '';
+    if (sourceId !== 'daily-note' || itemState(item.state) !== 'available'
+        || !actions.includes('read_note')
+        || !/^daily-note:\d{4}-\d{2}-\d{2}$/.test(itemId)) return;
+
+    var button = element('button', 'overview-source__action', 'Read in Ora');
+    button.type = 'button';
+    button.dataset.overviewAction = 'read_note';
+    button.addEventListener('click', async function () {
+      if (button.disabled) return;
+      resetReader(false);
+      var controller = new AbortController();
+      readController = controller;
+      readButton = button;
+      var activeRequest = requestId;
+      var buttonHadFocus = document.activeElement === button;
+      function current() {
+        return activeRequest === requestId && !mount.hidden && readController === controller;
+      }
+      button.disabled = true;
+      button.textContent = 'Reading…';
+      status.hidden = false;
+      status.textContent = 'Loading the Daily Note…';
+      try {
+        var response = await window.fetch('/api/overview/daily-note/read?id=' + encodeURIComponent(itemId), {
+          method: 'GET', headers: { Accept: 'application/json' }, signal: controller.signal,
+        });
+        var payload;
+        try { payload = await response.json(); } catch (_error) { payload = null; }
+        if (!current()) return;
+        if (!response.ok) {
+          status.textContent = payload && typeof payload.error === 'string' && payload.error.trim()
+            ? payload.error : 'The Daily Note could not be read. Request failed with status ' + response.status + '.';
+          return;
+        }
+        if (!payload || payload.id !== itemId || payload.source !== 'daily-note'
+            || typeof payload.text !== 'string') {
+          status.textContent = 'Ora returned an invalid Daily Note read response.';
+          return;
+        }
+        try {
+          readView = window.OraDocumentSurface.renderRead({
+            host: readerHost, markdown: payload.text, ariaLabel: 'Daily Note ' + itemId.slice(11),
+          });
+          if (!readView || readView.mode !== 'read' || typeof readView.destroy !== 'function') {
+            throw new Error('Document surface unavailable');
+          }
+        } catch (_error) {
+          readView = null;
+          readerHost.replaceChildren(
+            element('p', '', 'Formatted Read is unavailable. Showing the original Markdown.'),
+            element('pre', 'overview-desktop__literal', payload.text)
+          );
+        }
+        host.hidden = true;
+        reader.hidden = false;
+        status.textContent = 'Reading Daily Note ' + itemId.slice(11) + '.';
+        backButton.focus();
+      } catch (_error) {
+        if (current()) status.textContent = 'The Daily Note read request could not reach Ora.';
+      } finally {
+        if (current()) {
+          readController = null;
+          button.disabled = false;
+          button.textContent = 'Read in Ora';
+          var focus = document.activeElement;
+          if (reader.hidden && buttonHadFocus && (!focus || focus === document.body || focus === button)) {
+            button.focus();
+          }
+        }
+      }
+    });
+    row.appendChild(button);
+  }
+
   function renderItem(item, sourceId) {
     var row = element('li', 'overview-source__item');
     row.dataset.state = itemState(item.state);
@@ -150,6 +261,7 @@
     if (details.length) row.appendChild(element('small', '', details.join(' · ')));
     addProjectAction(row, item);
     addScheduledAction(row, item, sourceId);
+    addDailyNoteReadAction(row, item, sourceId);
     addDailyNoteAction(row, item, sourceId);
     return row;
   }
@@ -228,6 +340,10 @@
   function open() {
     if (!mount.hidden) return;
     priorFocus = document.activeElement;
+    // The document sees the editor's shadow host, not its focused content.
+    while (priorFocus && priorFocus.shadowRoot && priorFocus.shadowRoot.activeElement) {
+      priorFocus = priorFocus.shadowRoot.activeElement;
+    }
     workspaceWasInert = Boolean(workspace && workspace.hasAttribute('inert'));
     if (workspace) workspace.setAttribute('inert', '');
     mount.hidden = false;
@@ -241,6 +357,7 @@
   function close(finalStatus) {
     if (mount.hidden) return;
     requestId += 1;
+    resetReader(false);
     var hasFinalStatus = typeof finalStatus === 'string' && finalStatus.trim();
     status.textContent = hasFinalStatus ? finalStatus.trim() : 'Overview closed.';
     status.hidden = !hasFinalStatus;

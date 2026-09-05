@@ -473,12 +473,11 @@ body.library-workspace-open .visual-pane-shell > .right-pane {
   bottom: var(--ora-visual-footer-height, 42px);
 }
 
-.library-preview-layer h2 { margin-top: 0; }
-.library-preview-layer p { color: var(--text-muted); }
+.library-preview-metadata h2, .library-preview-layer--exhibits h2 { margin-top: 0; }
+.library-preview-metadata p, .library-preview-relationships p { color: var(--text-muted); }
 .library-preview-badges { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .library-preview-body {
   margin: 12px 0 0;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: inherit;
 }
@@ -488,19 +487,7 @@ body.library-workspace-open .visual-pane-shell > .right-pane {
   max-height: calc(100% - 72px);
   object-fit: contain;
 }
-.library-edit-textarea {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 260px;
-  margin-top: 12px;
-  padding: 10px;
-  resize: vertical;
-  font: inherit;
-  color: var(--text-normal);
-  background: var(--background-primary-alt);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-}
+.library-preview-document { margin-top: 12px; }
 .library-edit-controls { display: flex; gap: 8px; margin-top: 10px; }
 [data-library-edit-status].is-error { color: var(--text-error); }
 [data-library-edit-status].is-success { color: var(--text-success); }
