@@ -15227,6 +15227,30 @@ def overview_daily_note_open():
             "Open request sent to Obsidian.",
             ok=True,
         )
+    if preferred.returncode < 0:
+        return _overview_daily_note_open_response(
+            identity,
+            "obsidian",
+            "uncertain",
+            (
+                "The Obsidian handoff ended unexpectedly, so Ora cannot tell "
+                "whether it received the request. No other application was tried."
+            ),
+            status=502,
+        )
+
+    fallback_expected_day = _overview.completed_daily_note_day()
+    if requested_day != fallback_expected_day:
+        return _overview_daily_note_open_response(
+            identity,
+            None,
+            "stale",
+            (
+                f"The Daily Note for {requested_day} is no longer the completed "
+                f"previous day ({fallback_expected_day}). Reopen Overview and try again."
+            ),
+            status=409,
+        )
 
     try:
         fallback_target, fallback_exists = _overview.inspect_daily_note_path(requested_day)
@@ -15306,6 +15330,18 @@ def overview_daily_note_open():
                 "the default Markdown application."
             ),
             ok=True,
+        )
+    if fallback.returncode < 0:
+        return _overview_daily_note_open_response(
+            identity,
+            "default_markdown",
+            "uncertain",
+            (
+                "The default Markdown application handoff ended unexpectedly after "
+                "Obsidian refused the request. Ora cannot tell whether the fallback "
+                "received it."
+            ),
+            status=502,
         )
     return _overview_daily_note_open_response(
         identity,
