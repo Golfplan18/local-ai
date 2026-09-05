@@ -20,6 +20,7 @@ import hashlib
 import os
 import shutil
 import sqlite3
+import threading
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -108,23 +109,16 @@ class TestReadOnlyRelationshipSnapshot(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _database(self, *, updated_at: str, complete: str = "1"):
+        graph = RelationshipGraph(db_path=self.db_path, vault_path=self.vault)
+        graph.sync_from_vault()
+        graph.close()
         connection = sqlite3.connect(self.db_path)
         connection.executescript("""
-            CREATE TABLE relationships (
-                id INTEGER PRIMARY KEY,
-                source TEXT NOT NULL,
-                target TEXT NOT NULL,
-                type TEXT NOT NULL,
-                confidence TEXT NOT NULL
-            );
-            CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT);
-            CREATE INDEX idx_source ON relationships(source);
-            CREATE INDEX idx_target ON relationships(target);
             INSERT INTO relationships (source, target, type, confidence)
             VALUES ('NoteA', 'NoteB', 'supports', 'high');
         """)
         connection.executemany(
-            "INSERT INTO metadata (key, value) VALUES (?, ?)",
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
             [("last_update_at", updated_at),
              ("last_update_complete", complete),
              ("vault_markdown_inventory_sha256",
@@ -263,6 +257,7 @@ class TestReadOnlyRelationshipSnapshot(unittest.TestCase):
 
     def test_reports_stale_when_markdown_is_newer(self):
         self._database(updated_at="2020-01-01T00:00:00+00:00")
+        write_note(self.vault, "NoteA.md", body="Changed after observation")
 
         snapshot = read_relationship_snapshot(
             {"NoteA"}, db_path=self.db_path, vault_path=self.vault,
@@ -382,6 +377,180 @@ class TestReadOnlyRelationshipSnapshot(unittest.TestCase):
 
         self.assertEqual(snapshot["state"], "incomplete")
         self.assertIn("directories could not be inspected", snapshot["reason"])
+
+
+class TestPerFileRelationshipRefresh(RelationshipGraphTestBase):
+    def snapshot(self):
+        return read_relationship_snapshot({"NoteA", ENGRAM_ONE},
+                                          db_path=self.db_path, vault_path=self.vault)
+
+    def test_create_modify_rename_delete_repair_referrers_and_duplicate_claims(self):
+        self.graph.sync_from_vault()
+        second = os.path.join(self.vault, f"Engrams/{ENGRAM_TWO}.md")
+        renamed = os.path.join(self.vault, "Engrams/earlier.md")
+        os.rename(second, renamed)
+        self.graph.refresh_paths({second, renamed})
+        self.assertIn((ENGRAM_ONE, "earlier", "analogous-to", "medium"), self.all_rows())
+        duplicate = write_note(self.vault, "Engrams/000-earliest.md", body=engram_body(CLAIM))
+        self.graph.refresh_paths({duplicate})
+        self.assertIn((ENGRAM_ONE, "000-earliest", "analogous-to", "medium"), self.all_rows())
+        os.unlink(duplicate)
+        self.graph.refresh_paths({duplicate})
+        self.assertIn((ENGRAM_ONE, "earlier", "analogous-to", "medium"), self.all_rows())
+        write_note(self.vault, "Engrams/earlier.md", body=engram_body("Changed claim"))
+        self.graph.refresh_paths({renamed})
+        self.assertIn((ENGRAM_ONE, CLAIM, "analogous-to", "medium"), self.all_rows())
+        title = write_note(self.vault, CLAIM + ".md")
+        self.graph.refresh_paths({title})
+        self.assertIn((ENGRAM_ONE, CLAIM, "analogous-to", "medium"), self.all_rows())
+        os.unlink(os.path.join(self.vault, "NoteA.md"))
+        self.graph.refresh_paths({os.path.join(self.vault, "NoteA.md")})
+        self.assertFalse(any(row[0] == "NoteA" for row in self.all_rows()))
+        self.assertEqual(self.snapshot()["state"], "fresh")
+
+    def test_unchanged_and_timestamp_only_bytes_are_not_reparsed(self):
+        self.graph.sync_from_vault()
+        with mock.patch.object(self.graph, "_parse_frontmatter_text", wraps=self.graph._parse_frontmatter_text) as parse:
+            self.assertEqual(self.graph.sync_from_vault()["files_hashed"], 0)
+            note = os.path.join(self.vault, "NoteA.md")
+            observed = os.stat(note)
+            os.utime(note, ns=(observed.st_atime_ns, observed.st_mtime_ns + 1000000))
+            result = self.graph.sync_from_vault()
+            self.assertEqual(result["files_hashed"], 1)
+            self.assertEqual(result["files_parsed"], 0)
+            self.graph.refresh_paths({note})
+            renamed = os.path.join(self.vault, "Renamed.md")
+            os.rename(note, renamed)
+            self.graph.refresh_paths({note, renamed})
+            self.assertEqual(parse.call_count, 0)
+
+    def test_same_stem_union_survives_one_supplier_deletion(self):
+        extra = write_note(self.vault, "Nested/NoteA.md", [
+            {"type": "supports", "target": "NoteB", "confidence": "low"},
+            {"type": "requires", "target": "NoteB", "confidence": "medium"}])
+        self.graph.sync_from_vault()
+        os.unlink(os.path.join(self.vault, "NoteA.md"))
+        self.graph.refresh_paths({os.path.join(self.vault, "NoteA.md")})
+        self.assertEqual({row for row in self.all_rows() if row[0] == "NoteA"}, {
+            ("NoteA", "NoteB", "supports", "low"), ("NoteA", "NoteB", "requires", "medium")})
+        os.unlink(extra)
+        self.graph.refresh_paths({os.path.dirname(extra)})
+        self.assertFalse(any(row[0] == "NoteA" for row in self.all_rows()))
+
+    def test_single_event_cannot_conceal_unrelated_missed_work(self):
+        self.graph.sync_from_vault()
+        write_note(self.vault, "NoteB.md", [{"target": "NoteA", "type": "requires"}])
+        self.graph.refresh_paths({os.path.join(self.vault, "NoteA.md")})
+        self.assertEqual(self.snapshot()["state"], "stale")
+        result = self.graph.sync_from_vault()
+        self.assertEqual(result["files_parsed"], 1)
+        self.assertIn(("NoteB", "NoteA", "requires", "medium"), self.all_rows())
+        self.assertEqual(self.snapshot()["state"], "fresh")
+
+    def test_parse_and_traversal_errors_preserve_old_rows_and_incomplete_reason(self):
+        self.graph.sync_from_vault()
+        before = self.all_rows()
+        note = os.path.join(self.vault, "NoteA.md")
+        with open(note, "w") as handle:
+            handle.write("---\nrelationships: [\n---\n")
+        self.assertTrue(self.graph.refresh_paths({note})["errors"])
+        self.assertEqual(self.all_rows(), before)
+        self.graph.refresh_paths({os.path.join(self.vault, "NoteB.md")})
+        self.assertEqual(self.snapshot()["state"], "incomplete")
+        def denied(path, *, onerror=None):
+            onerror(PermissionError("fixture directory denied"))
+            return iter(())
+        with mock.patch("orchestrator.tools.relationship_graph.os.walk", side_effect=denied):
+            self.assertTrue(self.graph.sync_from_vault()["errors"])
+        self.assertEqual(self.all_rows(), before)
+        write_note(self.vault, "NoteA.md")
+        self.graph.sync_from_vault()
+        self.assertEqual(self.snapshot()["state"], "fresh")
+
+    def test_restart_resumes_cancelled_finite_batches_without_reparsing(self):
+        stop = threading.Event()
+        original = self.graph._refresh_files
+        def refresh(*args, **kwargs):
+            result = original(*args, **kwargs)
+            stop.set()
+            return result
+        with mock.patch.object(self.graph, "_refresh_files", side_effect=refresh):
+            partial = self.graph.catch_up_from_vault(stop_event=stop, batch_size=1)
+        self.assertTrue(partial["cancelled"])
+        self.assertEqual(partial["files_parsed"], 1)
+        self.graph.close()
+        self.graph = RelationshipGraph(db_path=self.db_path, vault_path=self.vault)
+        result = self.graph.catch_up_from_vault(batch_size=1)
+        self.assertEqual(result["files_parsed"], 3)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(self.snapshot()["state"], "fresh")
+
+    def test_racing_parse_and_interrupted_transaction_cannot_replace_newer_truth(self):
+        self.graph.sync_from_vault()
+        before = self.all_rows()
+        note = write_note(self.vault, "NoteA.md", [{"target": "NoteB", "type": "requires"}])
+        parse = self.graph._parse_frontmatter_text
+        def race(content, path, errors):
+            result = parse(content, path, errors)
+            write_note(self.vault, "NoteA.md", [{"target": "NoteB", "type": "produces"}])
+            return result
+        with mock.patch.object(self.graph, "_parse_frontmatter_text", side_effect=race):
+            self.assertTrue(self.graph.refresh_paths({note})["errors"])
+        self.assertEqual(self.all_rows(), before)
+        with mock.patch.object(self.graph, "_reconcile_cached_rows", side_effect=RuntimeError("interrupted")):
+            with self.assertRaisesRegex(RuntimeError, "interrupted"):
+                self.graph.refresh_paths({note})
+        self.assertEqual(self.all_rows(), before)
+        self.graph.sync_from_vault()
+        self.assertIn(("NoteA", "NoteB", "produces", "medium"), self.all_rows())
+
+    def test_newer_event_between_startup_batches_wins_and_direct_invalidation_stays(self):
+        self.graph.sync_from_vault()
+        other = RelationshipGraph(db_path=self.db_path, vault_path=self.vault)
+        self.addCleanup(other.close)
+        calls = []
+        def boundary():
+            if not calls:
+                calls.append(True)
+                note = write_note(self.vault, "NoteA.md", [{"target": "NoteB", "type": "requires"}])
+                other.refresh_paths({note})
+            return False
+        result = self.graph.catch_up_from_vault(stop_event=mock.Mock(is_set=boundary), batch_size=1)
+        self.assertEqual(result["errors"], [])
+        self.assertIn(("NoteA", "NoteB", "requires", "medium"), self.all_rows())
+        calls.clear()
+        def invalidate():
+            if not calls:
+                calls.append(True)
+                other.remove_orphans([])
+            return False
+        result = self.graph.catch_up_from_vault(stop_event=mock.Mock(is_set=invalidate), batch_size=1)
+        self.assertTrue(result["errors"])
+        self.assertEqual(self.snapshot()["state"], "incomplete")
+        self.graph.sync_from_vault()
+        self.assertEqual(self.snapshot()["state"], "fresh")
+
+    def test_canonical_repair_restores_deleted_and_removes_direct_rows_without_parse(self):
+        self.graph.sync_from_vault()
+        expected = self.all_rows()
+        self.graph.conn.execute("DELETE FROM relationships WHERE source = 'NoteA'")
+        self.graph.conn.commit()
+        self.graph.add_relationships("Noncanonical", [{"target": "NoteB", "type": "supports"}])
+        result = self.graph.sync_from_vault()
+        self.assertEqual(result["files_parsed"], 0)
+        self.assertEqual(self.all_rows(), expected)
+        self.graph.conn.execute("UPDATE metadata SET value = 'future' WHERE key = 'relationship_cache_version'")
+        self.graph.conn.commit()
+        self.assertEqual(self.snapshot()["state"], "incomplete")
+        self.graph.build_from_vault()
+        self.assertEqual(self.all_rows(), expected)
+        self.assertEqual(self.snapshot()["state"], "fresh")
+        self.graph.conn.execute("UPDATE relationship_files SET declarations = 'broken' WHERE path = 'NoteA.md'")
+        self.graph.conn.commit()
+        self.assertEqual(self.snapshot()["state"], "unavailable")
+        self.graph.sync_from_vault()
+        self.assertEqual(self.all_rows(), expected)
+        self.assertEqual(self.snapshot()["state"], "fresh")
 
 
 class TestBuildFromVault(RelationshipGraphTestBase):

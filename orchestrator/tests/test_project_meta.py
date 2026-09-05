@@ -31,6 +31,7 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertEqual(pm.slugify_nexus("  Hello!! World  "), "hello-world")
         self.assertEqual(pm.slugify_nexus("already-kebab"), "already-kebab")
 
+
     def test_create_and_read(self):
         meta = pm.create_project("My Book", pointer_dir=self.d)
         self.assertEqual(meta["nexus"], "my-book")
@@ -1055,6 +1056,30 @@ class ProjectPriorityOrderTests(unittest.TestCase):
         pm.update_project_meta("alpha", {"priority": 3}, self.dir)
         meta = pm.update_project_meta("alpha", {"priority": None}, self.dir)
         self.assertIsNone(meta["priority"])
+
+
+class TestLibraryFileCategories(unittest.TestCase):
+    def test_persisted_categories_preserve_unrelated_fields_and_exact_membership(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / "ora.json").write_text(json.dumps({"nexus": "ora", "name": "Ora", "future": {"keep": True}}))
+            categories = [{"id": "papers", "label": "Research papers", "match": {"type": "paper", "tags": ["read", "kept"]}}]
+            result = pm.update_project_meta("ora", {"library_file_categories": categories}, pointer_dir=root)
+            self.assertEqual(result["library_file_categories"], categories)
+            self.assertEqual(pm.read_project_meta("ora", pointer_dir=root)["library_file_categories"], categories)
+            self.assertEqual(json.loads((root / "ora.json").read_text())["future"], {"keep": True})
+            rule = categories[0]["match"]
+            self.assertTrue(pm.library_file_category_matches({"type": "paper", "tags": ["kept", "read", "extra"]}, rule))
+            self.assertFalse(pm.library_file_category_matches({"type": ["paper"], "tags": ["read", "kept"]}, rule))
+            self.assertFalse(pm.library_file_category_matches({"type": "paper", "tags": ["read"]}, rule))
+            with self.assertRaises(pm.ProjectMetaError):
+                pm.update_project_meta("ora", {"library_file_categories": [{"id": "bad", "label": "Bad", "match": {"regex": ".*"}}]}, pointer_dir=root)
+            raw = json.loads((root / "ora.json").read_text())
+            raw["library_file_categories"].append({"id": "bad"})
+            (root / "ora.json").write_text(json.dumps(raw))
+            result = pm.read_project_meta("ora", pointer_dir=root)
+            self.assertEqual(result["library_file_categories"], categories)
+            self.assertTrue(result["library_category_warnings"])
 
 
 if __name__ == "__main__":

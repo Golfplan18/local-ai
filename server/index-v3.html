@@ -1338,6 +1338,11 @@
             <option value="content-type" hidden disabled>Content type</option>
             <option value="project">Project</option>
             <option value="folder" disabled>Folder</option>
+            <option value="provenance">Extraction source</option>
+            <option value="nexus">Canonical nexus</option>
+            <option value="file_type">Canonical File type</option>
+            <option value="tags">Tags</option>
+            <option value="category">Project category</option>
           </select>
         </label>
         <label>Sort
@@ -1350,11 +1355,17 @@
       <div class="library-popover" data-library-panel="filters" role="dialog"
            aria-label="Filter Library results" hidden>
         <label>Type <select data-library-filter="type"><option value="">All types</option></select></label>
+        <label>Tags (all required, comma separated) <input data-library-refinement="tag" type="text"></label>
+        <label>From <input data-library-refinement="date_from" type="date"></label>
+        <label>Through <input data-library-refinement="date_to" type="date"></label>
+        <div data-library-refinement-controls></div>
+        <label><input data-library-archived type="checkbox"> Include archived Engrams and indexed Dialogues (read-only)</label>
         <label>Project scope
           <select data-library-project><option value="commons">Commons</option></select>
         </label>
         <button type="button" data-library-command="clear-filters">Clear filters</button>
       </div>
+      <div class="library-refinement-chips" data-library-chips aria-label="Current Library refinements"></div>
       <div class="library-popover" data-library-panel="actions" role="dialog"
            aria-label="Actions for selected Library item" hidden>
         <div data-library-actions></div>

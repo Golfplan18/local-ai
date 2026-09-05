@@ -399,7 +399,48 @@ def _normalize_meta(nexus: str, data: dict) -> dict[str, Any]:
     }
     for key, default in _DEFAULT_SLOTS.items():
         meta[key] = data.get(key, default)
+    categories, warnings = normalize_library_file_categories(data.get("library_file_categories"))
+    meta["library_file_categories"] = categories
+    meta["library_category_warnings"] = warnings
     return meta
+
+
+def normalize_library_file_categories(value) -> tuple[list[dict], list[str]]:
+    """Read optional exact metadata categories; invalid entries cannot hide Files."""
+    if value is None:
+        return [], []
+    if not isinstance(value, list):
+        return [], ["File categories must be a list; no categories were applied."]
+    categories, warnings, seen = [], [], set()
+    for entry in value:
+        valid = isinstance(entry, dict) and set(entry) == {"id", "label", "match"}
+        if valid:
+            key, label, rule = entry["id"], entry["label"], entry["match"]
+            valid = (isinstance(key, str) and bool(re.fullmatch(r"[a-z0-9][a-z0-9_-]*", key))
+                     and key not in seen and isinstance(label, str) and bool(label.strip())
+                     and isinstance(rule, dict) and bool(rule)
+                     and set(rule) <= {"nexus", "type", "tags", "subtype"})
+            if valid:
+                valid = all((isinstance(item, str) and bool(item)) or
+                            (isinstance(item, list) and bool(item) and all(isinstance(v, str) and bool(v) for v in item))
+                            for item in rule.values())
+        if not valid:
+            warnings.append("An invalid File category was omitted; Files remain available.")
+            continue
+        seen.add(key)
+        categories.append({"id": key, "label": label.strip(), "match": dict(rule)})
+    return categories, warnings
+
+
+def library_file_category_matches(metadata: dict, rule: dict) -> bool:
+    for field, expected in rule.items():
+        actual = metadata.get(field)
+        if isinstance(expected, list):
+            if not isinstance(actual, list) or not all(item in actual for item in expected):
+                return False
+        elif actual != expected:
+            return False
+    return True
 
 
 _CONTAINER_POINTER_FIELDS = frozenset({
@@ -867,7 +908,7 @@ def touch_project(nexus: str, pointer_dir: Path | None = None) -> dict[str, Any]
 # Fields the management modal / API may patch on a project record.
 _UPDATABLE_FIELDS = {
     "name", "status", "interaction_style", "output_style", "persona",
-    "private", "last_accessed_at", "priority",
+    "private", "last_accessed_at", "priority", "library_file_categories",
 }
 
 
@@ -889,6 +930,11 @@ def _clean_project_updates(updates: dict | None) -> dict[str, Any]:
         if not isinstance(nm, str) or not nm.strip():
             raise ProjectMetaError("name must be a non-empty string")
         clean["name"] = nm.strip()
+    if "library_file_categories" in clean:
+        categories, warnings = normalize_library_file_categories(clean["library_file_categories"])
+        if warnings:
+            raise ProjectMetaError(" ".join(warnings))
+        clean["library_file_categories"] = categories
     return clean
 
 

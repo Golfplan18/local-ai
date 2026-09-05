@@ -42,6 +42,26 @@ class ThinEngramQuarantineTests(unittest.TestCase):
         path.write_text(_note(body, **kwargs), encoding="utf-8")
         return path
 
+    def test_graph_cleanup_invalidates_incremental_freshness_and_reconciliation_restores_canonical_truth(self):
+        from orchestrator.tools.relationship_graph import RelationshipGraph, read_relationship_snapshot
+        source = self.engrams / "Source.md"
+        source.write_text("---\nrelationships:\n  - target: Target\n    type: supports\n---\n# Source\n")
+        self._write("Target.md", "# Target")
+        graph = RelationshipGraph(db_path=str(self.root / "graph.db"), vault_path=str(self.root))
+        self.addCleanup(graph.close)
+        graph.sync_from_vault()
+        before = set(graph.conn.execute("SELECT source, target, type, confidence FROM relationships"))
+        result = module._delete_graph_rows(["Target"], self.root / "graph.db")
+        self.assertEqual(result, {"matched": 1, "deleted": 1})
+        def snapshot():
+            return read_relationship_snapshot({"Source"}, db_path=graph.db_path, vault_path=self.root)
+        self.assertEqual(snapshot()["state"], "incomplete")
+        self.assertIn("quarantine", snapshot()["reason"])
+        result = graph.sync_from_vault()
+        self.assertEqual(result["files_parsed"], 0)
+        self.assertEqual(snapshot()["state"], "fresh")
+        self.assertEqual(set(graph.conn.execute("SELECT source, target, type, confidence FROM relationships")), before)
+
     def test_exact_retired_template_is_candidate(self):
         path = self._write(
             "thin.md",

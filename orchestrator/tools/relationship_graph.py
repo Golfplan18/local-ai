@@ -22,10 +22,12 @@ Usage:
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import re
 import sqlite3
+import stat
 import yaml
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,6 +56,87 @@ EXCLUDED_DIRS = frozenset({"Archive", ".trash"})
 _FRONTMATTER_TERMINATOR = re.compile(r"^---[ \t\r]*$", re.MULTILINE)
 
 _LOG = logging.getLogger(__name__)
+_CACHE_VERSION = "1"
+_OBSERVATION_LIMIT = (
+    "Freshness compares observed file identity, size and timestamps; a change "
+    "preserving all observed state needs a file event or an explicit rebuild."
+)
+
+
+def _file_state(path: Path) -> str:
+    observed = path.stat()
+    if not stat.S_ISREG(observed.st_mode):
+        raise OSError(f"not a regular Markdown file: {path}")
+    return json.dumps([observed.st_dev, observed.st_ino, observed.st_size,
+                       observed.st_mtime_ns, observed.st_ctime_ns])
+
+
+def _eligible_relative(path: Path, vault: Path) -> str | None:
+    try:
+        candidate = path.parent.resolve() / path.name
+        relative = candidate.relative_to(vault.resolve())
+        path.resolve().relative_to(vault.resolve())
+    except (ValueError, OSError):
+        return None
+    if any(part.startswith(".") or part in EXCLUDED_DIRS
+           or part == "__pycache__" for part in relative.parts):
+        return None
+    return relative.as_posix()
+
+
+def _stat_inventory(vault: Path) -> tuple[dict[str, str], list[str]]:
+    """Observe eligible paths without reading canonical Markdown bytes."""
+    states: dict[str, str] = {}
+    errors: list[str] = []
+    if not vault.is_dir():
+        return states, ["vault relationship authority is unavailable"]
+
+    def failed(error):
+        errors.append(f"canonical relationship directories could not be inspected: {error}")
+
+    for root, dirs, files in os.walk(vault, onerror=failed):
+        dirs[:] = [name for name in dirs if not name.startswith(".")
+                   and name not in EXCLUDED_DIRS and name != "__pycache__"]
+        for name in files:
+            path = Path(root, name)
+            relative = _eligible_relative(path, vault)
+            if not name.endswith(".md") or relative is None:
+                continue
+            try:
+                states[relative] = _file_state(path)
+            except OSError as error:
+                errors.append(f"canonical relationship note could not be inspected: {error}")
+    return states, errors
+
+
+def invalidate_relationship_coverage(connection, reason="relationship rows require canonical repair"):
+    """Invalidate within an existing graph writer transaction, including SQL tools."""
+    connection.executemany(
+        "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+        [("last_update_complete", "0"), ("last_update_reason", reason)])
+    connection.execute(
+        "INSERT OR REPLACE INTO metadata (key, value) VALUES "
+        "('relationship_invalidation', CAST(COALESCE((SELECT value FROM metadata "
+        "WHERE key = 'relationship_invalidation'), '0') AS INTEGER) + 1)")
+
+
+def _valid_cache_entry(path, entry) -> bool:
+    try:
+        state = json.loads(entry["state"])
+        declarations = json.loads(entry["declarations"])
+        return (
+            isinstance(path, str) and entry["stem"] == Path(path).stem
+            and isinstance(state, list) and len(state) == 5
+            and all(type(value) is int for value in state)
+            and bool(re.fullmatch(r"[a-f0-9]{64}", entry["digest"]))
+            and (entry["claim"] is None or isinstance(entry["claim"], str))
+            and entry["archived"] in (0, 1)
+            and isinstance(declarations, list)
+            and all(isinstance(row, list) and len(row) == 3
+                    and all(isinstance(value, str) for value in row) for row in declarations)
+        )
+    except (TypeError, ValueError, KeyError):
+        return False
 
 
 def _frontmatter_end(content: str) -> int:
@@ -103,51 +186,6 @@ def _markdown_inventory_digest(relative_paths) -> str:
     return digest.hexdigest()
 
 
-def _latest_vault_markdown_mtime(
-    vault_path: Path,
-) -> tuple[datetime | None, str | None, str | None]:
-    """Inspect canonical Markdown mtimes and path inventory read-only."""
-
-    if not vault_path.is_dir():
-        return None, None, "vault relationship authority is unavailable"
-    latest_ns: int | None = None
-    relative_paths: list[str] = []
-    walk_errors: list[OSError] = []
-
-    def record_walk_error(error: OSError) -> None:
-        walk_errors.append(error)
-
-    try:
-        for root, dirs, files in os.walk(vault_path, onerror=record_walk_error):
-            dirs[:] = [
-                name for name in dirs
-                if not name.startswith(".") and name not in EXCLUDED_DIRS
-            ]
-            for filename in files:
-                if not filename.endswith(".md"):
-                    continue
-                relative_paths.append(
-                    Path(root, filename).relative_to(vault_path).as_posix()
-                )
-                try:
-                    mtime_ns = Path(root, filename).stat().st_mtime_ns
-                except OSError:
-                    return None, None, "one or more canonical relationship notes could not be inspected"
-                latest_ns = mtime_ns if latest_ns is None else max(latest_ns, mtime_ns)
-    except OSError:
-        return None, None, "canonical relationship notes could not be enumerated"
-    if walk_errors:
-        return None, None, "one or more canonical relationship directories could not be inspected"
-    inventory_digest = _markdown_inventory_digest(relative_paths)
-    if latest_ns is None:
-        return None, inventory_digest, None
-    return (
-        datetime.fromtimestamp(latest_ns / 1_000_000_000, timezone.utc),
-        inventory_digest,
-        None,
-    )
-
-
 def read_relationship_snapshot(
     identities,
     *,
@@ -176,10 +214,21 @@ def read_relationship_snapshot(
         "updated_at": None,
         "reason": "relationship snapshot is unavailable",
         "items": {},
+        "edges": [],
+        "observation_limit": _OBSERVATION_LIMIT,
     }
     try:
+        # SQLite may create WAL sidecars even for mode=ro. A settled database
+        # without sidecars can be read immutably; refuse that snapshot if a
+        # writer starts or checkpoints while it is being read.
+        wal = Path(str(database) + "-wal")
+        shm = Path(str(database) + "-shm")
+        immutable = not wal.exists() and not shm.exists()
+        if not immutable and not (wal.exists() and shm.exists()):
+            return unavailable
+        database_state = _file_state(database)
         connection = sqlite3.connect(
-            f"{database.as_uri()}?mode=ro", uri=True,
+            f"{database.as_uri()}?mode=ro" + ("&immutable=1" if immutable else ""), uri=True,
         )
     except (OSError, sqlite3.Error):
         return unavailable
@@ -202,6 +251,18 @@ def read_relationship_snapshot(
             unavailable["reason"] = "relationship snapshot schema is incompatible"
             return unavailable
         metadata = dict(connection.execute("SELECT key, value FROM metadata"))
+        cache_states = None
+        if ("relationship_files" in tables
+                and metadata.get("relationship_cache_version") == _CACHE_VERSION):
+            cache_states = {}
+            for row in connection.execute(
+                "SELECT path, stem, state, digest, claim, archived, declarations FROM relationship_files"
+            ):
+                entry = dict(zip(("stem", "state", "digest", "claim", "archived", "declarations"), row[1:]))
+                if not _valid_cache_entry(row[0], entry):
+                    raise ValueError("invalid relationship file cache")
+                cache_states[row[0]] = entry["state"]
+        edges = set()
         summaries: dict[str, dict[tuple[str, str, str, str | None], int]] = {
             identity: {} for identity in wanted
         }
@@ -213,6 +274,7 @@ def read_relationship_snapshot(
                 f"WHERE source IN ({placeholders})",
                 ordered_wanted,
             ):
+                edges.add((source, target, str(relation_type), str(confidence or "")))
                 relation_type = str(relation_type)
                 confidence = str(confidence or "")
                 key = (relation_type, "outgoing", confidence, None)
@@ -222,40 +284,47 @@ def read_relationship_snapshot(
                 f"WHERE target IN ({placeholders})",
                 ordered_wanted,
             ):
+                edges.add((source, target, str(relation_type), str(confidence or "")))
                 relation_type = str(relation_type)
                 confidence = str(confidence or "")
                 inverse = INVERSE_MAP.get(relation_type, relation_type)
                 key = (inverse, "incoming", confidence, relation_type)
                 summaries[target][key] = summaries[target].get(key, 0) + 1
-    except sqlite3.Error:
+    except (sqlite3.Error, ValueError):
         unavailable["reason"] = "relationship snapshot could not be read"
         return unavailable
     finally:
         connection.close()
 
+    if immutable:
+        try:
+            if wal.exists() or shm.exists() or _file_state(database) != database_state:
+                unavailable["reason"] = "relationship snapshot changed while being read"
+                return unavailable
+        except OSError:
+            return unavailable
+
     updated_raw = metadata.get("last_update_at")
     updated_at = _snapshot_timestamp(updated_raw)
     state = "fresh"
     reason = None
-    stored_inventory = metadata.get("vault_markdown_inventory_sha256")
     if (
         updated_at is None
         or metadata.get("last_update_complete") != "1"
-        or not stored_inventory
+        or cache_states is None
     ):
         state = "incomplete"
-        reason = "the latest relationship index update is not proven complete"
+        reason = metadata.get("last_update_reason") or (
+            "the latest relationship index update is not proven complete")
     else:
-        latest_note, inventory_digest, inspection_error = (
-            _latest_vault_markdown_mtime(vault)
-        )
-        if inspection_error:
+        inventory, inspection_errors = _stat_inventory(vault)
+        if inspection_errors:
             state = "incomplete"
-            reason = inspection_error
-        elif inventory_digest != stored_inventory:
+            reason = inspection_errors[0]
+        elif inventory.keys() != cache_states.keys():
             state = "stale"
             reason = "canonical relationship note inventory changed after the latest complete index update"
-        elif latest_note is not None and updated_at < latest_note:
+        elif inventory != cache_states:
             state = "stale"
             reason = "canonical relationship notes changed after the latest complete index update"
 
@@ -283,6 +352,9 @@ def read_relationship_snapshot(
         "updated_at": updated_raw,
         "reason": reason,
         "items": items,
+        "edges": [dict(zip(("source", "target", "type", "confidence"), edge))
+                  for edge in sorted(edges)],
+        "observation_limit": _OBSERVATION_LIMIT,
     }
 
 
@@ -332,6 +404,17 @@ class RelationshipGraph:
                 value TEXT
             )
         """)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS relationship_files (
+                path TEXT PRIMARY KEY,
+                stem TEXT NOT NULL,
+                state TEXT NOT NULL,
+                digest TEXT NOT NULL,
+                claim TEXT,
+                archived INTEGER NOT NULL,
+                declarations TEXT NOT NULL
+            )
+        """)
         self.conn.commit()
 
     def _stamp_update_metadata(
@@ -358,13 +441,9 @@ class RelationshipGraph:
                 ("vault_markdown_inventory_sha256", inventory_digest),
             )
 
-    def _mark_update_incomplete(self) -> None:
+    def _mark_update_incomplete(self, reason="relationship rows require canonical repair") -> None:
         """Invalidate completeness inside the caller's current transaction."""
-
-        self.conn.execute(
-            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-            ("last_update_complete", "0"),
-        )
+        invalidate_relationship_coverage(self.conn, reason)
 
     def _walk_vault_md(self, errors: list[str] | None = None):
         """Yield (root, filename) for every vault .md file, applying the
@@ -606,11 +685,11 @@ class RelationshipGraph:
     def _scan_vault_relationships(
         self, errors: list[str]
     ) -> tuple[dict, int, dict, list[dict], str]:
-        """One vault pass → ({source_title: {(target, type, confidence)}},
+        """Compile cached declarations → ({source_title: {(target, type, confidence)}},
         notes_scanned, resolution_stats). Notes without relationships are
         not in the dict.
 
-        Claim-target resolution: engram relationships reference other
+        No Markdown is read here. Engram relationships reference other
         engrams by claim sentence (the target engram's H1), not by filename.
         The walk collects a claim→filename-stem map from STATEMENT_KEYED_DIRS
         notes; targets are then resolved to stems so the compiled index is
@@ -635,27 +714,15 @@ class RelationshipGraph:
         notes_scanned = 0
         relative_paths: list[str] = []
 
-        for root, filename in self._walk_vault_md(errors):
-            source_title = filename[:-3]
+        for path, entry in self._cached_files().items():
+            source_title = entry["stem"]
             titles.add(source_title)
             notes_scanned += 1
-            filepath = os.path.join(root, filename)
-            relative_paths.append(
-                Path(filepath).relative_to(self.vault_path).as_posix()
-            )
-            try:
-                with open(filepath, "r") as f:
-                    content = f.read()
-            except Exception as e:
-                errors.append(f"{filepath}: {e}")
-                continue
-
-            fm = self._parse_frontmatter_text(content, filepath, errors)
-            if self._is_archived_frontmatter(fm):
+            relative_paths.append(path)
+            if entry["archived"]:
                 archived_titles.add(source_title)
-
-            if os.path.basename(root) in STATEMENT_KEYED_DIRS:
-                h1 = self._extract_h1(content)
+            if Path(path).parent.name in STATEMENT_KEYED_DIRS:
+                h1 = entry["claim"]
                 if h1:
                     existing = claim_to_stem.get(h1)
                     if existing is None:
@@ -665,7 +732,7 @@ class RelationshipGraph:
                         if source_title < existing:
                             claim_to_stem[h1] = source_title
 
-            rows = self._relationships_from_frontmatter(fm)
+            rows = {tuple(row) for row in json.loads(entry["declarations"])}
             if rows:
                 raw.append((source_title, rows))
 
@@ -724,45 +791,7 @@ class RelationshipGraph:
 
         Returns stats dict.
         """
-        coverage_started_at = datetime.now(timezone.utc)
-
-        # Clear existing data
-        self.conn.execute("DELETE FROM relationships")
-
-        errors: list[str] = []
-        desired, notes_scanned, resolution, archived_target_links, inventory_digest = (
-            self._scan_vault_relationships(errors)
-        )
-
-        relationships_indexed = 0
-        for source_title, rows in desired.items():
-            for target, rtype, confidence in rows:
-                try:
-                    self.conn.execute(
-                        "INSERT OR REPLACE INTO relationships (source, target, type, confidence) VALUES (?, ?, ?, ?)",
-                        (source_title, target, rtype, confidence)
-                    )
-                    relationships_indexed += 1
-                except sqlite3.Error as e:
-                    errors.append(f"{source_title}: {e}")
-
-        self.conn.execute(
-            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('last_rebuild', datetime('now'))"
-        )
-        self.conn.execute(
-            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('notes_scanned', ?)",
-            (str(notes_scanned),)
-        )
-        self._stamp_update_metadata(coverage_started_at, errors, inventory_digest)
-        self.conn.commit()
-
-        return {
-            "notes_scanned": notes_scanned,
-            "relationships_indexed": relationships_indexed,
-            "resolution": resolution,
-            "archived_target_links": archived_target_links,
-            "errors": errors
-        }
+        return self.catch_up_from_vault(verify_content=True)
 
     def sync_from_vault(self) -> dict:
         """
@@ -776,7 +805,10 @@ class RelationshipGraph:
 
         Returns stats dict.
         """
-        coverage_started_at = datetime.now(timezone.utc)
+        return self.catch_up_from_vault()
+
+    def _reconcile_cached_rows(self, *, sources: set[str] | None = None) -> dict:
+        """Repair compiled rows in the caller's immediate transaction."""
         errors: list[str] = []
         desired, notes_scanned, resolution, archived_target_links, inventory_digest = (
             self._scan_vault_relationships(errors)
@@ -784,6 +816,10 @@ class RelationshipGraph:
 
         db_sources = {row[0] for row in self.conn.execute(
             "SELECT DISTINCT source FROM relationships")}
+        if sources is not None:
+            desired = {source: rows for source, rows in desired.items()
+                       if source in sources}
+            db_sources &= sources
 
         rows_added = 0
         rows_removed = 0
@@ -821,15 +857,9 @@ class RelationshipGraph:
             sources_removed += 1
 
         self.conn.execute(
-            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('last_sync', datetime('now'))"
-        )
-        self.conn.execute(
             "INSERT OR REPLACE INTO metadata (key, value) VALUES ('notes_scanned', ?)",
             (str(notes_scanned),)
         )
-        self._stamp_update_metadata(coverage_started_at, errors, inventory_digest)
-        self.conn.commit()
-
         return {
             "notes_scanned": notes_scanned,
             "sources_in_yaml": len(desired),
@@ -840,6 +870,252 @@ class RelationshipGraph:
             "archived_target_links": archived_target_links,
             "errors": errors
         }
+
+    def _cached_files(self) -> dict[str, dict]:
+        columns = ("stem", "state", "digest", "claim", "archived", "declarations")
+        entries = {row[0]: dict(zip(columns, row[1:])) for row in self.conn.execute(
+            "SELECT path, stem, state, digest, claim, archived, declarations "
+            "FROM relationship_files ORDER BY path")}
+        # Invalid derivatives are not reusable parses. Canonical repair reads
+        # those paths again; an unreadable authority keeps coverage incomplete.
+        return {path: entry for path, entry in entries.items()
+                if _valid_cache_entry(path, entry)}
+
+    @staticmethod
+    def _affected_sources(before, after, selected) -> set[str]:
+        identities = set()
+        sources = set()
+        for records in (before, after):
+            for path in selected:
+                entry = records.get(path)
+                if entry:
+                    sources.add(entry["stem"])
+                    identities.add(entry["stem"])
+                    if Path(path).parent.name in STATEMENT_KEYED_DIRS and entry["claim"]:
+                        identities.add(entry["claim"])
+        for records in (before, after):
+            for entry in records.values():
+                if any(row[0] in identities for row in json.loads(entry["declarations"])):
+                    sources.add(entry["stem"])
+        return sources
+
+    def _failed_refresh(self, error) -> None:
+        self.conn.rollback()
+        try:
+            self._mark_update_incomplete(f"relationship refresh failed: {error}")
+            self.conn.commit()
+        except sqlite3.Error:
+            self.conn.rollback()
+            _LOG.exception("relationship refresh failure could not be recorded")
+
+    def _metadata(self) -> dict:
+        return dict(self.conn.execute("SELECT key, value FROM metadata"))
+
+    def _set_metadata(self, **values) -> None:
+        self.conn.executemany(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+            ((key, str(value)) for key, value in values.items()))
+
+    def _refresh_files(self, paths, *, verify_content=False, allow_missing=True) -> dict:
+        """Read candidates under writer ordering; retain old parses on errors."""
+        cached = self._cached_files()
+        reusable = {entry["digest"]: entry for entry in cached.values()}
+        errors = []
+        parsed = hashed = 0
+        missing = []
+        for relative in sorted(set(paths)):
+            path = Path(self.vault_path, relative)
+            if _eligible_relative(path, Path(self.vault_path)) is None:
+                # An old entry that has become an escaping symlink is unknown.
+                errors.append(f"{relative}: relationship authority is unavailable")
+                continue
+            try:
+                before = _file_state(path)
+            except FileNotFoundError:
+                if allow_missing:
+                    missing.append(relative)
+                continue
+            except OSError as exc:
+                errors.append(f"{relative}: {exc}")
+                continue
+            old = cached.get(relative)
+            if old and old["state"] == before and not verify_content:
+                continue
+            try:
+                with open(path, "rb") as handle:
+                    content = handle.read()
+                hashed += 1
+                digest = hashlib.sha256(content).hexdigest()
+                reuse = reusable.get(digest)
+                if reuse:
+                    entry = dict(reuse)
+                else:
+                    text = content.decode("utf-8")
+                    parse_errors = []
+                    fm = self._parse_frontmatter_text(text, relative, parse_errors)
+                    parsed += 1
+                    if parse_errors:
+                        errors.extend(parse_errors)
+                        continue
+                    entry = {
+                        "digest": digest, "claim": self._extract_h1(text),
+                        "archived": int(self._is_archived_frontmatter(fm)),
+                        "declarations": json.dumps(sorted(self._relationships_from_frontmatter(fm))),
+                    }
+                    reusable[digest] = entry
+                if _file_state(path) != before:
+                    errors.append(f"{relative}: changed during relationship refresh")
+                    continue
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO relationship_files "
+                    "(path, stem, state, digest, claim, archived, declarations) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (relative, path.stem, before, digest, entry["claim"],
+                     entry["archived"], entry["declarations"]))
+            except (OSError, UnicodeError) as exc:
+                errors.append(f"{relative}: {exc}")
+        for relative in missing:
+            # Recheck: an event may have recreated the file during this batch.
+            try:
+                Path(self.vault_path, relative).stat()
+            except FileNotFoundError:
+                self.conn.execute("DELETE FROM relationship_files WHERE path = ?", (relative,))
+            except OSError as exc:
+                errors.append(f"{relative}: {exc}")
+            else:
+                errors.append(f"{relative}: recreated during relationship refresh")
+        return {"errors": errors, "files_parsed": parsed, "files_hashed": hashed}
+
+    def refresh_paths(self, paths) -> dict:
+        """Apply one finite coalesced event; never certify older incomplete work."""
+        vault = Path(self.vault_path).resolve()
+        selected = set()
+        errors = []
+        self.conn.execute("BEGIN IMMEDIATE")
+        try:
+            metadata = self._metadata()
+            if metadata.get("relationship_cache_version") not in (None, _CACHE_VERSION):
+                self._mark_update_incomplete("relationship cache format needs canonical repair")
+                self.conn.commit()
+                return {"errors": ["relationship cache format needs canonical repair"]}
+            cached = self._cached_files()
+            for raw in paths:
+                raw_path = Path(raw)
+                path = raw_path.parent.resolve() / raw_path.name
+                relative = _eligible_relative(path, vault)
+                if relative is None:
+                    continue
+                if path.suffix == ".md":
+                    selected.add(relative)
+                else:
+                    selected.update(name for name in cached
+                                    if relative == "." or name.startswith(relative + "/"))
+                    if path.is_dir():
+                        subtree, subtree_errors = _stat_inventory(path)
+                        errors.extend(subtree_errors)
+                        selected.update((path / name).relative_to(vault).as_posix()
+                                        for name in subtree)
+            result = self._refresh_files(selected, verify_content=True,
+                                         allow_missing=not errors)
+            errors.extend(result["errors"])
+            self._set_metadata(relationship_cache_version=_CACHE_VERSION)
+            # Resolve every cached referrer after identity/claim changes. Do
+            # not erase unrelated legacy rows before baseline coverage exists.
+            sources = self._affected_sources(cached, self._cached_files(), selected)
+            result.update(self._reconcile_cached_rows(sources=sources))
+            result["errors"] = errors
+            if errors:
+                self._mark_update_incomplete(errors[0])
+            elif metadata.get("last_update_complete") == "1":
+                self._set_metadata(last_update_at=datetime.now(timezone.utc).isoformat())
+            else:
+                self._set_metadata(last_update_complete="0")
+            self.conn.commit()
+            return result
+        except BaseException as exc:
+            self._failed_refresh(exc)
+            raise
+
+    def catch_up_from_vault(self, stop_event=None, batch_size=128, *, verify_content=False) -> dict:
+        """One stat inventory, finite cancellable batches, and a final comparison.
+
+        Each batch observes candidates after acquiring SQLite's writer lock,
+        so an older startup inventory cannot overwrite a newer event parse.
+        """
+        if batch_size < 1:
+            raise ValueError("relationship batch size must be positive")
+        started = datetime.now(timezone.utc)
+        inventory, errors = _stat_inventory(Path(self.vault_path))
+        totals = {"files_parsed": 0, "files_hashed": 0, "rows_added": 0,
+                  "rows_removed": 0, "sources_removed": 0}
+        self.conn.execute("BEGIN IMMEDIATE")
+        try:
+            metadata = self._metadata()
+            if metadata.get("relationship_cache_version") not in (None, _CACHE_VERSION):
+                self.conn.execute("DELETE FROM relationship_files")
+            cached = self._cached_files()
+            invalidation = metadata.get("relationship_invalidation", "0")
+            self._set_metadata(relationship_cache_version=_CACHE_VERSION,
+                               last_update_complete="0",
+                               last_update_reason="relationship catch-up is incomplete")
+            self.conn.commit()
+        except BaseException:
+            self.conn.rollback()
+            raise
+        candidates = sorted(set(inventory) | set(cached))
+        cancelled = False
+        for start in range(0, len(candidates), batch_size):
+            if stop_event is not None and stop_event.is_set():
+                errors.append("relationship catch-up was cancelled")
+                cancelled = True
+                break
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                before_batch = self._cached_files()
+                selected = candidates[start:start + batch_size]
+                result = self._refresh_files(selected,
+                                             verify_content=verify_content,
+                                             allow_missing=not errors)
+                errors.extend(result["errors"])
+                for key in ("files_parsed", "files_hashed"):
+                    totals[key] += result[key]
+                sources = self._affected_sources(before_batch, self._cached_files(), selected)
+                result = self._reconcile_cached_rows(sources=sources)
+                for key in ("rows_added", "rows_removed", "sources_removed"):
+                    totals[key] += result[key]
+                self.conn.commit()
+            except BaseException as exc:
+                self._failed_refresh(exc)
+                raise
+        self.conn.execute("BEGIN IMMEDIATE")
+        try:
+            final_inventory, final_errors = _stat_inventory(Path(self.vault_path))
+            errors.extend(final_errors)
+            states = {path: entry["state"] for path, entry in self._cached_files().items()}
+            if states != final_inventory:
+                errors.append("canonical relationship state changed during catch-up")
+            metadata = self._metadata()
+            if metadata.get("relationship_invalidation", "0") != invalidation:
+                errors.append(metadata.get("last_update_reason") or "relationship rows invalidated during catch-up")
+            # Only complete canonical coverage can remove unbacked direct or
+            # legacy rows. On unknown files retain usable old relationships.
+            result = self._reconcile_cached_rows(sources=set() if errors else None)
+            for key in ("rows_added", "rows_removed", "sources_removed"):
+                totals[key] += result[key]
+            if errors:
+                self._mark_update_incomplete(errors[0])
+            else:
+                self._stamp_update_metadata(started, [], _markdown_inventory_digest(states))
+                self._set_metadata(last_update_reason="", last_sync=started.isoformat())
+                if verify_content:
+                    self._set_metadata(last_rebuild=started.isoformat())
+            self.conn.commit()
+            return {**result, **totals, "errors": errors, "cancelled": cancelled,
+                    "relationships_indexed": self.conn.execute(
+                        "SELECT COUNT(*) FROM relationships").fetchone()[0]}
+        except BaseException as exc:
+            self._failed_refresh(exc)
+            raise
 
     def add_relationships(self, source: str, relationships: list[dict]) -> dict:
         """Add allowed relationships for a single note.

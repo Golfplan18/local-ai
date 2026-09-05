@@ -284,6 +284,17 @@
 .library-popover label { display: flex; align-items: center; gap: 7px; }
 .library-popover label select { margin-left: auto; }
 .library-popover [data-library-actions] { display: grid; gap: 6px; }
+.library-popover [data-library-refinement-controls] { display: grid; gap: 8px; }
+.library-popover input:not([type="checkbox"]) { min-width: 0; max-width: 190px; color: inherit; background: var(--background-primary); border: 1px solid var(--background-modifier-border); padding: 5px; }
+.library-refinement-chips { position: absolute; z-index: 4; left: 12px; right: 12px; bottom: calc(var(--library-bridge-height, 48px) + 4px); display: flex; gap: 5px; align-items: center; overflow: auto; max-height: 55px; background: var(--background-primary); }
+.library-refinement-chips:empty { display: none; }
+.library-refinement-chips button { flex-shrink: 0; color: inherit; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 6px; padding: 5px; cursor: pointer; }
+.library-refinement-chips small { min-width: 180px; }
+.library-workspace__surface:has(.library-refinement-chips:not(:empty)) .library-workspace__results { bottom: calc(var(--library-bridge-height, 48px) + 62px); }
+.library-dialogue-turn { margin-block: 16px; border-top: 1px solid var(--background-modifier-border); }
+.library-dialogue-turn > h3 { position: relative; font: inherit; font-weight: 700; }
+.library-trace { max-height: 55vh; overflow: auto; }
+.library-trace button { color: inherit; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); padding: 6px; cursor: pointer; }
 
 .library-workspace__status {
   position: absolute;
@@ -338,6 +349,10 @@
 }
 
 .library-visual-node[hidden] { display: none; }
+.library-visual-node__pin { border: 0; background: transparent; color: inherit; font: inherit; text-align: left; padding: 0; cursor: pointer; overflow-wrap: anywhere; }
+.library-visual-node input { position: absolute; right: 4px; top: 4px; }
+.library-visual-node .library-source-badge { max-width: calc(100% - 20px); }
+.library-visual-connectors marker path { fill: var(--interactive-accent); }
 
 .library-visual-node > span:not(.library-source-badge) {
   overflow: hidden;
