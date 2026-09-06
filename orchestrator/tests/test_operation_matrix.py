@@ -10,12 +10,23 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
+
+import pytest
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
 from orchestrator import operation_matrix as om  # noqa: E402
+from orchestrator import matrix_tasks as tasks
+
+
+@pytest.fixture(autouse=True)
+def isolated_matrix_locks(tmp_path, monkeypatch):
+    import runtime_hygiene
+    monkeypatch.setattr(runtime_hygiene._rp, "DATA_DIR_STR", str(tmp_path / "runtime"))
+    monkeypatch.setattr(om._rp, "DATA_DIR_STR", str(tmp_path / "runtime"))
 
 
 # A realistic matrix file: MOM sections plus a Bases query + a registry table
@@ -558,6 +569,229 @@ class OperationMilestoneFormTests(unittest.TestCase):
         result = om.write_mom("op-matrix", "Op", vault=self.vault)
         self.assertIsNotNone(result)
         self.assertEqual(p.read_text(encoding="utf-8"), before)
+
+
+class MatrixTasksTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.vault = pathlib.Path(self.tmp.name)
+        (self.vault / "Matrix").mkdir()
+        self.path = self.vault / "Matrix" / "Historical Name.md"
+
+    def put(self, body, classification="project", ending="\n"):
+        text = f"---\nnexus: [sample]\nproject_type: [{classification}]\ncustom: keep\ndate modified: 2001-01-01\n---\n# Example\n{body}"
+        self.path.write_bytes(text.replace("\n", ending).encode())
+        return self.read()
+
+    def read(self):
+        return om.read_tasks("sample", "Sample", vault=self.vault)
+
+    def act(self, op, group=None, index=0, **values):
+        group = group or self.read()
+        body = {"expected_digest": group["digest"], "operation": op, **values}
+        if "target" in tasks.FIELDS[op]:
+            body["target"] = group["tasks"][index]["ref"]
+        if op == "add" and "destination" not in body:
+            body.update(destination=group["root_ref"], position="root")
+        return om.write_tasks("sample", "Sample", body, vault=self.vault)
+
+    def test_duplicate_labels_dates_and_noops_preserve_exact_surrounding_bytes(self):
+        self.put("## Mission\nUntouched Ω.\n## Tasks\n\n*  [ ] Same #tag 🗓 2025-04-09\n*  [X] Same ✅ 2024-02-29\n\n<!-- literal -->\n## Notes\nKeep this.\n", ending="\r\n")
+        self.path.chmod(0o640)
+        before = self.path.read_bytes()
+        result = self.act("edit", index=1, value="Changed **explicitly** ✅ 2024-02-29")
+        self.assertTrue(result["saved"])
+        self.assertIn(b"*  [ ] Same #tag", self.path.read_bytes())
+        self.assertIn(b"## Notes\r\nKeep this.\r\n", self.path.read_bytes())
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o640)
+        self.assertNotIn(b"\n", self.path.read_bytes().replace(b"\r\n", b""))
+        self.assertNotEqual(result["group"]["tasks"][0]["ref"], result["group"]["tasks"][1]["ref"])
+        result = self.act("complete", index=0)
+        self.assertIn("🗓 2025-04-09 ✅ " + tasks.date.today().isoformat(), result["group"]["tasks"][0]["text"])
+        self.act("set-date", index=0, value="2020-02-29")
+        self.assertEqual(self.read()["tasks"][0]["completion_date"], "2020-02-29")
+        self.act("reopen", index=0)
+        self.assertEqual(self.read()["tasks"][0]["text"], "Same #tag 🗓 2025-04-09")
+        self.act("set-date", index=0, value="2025-03-01")
+        self.assertFalse(self.read()["tasks"][0]["done"])
+        self.act("clear-date", index=0)
+        stable = self.path.read_bytes()
+        with mock.patch.object(om._rp, "atomic_write_bytes", side_effect=AssertionError("no-op wrote")):
+            self.assertFalse(self.act("clear-date", index=0)["changed"])
+            self.assertFalse(self.act("edit", index=0, value=self.read()["tasks"][0]["text"])["changed"])
+        self.assertEqual(self.path.read_bytes(), stable)
+        self.assertIn(b"custom: keep\r\n", before)
+        self.put("## Tasks\n- [x] Keep ✅   2024-02-29  \n")
+        stable = self.path.read_bytes()
+        self.assertFalse(self.act("set-date", value="2024-02-29")["changed"])
+        self.assertEqual(self.path.read_bytes(), stable)
+
+    def test_every_structure_operation_preserves_subtrees_and_attached_notes(self):
+        self.put("## Tasks\n- [ ] First\n  - [ ] Child\n    continued **note**\n- [ ] Second\n- [ ] Third\n## Notes\nKeep\n")
+        group = self.read()
+        moved = self.act("reorder", group, destination=group["tasks"][3]["ref"], position="after")
+        self.assertEqual([t["text"] for t in moved["group"]["tasks"]], ["Second", "Third", "First", "Child"])
+        self.assertIn("    continued **note**", self.path.read_text())
+        self.act("indent", index=2)
+        self.assertEqual([t["depth"] for t in self.read()["tasks"]], [0, 0, 1, 2])
+        self.act("outdent", index=3)
+        self.assertEqual(self.read()["tasks"][3]["depth"], 1)
+        self.act("promote", index=3)
+        self.assertEqual(self.read()["tasks"][3]["depth"], 0)
+        with self.assertRaisesRegex(tasks.TaskError, "attached"):
+            self.act("delete", index=3)
+        self.act("delete", index=0)
+        group = self.read()
+        added = self.act("add", group, destination=group["tasks"][0]["ref"], position="child", value="New child")
+        self.assertEqual(added["group"]["tasks"][2]["text"], "New child")
+        self.assertEqual(added["group"]["tasks"][2]["depth"], 1)
+        self.assertIn("## Notes\nKeep\n", self.path.read_text())
+        self.put("## Tasks\n- [ ] First\n- [ ] Last")
+        group = self.read()
+        self.act("reorder", group, index=1, destination=group["tasks"][0]["ref"], position="before")
+        self.assertEqual([t["text"] for t in self.read()["tasks"]], ["Last", "First"])
+        self.put("## Tasks\n- [ ] Parent\n  - [ ] Child\n  Parent continuation\n  - [ ] Sibling\n")
+        self.assertEqual([t["depth"] for t in self.read()["tasks"]], [0, 1, 1])
+        self.act("promote", index=1)
+        self.assertIn("  Parent continuation\n  - [ ] Sibling\n- [ ] Child", self.path.read_text())
+
+    def test_first_add_uses_full_classification_specific_strategic_section(self):
+        layouts = {
+            "project": "## Milestones\n- [ ] Strategic\n### Detail\nKeep\n",
+            "operation": "## Active Milestones\nRecurring\n## Aspirational Milestones (Maturity Gates)\nGate\n",
+            "passion": "## Practices\nPractice\n## Directions of Travel\nTravel\n",
+        }
+        for classification, strategic in layouts.items():
+            with self.subTest(classification=classification):
+                self.put(strategic + "## Notes\nKeep\n", classification)
+                before = self.path.read_bytes()
+                group = self.read()
+                self.assertEqual(group["counts"]["total"], 0)
+                self.assertEqual(self.path.read_bytes(), before)
+                self.act("add", value="First task")
+                text = self.path.read_text()
+                self.assertIn(strategic + "\n## Tasks\n\n- [ ] First task\n\n## Notes", text)
+                self.assertEqual(text.count("## Tasks"), 1)
+        self.put("## Unfamiliar\nNot strategic\n", "passion")
+        self.act("add", value="At EOF")
+        self.assertTrue(self.path.read_text().endswith("## Tasks\n\n- [ ] At EOF\n\n"))
+
+    def test_fences_projection_and_opaque_text_never_become_task_authority(self):
+        self.put("````md\n## Tasks\n- [ ] literal\n```\n````\n~~~md\n## Tasks\n- [ ] tilde literal\n~~~\n<!-- MASTER_MATRIX_PROJECTION_START source=\"x\" -->\n## Milestones\n- [ ] Strategic\n<!-- MASTER_MATRIX_PROJECTION_END -->\n## Notes\nKeep\n")
+        self.assertEqual(self.read()["counts"]["total"], 0)
+        self.act("add", value="Actual")
+        text = self.path.read_text()
+        self.assertIn("<!-- MASTER_MATRIX_PROJECTION_END -->\n\n## Tasks", text)
+        self.assertEqual([t["text"] for t in self.read()["tasks"]], ["Actual"])
+        self.put("<!--\n## Tasks\n- [ ] Commented example\n-->\n## Tasks\n- [ ] Actual\n")
+        self.assertEqual([t["text"] for t in self.read()["tasks"]], ["Actual"])
+        self.act("edit", value="Actual changed")
+        self.assertIn("- [ ] Commented example", self.path.read_text())
+        self.put("## Tasks\n- [ ] Review MASTER_MATRIX_PROJECTION_START <!--\n- [ ] Commented continuation\n-->\n- [ ] Visible\n")
+        self.assertEqual(len(self.read()["tasks"]), 2)
+        self.act("edit", index=1, value="Still visible")
+        for body in (
+            "<!-- MASTER_MATRIX_PROJECTION_START -->\n## Mission\nUnclosed\n",
+            "<!-- MASTER_MATRIX_PROJECTION_END -->\n",
+            "## Tasks\n- [ ] One\n## TASKS\n- [ ] Two\n",
+            "<!-- MASTER_MATRIX_PROJECTION_START -->\n## Tasks\n- [ ] Protected\n<!-- MASTER_MATRIX_PROJECTION_END -->\n",
+        ):
+            with self.subTest(body=body):
+                self.put(body)
+                original = self.path.read_bytes()
+                self.assertFalse(self.read()["editable"])
+                if body.count("## TASKS"):
+                    self.assertIn("- [ ] One", self.read()["source_text"])
+                    self.assertIn("- [ ] Two", self.read()["source_text"])
+                with self.assertRaises(tasks.TaskError):
+                    self.act("add", value="No write")
+                self.assertEqual(original, self.path.read_bytes())
+        self.put("## Tasks\n- [ ] One\n\nUnattached source\n\n- [ ] Two\n")
+        group = self.read()
+        self.assertEqual(group["state"], "partial")
+        self.assertIn("Unattached source", group["source_text"])
+        with self.assertRaisesRegex(tasks.TaskError, "Unattached"):
+            self.act("reorder", group, destination=group["tasks"][1]["ref"], position="after")
+        self.act("edit", value="Safe text edit")
+
+    def test_refusals_do_not_rewrite_or_drop_metadata(self):
+        self.put("## Tasks\n- [ ] Parent ✅ maybe\n  - [ ] Child\n- [ ] End\n")
+        for op, kwargs in (("complete", {}), ("reopen", {}), ("set-date", {"value": "2024-02-29"}),
+                           ("delete", {}), ("indent", {}), ("outdent", {}), ("promote", {}),
+                           ("set-date", {"value": "2023-02-29"}), ("edit", {"value": "bad\nline"})):
+            with self.subTest(op=op):
+                before = self.path.read_bytes()
+                with self.assertRaises(tasks.TaskError):
+                    self.act(op, **kwargs)
+                self.assertEqual(self.path.read_bytes(), before)
+        self.act("edit", value="Parent with metadata deliberately edited")
+        self.act("complete")
+        self.assertFalse(self.read()["tasks"][1]["done"])
+
+    def test_stale_digest_rebound_identity_unsafe_file_and_atomic_failure(self):
+        group = self.put("## Tasks\n- [ ] One\n")
+        self.path.write_bytes(self.path.read_bytes() + b"external\n")
+        with self.assertRaisesRegex(tasks.TaskError, "changed"):
+            self.act("edit", group, value="Lost edit")
+        group = self.read()
+        original = self.path.read_bytes()
+        with mock.patch.object(om._rp, "atomic_write_bytes", side_effect=OSError("replace failed")):
+            with self.assertRaises(tasks.TaskError) as caught:
+                self.act("edit", value="Failed")
+        self.assertIs(caught.exception.saved, False)
+        self.assertEqual(self.path.read_bytes(), original)
+        rebound = self.path.with_name("Rebound.md")
+        self.path.rename(rebound)
+        with self.assertRaises(tasks.TaskError) as caught:
+            self.act("edit", group, value="Wrong identity")
+        self.assertEqual(caught.exception.code, "conflict")
+        outside = self.vault / "Outside.md"
+        rebound.rename(outside)
+        rebound = outside
+        self.path.symlink_to(rebound)
+        self.assertEqual(self.read()["state"], "unavailable")
+        self.path.unlink()
+        rebound.rename(self.path)
+        self.path.chmod(0o400)
+        self.assertEqual(self.read()["state"], "read-only")
+
+    def test_shared_resolution_detects_duplicates_in_one_pass(self):
+        self.put("## Tasks\n- [ ] One\n")
+        other = self.path.with_name("Other.md")
+        other.write_text("---\nnexus: [other]\n---\n")
+        snapshots = om.resolve_matrix_snapshots({"sample": "Sample", "other": "Other", "commons": None}, vault=self.vault)
+        self.assertEqual(snapshots["sample"][0], self.path)
+        self.assertEqual(snapshots["other"][0], other)
+        self.assertIsNone(snapshots["commons"])
+        (self.path.parent / "Malformed.md").write_text("---\nnexus: [broken]\ndate modified: 2026-99-99\n---\n")
+        self.assertEqual(om.resolve_matrix_snapshots({"sample": "Sample"}, vault=self.vault)["sample"][0], self.path)
+        other.write_bytes(self.path.read_bytes())
+        duplicate = om.resolve_matrix_snapshots({"sample": "Sample"}, vault=self.vault)["sample"]
+        self.assertIsInstance(duplicate, om.MatrixAmbiguityError)
+
+    def test_mom_save_holds_same_lock_and_preserves_concurrent_task_edit(self):
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        import runtime_hygiene
+        self.put("## Mission\nOriginal\n## Tasks\n- [ ] One\n")
+        entered, release = threading.Event(), threading.Event()
+        original = om._rp.atomic_write_bytes
+        def paused_write(path, payload, **kwargs):
+            if b"Task changed" in payload and b"Mission changed" not in payload:
+                entered.set()
+                self.assertTrue(release.wait(3))
+            return original(path, payload, **kwargs)
+        with mock.patch.object(om._rp, "atomic_write_bytes", side_effect=paused_write), ThreadPoolExecutor(max_workers=2) as pool:
+            task_future = pool.submit(self.act, "edit", value="Task changed")
+            self.assertTrue(entered.wait(3))
+            mom_future = pool.submit(om.write_mom, "sample", "Sample", mission="Mission changed", vault=self.vault)
+            release.set()
+            self.assertTrue(task_future.result(timeout=5)["saved"])
+            self.assertIsNotNone(mom_future.result(timeout=5))
+        text = self.path.read_text()
+        self.assertIn("Task changed", text)
+        self.assertIn("Mission changed", text)
 
 
 class NewMatrixTemplateTests(unittest.TestCase):

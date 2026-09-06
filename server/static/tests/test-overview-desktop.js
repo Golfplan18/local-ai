@@ -130,6 +130,7 @@ function source(id, title, state, items, error, count) {
 }
 
 var overviewPayload = { sources: [
+  source('matrix-tasks', 'Tasks', 'empty', [], null, 0),
   source('daily-note', 'Prior-day Daily Note', 'missing', [{
     source_id: 'daily-note', item_id: 'daily-note:2026-08-31',
     title: '2026-08-31', text: 'No completed Daily Note was found.', state: 'missing',
@@ -207,8 +208,9 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
       ['oversight', 'partial'],
       ['triggers', 'ready'],
       ['daily-note', 'missing'],
+      ['matrix-tasks', 'empty'],
     ],
-    'the four sources render in canonical order with their distinct states'
+    'the five sources render in canonical order with their distinct states'
   );
   assert(mount.textContent.includes('Checked 2026-09-01T12:30:00+00:00'));
   assert(mount.textContent.includes('Last success 2026-09-01T12:29:00+00:00'));
@@ -309,7 +311,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   launcher.click();
   await flush();
   await flush();
-  assert.strictEqual(status.textContent, 'Four sources checked.', 'opening clears prior handoff status');
+  assert.strictEqual(status.textContent, 'Five sources checked.', 'opening clears prior handoff status');
   dailyAction = mount.querySelector('[data-overview-action="open_note"]');
   responses.push(ok({
     ok: true,
@@ -345,7 +347,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   await flush();
   await flush();
   assert.strictEqual(mount.hidden, false, 'failure leaves Overview usable and visible');
-  assert.strictEqual(mount.querySelectorAll('.overview-source').length, 4, 'failure preserves all cards');
+  assert.strictEqual(mount.querySelectorAll('.overview-source').length, 5, 'failure preserves all cards');
   assert.strictEqual(
     status.textContent,
     'Obsidian and the default Markdown application refused the request.'
@@ -416,7 +418,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   await flush();
   var reopenedText = mount.textContent;
   assert.strictEqual(mount.hidden, false);
-  assert.strictEqual(status.textContent, 'Four sources checked.');
+  assert.strictEqual(status.textContent, 'Five sources checked.');
   late.resolve(ok({
     ok: true,
     identity: 'daily-note:2026-08-31',
@@ -428,7 +430,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   await flush();
   assert.strictEqual(mount.hidden, false, 'late success cannot close a reopened Overview');
   assert.strictEqual(mount.textContent, reopenedText, 'late success cannot replace reopened state');
-  assert.strictEqual(status.textContent, 'Four sources checked.');
+  assert.strictEqual(status.textContent, 'Five sources checked.');
 
   // The reader is another view inside this same Overview, with the original
   // source cards and prior workspace held intact throughout its lifecycle.
@@ -465,7 +467,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   await flush();
   assert.strictEqual(reader.hidden, false);
   assert.strictEqual(cardsHost.hidden, true);
-  assert.deepStrictEqual(Array.from(cardsHost.children), cards, 'Read never rebuilds the four cards');
+  assert.deepStrictEqual(Array.from(cardsHost.children), cards, 'Read never rebuilds the five cards');
   assert.strictEqual(readViews.length, 1);
   assert.strictEqual(readViews[0].options.host, readerHost);
   assert.strictEqual(readViews[0].options.markdown, readPayload.text, 'body is passed unchanged to the shared reader');
@@ -629,7 +631,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
       assert.strictEqual(node.querySelector('h3').title, node.querySelector('h3').textContent);
     });
     assert(mount.querySelector('.overview-projects__heading').textContent.includes(size + ' active project'));
-    assert.strictEqual(mount.querySelectorAll('.overview-source').length, 4);
+    assert.strictEqual(mount.querySelectorAll('.overview-source').length, 5);
     var identity = mount.querySelector('.overview-projects__identity');
     assert.strictEqual(identity.getAttribute('aria-hidden'), 'true');
     assert.strictEqual(identity.querySelectorAll('[id], [tabindex], [role]').length, 0);
@@ -696,6 +698,284 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   closeControl.click();
   var css = fs.readFileSync(path.resolve(__dirname, '..', 'styles', 'components', 'overview-desktop.css'), 'utf8');
   assert(css.includes('prefers-reduced-motion: reduce') && css.includes('animation: none'), 'motion is settled and reduced-motion is explicit');
+
+  function taskGroup(nexus, revision) {
+    var identity = nexus === 'alpha' ? 'a'.repeat(24) : 'b'.repeat(24);
+    var digest = String(revision || 1).repeat(64);
+    var prefix = identity + ':' + digest + ':';
+    var group = {
+      nexus: nexus, title: 'Project ' + nexus, source_id: 'matrix-tasks', item_id: 'project:' + nexus,
+      scope: { project_nexus: nexus }, state: 'ready', reason: null, editable: true,
+      identity: identity, digest: digest, root_ref: prefix + 'root',
+      source_text: '- [ ] Duplicate\n  - [ ] Nested\n- [ ] Duplicate\n- [x] Done ✅ 2026-09-01\n<script>never execute</script>',
+      counts: { total: 4, completed: 1, incomplete: 3 }, actions: ['open_project', 'refresh_tasks', 'edit_tasks'],
+    };
+    group.tasks = ['Duplicate', 'Nested', 'Duplicate', 'Done ✅ 2026-09-01'].map(function (text, index) {
+      return { ref: prefix + (index * 20), text: text, done: index === 3, depth: index === 1 ? 1 : 0,
+        parent_ref: index === 1 ? prefix + '0' : null, completion_date: index === 3 ? '2026-09-01' : null,
+        date_ambiguous: false, limitations: index === 0 ? { delete: 'Move or promote children first.' } : {} };
+    });
+    return group;
+  }
+  function taskPayload(groups, state) {
+    var payload = JSON.parse(JSON.stringify(availableOverviewPayload));
+    var source = payload.sources.find(function (entry) { return entry.source_id === 'matrix-tasks'; });
+    source.items = groups;
+    source.state = state || 'ready';
+    source.count = groups.some(function (group) { return Number.isInteger(group.counts.total); })
+      ? groups.reduce(function (sum, group) { return sum + (group.counts.total || 0); }, 0) : null;
+    return payload;
+  }
+  function taskNode(nexus) { return mount.querySelector('[data-task-nexus="' + (nexus || 'alpha') + '"]'); }
+  function taskAction(action, nexus) { return taskNode(nexus).querySelector('[data-task-action="' + action + '"]'); }
+  function taskInput(name, value, nexus) {
+    var input = taskNode(nexus).querySelector('[data-task-focus="' + name + '"]');
+    input.value = value;
+    input.dispatchEvent(new w.Event('input', { bubbles: true }));
+    return input;
+  }
+  function taskSelect(index, nexus) { taskNode(nexus).querySelectorAll('[data-task-action="select"]')[index].click(); }
+  async function openTasks(groups, qualification) {
+    if (!mount.hidden) {
+      for (var cancel of mount.querySelectorAll('[data-task-action="cancel"]')) cancel.click();
+      closeControl.click();
+    }
+    responses.push(ok(taskPayload(groups, qualification)));
+    launcher.click(); await flush(); await flush();
+  }
+  function savedTaskGroup(group, operation, fields) {
+    var next = taskGroup(group.nexus, 2);
+    var correspondence = {};
+    group.tasks.forEach(function (task, index) { correspondence[task.ref] = next.tasks[index].ref; });
+    var index = group.tasks.findIndex(function (task) { return task.ref === fields.target; });
+    if (operation === 'edit') next.tasks[index].text = fields.value;
+    if (operation === 'set-date') next.tasks[index].completion_date = fields.value;
+    if (operation === 'clear-date') next.tasks[index].completion_date = null;
+    if (operation === 'complete') next.tasks[index].done = true;
+    if (operation === 'reopen') next.tasks[index].done = false;
+    if (operation === 'add') {
+      var added = Object.assign({}, next.tasks[2], { ref: next.identity + ':' + next.digest + ':added', text: fields.value });
+      next.tasks.push(added);
+      correspondence.added = added.ref;
+      next.counts.total += 1;
+    }
+    if (operation === 'delete') {
+      delete correspondence[group.tasks[index].ref];
+      next.tasks.splice(index, 1);
+      next.counts.total -= 1;
+    }
+    return { ok: true, saved: true, changed: true, group: next, correspondence: correspondence,
+      focus_ref: operation === 'add' ? correspondence.added : index >= 0 && operation !== 'delete' ? correspondence[group.tasks[index].ref] : null };
+  }
+  var alpha = taskGroup('alpha'); var beta = taskGroup('beta');
+  await openTasks([alpha, beta]);
+  assert.strictEqual(taskNode().querySelector('script'), null, 'opaque Markdown is never executable');
+  assert.strictEqual(taskNode().querySelector('pre').textContent, alpha.source_text);
+  assert(taskNode().textContent.includes('Level 2') && taskNode().textContent.includes('Child of task 1'));
+  assert(taskNode().textContent.includes('Completed'), 'completed tasks stay reachable');
+  assert.deepStrictEqual(Array.from(mount.querySelectorAll('[data-task-nexus]')).map(function (node) { return node.dataset.taskNexus; }), ['alpha', 'beta']);
+
+  // Every deliberate action uses one exact service operation and source reference.
+  for (var actionCase of [
+    ['edit', 'edit', 2, { value: 'Changed duplicate only' }, 'text'],
+    ['move-earlier', 'reorder', 2, { destination: alpha.tasks[0].ref, position: 'before' }],
+    ['move-later', 'reorder', 2, { destination: alpha.tasks[3].ref, position: 'after' }],
+    ['indent', 'indent', 2, {}], ['outdent', 'outdent', 1, {}], ['promote', 'promote', 1, {}],
+    ['complete', 'complete', 2, {}], ['reopen', 'reopen', 3, {}],
+    ['set-date', 'set-date', 2, { value: '2026-09-03' }, 'date'],
+    ['clear-date', 'clear-date', 3, {}], ['delete', 'delete', 2, {}],
+  ]) {
+    await openTasks([alpha, beta]);
+    taskSelect(0, 'beta'); taskInput('text', 'Other group draft', 'beta');
+    var otherGroup = taskNode('beta');
+    var otherCards = Array.from(cardsHost.children);
+    var ring = mount.querySelector('.overview-projects');
+    taskSelect(actionCase[2]);
+    if (actionCase[4]) taskInput(actionCase[4], actionCase[3].value);
+    var fields = Object.assign({ target: alpha.tasks[actionCase[2]].ref }, actionCase[3]);
+    var result = savedTaskGroup(alpha, actionCase[1], fields);
+    var pendingTask = deferred(); responses.push(pendingTask.promise);
+    var before = requests.length;
+    var action = taskAction(actionCase[0]); action.focus(); action.click(); action.click();
+    taskAction(actionCase[0]).click();
+    assert.strictEqual(requests.length, before + 1, actionCase[0] + ' suppresses duplicate requests');
+    assert.strictEqual(requests[before][0], '/api/projects/alpha/tasks');
+    assert.strictEqual(requests[before][1].method, 'POST');
+    assert.deepStrictEqual(JSON.parse(requests[before][1].body), Object.assign({ expected_digest: alpha.digest, operation: actionCase[1] }, fields));
+    assert.strictEqual(taskNode('beta'), otherGroup, 'pending work leaves other groups mounted');
+    assert.strictEqual(taskAction('edit', 'beta').disabled, false);
+    assert.strictEqual(mount.querySelector('[data-overview-action="read_note"]').disabled, false);
+    pendingTask.resolve(ok(result)); await flush(); await flush();
+    assert.strictEqual(taskNode('beta'), otherGroup, 'success replaces only the changed group');
+    assert.strictEqual(taskNode('beta').querySelector('[data-task-focus="text"]').value, 'Other group draft');
+    assert.deepStrictEqual(Array.from(cardsHost.children), otherCards, 'success preserves all card identities');
+    assert.strictEqual(mount.querySelector('.overview-projects'), ring);
+    assert(taskNode().contains(w.document.activeElement), 'success restores focus to the changed group');
+    if (actionCase[1] !== 'delete') {
+      assert.strictEqual(taskNode().querySelector('[aria-pressed="true"]').dataset.taskFocus, 'select:' + result.correspondence[fields.target]);
+    }
+    assertWorkspacePreserved('task ' + actionCase[0]);
+  }
+  for (var position of ['root', 'before', 'after', 'child']) {
+    await openTasks([alpha, beta]);
+    taskAction('add').click();
+    if (position !== 'root') {
+      var placement = taskNode().querySelector('[data-task-focus="placement"]');
+      // Root is option value 0; each task has before/after/child choices.
+      placement.value = String(1 + 2 * 3 + ['before', 'after', 'child'].indexOf(position));
+      placement.dispatchEvent(new w.Event('change', { bubbles: true }));
+    }
+    taskInput('text', 'New task');
+    var fields = { destination: position === 'root' ? alpha.root_ref : alpha.tasks[2].ref, position: position, value: 'New task' };
+    responses.push(ok(savedTaskGroup(alpha, 'add', fields)));
+    var before = requests.length; taskAction('save-add').click(); await flush(); await flush();
+    assert.strictEqual(requests.length, before + 1);
+    assert.deepStrictEqual(JSON.parse(requests[before][1].body), Object.assign({ expected_digest: alpha.digest, operation: 'add' }, fields));
+    assert.strictEqual(taskAction('cancel'), null, 'successful Add clears only its submitted draft');
+    assert.strictEqual(w.document.activeElement.dataset.taskFocus, 'select:' + taskGroup('alpha', 2).identity + ':' + taskGroup('alpha', 2).digest + ':added', 'Add focuses its returned new task');
+  }
+
+  await openTasks([alpha, beta]); taskSelect(0);
+  assert.strictEqual(taskAction('delete').disabled, true);
+  assert(taskNode().textContent.includes('Delete task: Move or promote children first.'));
+  assert.strictEqual(taskAction('indent').disabled, true, 'first sibling indent is explained locally');
+  taskSelect(2); taskInput('text', 'Retained text'); taskInput('date', '2026-09-04');
+  responses.push(reply(400, { ok: false, saved: false, code: 'refused', error: 'Keep this original syntax.' }));
+  taskAction('edit').click(); await flush(); await flush();
+  assert(taskNode().textContent.includes('Keep this original syntax.'));
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="text"]').value, 'Retained text');
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="date"]').value, '2026-09-04');
+  assert.strictEqual(taskAction('edit').disabled, false, 'safe refusal leaves correction usable');
+  responses.push(reply(409, { ok: false, saved: false, code: 'conflict', error: 'The Matrix changed.' }));
+  taskAction('edit').click(); await flush(); await flush();
+  assert(taskNode().textContent.includes('The Matrix changed.'));
+  assert.strictEqual(taskAction('edit').disabled, true);
+  var refreshed = taskGroup('alpha', 3);
+  responses.push(ok({ ok: true, group: refreshed }));
+  var refreshIndex = requests.length; taskAction('refresh').click(); await flush(); await flush();
+  assert.strictEqual(requests[refreshIndex][0], '/api/projects/alpha/tasks');
+  assert.strictEqual(requests[refreshIndex][1].method, 'GET');
+  assert.strictEqual(requests[refreshIndex][1].body, undefined);
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="text"]').value, 'Retained text');
+  assert.strictEqual(taskAction('edit').disabled, true, 'refresh never silently rebinds a duplicate label');
+  var retarget = taskNode().querySelector('[data-task-focus="retarget"]');
+  retarget.value = refreshed.tasks[2].ref; retarget.dispatchEvent(new w.Event('change', { bubbles: true }));
+  assert.strictEqual(taskAction('edit').disabled, false);
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="text"]').value, 'Retained text');
+  var rebound = savedTaskGroup(refreshed, 'edit', { target: refreshed.tasks[2].ref, value: 'Retained text' });
+  responses.push(ok(rebound)); var retargetIndex = requests.length;
+  taskAction('edit').click(); await flush(); await flush();
+  assert.deepStrictEqual(JSON.parse(requests[retargetIndex][1].body), { expected_digest: refreshed.digest, operation: 'edit', target: refreshed.tasks[2].ref, value: 'Retained text' });
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="date"]').value, '2026-09-04', 'saving text preserves an independent date draft');
+
+  for (var failure of [
+    new Error('private transport error'),
+    { ok: true, status: 200, json: function () { return Promise.reject(new Error('malformed JSON')); } },
+    ok({ ok: true, saved: true, changed: true, group: taskGroup('beta'), correspondence: {}, focus_ref: null }),
+    ok({ ok: true, saved: true, changed: true, group: taskGroup('alpha', 2), correspondence: {}, focus_ref: null }),
+    reply(500, { ok: false, code: 'unknown-outcome', saved: null, error: 'Cannot confirm.' }),
+    reply(503, { error: 'An unclassified response is not proof of no write.' }),
+  ]) {
+    await openTasks([alpha, beta]); taskSelect(2); taskInput('text', 'Keep after uncertainty');
+    responses.push(failure); var before = requests.length; taskAction('edit').click(); await flush(); await flush();
+    assert.strictEqual(requests.length, before + 1, 'unknown outcomes are never replayed');
+    assert(taskNode().textContent.includes('outcome is unknown'));
+    assert.strictEqual(taskAction('edit').disabled, true);
+    assert.strictEqual(taskNode().querySelector('[data-task-focus="text"]').value, 'Keep after uncertainty');
+    assert.strictEqual(taskNode().textContent.includes('private transport'), false);
+  }
+
+  await openTasks([alpha, beta]); taskSelect(2); taskInput('text', 'Close and reopen draft'); taskInput('date', '2026-09-05');
+  var delayedSave = deferred(); responses.push(delayedSave.promise);
+  taskAction('edit').click(); var saveSignal = requests[requests.length - 1][1].signal;
+  w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert(saveSignal.aborted, 'close aborts the task request without claiming cancellation');
+  responses.push(ok(taskPayload([taskGroup('alpha', 3), beta]))); launcher.click(); await flush(); await flush();
+  var reopened = taskNode();
+  assert.strictEqual(reopened.querySelector('[data-task-focus="text"]').value, 'Close and reopen draft');
+  assert.strictEqual(reopened.querySelector('[data-task-focus="date"]').value, '2026-09-05');
+  assert.strictEqual(taskAction('edit').disabled, true, 'reopening requires an explicit target selection');
+  delayedSave.resolve(ok(savedTaskGroup(alpha, 'edit', { target: alpha.tasks[2].ref, value: 'Late old response' })));
+  await flush(); await flush();
+  assert.strictEqual(taskNode(), reopened, 'late response cannot replace a reopened group');
+  assert.strictEqual(reopened.querySelector('[data-task-focus="text"]').value, 'Close and reopen draft');
+
+  // A retained Add draft needs a deliberate current position, even at root.
+  await openTasks([alpha, beta]); taskAction('add').click(); taskInput('text', 'Retained new task');
+  closeControl.click();
+  responses.push(ok(taskPayload([taskGroup('alpha', 3), beta]))); launcher.click(); await flush(); await flush();
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="text"]').value, 'Retained new task');
+  assert.strictEqual(taskAction('save-add').disabled, true);
+  taskSelect(0);
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="text"]').value, 'Retained new task', 'selecting a row cannot replace an unbound Add draft');
+  var addPosition = taskNode().querySelector('[data-task-focus="placement"]');
+  addPosition.value = '0'; addPosition.dispatchEvent(new w.Event('change', { bubbles: true }));
+  assert.strictEqual(taskAction('save-add').disabled, false);
+  taskAction('cancel').click();
+
+  await openTasks([alpha, beta]); taskSelect(2);
+  var noChangeMap = {}; alpha.tasks.forEach(function (row) { noChangeMap[row.ref] = row.ref; });
+  responses.push(ok({ ok: true, saved: false, changed: false, group: alpha, correspondence: noChangeMap, focus_ref: alpha.tasks[2].ref }));
+  var noChangeBefore = requests.length; taskAction('edit').click(); await flush(); await flush();
+  assert.strictEqual(requests.length, noChangeBefore + 1);
+  assert(taskNode().textContent.includes('No change was needed.'));
+
+  // Identity can change on explicit reading; a save cannot claim that rebound identity.
+  var changedIdentity = JSON.parse(JSON.stringify(taskGroup('alpha', 3)).replaceAll('a'.repeat(24), 'c'.repeat(24)));
+  taskInput('text', 'Retain after storage change');
+  responses.push(ok({ ok: true, group: changedIdentity })); taskAction('refresh').click(); await flush(); await flush();
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="text"]').value, 'Retain after storage change');
+  assert.strictEqual(taskAction('edit').disabled, true);
+  retarget = taskNode().querySelector('[data-task-focus="retarget"]');
+  retarget.value = changedIdentity.tasks[2].ref; retarget.dispatchEvent(new w.Event('change', { bubbles: true }));
+  assert.strictEqual(taskAction('edit').disabled, false, 'explicit selection binds the newly read identity');
+  var reboundResult = savedTaskGroup(alpha, 'edit', { target: alpha.tasks[2].ref, value: 'Retain after storage change' });
+  responses.push(ok(reboundResult)); taskAction('edit').click(); await flush(); await flush();
+  assert(taskNode().textContent.includes('outcome is unknown'), 'a same-nexus wrong-identity save result is discarded');
+
+  // Read hides the same mounted Tasks state, and a save response cannot steal reader focus.
+  await openTasks([alpha, beta]); taskSelect(2); taskInput('text', 'Save while reading');
+  var whileRead = deferred(); responses.push(whileRead.promise); taskAction('edit').click();
+  responses.push(ok(readPayload)); readAction = mount.querySelector('[data-overview-action="read_note"]'); readAction.click();
+  await flush(); await flush();
+  whileRead.resolve(ok(savedTaskGroup(alpha, 'edit', { target: alpha.tasks[2].ref, value: 'Save while reading' })));
+  await flush(); await flush();
+  assert.strictEqual(w.document.activeElement, back);
+  var mountedTasks = taskNode(); back.click();
+  assert.strictEqual(taskNode(), mountedTasks);
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="text"]').value, 'Save while reading');
+  taskInput('date', '2026-09-06');
+  responses.push(ok(readPayload)); readAction.click(); await flush(); await flush(); back.click();
+  assert.strictEqual(taskNode(), mountedTasks);
+  assert.strictEqual(taskNode().querySelector('[data-task-focus="date"]').value, '2026-09-06');
+
+  var missing = { nexus: 'missing', title: 'Missing Matrix', item_id: 'project:missing', scope: { project_nexus: 'missing' },
+    state: 'unavailable', editable: false, reason: 'No Matrix storage is available.', identity: null, digest: null,
+    root_ref: null, source_text: null, tasks: [], counts: { total: null, completed: null, incomplete: null }, actions: ['open_project'] };
+  await openTasks([missing], 'unavailable');
+  assert(mount.querySelector('.overview-tasks .overview-source__meta').textContent.includes('Task count unavailable'));
+  assert.strictEqual(taskAction('add', 'missing').disabled, true);
+  assert(taskNode('missing').textContent.includes('No Matrix storage is available.'));
+  assert.strictEqual(taskNode('missing').querySelector('[data-overview-action="open_project"]').disabled, false);
+  var readOnly = taskGroup('alpha'); readOnly.editable = false; readOnly.state = 'read-only'; readOnly.reason = 'Correct the list-form classification.';
+  await openTasks([readOnly, beta, missing], 'partial');
+  assert(mount.querySelector('.overview-tasks .overview-source__meta').textContent.includes('8 known tasks'));
+  taskSelect(2); assert.strictEqual(taskAction('edit').disabled, true);
+  assert.strictEqual(taskAction('add', 'beta').disabled, false, 'one bad Matrix does not disable healthy groups');
+  var malformedGroup = taskGroup('alpha'); malformedGroup.scope.project_nexus = '../alpha';
+  await openTasks([malformedGroup, beta]);
+  assert.strictEqual(taskNode('alpha'), null);
+  assert(taskNode('beta'));
+  assert(mount.querySelector('[data-overview-action="read_note"]'));
+  await openTasks([alpha, beta]); taskSelect(2); taskInput('text', 'Page teardown draft');
+  var teardownSave = deferred(); responses.push(teardownSave.promise); taskAction('edit').click();
+  var teardownNode = taskNode(); var teardownSignal = requests[requests.length - 1][1].signal;
+  w.dispatchEvent(new w.Event('pagehide'));
+  assert.strictEqual(teardownSignal.aborted, true);
+  teardownSave.resolve(ok(savedTaskGroup(alpha, 'edit', { target: alpha.tasks[2].ref, value: 'Late after teardown' })));
+  await flush(); await flush();
+  assert.strictEqual(taskNode(), teardownNode, 'page teardown invalidates late mutation responses');
+  closeControl.click();
 
   console.log('overview desktop tests passed');
 })().catch(function (error) {

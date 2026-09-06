@@ -25,14 +25,14 @@ except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator.tools import daily_note
 
 
-SOURCE_ORDER = ("project-priority", "oversight", "triggers", "daily-note")
+SOURCE_ORDER = ("project-priority", "oversight", "triggers", "daily-note", "matrix-tasks")
 DAILY_NOTE_READ_MAX_BYTES = 4 * 1024 * 1024
 
 
 def load_overview_widget_sources(
     *, observed_at: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    """Return the four core Overview sources in a stable order.
+    """Return the five core Overview sources in a stable order.
 
     Every source is read independently.  A failed source therefore reports an
     unavailable record while the other sources remain usable.  ``observed_at``
@@ -44,11 +44,19 @@ def load_overview_widget_sources(
         local_now = local_now.astimezone()
     stamp = local_now.astimezone(timezone.utc).isoformat()
     completed_day = completed_daily_note_day(observed_at=local_now)
+    skipped = []
+    records = []
+    project_error = None
+    try:
+        records = operation_matrix.list_active_project_meta(skipped_authority=skipped)
+    except Exception as exc:
+        project_error = exc
     return [
-        _project_priority_source(stamp),
+        _project_priority_source(stamp, records, skipped, project_error),
         _oversight_source(stamp),
         _trigger_source(stamp),
         _daily_note_source(stamp, completed_day),
+        _matrix_tasks_source(stamp, records, skipped, project_error),
     ]
 
 
@@ -230,13 +238,11 @@ def _text(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
-def _project_priority_source(stamp: str) -> dict[str, Any]:
+def _project_priority_source(stamp: str, records, skipped, project_error) -> dict[str, Any]:
     source_id = "project-priority"
-    skipped: list[str] = []
     try:
-        records = operation_matrix.list_active_project_meta(
-            skipped_authority=skipped,
-        )
+        if project_error is not None:
+            raise project_error
         items = []
         for record in records:
             nexus = _required_id(record.get("nexus"), "project nexus")
@@ -271,6 +277,45 @@ def _project_priority_source(stamp: str) -> dict[str, Any]:
             error=_error("project_records_skipped", f"Unreadable project records: {names}"),
         )
     return _source(source_id, "Project priority", items, stamp)
+
+
+def _matrix_tasks_source(stamp: str, records, skipped, project_error) -> dict[str, Any]:
+    try:
+        from . import matrix_tasks
+    except ImportError:
+        import matrix_tasks
+    source_id = "matrix-tasks"
+    items = []
+    failures = list(skipped)
+    try:
+        if project_error is not None:
+            raise project_error
+        vault = operation_matrix.vault_root()
+        requests = {record["nexus"]: record.get("folder_name") for record in records}
+        snapshots = operation_matrix.resolve_matrix_snapshots(requests, vault=vault) if requests else {}
+        for record in records:
+            nexus = _required_id(record.get("nexus"), "project nexus")
+            title = _text(record.get("name") or record.get("display_name")) or nexus
+            group = matrix_tasks.group_from_snapshot(nexus, record.get("folder_name"), snapshots[nexus], vault=vault)
+            count = group["counts"]["total"]
+            text = group["reason"] or f"{count} tasks · {group['counts']['incomplete']} incomplete"
+            item = _item(source_id, f"project:{nexus}", title, text, group["state"],
+                         count=count, scope={"project_nexus": nexus}, actions=group["actions"])
+            item.update(group)
+            items.append(item)
+    except Exception as exc:
+        result = _source(source_id, "Tasks", [], stamp, state="unavailable", error=_error("task_source_unavailable", exc))
+        result["count"] = None
+        return result
+    known = [item["counts"]["total"] for item in items if item["counts"]["total"] is not None]
+    partial = bool(failures or any(item["state"] not in ("ready", "empty") for item in items))
+    state = "partial" if partial else "ready" if items else "empty"
+    if items and not known:
+        state = "unavailable"
+    result = _source(source_id, "Tasks", items, stamp, state=state,
+                     error=_error("task_source_incomplete", "Known task counts only; some Matrix content or project authority needs attention." + (" Unreadable project records: " + ", ".join(failures) if failures else "")) if partial else None)
+    result["count"] = sum(known) if known else None if items or failures else 0
+    return result
 
 
 def _oversight_source(stamp: str) -> dict[str, Any]:

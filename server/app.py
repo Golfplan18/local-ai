@@ -6250,6 +6250,46 @@ def api_projects_mom_set(nexus):
     return _json_response({"ok": True, "mom": mom})
 
 
+@app.route("/api/projects/<nexus>/tasks", methods=["GET", "POST"])
+def api_projects_tasks(nexus):
+    """Read or apply one source-bound operation to the canonical Matrix Tasks."""
+    from orchestrator import operation_matrix as om, matrix_tasks, project_meta as pm
+    if request.args:
+        return _json_response({"ok": False, "code": "refused", "saved": False,
+                               "error": "Task routes do not accept query parameters."}, 400)
+    body = request.get_json(silent=True) if request.method == "POST" else None
+    try:
+        if request.method == "POST":
+            cross_site = _cross_site_mutation_response()
+            if cross_site is not None:
+                return cross_site
+            matrix_tasks.validate_request(body)
+        record = pm.read_project_meta(nexus)
+        if record is None or record.get("is_default"):
+            raise matrix_tasks.TaskError("No real project is available for these tasks.", "unavailable", 404)
+        folder = record.get("folder_name")
+        pm.validate_folder_identity(folder, vault_root=om.vault_root())
+        def current_identity():
+            current = pm.read_project_meta(nexus)
+            return bool(current and not current.get("is_default") and current.get("folder_name") == folder)
+        if request.method == "GET":
+            group = om.read_tasks(nexus, folder)
+            if not current_identity():
+                raise matrix_tasks.TaskError("Project identity changed. Refresh to read tasks.", "conflict", 409)
+            group["title"] = record.get("name") or record.get("display_name") or nexus
+            return _json_response({"ok": True, "group": group})
+        result = om.write_tasks(nexus, folder, body, identity_check=current_identity)
+        result["group"]["title"] = record.get("name") or record.get("display_name") or nexus
+        return _json_response(result)
+    except matrix_tasks.TaskError as exc:
+        return _json_response({"ok": False, "code": exc.code, "saved": exc.saved, "error": str(exc)}, exc.status)
+    except (om.MatrixError, pm.ProjectStorageError) as exc:
+        return _json_response({"ok": False, "code": "unavailable", "saved": False, "error": str(exc)}, 409)
+    except (OSError, UnicodeError, TimeoutError) as exc:
+        return _json_response({"ok": False, "code": "unavailable", "saved": False,
+                               "error": "Matrix storage could not be read or locked. Refresh before editing."}, 503)
+
+
 # --- Small-model MOM assist (G1.33 sub-step 5) -----------------------------
 # A read-only "Draft with AI" helper for the project modal's Mission & Goals
 # tab. Grounded in the Mission-Objectives-Milestones (MOM) doctrine
