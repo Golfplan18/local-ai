@@ -1,4 +1,4 @@
-/* Full-window, read-only Overview surface. */
+/* Full-window Overview surface and scoped Matrix task controls. */
 .overview-desktop-launcher {
   position: absolute;
   top: 50%;
@@ -148,6 +148,9 @@ body.overview-desktop-open { overflow: hidden; }
 .overview-projects__empty { position: relative; text-align: center; padding: 0 10px 25px; }
 .overview-source__action:disabled { opacity: 0.65; cursor: default; }
 .overview-desktop button:focus-visible,
+.overview-desktop input:focus-visible,
+.overview-desktop select:focus-visible,
+.overview-desktop summary:focus-visible,
 .overview-desktop a:focus-visible,
 .overview-desktop [tabindex]:focus-visible { outline: 3px solid var(--text-normal); outline-offset: 3px; }
 
@@ -158,6 +161,7 @@ body.overview-desktop-open { overflow: hidden; }
   .overview-source[data-source-id="oversight"] { grid-column: 3; grid-row: 1; }
   .overview-source[data-source-id="triggers"] { grid-column: 1; grid-row: 2; }
   .overview-source[data-source-id="daily-note"] { grid-column: 3; grid-row: 2; }
+  .overview-source[data-source-id="matrix-tasks"] { grid-column: 1 / -1; grid-row: 3; max-height: none; }
   .overview-source { max-height: 420px; }
 }
 
@@ -255,6 +259,48 @@ body.overview-desktop-open { overflow: hidden; }
 
 .overview-desktop__status[hidden] { display: none; }
 
+.overview-tasks { grid-column: 1 / -1; min-height: min-content; overflow: visible; }
+.overview-tasks__group {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.overview-tasks summary { cursor: pointer; line-height: 1.5; }
+.overview-tasks__group > summary > span { display: block; color: var(--text-muted); font-size: 0.8rem; }
+.overview-tasks__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 12px; }
+.overview-tasks__list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  min-width: 0;
+  max-height: 540px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.overview-tasks__task { padding: 8px 0 8px calc(var(--task-depth, 0) * 12px); border-bottom: 1px solid var(--background-modifier-border); }
+.overview-tasks__task small { display: block; font-size: 0.75rem; color: var(--text-muted); }
+.overview-tasks__task button { text-align: left; white-space: normal; overflow-wrap: anywhere; max-width: 100%; line-height: 1.5; }
+.overview-tasks__task button[aria-pressed="true"] { border-color: var(--text-normal); }
+.overview-tasks__editor { margin: 0; min-width: 0; padding: 12px; border: 1px solid var(--background-modifier-border); border-radius: 6px; }
+.overview-tasks__editor legend { max-width: 100%; font-weight: 600; }
+.overview-tasks__field { display: grid; gap: 6px; margin: 10px 0; font-size: 0.85rem; }
+.overview-tasks__field input,
+.overview-tasks__field select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 38px; padding: 7px; color: var(--text-normal); background: var(--background-primary); border: 1px solid var(--background-modifier-border); border-radius: 4px; font: inherit; }
+.overview-tasks__actions { display: flex; flex-wrap: wrap; align-items: start; gap: 6px; }
+.overview-tasks__actions small { flex-basis: 100%; }
+.overview-tasks__message,
+.overview-tasks__hint { font-size: 0.85rem; line-height: 1.5; color: var(--text-muted); }
+.overview-tasks__message:empty { display: none; }
+.overview-tasks__source { margin-top: 12px; }
+.overview-tasks__source pre { max-height: 360px; overflow: auto; padding: 10px; }
+.overview-tasks button { min-height: 36px; max-width: 100%; white-space: normal; }
+
 @media (max-width: 760px) {
   .overview-desktop__sources { grid-template-columns: minmax(0, 1fr); }
+  .overview-tasks__body { grid-template-columns: minmax(0, 1fr); }
+  .overview-tasks__group { padding: 8px; }
+  .overview-tasks__task { padding-left: calc(var(--task-depth, 0) * 6px); }
 }

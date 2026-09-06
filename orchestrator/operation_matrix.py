@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import os
 import re
+import stat
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -132,7 +133,7 @@ def _split_frontmatter(text: str) -> tuple[dict[str, Any], int]:
     """
     if not text.startswith("---"):
         return {}, 0
-    m = re.match(r"^---\n(.*?)\n---\n?", text, re.DOTALL)
+    m = re.match(r"^---\r?\n(.*?)\r?\n---(?:\r?\n|$)", text, re.DOTALL)
     if not m:
         return {}, 0
     raw = m.group(1)
@@ -142,7 +143,7 @@ def _split_frontmatter(text: str) -> tuple[dict[str, Any], int]:
             loaded = yaml.safe_load(raw)
             if isinstance(loaded, dict):
                 data = loaded
-        except yaml.YAMLError:
+        except (yaml.YAMLError, ValueError, RecursionError):
             data = {}
     return data, m.end()
 
@@ -173,35 +174,64 @@ def resolve_matrix_path(
     cannot be hidden by a preferred filename. Duplicate claims raise a typed
     ambiguity error; callers must not guess which canonical file to edit.
     """
+    result = resolve_matrix_snapshots({nexus: folder_name}, vault=vault)[nexus]
+    if isinstance(result, Exception):
+        raise result
+    return result[0] if result else None
+
+
+def resolve_matrix_snapshots(
+    requests: dict[str, str | None], *, vault: Path | None = None,
+) -> dict[str, tuple[Path, bytes] | Exception | None]:
+    """Resolve many nexuses in one directory pass, with per-project failures.
+
+    This is the same authority used by single-target resolution, not a cache.
+    The byte snapshots let a read-only caller avoid reopening every Matrix.
+    """
     mdir = _matrix_dir(vault)
-    if not mdir.is_dir():
-        return None
-    nexus_l = (nexus or "").strip().lower()
-    if not nexus_l or nexus_l in ("commons", "general"):
-        return None
-    if folder_name:
-        # Load-bearing validation: even though resolution is nexus-based, reject
-        # a stored physical identity that cannot form a portable Matrix path.
-        _ = _matrix_filename(folder_name, vault=mdir.parent)
-    matches: list[Path] = []
-    for pf in sorted(mdir.glob("*.md")):
-        try:
-            text = pf.read_text(encoding="utf-8")
-        except OSError:
+    results: dict[str, Any] = {key: None for key in requests}
+    if not mdir.exists():
+        return results
+    if mdir.is_symlink() or not mdir.is_dir():
+        return {key: MatrixError("Matrix storage is not a regular directory") for key in requests}
+    wanted: dict[str, list[str]] = {}
+    candidates: dict[str, str] = {}
+    for key, folder in requests.items():
+        normalized = (key or "").strip().lower()
+        if not normalized or normalized in ("commons", "general"):
             continue
-        if nexus_l in _frontmatter_nexus(text):
-            matches.append(pf)
-    if len(matches) > 1:
-        raise MatrixAmbiguityError(
-            f"multiple Matrix files claim nexus {nexus_l!r}: "
-            + ", ".join(str(path) for path in matches)
-        )
-    if matches:
-        return matches[0]
-    # A convention-name collision belonging to another nexus must not be
-    # overwritten during creation. Resolution still returns None so reads
-    # correctly report "not created"; _create_matrix raises on the collision.
-    return None
+        try:
+            if folder:
+                candidates[_matrix_filename(folder, vault=mdir.parent)] = key
+            wanted.setdefault(normalized, []).append(key)
+        except MatrixError as exc:
+            results[key] = exc
+    matches: dict[str, list[tuple[Path, bytes]]] = {key: [] for key in wanted}
+    for path in sorted(mdir.glob("*.md")):
+        try:
+            before = path.lstat()
+            if not stat.S_ISREG(before.st_mode):
+                raise OSError("Matrix is not a regular nonsymlink file")
+            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+            with os.fdopen(os.open(path, flags), "rb") as stream:
+                opened = os.fstat(stream.fileno())
+                if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                    raise OSError("Matrix changed while reading")
+                raw = stream.read()
+            for claim in set(_frontmatter_nexus(raw.decode("utf-8"))) & wanted.keys():
+                matches[claim].append((path, raw))
+        except (OSError, UnicodeError) as exc:
+            if path.name in candidates:
+                results[candidates[path.name]] = MatrixError(str(exc))
+    for claim, keys in wanted.items():
+        found = matches[claim]
+        for key in keys:
+            if len(found) > 1:
+                results[key] = MatrixAmbiguityError(f"Multiple Matrix files claim nexus {claim!r}")
+            elif found:
+                # Nexus authority takes precedence over a name-only read failure.
+                results[key] = found[0]
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +272,7 @@ def list_active_project_meta(
 
 _H2_RE = re.compile(r"^##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
 _PROJECTION_END_RE = re.compile(
-    r"^[ \t]*<!--[ \t]*MASTER_MATRIX_PROJECTION_END[ \t]*-->[ \t]*$", re.MULTILINE
+    r"^[ \t]*<!--[ \t]*MASTER_MATRIX_PROJECTION_END[ \t]*-->[ \t]*\r?$", re.MULTILINE
 )
 
 
@@ -276,12 +306,12 @@ def _extract_section(text: str, heading: str) -> str:
     return text[body_start:_protected_tail_start(text, body_start, section_end)]
 
 
-def _format_section(heading: str, body: str) -> str:
+def _format_section(heading: str, body: str, newline: str = "\n") -> str:
     """``## Heading`` + a blank line + the (stripped) body + a trailing blank."""
-    body = (body or "").strip("\n")
+    body = (body or "").strip("\r\n")
     if body:
-        return f"## {heading}\n\n{body}\n\n"
-    return f"## {heading}\n\n"
+        return f"## {heading}{newline}{newline}{body}{newline}{newline}"
+    return f"## {heading}{newline}{newline}"
 
 
 def _insert_index(text: str, heading: str) -> int:
@@ -319,7 +349,8 @@ def _protected_tail_start(text: str, body_start: int, section_end: int) -> int:
 
 
 def _replace_section(text: str, heading: str, body: str) -> str:
-    block = _format_section(heading, body)
+    newline = "\r\n" if "\r\n" in text else "\n"
+    block = _format_section(heading, body, newline)
     bounds = _section_bounds(text, heading)
     if bounds is not None:
         head_start, body_start, section_end = bounds
@@ -329,9 +360,9 @@ def _replace_section(text: str, heading: str, body: str) -> str:
             # Rebuild around it using the file's own separator so an unchanged
             # save is byte-identical rather than drifting a blank line each time.
             original = text[body_start:tail_start]
-            sep = original[len(original.rstrip("\n")):] or "\n"
-            core = (body or "").strip("\n")
-            block = f"## {heading}\n\n{core}{sep}" if core else f"## {heading}\n\n"
+            sep = original[len(original.rstrip("\r\n")):] or newline
+            core = (body or "").strip("\r\n")
+            block = f"## {heading}{newline}{newline}{core}{sep}" if core else f"## {heading}{newline}{newline}"
         return text[:head_start] + block + text[tail_start:]
     # Never conjure a section that does not exist just to hold nothing — a
     # Passion Matrix has no ``## Milestones`` by design (Practices and
@@ -341,8 +372,8 @@ def _replace_section(text: str, heading: str, body: str) -> str:
     idx = _insert_index(text, heading)
     prefix = text[:idx]
     # Guarantee a blank line before the inserted heading.
-    if prefix and not prefix.endswith("\n\n"):
-        prefix = prefix.rstrip("\n") + "\n\n"
+    if prefix and not prefix.endswith(newline * 2):
+        prefix = prefix.rstrip("\r\n") + newline * 2
     return prefix + block + text[idx:]
 
 
@@ -510,7 +541,7 @@ def read_mom(
     if path is None:
         return _empty_mom()
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_bytes().decode("utf-8")
     except OSError:
         return _empty_mom()
     milestones_raw = _extract_section(text, "Milestones").strip("\n")
@@ -629,24 +660,24 @@ def _bump_modified(text: str) -> str:
     if not fm or body_start == 0:
         return text
     head = text[:body_start]
-    if re.search(r"^date modified:.*$", head, re.MULTILINE):
+    newline = "\r\n" if "\r\n" in head else "\n"
+    if re.search(r"^date modified:[^\r\n]*", head, re.MULTILINE):
         head = re.sub(
-            r"^date modified:.*$", f"date modified: {today}", head, count=1,
+            r"^date modified:[^\r\n]*", f"date modified: {today}", head, count=1,
             flags=re.MULTILINE,
         )
     else:
         # Insert before the closing fence.
-        head = re.sub(r"\n---\n?$", f"\ndate modified: {today}\n---\n", head, count=1)
+        closing = head.rfind("---")
+        head = head[:closing] + f"date modified: {today}" + newline + head[closing:]
     return head + text[body_start:]
 
 
 def _atomic_write(path: Path, text: str) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    _rp.atomic_write_bytes(path, text.encode("utf-8"), mode=stat.S_IMODE(path.stat().st_mode))
 
 
-def write_mom(
+def _write_mom_locked(
     nexus: str,
     folder_name: str | None = None,
     *,
@@ -690,7 +721,7 @@ def write_mom(
         if path is None:
             return None
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_bytes().decode("utf-8")
     except OSError:
         return None
 
@@ -724,6 +755,42 @@ def write_mom(
     return read_mom(nexus, folder_name, vault=vault)
 
 
+def write_mom(nexus: str, folder_name: str | None = None, **kwargs) -> dict[str, Any] | None:
+    """Hold the shared Matrix lock through MOM's complete read/splice/write."""
+    try:
+        from runtime_hygiene import mutation_path_locks
+    except ImportError:  # pragma: no cover
+        from orchestrator.runtime_hygiene import mutation_path_locks
+    vault = kwargs.get("vault")
+    path = resolve_matrix_path(nexus, folder_name, vault=vault)
+    if path is None:
+        if (nexus or "").strip().lower() in ("", "commons", "general") or not folder_name:
+            return _write_mom_locked(nexus, folder_name, **kwargs)
+        path = _matrix_dir(vault) / _matrix_filename(folder_name, vault=_matrix_dir(vault).parent)
+    with mutation_path_locks([path]):
+        current = resolve_matrix_path(nexus, folder_name, vault=vault)
+        if current is not None and current != path:
+            raise MatrixError("Matrix identity changed while waiting to save")
+        return _write_mom_locked(nexus, folder_name, **kwargs)
+
+
+def read_tasks(nexus: str, folder_name: str | None = None, *, vault: Path | None = None):
+    try:
+        from . import matrix_tasks
+    except ImportError:
+        import matrix_tasks
+    return matrix_tasks.read_group(nexus, folder_name, vault=vault)
+
+
+def write_tasks(nexus: str, folder_name: str, body: dict, *, vault: Path | None = None,
+                identity_check=None):
+    try:
+        from . import matrix_tasks
+    except ImportError:
+        import matrix_tasks
+    return matrix_tasks.write_group(nexus, folder_name, body, vault=vault, identity_check=identity_check)
+
+
 __all__ = [
     "MOM_HEADINGS",
     "MatrixError",
@@ -731,6 +798,9 @@ __all__ = [
     "MatrixMigrationRequiredError",
     "vault_root",
     "resolve_matrix_path",
+    "resolve_matrix_snapshots",
+    "read_tasks",
+    "write_tasks",
     "list_active_project_meta",
     "read_mom",
     "write_mom",

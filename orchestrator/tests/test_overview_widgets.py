@@ -35,6 +35,9 @@ class OverviewWidgetSourceTests(unittest.TestCase):
         self.reeval_path = Path(self.tmp.name) / "reeval-queue.jsonl"
         self.sessions_root = Path(self.tmp.name) / "sessions"
         self.sessions_root.mkdir()
+        vault_patch = mock.patch.object(widgets.operation_matrix, "vault_root", return_value=Path(self.tmp.name))
+        vault_patch.start()
+        self.addCleanup(vault_patch.stop)
 
     def _load(
         self,
@@ -218,7 +221,10 @@ date: 2026-08-31
         }
         for source in sources:
             for item in source["items"]:
-                self.assertEqual(set(item), required_item_fields)
+                if source["source_id"] == "matrix-tasks":
+                    self.assertTrue(required_item_fields <= set(item))
+                else:
+                    self.assertEqual(set(item), required_item_fields)
 
     def test_one_failed_source_does_not_block_the_others(self):
         operating = [SimpleNamespace(
@@ -235,6 +241,8 @@ date: 2026-08-31
         by_id = self._by_id(sources)
 
         self.assertEqual(by_id["project-priority"]["state"], "unavailable")
+        self.assertEqual(by_id["matrix-tasks"]["state"], "unavailable")
+        self.assertIsNone(by_id["matrix-tasks"]["count"])
         self.assertFalse(by_id["project-priority"]["available"])
         self.assertEqual(by_id["project-priority"]["freshness"]["last_success_at"], None)
         self.assertEqual(by_id["oversight"]["state"], "partial")
@@ -372,6 +380,62 @@ date: 2026-08-31
             "open_scheduled", "inspect", "review", "run", "retire",
         ])
         self.assertEqual(trigger["text"], "manual · email send")
+
+    def test_task_source_shares_one_project_inventory_and_matrix_pass(self):
+        matrix_dir = Path(self.tmp.name) / "Matrix"
+        matrix_dir.mkdir()
+        for nexus, body in (("zeta", "## Tasks\n- [ ] Same\n- [x] Same ✅ 2025-01-01\n"),
+                            ("alpha", "## Practices\nKeep\n")):
+            (matrix_dir / f"Historical {nexus}.md").write_text(f"---\nnexus: [{nexus}]\nproject_type: [passion]\n---\n{body}")
+        records = [{"nexus": "zeta", "name": "Zeta", "folder_name": "Zeta", "priority": 0, "status": "active"},
+                   {"nexus": "alpha", "name": "Alpha", "folder_name": "Alpha", "priority": 1, "status": "active"},
+                   {"nexus": "missing", "name": "Missing", "folder_name": "Missing", "priority": 2, "status": "active"}]
+        with mock.patch.object(widgets.operation_matrix, "resolve_matrix_snapshots", wraps=widgets.operation_matrix.resolve_matrix_snapshots) as resolver:
+            sources, calls = self._load(projects=records)
+        calls["project"].assert_called_once()
+        resolver.assert_called_once()
+        by_id = self._by_id(sources)
+        source = by_id["matrix-tasks"]
+        self.assertEqual(list(widgets.SOURCE_ORDER), ["project-priority", "oversight", "triggers", "daily-note", "matrix-tasks"])
+        self.assertEqual([row["scope"]["project_nexus"] for row in source["items"]], ["zeta", "alpha", "missing"])
+        self.assertEqual([row["counts"]["total"] for row in source["items"]], [2, 0, None])
+        self.assertEqual(source["count"], 2)
+        self.assertEqual(source["state"], "partial")
+        self.assertEqual(source["error"]["code"], "task_source_incomplete")
+        self.assertIn("Known task counts", source["error"]["message"])
+        self.assertEqual(source["items"][1]["state"], "empty")
+        self.assertEqual(source["items"][2]["actions"], ["open_project"])
+
+        def skipped_project(*, skipped_authority):
+            skipped_authority.append("broken.json")
+            return records[:2]
+
+        sources, _ = self._load(project_side_effect=skipped_project)
+        by_id = self._by_id(sources)
+        source = by_id["matrix-tasks"]
+        self.assertEqual([group["state"] for group in source["items"]], ["ready", "empty"])
+        self.assertEqual(source["count"], 2)
+        self.assertEqual(source["state"], "partial")
+        self.assertEqual(source["error"], by_id["project-priority"]["error"])
+        self.assertEqual(source["error"], {"code": "project_records_skipped", "message": "Unreadable project records: broken.json"})
+        # A duplicate claim disables only that Matrix, not healthy project groups.
+        (matrix_dir / "Duplicate.md").write_text((matrix_dir / "Historical zeta.md").read_text())
+        sources, _ = self._load(projects=records)
+        groups = self._by_id(sources)["matrix-tasks"]["items"]
+        self.assertEqual([group["state"] for group in groups], ["unavailable", "empty", "unavailable"])
+        self.assertEqual(groups[1]["counts"]["total"], 0)
+
+    def test_task_source_known_counts_preserve_readonly_and_opaque_content(self):
+        matrix_dir = Path(self.tmp.name) / "Matrix"
+        matrix_dir.mkdir()
+        (matrix_dir / "Odd.md").write_text("---\nnexus: [odd]\nproject_type: passion\n---\n## Tasks\n- [ ] Keep\n<!-- unknown metadata -->\n")
+        sources, _ = self._load(projects=[{"nexus": "odd", "name": "Odd", "folder_name": "Odd", "status": "active"}])
+        source = self._by_id(sources)["matrix-tasks"]
+        group = source["items"][0]
+        self.assertEqual(source["count"], 1)
+        self.assertEqual(group["state"], "read-only")
+        self.assertFalse(group["editable"])
+        self.assertIn("<!-- unknown metadata -->", group["source_text"])
 
 
 class OverviewRouteTests(unittest.TestCase):
