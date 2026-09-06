@@ -228,7 +228,8 @@ def resolve_matrix_snapshots(
         for key in keys:
             if len(found) > 1:
                 results[key] = MatrixAmbiguityError(f"Multiple Matrix files claim nexus {claim!r}")
-            elif found and not isinstance(results[key], Exception):
+            elif found:
+                # Nexus authority takes precedence over a name-only read failure.
                 results[key] = found[0]
     return results
 

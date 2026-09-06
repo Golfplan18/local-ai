@@ -797,7 +797,8 @@ class MatrixTasksTests(unittest.TestCase):
         self.assertEqual(self.read()["state"], "read-only")
 
     def test_shared_resolution_detects_duplicates_in_one_pass(self):
-        self.put("## Tasks\n- [ ] One\n")
+        self.path = self.path.with_name("Operation Matrix Sample.md")
+        self.put("## Mission\nKeep this mission.\n## Tasks\n- [ ] One\n")
         other = self.path.with_name("Other.md")
         other.write_text("---\nnexus: [other]\n---\n")
         snapshots = om.resolve_matrix_snapshots({"sample": "Sample", "other": "Other", "commons": None}, vault=self.vault)
@@ -806,6 +807,25 @@ class MatrixTasksTests(unittest.TestCase):
         self.assertIsNone(snapshots["commons"])
         (self.path.parent / "Malformed.md").write_text("---\nnexus: [broken]\ndate modified: 2026-99-99\n---\n")
         self.assertEqual(om.resolve_matrix_snapshots({"sample": "Sample"}, vault=self.vault)["sample"][0], self.path)
+        candidate = self.path.with_name("Project Matrix Sample.md")
+        for entry in ("directory", "symlink"):
+            with self.subTest(entry=entry):
+                if entry == "directory":
+                    candidate.mkdir()
+                else:
+                    candidate.symlink_to(other)
+                resolved = om.resolve_matrix_snapshots({"sample": "Sample", "other": "Other", "missing": "Missing"}, vault=self.vault)
+                self.assertEqual(resolved["sample"], snapshots["sample"])
+                self.assertEqual(resolved["other"], snapshots["other"])
+                self.assertIsNone(resolved["missing"])
+                self.assertEqual(om.resolve_matrix_path("sample", "Sample", vault=self.vault), self.path)
+                self.assertEqual(self.read()["state"], "ready")
+                self.assertEqual(om.read_mom("sample", "Sample", vault=self.vault)["mission"], "Keep this mission.")
+                self.assertIsInstance(om.resolve_matrix_snapshots({"unknown": "Sample"}, vault=self.vault)["unknown"], om.MatrixError)
+                if entry == "directory":
+                    candidate.rmdir()
+                else:
+                    candidate.unlink()
         other.write_bytes(self.path.read_bytes())
         duplicate = om.resolve_matrix_snapshots({"sample": "Sample"}, vault=self.vault)["sample"]
         self.assertIsInstance(duplicate, om.MatrixAmbiguityError)

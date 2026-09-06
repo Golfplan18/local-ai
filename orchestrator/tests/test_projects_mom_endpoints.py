@@ -165,9 +165,17 @@ class ProjectsMomEndpointTests(unittest.TestCase):
 
     def test_tasks_routes_mutate_real_service_once_and_return_actual_snapshot(self):
         from orchestrator import operation_matrix as om
-        for classification in ("project", "operation", "passion"):
-            with self.subTest(classification=classification):
+        outside = self.vault / "Unrelated.md"
+        outside.write_bytes(b"---\nnexus: [my-book]\n---\nUnrelated content must remain.\n")
+        outside_before = outside.read_bytes()
+        candidate = self.vault / "Matrix" / "Project Matrix My Book.md"
+        for classification, entry in (("project", "directory"), ("operation", "symlink"), ("passion", "directory")):
+            with self.subTest(classification=classification, entry=entry):
                 path = self.task_matrix(f"[{classification}]")
+                if entry == "directory":
+                    candidate.mkdir()
+                else:
+                    candidate.symlink_to(outside)
                 group = self.client.get("/api/projects/my-book/tasks").json["group"]
                 with mock.patch.object(om._rp, "atomic_write_bytes", wraps=om._rp.atomic_write_bytes) as writer:
                     response = self.client.post("/api/projects/my-book/tasks", json={
@@ -179,6 +187,17 @@ class ProjectsMomEndpointTests(unittest.TestCase):
                 self.assertEqual(response.json["group"], self.client.get("/api/projects/my-book/tasks").json["group"])
                 self.assertIn("- [ ] Duplicate\n- [ ] Edited second", path.read_text())
                 self.assertIn(group["tasks"][1]["ref"], response.json["correspondence"])
+                mom = self.client.get("/api/projects/my-book/mom")
+                self.assertEqual(mom.status_code, 200, mom.json)
+                self.assertEqual(mom.json["mom"]["matrix_path"], str(path))
+                self.assertEqual(outside.read_bytes(), outside_before)
+                if entry == "directory":
+                    self.assertTrue(candidate.is_dir())
+                    candidate.rmdir()
+                else:
+                    self.assertTrue(candidate.is_symlink())
+                    self.assertEqual(candidate.readlink(), outside)
+                    candidate.unlink()
 
     def test_tasks_readonly_missing_strict_body_and_cross_site(self):
         response = self.client.get("/api/projects/my-book/tasks")
