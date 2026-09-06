@@ -446,32 +446,37 @@ class ProjectionMarkerTests(unittest.TestCase):
 
     def _write(self, name, text):
         p = self.mdir / name
-        p.write_text(text, encoding="utf-8")
+        p.write_bytes(text.encode("utf-8"))
         return p
 
     def test_end_marker_survives_milestone_write(self):
-        p = self._write("Project Matrix Projected.md", _PROJECTED_MATRIX)
-        om.write_mom(
-            "projected", "Projected",
-            milestones=[{"text": "M9: replaced.", "done": False, "indent": 0}],
-            vault=self.vault,
-        )
-        text = p.read_text(encoding="utf-8")
-        self.assertEqual(text.count("MASTER_MATRIX_PROJECTION_START"), 1)
-        self.assertEqual(text.count("MASTER_MATRIX_PROJECTION_END"), 1)
-        self.assertIn("- [ ] M9: replaced.", text)
-        self.assertIn("## Problem Solving\n\nKeep me.", text)
-        # The marker still closes the block: it follows the milestones.
-        self.assertLess(
-            text.index("M9: replaced."),
-            text.index("MASTER_MATRIX_PROJECTION_END"),
-        )
+        for newline in ("\n", "\r\n"):
+            for separator in (newline, newline * 2):
+                with self.subTest(newline=newline, separator=separator):
+                    before = _PROJECTED_MATRIX.replace("\n", newline).replace(
+                        newline + "<!-- MASTER_MATRIX_PROJECTION_END",
+                        separator + "<!-- MASTER_MATRIX_PROJECTION_END",
+                    )
+                    p = self._write("Project Matrix Projected.md", before)
+                    om.write_mom(
+                        "projected", "Projected",
+                        milestones=[{"text": "M9: replaced.", "done": False, "indent": 0}],
+                        vault=self.vault,
+                    )
+                    text = p.read_bytes().decode("utf-8")
+                    self.assertEqual(text.count("MASTER_MATRIX_PROJECTION_START"), 1)
+                    self.assertEqual(text.count("MASTER_MATRIX_PROJECTION_END"), 1)
+                    self.assertIn("- [ ] M9: replaced." + separator + "<!--", text)
+                    marker = "<!-- MASTER_MATRIX_PROJECTION_END"
+                    self.assertEqual(text[text.index(marker):], before[before.index(marker):])
 
     def test_marker_never_leaks_into_the_editable_body(self):
-        self._write("Project Matrix Projected.md", _PROJECTED_MATRIX)
-        mom = om.read_mom("projected", "Projected", vault=self.vault)
-        self.assertNotIn("MASTER_MATRIX_PROJECTION", mom["milestones_raw"])
-        self.assertEqual(len(mom["milestones"]), 2)
+        for newline in ("\n", "\r\n"):
+            with self.subTest(newline=newline):
+                self._write("Project Matrix Projected.md", _PROJECTED_MATRIX.replace("\n", newline))
+                mom = om.read_mom("projected", "Projected", vault=self.vault)
+                self.assertNotIn("MASTER_MATRIX_PROJECTION", mom["milestones_raw"])
+                self.assertEqual(len(mom["milestones"]), 2)
 
     def test_unchanged_save_is_byte_identical(self):
         """Re-saving what was just read must not drift the file.
@@ -479,17 +484,23 @@ class ProjectionMarkerTests(unittest.TestCase):
         Only ``date modified`` may move — every other byte, including the
         blank-line separator before the projection marker, must be preserved.
         """
-        p = self._write("Project Matrix Projected.md", _PROJECTED_MATRIX)
-        before = p.read_text(encoding="utf-8")
-        mom = om.read_mom("projected", "Projected", vault=self.vault)
-        om.write_mom(
-            "projected", "Projected", mission=mom["mission"],
-            objectives=mom["objectives"], milestones_raw=mom["milestones_raw"],
-            vault=self.vault,
-        )
-        strip_stamp = lambda s: re.sub(r"date modified: [0-9-]+\n", "", s)
-        self.assertEqual(
-            strip_stamp(p.read_text(encoding="utf-8")), strip_stamp(before))
+        for newline in ("\n", "\r\n"):
+            for separator in (newline, newline * 2):
+                with self.subTest(newline=newline, separator=separator):
+                    source = _PROJECTED_MATRIX.replace("\n", newline).replace(
+                        newline + "<!-- MASTER_MATRIX_PROJECTION_END",
+                        separator + "<!-- MASTER_MATRIX_PROJECTION_END",
+                    )
+                    p = self._write("Project Matrix Projected.md", source)
+                    before = p.read_bytes()
+                    mom = om.read_mom("projected", "Projected", vault=self.vault)
+                    om.write_mom(
+                        "projected", "Projected", mission=mom["mission"],
+                        objectives=mom["objectives"], milestones_raw=mom["milestones_raw"],
+                        vault=self.vault,
+                    )
+                    strip_stamp = lambda s: re.sub(rb"date modified: [0-9-]+\r?\n", b"", s)
+                    self.assertEqual(strip_stamp(p.read_bytes()), strip_stamp(before))
 
 
 class OperationMilestoneFormTests(unittest.TestCase):

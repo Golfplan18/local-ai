@@ -312,8 +312,9 @@ def _matrix_tasks_source(stamp: str, records, skipped, project_error) -> dict[st
     state = "partial" if partial else "ready" if items else "empty"
     if items and not known:
         state = "unavailable"
-    result = _source(source_id, "Tasks", items, stamp, state=state,
-                     error=_error("task_source_incomplete", "Known task counts only; some Matrix content or project authority needs attention." + (" Unreadable project records: " + ", ".join(failures) if failures else "")) if partial else None)
+    error = (_error("project_records_skipped", "Unreadable project records: " + ", ".join(failures)) if failures
+             else _error("task_source_incomplete", "Known task counts only; some Matrix content or project authority needs attention.") if partial else None)
+    result = _source(source_id, "Tasks", items, stamp, state=state, error=error)
     result["count"] = sum(known) if known else None if items or failures else 0
     return result
 

@@ -401,9 +401,23 @@ date: 2026-08-31
         self.assertEqual([row["counts"]["total"] for row in source["items"]], [2, 0, None])
         self.assertEqual(source["count"], 2)
         self.assertEqual(source["state"], "partial")
+        self.assertEqual(source["error"]["code"], "task_source_incomplete")
         self.assertIn("Known task counts", source["error"]["message"])
         self.assertEqual(source["items"][1]["state"], "empty")
         self.assertEqual(source["items"][2]["actions"], ["open_project"])
+
+        def skipped_project(*, skipped_authority):
+            skipped_authority.append("broken.json")
+            return records[:2]
+
+        sources, _ = self._load(project_side_effect=skipped_project)
+        by_id = self._by_id(sources)
+        source = by_id["matrix-tasks"]
+        self.assertEqual([group["state"] for group in source["items"]], ["ready", "empty"])
+        self.assertEqual(source["count"], 2)
+        self.assertEqual(source["state"], "partial")
+        self.assertEqual(source["error"], by_id["project-priority"]["error"])
+        self.assertEqual(source["error"], {"code": "project_records_skipped", "message": "Unreadable project records: broken.json"})
         # A duplicate claim disables only that Matrix, not healthy project groups.
         (matrix_dir / "Duplicate.md").write_text((matrix_dir / "Historical zeta.md").read_text())
         sources, _ = self._load(projects=records)

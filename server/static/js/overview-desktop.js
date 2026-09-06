@@ -470,15 +470,23 @@
     var items = tasksSource.items || [];
     var known = items.filter(function (group) { return Number.isInteger(group.counts && group.counts.total); });
     // A skipped inventory row is not repaired by refreshing a known project.
-    var partial = Boolean(tasksSource.error) || items.some(function (group) {
+    var inventoryError = tasksSource.error && tasksSource.error.code === 'project_records_skipped' ? tasksSource.error : null;
+    var groupPartial = items.some(function (group) {
       return !['ready', 'empty'].includes(group.state) || !Number.isInteger(group.counts && group.counts.total);
     });
+    var partial = Boolean(inventoryError) || groupPartial;
     tasksSource.count = known.length ? known.reduce(function (total, group) { return total + group.counts.total; }, 0)
       : items.length || partial ? null : 0;
     tasksSource.state = items.length && !known.length ? 'unavailable' : partial ? 'partial' : items.length ? 'ready' : 'empty';
+    tasksSource.available = tasksSource.state !== 'unavailable';
+    tasksSource.error = inventoryError || (groupPartial ? { code: 'task_source_incomplete',
+      message: 'Known task counts only; some Matrix content or project authority needs attention.' } : null);
     tasksCard.dataset.state = tasksSource.state;
     tasksCard.querySelector('.overview-source__state').textContent = tasksSource.state;
     tasksCard.querySelector('.overview-source__meta').textContent = tasksCount(tasksSource) + ' · Refreshed project results';
+    var warning = tasksCard.querySelector('.overview-tasks__error');
+    warning.textContent = tasksSource.error ? tasksSource.error.message : '';
+    warning.hidden = !warning.textContent;
   }
 
   function acceptTaskGroup(state, group) {
@@ -765,7 +773,9 @@
     card.append(heading, element('p', 'overview-source__meta', tasksCount(source)
       + (source.freshness && source.freshness.observed_at ? ' · Checked ' + source.freshness.observed_at : '')),
     element('p', 'overview-tasks__hint', 'From each project’s Matrix, in project priority order. Refresh to see external edits.'));
-    if (source.error && source.error.message) card.appendChild(element('p', 'overview-source__error', source.error.message));
+    var warning = element('p', 'overview-source__error overview-tasks__error', source.error && source.error.message || '');
+    warning.hidden = !warning.textContent;
+    card.appendChild(warning);
     var items = Array.isArray(source.items) ? source.items : [];
     items.forEach(function (group) {
       var nexus = group && group.scope && group.scope.project_nexus;

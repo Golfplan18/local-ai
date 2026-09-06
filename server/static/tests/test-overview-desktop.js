@@ -717,11 +717,13 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
     });
     return group;
   }
-  function taskPayload(groups, state) {
+  function taskPayload(groups, state, error) {
     var payload = JSON.parse(JSON.stringify(availableOverviewPayload));
     var source = payload.sources.find(function (entry) { return entry.source_id === 'matrix-tasks'; });
     source.items = groups;
     source.state = state || 'ready';
+    source.error = error || (['partial', 'unavailable'].includes(source.state)
+      ? { code: 'task_source_incomplete', message: 'Known task counts only; some Matrix content or project authority needs attention.' } : null);
     source.count = groups.some(function (group) { return Number.isInteger(group.counts.total); })
       ? groups.reduce(function (sum, group) { return sum + (group.counts.total || 0); }, 0) : null;
     return payload;
@@ -735,12 +737,12 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
     return input;
   }
   function taskSelect(index, nexus) { taskNode(nexus).querySelectorAll('[data-task-action="select"]')[index].click(); }
-  async function openTasks(groups, qualification) {
+  async function openTasks(groups, qualification, error) {
     if (!mount.hidden) {
       for (var cancel of mount.querySelectorAll('[data-task-action="cancel"]')) cancel.click();
       closeControl.click();
     }
-    responses.push(ok(taskPayload(groups, qualification)));
+    responses.push(ok(taskPayload(groups, qualification, error)));
     launcher.click(); await flush(); await flush();
   }
   function savedTaskGroup(group, operation, fields) {
@@ -962,6 +964,32 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   assert(mount.querySelector('.overview-tasks .overview-source__meta').textContent.includes('8 known tasks'));
   taskSelect(2); assert.strictEqual(taskAction('edit').disabled, true);
   assert.strictEqual(taskAction('add', 'beta').disabled, false, 'one bad Matrix does not disable healthy groups');
+  var tasksCard = mount.querySelector('.overview-tasks');
+  var tasksWarning = tasksCard.querySelector('.overview-tasks__error');
+  var healthyGroup = taskNode('beta');
+  responses.push(ok({ ok: true, group: alpha })); taskAction('refresh').click(); await flush(); await flush();
+  assert.strictEqual(tasksCard.dataset.state, 'partial', 'a still-unavailable group keeps the inventory partial');
+  assert.strictEqual(tasksWarning.hidden, false);
+  responses.push(ok({ ok: true, group: taskGroup('missing') })); taskAction('refresh', 'missing').click(); await flush(); await flush();
+  assert.strictEqual(tasksCard.dataset.state, 'ready', 'repairing every group clears the old partial state');
+  assert.strictEqual(tasksCard.querySelector('.overview-source__state').textContent, 'ready');
+  assert(tasksCard.querySelector('.overview-source__meta').textContent.includes('12 tasks · Refreshed project results'));
+  assert.strictEqual(tasksWarning.hidden, true);
+  assert.strictEqual(tasksWarning.textContent, '', 'the obsolete warning is cleared');
+  assert.strictEqual(taskNode('beta'), healthyGroup, 'qualification refresh leaves other groups mounted');
+  responses.push(ok({ ok: true, group: readOnly })); taskAction('refresh').click(); await flush(); await flush();
+  assert.strictEqual(tasksCard.dataset.state, 'partial', 'a new group limitation restores partial qualification');
+  assert.strictEqual(tasksWarning.hidden, false);
+  assert(tasksWarning.textContent.includes('Known task counts only'));
+
+  var inventoryError = { code: 'project_records_skipped', message: 'Unreadable project records: broken.json' };
+  await openTasks([readOnly, beta], 'partial', inventoryError);
+  responses.push(ok({ ok: true, group: alpha })); taskAction('refresh').click(); await flush(); await flush();
+  tasksCard = mount.querySelector('.overview-tasks');
+  assert.strictEqual(tasksCard.dataset.state, 'partial', 'refreshing known groups cannot repair a skipped project record');
+  assert(tasksCard.querySelector('.overview-source__meta').textContent.includes('8 known tasks · Partial inventory'));
+  assert.strictEqual(tasksCard.querySelector('.overview-tasks__error').hidden, false);
+  assert.strictEqual(tasksCard.querySelector('.overview-tasks__error').textContent, inventoryError.message);
   var malformedGroup = taskGroup('alpha'); malformedGroup.scope.project_nexus = '../alpha';
   await openTasks([malformedGroup, beta]);
   assert.strictEqual(taskNode('alpha'), null);

@@ -271,7 +271,7 @@ def list_active_project_meta(
 
 _H2_RE = re.compile(r"^##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
 _PROJECTION_END_RE = re.compile(
-    r"^[ \t]*<!--[ \t]*MASTER_MATRIX_PROJECTION_END[ \t]*-->[ \t]*$", re.MULTILINE
+    r"^[ \t]*<!--[ \t]*MASTER_MATRIX_PROJECTION_END[ \t]*-->[ \t]*\r?$", re.MULTILINE
 )
 
 
@@ -305,12 +305,12 @@ def _extract_section(text: str, heading: str) -> str:
     return text[body_start:_protected_tail_start(text, body_start, section_end)]
 
 
-def _format_section(heading: str, body: str) -> str:
+def _format_section(heading: str, body: str, newline: str = "\n") -> str:
     """``## Heading`` + a blank line + the (stripped) body + a trailing blank."""
-    body = (body or "").strip("\n")
+    body = (body or "").strip("\r\n")
     if body:
-        return f"## {heading}\n\n{body}\n\n"
-    return f"## {heading}\n\n"
+        return f"## {heading}{newline}{newline}{body}{newline}{newline}"
+    return f"## {heading}{newline}{newline}"
 
 
 def _insert_index(text: str, heading: str) -> int:
@@ -348,7 +348,8 @@ def _protected_tail_start(text: str, body_start: int, section_end: int) -> int:
 
 
 def _replace_section(text: str, heading: str, body: str) -> str:
-    block = _format_section(heading, body)
+    newline = "\r\n" if "\r\n" in text else "\n"
+    block = _format_section(heading, body, newline)
     bounds = _section_bounds(text, heading)
     if bounds is not None:
         head_start, body_start, section_end = bounds
@@ -358,9 +359,9 @@ def _replace_section(text: str, heading: str, body: str) -> str:
             # Rebuild around it using the file's own separator so an unchanged
             # save is byte-identical rather than drifting a blank line each time.
             original = text[body_start:tail_start]
-            sep = original[len(original.rstrip("\n")):] or "\n"
-            core = (body or "").strip("\n")
-            block = f"## {heading}\n\n{core}{sep}" if core else f"## {heading}\n\n"
+            sep = original[len(original.rstrip("\r\n")):] or newline
+            core = (body or "").strip("\r\n")
+            block = f"## {heading}{newline}{newline}{core}{sep}" if core else f"## {heading}{newline}{newline}"
         return text[:head_start] + block + text[tail_start:]
     # Never conjure a section that does not exist just to hold nothing — a
     # Passion Matrix has no ``## Milestones`` by design (Practices and
@@ -370,8 +371,8 @@ def _replace_section(text: str, heading: str, body: str) -> str:
     idx = _insert_index(text, heading)
     prefix = text[:idx]
     # Guarantee a blank line before the inserted heading.
-    if prefix and not prefix.endswith("\n\n"):
-        prefix = prefix.rstrip("\n") + "\n\n"
+    if prefix and not prefix.endswith(newline * 2):
+        prefix = prefix.rstrip("\r\n") + newline * 2
     return prefix + block + text[idx:]
 
 
