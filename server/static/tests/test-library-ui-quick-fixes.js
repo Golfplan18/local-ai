@@ -336,7 +336,7 @@ function libraryPayload(rows, options) {
     rows: rows,
     total: total,
     source_counts: options.source_counts || { dialogues: total, engrams: 0, files: 0 },
-    facets: {
+    facets: options.facets || {
       projects: { counts: { ora: total }, unavailable: 0, complete: complete },
       item_type: {
         counts: options.item_type_counts || { Dialogue: total },
@@ -2845,11 +2845,44 @@ async function run() {
     && w.OraLibraryWorkspace.getState().view === 'visual'
     && Array.from(w.document.querySelectorAll('[data-library-source]:checked')).map(function (input) { return input.value; }).join(',') === 'dialogues');
   w.OraLibraryWorkspace.close({ focus: false });
-  var reload = new jsdom.JSDOM('<!doctype html><body>' + libraryMountMarkup + '</body>', { url: 'http://localhost/', runScripts: 'outside-only' });
+  var reload = new jsdom.JSDOM('<!doctype html><body>' + libraryMountMarkup + '</body>', { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
   reload.window.localStorage.setItem('ora.library.last-view', 'visual');
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, '..', 'js/library-workspace.js'), 'utf8'), reload.getInternalVMContext());
   record('page reload restores Visual without persisting filters or grouping', reload.window.OraLibraryWorkspace.getState().view === 'visual'
     && reload.window.OraLibraryWorkspace.getState().group === 'none');
+  var firstProjectRequest = deferredResponse();
+  var reloadRequests = [];
+  reload.window.fetch = function (url) {
+    reloadRequests.push(new reload.window.URL(url, reload.window.location.href).searchParams);
+    return reloadRequests.length === 1 ? firstProjectRequest.promise : response(true, libraryPayload([], { facets: {} }));
+  };
+  var reloadProject = reload.window.document.querySelector('[data-library-project]');
+  var initiallyOnlyCommons = Array.from(reloadProject.options).map(function (option) { return option.value; }).join(',') === 'commons';
+  reload.window.OraLibraryWorkspace.open({ projectId: 'empty-project', sources: ['files'], cleanBrowse: true });
+  record('first clean entrance selects its project before any result can supply project facets', initiallyOnlyCommons
+    && reloadProject.value === 'empty-project' && reloadProject.selectedOptions[0].textContent === 'empty-project'
+    && reload.window.OraLibraryWorkspace.getState().projectId === 'empty-project'
+    && reloadRequests.length === 1 && reloadRequests[0].get('project_id') === 'empty-project'
+    && reloadRequests[0].getAll('source').join(',') === 'files');
+  firstProjectRequest.reject(new Error('Project inventory unavailable')); await flush(); await flush();
+  record('failed first inventory preserves the selected project and shows the failure', reloadProject.value === 'empty-project'
+    && reload.window.OraLibraryWorkspace.getState().projectId === 'empty-project'
+    && reload.window.document.getElementById('libraryWorkspaceNotice').textContent.includes('Project inventory unavailable'));
+  await reload.window.OraLibraryWorkspace.refresh();
+  record('empty inventory with empty facets preserves the project and reports an honest empty state', reloadProject.value === 'empty-project'
+    && reload.window.document.querySelector('.library-empty-state').textContent.includes('selected source inventory is empty')
+    && reload.window.OraLibraryWorkspace.getState().loaded === 0);
+  reloadProject.value = 'commons'; reloadProject.dispatchEvent(new reload.window.Event('change', { bubbles: true }));
+  await flush(); await flush();
+  var commonsSelected = reloadProject.value === 'commons' && reload.window.OraLibraryWorkspace.getState().projectId === 'commons'
+    && reloadRequests.length === 3 && !reloadRequests[2].has('project_id');
+  reloadProject.value = 'empty-project'; reloadProject.dispatchEvent(new reload.window.Event('change', { bubbles: true }));
+  await flush(); await flush();
+  record('the Project control can switch from Commons back to the empty destination without result facets', commonsSelected
+    && reloadProject.value === 'empty-project' && reload.window.OraLibraryWorkspace.getState().projectId === 'empty-project'
+    && reloadRequests.length === 4 && reloadRequests[3].get('project_id') === 'empty-project'
+    && Array.from(reloadProject.options).filter(function (option) { return option.value === 'empty-project'; }).length === 1);
+  reload.window.OraLibraryWorkspace.close({ focus: false });
   reload.window.close();
   var storageFailure = new jsdom.JSDOM('<!doctype html><body>' + libraryMountMarkup + '</body>', { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
   Object.defineProperty(storageFailure.window, 'localStorage', { get() { throw new Error('blocked'); } });

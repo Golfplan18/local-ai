@@ -1080,8 +1080,10 @@
       select.disabled = !Object.keys(facet.counts || {}).length && !state.filters[key];
       select.title = select.disabled ? 'No authoritative values are available in this scope. Unknown metadata is not inferred.' : '';
     });
-    Object.keys((state.facets.projects && state.facets.projects.counts) || {}).sort().forEach((value) => {
-      if (!value || value === 'commons' || value === 'general') return;
+    // A validated destination remains selectable before results and without matching rows.
+    const projects = Object.keys((state.facets.projects && state.facets.projects.counts) || {})
+      .filter((value) => value && value !== 'commons' && value !== 'general');
+    projects.concat(state.projectId).sort().forEach((value) => {
       if (Array.from(projectScope.options).some((option) => option.value === value)) return;
       const option = document.createElement('option');
       option.value = value;
