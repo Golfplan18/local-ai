@@ -699,9 +699,24 @@ class MatrixTasksTests(unittest.TestCase):
         self.assertEqual([t["text"] for t in self.read()["tasks"]], ["Actual"])
         self.act("edit", value="Actual changed")
         self.assertIn("- [ ] Commented example", self.path.read_text())
-        self.put("## Tasks\n- [ ] Review MASTER_MATRIX_PROJECTION_START <!--\n- [ ] Commented continuation\n-->\n- [ ] Visible\n")
-        self.assertEqual(len(self.read()["tasks"]), 2)
-        self.act("edit", index=1, value="Still visible")
+        for commented in ("- [ ] Commented continuation", "Keep this note commented."):
+            with self.subTest(commented=commented):
+                group = self.put(f"## Tasks\n- [ ] Review MASTER_MATRIX_PROJECTION_START <!--\n{commented}\n-->\n- [ ] Visible\n")
+                self.assertEqual(len(group["tasks"]), 2)
+                self.assertTrue(group["editable"])
+                self.assertIn("split a comment or fenced block", group["tasks"][0]["limitations"]["delete"])
+                original = self.path.read_bytes()
+                with self.assertRaisesRegex(tasks.TaskError, "split a comment or fenced block") as caught:
+                    self.act("delete", group)
+                self.assertIs(caught.exception.saved, False)
+                self.assertEqual(self.path.read_bytes(), original)
+                self.act("edit", value="Review draft <!--")
+                completed = self.act("complete")
+                self.assertTrue(completed["group"]["tasks"][0]["done"])
+                self.act("reopen")
+                self.act("edit", index=1, value="Still visible")
+                self.act("delete", index=1)
+                self.assertEqual(self.read()["source_text"], f"- [ ] Review draft <!--\n{commented}\n-->\n")
         for body in (
             "<!-- MASTER_MATRIX_PROJECTION_START -->\n## Mission\nUnclosed\n",
             "<!-- MASTER_MATRIX_PROJECTION_END -->\n",

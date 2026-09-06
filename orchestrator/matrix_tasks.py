@@ -213,7 +213,8 @@ class Document:
                 task["end"] = end_line
                 task["attached"] = attached
                 task["children"] = [child for child in self.tasks if child["parent"] is task]
-                if any(a < end_line and b > task["line"] and not (task["line"] <= a and b <= end_line) for a, b in self.fences):
+                task["protected_boundary"] = any(a < end_line and b > task["line"] and not (task["line"] <= a and b <= end_line) for a, b in self.fences)
+                if task["protected_boundary"]:
                     task["ambiguous"] = True
         anchors = {"mission", "objectives"}
         if classification == "operation":
@@ -235,7 +236,9 @@ class Document:
         for task in self.tasks:
             row = {key: task[key] for key in ("ref", "text", "done", "depth", "parent_ref", "completion_date", "date_ambiguous")}
             limits = {}
-            if task["children"] or task["attached"]:
+            if task["protected_boundary"]:
+                limits["delete"] = "Deleting this task would split a comment or fenced block; edit that material in the original Markdown first."
+            elif task["children"] or task["attached"]:
                 limits["delete"] = "Move or promote children first; edit attached notes in the original Markdown before deleting."
             if task["ambiguous"]:
                 for op in ("reorder", "indent", "outdent", "promote"):
@@ -369,6 +372,8 @@ def _apply(doc, body):
                 label = (label[:marker.start()] + " ✅ " + body["value"] + marker[2]) if marker else label + " ✅ " + body["value"]
         lines[selected["line"]][0] = f"{m[1]}{m[2]}{m[3]}[{mark}]{m[5]}{label}{m[7] or ''}"
     elif op == "delete":
+        if selected["protected_boundary"]:
+            raise TaskError("Deleting this task would split a comment or fenced block; edit that material in the original Markdown first.")
         if selected["children"] or selected["attached"]:
             raise TaskError("Move or promote children first; edit attached notes in the original Markdown before deleting.")
         del lines[selected["line"]:selected["end"]]
