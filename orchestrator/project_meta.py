@@ -523,7 +523,7 @@ def list_project_meta(
     *,
     skipped_authority: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """All projects: Commons first, then real projects by recency.
+    """All projects: Commons first, then canonical priority and stable nexus.
 
     Reserved ``commons.json`` / ``general.json`` files are ignored.  They can
     only be stale pre-reservation collisions and must never produce a second
@@ -583,7 +583,7 @@ def list_project_meta(
 
 
 def _priority_sort_key(meta: dict[str, Any]) -> tuple:
-    """Rank ascending, unranked last, recency breaking ties within each group.
+    """Rank ascending, unranked last, immutable nexus breaking ties.
 
     This is the order the sidebar, the dropdown, and any future work-selection
     pass read: the top of the list is the most important project.
@@ -593,15 +593,8 @@ def _priority_sort_key(meta: dict[str, Any]) -> tuple:
     return (
         0 if ranked else 1,
         priority if ranked else 0,
-        # Negated via reverse-friendly comparison: recency descends inside a
-        # tie, matching the pre-priority behavior for an unranked store.
-        _invert_timestamp(meta.get("last_accessed_at") or ""),
+        meta["nexus"],
     )
-
-
-def _invert_timestamp(value: str) -> tuple:
-    """Sort ISO timestamps newest-first inside an ascending sort."""
-    return tuple(-ord(c) for c in value)
 
 
 def reorder_projects(
@@ -900,7 +893,7 @@ def set_project_status(nexus: str, status: str, pointer_dir: Path | None = None)
 
 
 def touch_project(nexus: str, pointer_dir: Path | None = None) -> dict[str, Any] | None:
-    """Bump ``last_accessed_at`` (drives the switcher's recency sort)."""
+    """Record project activity without changing canonical priority order."""
     now = datetime.now().isoformat(timespec="seconds")
     return _update_pointer(nexus, lambda d: d.__setitem__("last_accessed_at", now), pointer_dir)
 

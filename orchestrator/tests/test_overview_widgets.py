@@ -173,6 +173,11 @@ date: 2026-08-31
             for item in by_id["project-priority"]["items"]
         ))
         self.assertEqual(by_id["project-priority"]["state"], "partial")
+        self.assertEqual(by_id["project-priority"]["count"], 2)
+        for item in by_id["project-priority"]["items"]:
+            self.assertEqual(item["actions"], [
+                "open_project", "open_project_files", "open_project_dialogues", "open_project_knowledge",
+            ])
         self.assertEqual(
             by_id["project-priority"]["error"]["code"],
             "project_records_skipped",

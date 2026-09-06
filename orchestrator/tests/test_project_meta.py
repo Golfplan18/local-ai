@@ -1021,8 +1021,22 @@ class ProjectPriorityOrderTests(unittest.TestCase):
     def _order(self):
         return [m["nexus"] for m in pm.list_project_meta(self.dir)]
 
-    def test_unranked_keeps_recency_order(self):
-        self.assertEqual(self._order(), ["commons", "beta", "gamma", "alpha"])
+    def test_unranked_and_tied_order_survive_activity_reopen_and_rename(self):
+        expected = ["commons", "alpha", "beta", "gamma"]
+        self.assertEqual(self._order(), expected)
+        for nexus in ["alpha", "gamma", "beta"]:
+            pm.touch_project(nexus, self.dir)
+            pm.set_project_status(nexus, "inactive", self.dir)
+            pm.set_project_status(nexus, "active", self.dir)
+            pm.update_project_meta(nexus, {"name": "Renamed " + nexus}, self.dir)
+        self.assertEqual(self._order(), expected)
+        for nexus in ["gamma", "beta", "alpha"]:
+            pm.update_project_meta(nexus, {"priority": 2}, self.dir)
+        before = {path.name: path.read_bytes() for path in self.dir.glob("*.json")}
+        self.assertEqual(self._order(), expected)
+        self.assertEqual(before, {path.name: path.read_bytes() for path in self.dir.glob("*.json")})
+        pm.touch_project("gamma", self.dir)
+        self.assertEqual(self._order(), expected)
 
     def test_reorder_assigns_contiguous_ranks(self):
         pm.reorder_projects(["gamma", "alpha", "beta"], self.dir)

@@ -1975,23 +1975,40 @@
     const project = options.projectId === undefined ? state.projectId : String(options.projectId).trim().toLowerCase();
     const sources = options.sources === undefined ? Array.from(state.sources) : options.sources;
     const provenance = options.provenanceId;
+    const cleanBrowse = options.cleanBrowse === true;
     if (!/^[a-z0-9][a-z0-9_-]*$/.test(project) || !Array.isArray(sources)
         || sources.some((source) => !SOURCES.includes(source))
+        || (options.cleanBrowse !== undefined && typeof options.cleanBrowse !== 'boolean')
+        || (cleanBrowse && provenance !== undefined)
         || (provenance !== undefined && (typeof provenance !== 'string' || !/^(dialogues|files):[A-Za-z0-9_-]+$/.test(provenance)))) {
       throw new Error('Library entry requires a valid project, source list and admitted-source identity.');
     }
-    const changed = project !== state.projectId || sources.join(',') !== Array.from(state.sources).join(',')
+    const changed = cleanBrowse || project !== state.projectId || sources.join(',') !== Array.from(state.sources).join(',')
       || (provenance !== undefined && provenance !== state.filters.provenance_id);
     if (changed) {
       state.projectId = project; state.sources = new Set(sources);
-      if (provenance !== undefined) {
+      if (cleanBrowse) {
+        // Criteria input is synchronous: no deferred search can reapply an old scope.
+        state.filters = { type: '' }; state.query = ''; searchInput.value = '';
+        state.showArchived = false;
+        state.refinementStatus = {}; state.progress = { final: true };
+        if (state.group === 'provenance' && !state.sources.has('engrams')) state.group = 'none';
+        resetResolvedPreview(null);
+        destroyDocument();
+        closePopovers();
+      } else if (provenance !== undefined) {
         state.filters = { type: '', provenance_id: provenance }; state.query = ''; searchInput.value = ''; state.group = 'provenance';
       }
       mount.querySelectorAll('[data-library-source]').forEach((checkbox) => { checkbox.checked = state.sources.has(checkbox.value); });
       mount.querySelectorAll('[data-library-refinement]').forEach((control) => { control.value = state.filters[control.dataset.libraryRefinement] || ''; });
+      typeFilter.value = state.filters.type || '';
+      mount.querySelector('[data-library-archived]').checked = state.showArchived;
+      sourceCount.textContent = String(state.sources.size);
+      syncGroupAvailability();
       invalidateProjectScopeRows();
     }
     if (state.open) {
+      if (options.returnFocus) returnFocus = options.returnFocus;
       if (changed) fetchPage({ append: false });
       searchInput.focus();
       return;
