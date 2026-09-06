@@ -51,6 +51,7 @@ var dom = new jsdom.JSDOM(
 );
 var w = dom.window;
 var projectOpens = [];
+var libraryOpens = [];
 var scheduledOpens = [];
 var requests = [];
 var responses = [];
@@ -76,6 +77,11 @@ w.OraDocumentSurface = {
 w.OraProjectModal = {
   open: function (nexus, title) { projectOpens.push([nexus, title]); },
 };
+w.OraLibraryWorkspace = { open: function (options) {
+  assert.strictEqual(w.document.getElementById('overviewDesktop').hidden, true);
+  assert.strictEqual(w.document.querySelector('.ora-shell').hasAttribute('inert'), false);
+  libraryOpens.push(options);
+} };
 w.document.addEventListener('ora:scheduled-trigger-open-requested', function (event) {
   scheduledOpens.push(event.detail);
 });
@@ -135,8 +141,9 @@ var overviewPayload = { sources: [
     scope: null, actions: ['open_scheduled', 'inspect', 'review', 'run', 'retire'],
   }]),
   source('project-priority', 'Project priority', 'ready', [{
+    source_id: 'project-priority', item_id: 'project:ora',
     title: 'Ora', text: 'Active', state: 'ready', time: null, count: null,
-    scope: { project_nexus: 'ora' }, actions: ['open_project'],
+    scope: { project_nexus: 'ora' }, actions: ['open_project', 'open_project_files', 'open_project_dialogues', 'open_project_knowledge'],
   }]),
   source('oversight', 'Oversight', 'partial', [{
     title: 'Review evidence', text: 'Needs a decision', state: 'paused', time: null,
@@ -213,7 +220,7 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
 
   var actions = Array.from(mount.querySelectorAll('[data-overview-action]'));
   assert.strictEqual(
-    actions.length, 2,
+    actions.length, 6,
     'a missing Daily Note stays non-actionable even when its fixture advertises open_note'
   );
   assert.strictEqual(
@@ -598,6 +605,97 @@ vm.runInContext(controllerSource, dom.getInternalVMContext());
   assert.strictEqual(mount.hidden, true, 'Escape closes Overview');
   assert.strictEqual(w.document.activeElement, launcher, 'launcher focus is restored after close');
   assertWorkspacePreserved('final close');
+
+  for (var size of [0, 1, 8, 9, 25]) {
+    var projectsPayload = JSON.parse(JSON.stringify(availableOverviewPayload));
+    var projectSource = projectsPayload.sources.find(function (entry) { return entry.source_id === 'project-priority'; });
+    var prototype = projectSource.items[0];
+    projectSource.items = Array.from({ length: size }, function (_, index) {
+      return Object.assign({}, prototype, {
+        item_id: 'project:project-' + index, scope: { project_nexus: 'project-' + index },
+        title: 'A long project title with complete meaning ' + index, text: 'Priority ' + (index + 1) + ' · active',
+        time: '2026-09-01T12:30:00+00:00',
+      });
+    });
+    projectSource.count = size;
+    projectSource.state = size ? 'ready' : 'empty';
+    responses.push(ok(projectsPayload)); launcher.click(); await flush(); await flush();
+    var groups = Array.from(mount.querySelectorAll('.overview-project'));
+    assert.strictEqual(groups.length, size, 'all ' + size + ' projects remain native groups');
+    assert.deepStrictEqual(groups.map(function (node) { return node.dataset.slot; }), Array.from({ length: size }, function (_, index) { return String(index); }));
+    assert.deepStrictEqual(groups.map(function (node) { return node.dataset.projectId; }), projectSource.items.map(function (item) { return item.scope.project_nexus; }));
+    groups.forEach(function (node) {
+      assert.strictEqual(node.querySelectorAll('button:not(:disabled)').length, 4);
+      assert.strictEqual(node.querySelector('h3').title, node.querySelector('h3').textContent);
+    });
+    assert(mount.querySelector('.overview-projects__heading').textContent.includes(size + ' active project'));
+    assert.strictEqual(mount.querySelectorAll('.overview-source').length, 4);
+    var identity = mount.querySelector('.overview-projects__identity');
+    assert.strictEqual(identity.getAttribute('aria-hidden'), 'true');
+    assert.strictEqual(identity.querySelectorAll('[id], [tabindex], [role]').length, 0);
+    var slotsBefore = groups.map(function (node) { return node.dataset.slot; });
+    w.dispatchEvent(new w.Event('resize'));
+    assert.deepStrictEqual(groups.map(function (node) { return node.dataset.slot; }), slotsBefore);
+    if (size) {
+      groups[0].querySelector('button').focus();
+      w.dispatchEvent(new w.Event('resize'));
+      assert.strictEqual(w.document.activeElement, groups[0].querySelector('button'), 'reflow preserves focus');
+      var last = mount.querySelector('[data-overview-action="open_note"]');
+      var disabledField = w.document.createElement('fieldset');
+      disabledField.disabled = true;
+      disabledField.innerHTML = '<button>Disabled through fieldset</button>';
+      mount.appendChild(disabledField);
+      last.focus();
+      w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+      assert.strictEqual(w.document.activeElement, closeControl, 'Tab stays inside Overview');
+      w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+      assert.strictEqual(w.document.activeElement, last, 'Shift-Tab stays inside Overview');
+      disabledField.remove();
+    }
+    closeControl.click();
+  }
+
+  for (var destination of [['open_project_files', 'files'], ['open_project_dialogues', 'dialogues'], ['open_project_knowledge', 'engrams']]) {
+    responses.push(ok(availableOverviewPayload)); launcher.click(); await flush(); await flush();
+    mount.querySelector('.overview-project [data-overview-action="' + destination[0] + '"]').click();
+    var entrance = libraryOpens[libraryOpens.length - 1];
+    assert.strictEqual(entrance.projectId, 'ora');
+    assert.deepStrictEqual(Array.from(entrance.sources), [destination[1]]);
+    assert.strictEqual(entrance.cleanBrowse, true);
+    assert.strictEqual(entrance.returnFocus, launcher, 'return focus is a visible workspace entrance');
+    assertWorkspacePreserved('Library handoff');
+  }
+  responses.push(ok(availableOverviewPayload)); launcher.click(); await flush(); await flush();
+  var savedLibrary = w.OraLibraryWorkspace; delete w.OraLibraryWorkspace;
+  mount.querySelector('[data-overview-action="open_project_files"]').click();
+  assert.strictEqual(mount.hidden, false, 'missing owner leaves Overview open');
+  assert(status.textContent.includes('Files is unavailable'));
+  w.OraLibraryWorkspace = savedLibrary;
+  var savedProjectModal = w.OraProjectModal; delete w.OraProjectModal;
+  mount.querySelector('[data-overview-action="open_project"]').click();
+  assert.strictEqual(mount.hidden, false);
+  assert(status.textContent.includes('Overview is unavailable'));
+  w.OraProjectModal = savedProjectModal;
+  closeControl.click();
+  for (var qualification of ['partial', 'unavailable']) {
+    var qualified = JSON.parse(JSON.stringify(availableOverviewPayload));
+    var qualifiedSource = qualified.sources.find(function (entry) { return entry.source_id === 'project-priority'; });
+    qualifiedSource.state = qualification;
+    if (qualification === 'unavailable') qualifiedSource.items = [];
+    responses.push(ok(qualified)); launcher.click(); await flush(); await flush();
+    assert(mount.querySelector('.overview-projects__heading').textContent.includes(qualification === 'partial' ? 'known active projects · Partial inventory' : 'Project count unavailable'));
+    assert(mount.querySelector('[data-overview-action="read_note"]'), 'independent Daily action survives');
+    closeControl.click();
+  }
+  var malformedProjects = JSON.parse(JSON.stringify(availableOverviewPayload));
+  var malformedSource = malformedProjects.sources.find(function (entry) { return entry.source_id === 'project-priority'; });
+  malformedSource.items = [null, { title: 'Invalid scope', item_id: 'project:ora', scope: { project_nexus: '../ora' }, actions: ['open_project'] }];
+  responses.push(ok(malformedProjects)); launcher.click(); await flush(); await flush();
+  assert.strictEqual(mount.querySelectorAll('.overview-project button:not(:disabled)').length, 0);
+  assert(mount.querySelector('[data-overview-action="read_note"]'), 'malformed project rows leave other sources usable');
+  closeControl.click();
+  var css = fs.readFileSync(path.resolve(__dirname, '..', 'styles', 'components', 'overview-desktop.css'), 'utf8');
+  assert(css.includes('prefers-reduced-motion: reduce') && css.includes('animation: none'), 'motion is settled and reduced-motion is explicit');
 
   console.log('overview desktop tests passed');
 })().catch(function (error) {

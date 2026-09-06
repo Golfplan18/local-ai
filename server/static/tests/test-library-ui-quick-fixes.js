@@ -336,7 +336,7 @@ function libraryPayload(rows, options) {
     rows: rows,
     total: total,
     source_counts: options.source_counts || { dialogues: total, engrams: 0, files: 0 },
-    facets: {
+    facets: options.facets || {
       projects: { counts: { ora: total }, unavailable: 0, complete: complete },
       item_type: {
         counts: options.item_type_counts || { Dialogue: total },
@@ -2756,12 +2756,133 @@ async function run() {
   w.document.querySelector('[data-library-edit="cancel"]').click(); await flush(); await flush();
   w.document.querySelector('[data-library-view="visual"]').click();
   record('only the last view is stored, with no source text, filters or history', w.localStorage.getItem('ora.library.last-view') === 'visual');
+
+  // D1 destinations explicitly start a clean browse, including repeated scope.
+  var beforeInvalidClean = JSON.stringify(w.OraLibraryWorkspace.getState());
+  var requestsBeforeInvalidClean = libraryRequestUrls.length;
+  var invalidCleanCount = 0;
+  [{ cleanBrowse: 'true' }, { cleanBrowse: true, provenanceId: 'files:c291cmNl' },
+    { cleanBrowse: true, projectId: '../ora' }, { cleanBrowse: true, sources: ['missing'] }].forEach(function (options) {
+    try { w.OraLibraryWorkspace.open(options); } catch (error) { invalidCleanCount += 1; }
+  });
+  record('clean entry validates the whole destination before any state or request change', invalidCleanCount === 4
+    && JSON.stringify(w.OraLibraryWorkspace.getState()) === beforeInvalidClean
+    && libraryRequestUrls.length === requestsBeforeInvalidClean);
+
+  queuedLibraryResponses.push(libraryPayload([contextEngram]));
+  w.OraLibraryWorkspace.open({ projectId: 'ora', sources: ['engrams'], provenanceId: 'files:c291cmNl' });
+  await flush(); await flush();
+  queuedLibraryResponses.push(libraryPayload([contextEngram]));
+  librarySearch.value = 'old restriction'; librarySearch.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await flush(); await flush();
+  w.document.querySelector('[data-library-view="list"]').click();
+  var oldSort = w.document.querySelector('[data-library-sort]');
+  oldSort.value = 'title'; oldSort.dispatchEvent(new w.Event('change', { bubbles: true }));
+  w.document.querySelector('.library-list-row__pin').click(); await flush(); await flush();
+  queuedEditResponses.push({ id: contextEngram.id, source: 'engrams', text: rawMarkdown, digest: editDigest });
+  w.document.querySelector('[data-library-edit="start"]').click(); await flush(); await flush();
+  var cleanSamePending = deferredResponse(); queuedLibraryResponses.push(cleanSamePending);
+  var cleanSameRequests = libraryRequestUrls.length;
+  w.OraLibraryWorkspace.open({ projectId: 'ora', sources: ['engrams'], cleanBrowse: true });
+  var sameClean = w.OraLibraryWorkspace.getState();
+  var cleanParams = new w.URL(libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href).searchParams;
+  record('same-scope clean browse clears query, provenance, archive, selection, reader and editor before one request',
+    libraryRequestUrls.length === cleanSameRequests + 1 && sameClean.query === ''
+    && !Object.values(sameClean.filters).some(Boolean) && !sameClean.showArchived && sameClean.group === 'provenance'
+    && !sameClean.pinnedId && !sameClean.selectedIds.length && !sameClean.loaded && !sameClean.indexed
+    && !sameClean.traceId && !w.document.querySelector('[data-library-edit-draft]')
+    && librarySearch.value === '' && !w.document.querySelector('[data-library-chip]')
+    && !cleanParams.has('q') && !cleanParams.has('provenance_id') && !cleanParams.has('show_archived')
+    && cleanParams.get('project_id') === 'ora' && cleanParams.getAll('source').join(',') === 'engrams'
+    && sameClean.view === 'list' && sameClean.sort === 'title');
+  cleanSamePending.resolve(libraryPayload([contextEngram])); await flush(); await flush();
+
+  queuedLibraryResponses.push(libraryPayload([visibleDialogue]));
+  w.OraLibraryWorkspace.open({ projectId: 'ora', sources: ['dialogues'], cleanBrowse: true });
+  await flush(); await flush();
+  var oldList = deferredResponse(); queuedLibraryResponses.push(oldList);
+  var oldListPromise = w.OraLibraryWorkspace.refresh(); await flush();
+  var oldPreview = deferredResponse(), oldRelated = deferredResponse();
+  queuedPreviewResponses.push(oldPreview); queuedRelatedResponses.push(oldRelated);
+  w.document.querySelector('.library-list-row__pin').click(); await flush();
+  var oldCheckbox = w.document.querySelector('.library-list-row input[type="checkbox"]');
+  oldCheckbox.checked = true; oldCheckbox.dispatchEvent(new w.Event('change', { bubbles: true }));
+  w.document.querySelector('[data-library-view="visual"]').click();
+  var newBrowse = deferredResponse(); queuedLibraryResponses.push(newBrowse);
+  var changedCleanRequests = libraryRequestUrls.length;
+  w.OraLibraryWorkspace.open({ projectId: 'project-a', sources: ['files'], cleanBrowse: true, returnFocus: browseButton });
+  var changedClean = w.OraLibraryWorkspace.getState();
+  record('changed clean browse aborts list, preview and relationship owners and invalidates old result identity',
+    libraryRequestUrls.length === changedCleanRequests + 1
+    && oldList.options.signal.aborted && oldPreview.options.signal.aborted && oldRelated.options.signal.aborted
+    && changedClean.projectId === 'project-a' && changedClean.sources.join(',') === 'files'
+    && !changedClean.pinnedId && !changedClean.selectedIds.length && !changedClean.loaded
+    && changedClean.view === 'visual' && changedClean.sort === 'title'
+    && w.document.querySelector('[data-library-source-count]').textContent === '1');
+  newBrowse.resolve(libraryPayload([contextFile])); await flush(); await flush();
+  oldList.resolve(libraryPayload([visibleDialogue]));
+  oldPreview.resolve({ id: visibleDialogue.id, source: 'dialogues', text: 'Forbidden old body' });
+  oldRelated.resolve({ conversations: [{ id: 'old-related', name: 'Forbidden old relationship' }], engrams: [] });
+  await oldListPromise; await flush(); await flush();
+  record('late clean-entry responses cannot restore old rows, bodies or relationships',
+    w.OraLibraryWorkspace.getState().projectId === 'project-a' && w.OraLibraryWorkspace.getState().loaded === 1
+    && !w.OraLibraryWorkspace.getState().pinnedId && !w.OraLibraryWorkspace.getState().related.anchorId
+    && !w.document.getElementById('libraryWorkspaceResults').textContent.includes(visibleDialogue.title)
+    && !w.document.body.textContent.includes('Forbidden old'));
+  var cleanFocusRequests = libraryRequestUrls.length;
+  w.OraLibraryWorkspace.open({ returnFocus: browseButton });
+  record('Sidebar re-entry after a clean destination preserves scope without a second fetch',
+    libraryRequestUrls.length === cleanFocusRequests && w.OraLibraryWorkspace.getState().projectId === 'project-a');
+  var cleanGroup = w.document.querySelector('[data-library-group]');
+  cleanGroup.value = 'folder'; cleanGroup.dispatchEvent(new w.Event('change', { bubbles: true }));
+  queuedLibraryResponses.push(libraryPayload([]));
   w.OraLibraryWorkspace.close({ focus: false });
-  var reload = new jsdom.JSDOM('<!doctype html><body>' + libraryMountMarkup + '</body>', { url: 'http://localhost/', runScripts: 'outside-only' });
+  w.OraLibraryWorkspace.open({ projectId: 'ora', sources: ['dialogues'], cleanBrowse: true });
+  await flush(); await flush();
+  record('closed clean entrance uses one fetch and repairs an incompatible grouping with synchronized controls',
+    libraryRequestUrls.length === cleanFocusRequests + 1 && w.OraLibraryWorkspace.getState().group === 'none'
+    && cleanGroup.value === 'none' && cleanGroup.querySelector('option[value="folder"]').disabled
+    && w.OraLibraryWorkspace.getState().view === 'visual'
+    && Array.from(w.document.querySelectorAll('[data-library-source]:checked')).map(function (input) { return input.value; }).join(',') === 'dialogues');
+  w.OraLibraryWorkspace.close({ focus: false });
+  var reload = new jsdom.JSDOM('<!doctype html><body>' + libraryMountMarkup + '</body>', { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
   reload.window.localStorage.setItem('ora.library.last-view', 'visual');
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, '..', 'js/library-workspace.js'), 'utf8'), reload.getInternalVMContext());
   record('page reload restores Visual without persisting filters or grouping', reload.window.OraLibraryWorkspace.getState().view === 'visual'
     && reload.window.OraLibraryWorkspace.getState().group === 'none');
+  var firstProjectRequest = deferredResponse();
+  var reloadRequests = [];
+  reload.window.fetch = function (url) {
+    reloadRequests.push(new reload.window.URL(url, reload.window.location.href).searchParams);
+    return reloadRequests.length === 1 ? firstProjectRequest.promise : response(true, libraryPayload([], { facets: {} }));
+  };
+  var reloadProject = reload.window.document.querySelector('[data-library-project]');
+  var initiallyOnlyCommons = Array.from(reloadProject.options).map(function (option) { return option.value; }).join(',') === 'commons';
+  reload.window.OraLibraryWorkspace.open({ projectId: 'empty-project', sources: ['files'], cleanBrowse: true });
+  record('first clean entrance selects its project before any result can supply project facets', initiallyOnlyCommons
+    && reloadProject.value === 'empty-project' && reloadProject.selectedOptions[0].textContent === 'empty-project'
+    && reload.window.OraLibraryWorkspace.getState().projectId === 'empty-project'
+    && reloadRequests.length === 1 && reloadRequests[0].get('project_id') === 'empty-project'
+    && reloadRequests[0].getAll('source').join(',') === 'files');
+  firstProjectRequest.reject(new Error('Project inventory unavailable')); await flush(); await flush();
+  record('failed first inventory preserves the selected project and shows the failure', reloadProject.value === 'empty-project'
+    && reload.window.OraLibraryWorkspace.getState().projectId === 'empty-project'
+    && reload.window.document.getElementById('libraryWorkspaceNotice').textContent.includes('Project inventory unavailable'));
+  await reload.window.OraLibraryWorkspace.refresh();
+  record('empty inventory with empty facets preserves the project and reports an honest empty state', reloadProject.value === 'empty-project'
+    && reload.window.document.querySelector('.library-empty-state').textContent.includes('selected source inventory is empty')
+    && reload.window.OraLibraryWorkspace.getState().loaded === 0);
+  reloadProject.value = 'commons'; reloadProject.dispatchEvent(new reload.window.Event('change', { bubbles: true }));
+  await flush(); await flush();
+  var commonsSelected = reloadProject.value === 'commons' && reload.window.OraLibraryWorkspace.getState().projectId === 'commons'
+    && reloadRequests.length === 3 && !reloadRequests[2].has('project_id');
+  reloadProject.value = 'empty-project'; reloadProject.dispatchEvent(new reload.window.Event('change', { bubbles: true }));
+  await flush(); await flush();
+  record('the Project control can switch from Commons back to the empty destination without result facets', commonsSelected
+    && reloadProject.value === 'empty-project' && reload.window.OraLibraryWorkspace.getState().projectId === 'empty-project'
+    && reloadRequests.length === 4 && reloadRequests[3].get('project_id') === 'empty-project'
+    && Array.from(reloadProject.options).filter(function (option) { return option.value === 'empty-project'; }).length === 1);
+  reload.window.OraLibraryWorkspace.close({ focus: false });
   reload.window.close();
   var storageFailure = new jsdom.JSDOM('<!doctype html><body>' + libraryMountMarkup + '</body>', { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
   Object.defineProperty(storageFailure.window, 'localStorage', { get() { throw new Error('blocked'); } });

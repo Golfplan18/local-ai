@@ -216,7 +216,7 @@ def list_active_project_meta(
     """Return active real projects in the canonical project-metadata order.
 
     ``project_meta.list_project_meta`` owns both explicit priority ranks and
-    the existing ``last_accessed_at`` fallback for unranked projects.  Filtering
+    immutable-nexus tie-breaking for tied and unranked projects.  Filtering
     that list in place keeps both guarantees; this consumer must not sort it a
     second time or maintain a competing order.
     """

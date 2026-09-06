@@ -150,7 +150,7 @@ class ProjectPriorityConsumerTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def test_active_projects_keep_canonical_priority_and_recency_order(self):
+    def test_active_projects_keep_canonical_priority_and_stable_nexus_order(self):
         self._write_project(
             "inactive-first", status="inactive", priority=0,
             last_accessed_at="2026-06-01T00:00:00",
@@ -182,7 +182,7 @@ class ProjectPriorityConsumerTests(unittest.TestCase):
 
         self.assertEqual(
             [row["nexus"] for row in rows],
-            ["zulu-ranked", "beta-ranked", "zeta-recent", "alpha-old"],
+            ["zulu-ranked", "beta-ranked", "alpha-old", "zeta-recent"],
         )
         self.assertTrue(all(row["status"] == "active" for row in rows))
         self.assertTrue(all(not row.get("is_default") for row in rows))

@@ -256,7 +256,7 @@ def _project_priority_source(stamp: str) -> dict[str, Any]:
                 state,
                 time=_text(record.get("last_accessed_at") or record.get("created")) or None,
                 scope={"project_nexus": nexus},
-                actions=["open_project"],
+                actions=["open_project", "open_project_files", "open_project_dialogues", "open_project_knowledge"],
             ))
     except Exception as exc:
         return _source(
