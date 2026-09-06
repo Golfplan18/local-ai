@@ -699,6 +699,19 @@ class MatrixTasksTests(unittest.TestCase):
         self.assertEqual([t["text"] for t in self.read()["tasks"]], ["Actual"])
         self.act("edit", value="Actual changed")
         self.assertIn("- [ ] Commented example", self.path.read_text())
+        for opening, closing in (("~~~markdown", "~~~"), ("````markdown", "````")):
+            with self.subTest(opening=opening):
+                example = f"{opening}\n<!-- MASTER_MATRIX_PROJECTION_START -->\n<!-- MASTER_MATRIX_PROJECTION_END -->\n{closing}\n"
+                group = self.put("## Tasks\n- [ ] One\n\n" + example)
+                self.assertTrue(group["editable"])
+                self.assertEqual(group["counts"], {"total": 1, "completed": 0, "incomplete": 1})
+                original = self.path.read_bytes()
+                result = self.act("edit", group, value="One revised")
+                self.assertTrue(result["saved"])
+                self.assertEqual(result["group"]["source_text"], "- [ ] One revised\n\n" + example)
+                expected = original.replace(b"- [ ] One\n", b"- [ ] One revised\n").replace(
+                    b"date modified: 2001-01-01", f"date modified: {tasks.date.today().isoformat()}".encode())
+                self.assertEqual(self.path.read_bytes(), expected)
         for commented in ("- [ ] Commented continuation", "Keep this note commented."):
             with self.subTest(commented=commented):
                 group = self.put(f"## Tasks\n- [ ] Review MASTER_MATRIX_PROJECTION_START <!--\n{commented}\n-->\n- [ ] Visible\n")
@@ -722,6 +735,7 @@ class MatrixTasksTests(unittest.TestCase):
             "<!-- MASTER_MATRIX_PROJECTION_END -->\n",
             "## Tasks\n- [ ] One\n## TASKS\n- [ ] Two\n",
             "<!-- MASTER_MATRIX_PROJECTION_START -->\n## Tasks\n- [ ] Protected\n<!-- MASTER_MATRIX_PROJECTION_END -->\n",
+            "## Tasks\n- [ ] One\n<!-- MASTER_MATRIX_PROJECTION_START -->\n<!-- MASTER_MATRIX_PROJECTION_END -->\n",
         ):
             with self.subTest(body=body):
                 self.put(body)

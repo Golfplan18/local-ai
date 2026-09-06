@@ -97,6 +97,7 @@ class Document:
         comment_start = None
         projection = False
         markers = []
+        marker_lines = []
         task_heads = []
         eligible = {}
         for index, line in enumerate(self.lines):
@@ -126,6 +127,7 @@ class Document:
             if marker:
                 kind = marker[1]
                 markers.append(kind)
+                marker_lines.append(index)
                 if kind == "START":
                     if projection or len(markers) != 1:
                         self.error = "The strategic projection has duplicate or misplaced markers."
@@ -173,7 +175,7 @@ class Document:
             head = task_heads[0]
             end = next((i for i, _ in self.headings if i > head), len(self.lines))
             self.section = (head + 1, end)
-            if any(MARKER.match(line.rstrip("\r\n")) for line in self.lines[head + 1:end]):
+            if any(head < index < end for index in marker_lines):
                 self.error = "The Tasks section crosses a strategic projection boundary."
             stack = []
             for index in range(head + 1, end):
