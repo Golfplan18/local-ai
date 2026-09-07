@@ -212,9 +212,11 @@ def interpret(case: dict, available: list[set[str]], path: Path) -> list[dict]:
                 if tail.startswith(("=", ":")):
                     # Keep every named identity in the required missing-field list.
                     identity = r"(?:\x60[a-z][a-z0-9_]*\x60|'[a-z][a-z0-9_]*'|\"[a-z][a-z0-9_]*\"|[a-z][a-z0-9_]*)"
-                    listing = re.match(r"^[=:]\s*(" + identity + r"(?:\s*(?:\+|,|\bAND\b|\band\b)\s*" + identity + r")*)(.*)$", tail, re.DOTALL)
+                    separator = r"(?:\+|,|\bAND\b|\band\b)"
+                    listing = re.match(r"^[=:]\s*(" + identity + r"(?:\s*" + separator + r"\s*" + identity + r")*)(.*)$", tail, re.DOTALL)
                     if listing:
-                        fields = [unquote(item) for item in re.findall(identity, listing[1]) if item not in ("and", "AND")]
+                        fields = [unquote(item) for item in re.findall(
+                            r"(?:^|" + separator + r")\s*(" + identity + r")", listing[1])]
                         tail = listing[2]
                     else:
                         tail = "unmeasured missing-field identities"

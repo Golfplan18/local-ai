@@ -423,6 +423,25 @@ class TestRoutingCorpusOracle(unittest.TestCase):
                 case = self.admitted(**fields)
                 result = self.oracle.evaluate_case(case, Mock(return_value=actual))
                 self.assertEqual(tuple(result[f"s{s}_pass"] for s in (1, 2, 3)), expected)
+        named_fields = (
+            ("and", ("and",)),
+            ("and and artifact", ("and", "artifact")),
+            ("artifact and and", ("artifact", "and")),
+            ("first_field + and, second_field", ("first_field", "and", "second_field")),
+            ('"and", first_field AND \'last_field\'', ("and", "first_field", "last_field")),
+            ("first_field and `and` + second_field", ("first_field", "and", "second_field")),
+        )
+        for listing, required in named_fields:
+            case = self.admitted(s3=f"missing-input={listing}")
+            for absent in (None, *required):
+                with self.subTest(listing=listing, absent=absent):
+                    actual = self.routing(complete=False, missing=tuple(field for field in required if field != absent))
+                    result = self.oracle.evaluate_case(case, Mock(return_value=actual))
+                    self.assertIs(result["s3_pass"], absent is None)
+        for listing in ("and artifact", "first_field and", "first_field + AND", "first_field + + second_field"):
+            with self.subTest(unsupported_listing=listing):
+                self.source(self.item(s3=f"missing-input={listing}"))
+                self.assert_refused_without_effects("UNSUPPORTED MEASUREMENT", 1)
         case = self.admitted(prompt='“Preserve the whole task, including ‘quotes’.”', s4="deferred Stage 4 requirement stays unmeasured")
         pipeline = Mock(return_value=self.routing())
         self.oracle.evaluate_case(case, pipeline)
