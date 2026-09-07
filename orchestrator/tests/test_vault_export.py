@@ -617,6 +617,45 @@ class TestExportHappyPath(unittest.TestCase):
                 self.assertEqual(yaml.safe_load(text.split("---\n", 2)[1])["nexus"] or [], nexuses)
                 self.assertIn("# " + envelope["session_title"] + "\n", text)
                 self.assertIn("Draw me a fishbone of deployment failures.", text)
+        # Exercise the actual normal writer: it emits display_name/created,
+        # while this exporter keeps its existing first-prompt heading text.
+        from orchestrator import conversation_memory as cm
+        from datetime import date
+        prompt = "Explain this:\nsecond line"
+        for date_source in ("normal", "both", "legacy"):
+            with self.subTest(date_source=date_source):
+                conversation_id = f"normal-{date_source}"
+                source = cm.save_turn_spatial_state(
+                    conversation_id, prompt, "Canonical answer",
+                    timestamp="2021-03-04T10:00:00", turn_privacy="standard",
+                    chunk_id=f"{conversation_id}-turn-1", turn_index=1,
+                    sessions_root=self.sessions,
+                )
+                self.assertIsNotNone(source)
+                envelope = json.loads(source.read_text())
+                self.assertEqual(envelope["display_name"], "Explain this: second line")
+                self.assertNotIn("session_title", envelope)
+                self.assertNotIn("created_at", envelope)
+                if date_source == "both":
+                    envelope["created_at"] = "1999-01-02 10:00:00"
+                elif date_source == "legacy":
+                    envelope["created_at"] = envelope.pop("created")
+                source.write_text(json.dumps(envelope))
+                source_bytes = source.read_bytes()
+                with _FakeRenderCLIContext(self.stub_cli, "ok"):
+                    result = V.export_session_to_vault(
+                        conversation_id, vault_root=self.vault,
+                        sessions_root=self.sessions, raw_conversations_dir=self.raw,
+                        node_cli=self.stub_cli, _validator=_passthrough_validator,
+                    )
+                metadata, body = result.markdown_path.read_text().split("---\n", 2)[1:]
+                parsed = yaml.safe_load(metadata)
+                self.assertEqual(parsed["date created"], date(2021, 3, 4))
+                self.assertEqual(parsed["date modified"], date.today())
+                self.assertTrue(body.startswith(f"# {prompt}\n"))
+                self.assertIn(prompt, body[body.index("**User"):])
+                self.assertTrue(result.markdown_path.name.endswith("-explain-this-second-line.md"))
+                self.assertEqual(source.read_bytes(), source_bytes)
         self.assertEqual(V._build_canonical_frontmatter, original)
 
     def test_markdown_preserves_user_prose(self):

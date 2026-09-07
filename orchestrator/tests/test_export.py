@@ -423,8 +423,20 @@ class ExportEndpointTests(unittest.TestCase):
 
     def test_full_dialogue_metadata_outcomes(self):
         import vault_export as ve
-        self._source()
+        from orchestrator import conversation_memory as cm
+        from datetime import date
         sessions = pathlib.Path(self._tmp.name) / "sessions"
+        prompt = "Explain this:\nsecond line"
+        source = cm.save_turn_spatial_state(
+            "metadata-export", prompt, '# Source: "quoted"\n\nCanonical body\n',
+            timestamp="2021-03-04T10:00:00", tag="private", turn_privacy="private",
+            chunk_id="metadata-turn-1", turn_index=1, sessions_root=sessions,
+        )
+        self.assertIsNotNone(source)
+        source_bytes = source.read_bytes()
+        patcher = mock.patch.object(cm, "_DEFAULT_SESSIONS_ROOT", sessions)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         matrix = self.vault / "Administration" / "Reference — Master Matrix.md"
         matrix.parent.mkdir()
         matrix.write_text("# Master Matrix\nproject property name: dialogue\n")
@@ -451,7 +463,13 @@ class ExportEndpointTests(unittest.TestCase):
                     saved = pathlib.Path(result.get("path") or result["markdown_path"]).read_text()
                     self.assertIn("Canonical body", saved)
                     self.assertNotIn("Client lie", saved)
-                    self.assertIn("private", yaml.safe_load(saved.split("---\n", 2)[1])["tags"])
+                    metadata, body = saved.split("---\n", 2)[1:]
+                    parsed = yaml.safe_load(metadata)
+                    self.assertIn("private", parsed["tags"])
+                    self.assertEqual(parsed["date created"], date(2021, 3, 4))
+                    self.assertEqual(parsed["date modified"], date.today())
+                    self.assertTrue(body.startswith(f"# {prompt}\n"))
+                    self.assertEqual(source.read_bytes(), source_bytes)
 
     def test_missing_project_returns_404_without_nexus_folder_fallback(self):
         r = self.client.post("/api/export", json={

@@ -1079,10 +1079,13 @@ def export_session_to_vault(
     topic_for_nexus = session_title or convo.get("session_title") or first_user or ""
     nexus = _match_topic_to_nexus(topic_for_nexus, matrix_identifiers)
     modified_at = datetime.now()
+    # Normal saved Dialogues use created; raw logs and older export inputs
+    # retain created_at. Bind composition and validation to that same source.
+    created_at = convo.get("created") or convo.get("created_at")
     frontmatter = _build_canonical_frontmatter(
         nexus=[], type_="chat",
         tags=(["private"] if not stealth_export and export_privacies & {"private", "stealth"} else []),
-        created_at=convo.get("created_at"), modified_at=modified_at,
+        created_at=created_at, modified_at=modified_at,
     )
     if nexus:
         encoded_nexus = yaml.safe_dump({"nexus": nexus}, allow_unicode=True).replace("\n-", "\n  -")
@@ -1090,8 +1093,9 @@ def export_session_to_vault(
     heading = f"# {resolved_title}\n"
     report = require_valid_document(
         frontmatter + heading,
-        DocumentIdentity(tuple(nexus), f"{stem}.md", resolved_title,
-                         created=_format_vault_date(convo.get("created_at")) or convo.get("created_at") or modified_at.date(),
+        # Preserve the owner's multiline title text: only its first line is H1.
+        DocumentIdentity(tuple(nexus), f"{stem}.md", re.split(r"[\r\n]", resolved_title, maxsplit=1)[0].rstrip(),
+                         created=_format_vault_date(created_at) or created_at or modified_at.date(),
                          modified=modified_at.date()),
         owner="chat",
     )
