@@ -526,6 +526,10 @@ class TestExportHappyPath(unittest.TestCase):
         self.sessions.mkdir()
         self.raw = self.td / "raw"
         self.raw.mkdir()
+        self.vault.mkdir(exist_ok=True)
+        self.matrix = self.vault / "Administration" / "Reference — Master Matrix.md"
+        self.matrix.parent.mkdir()
+        self.matrix.write_text("# Master Matrix\n")
 
         # Stub Node CLI (ok).
         self.stub_cli = _stub_cli_script(self.td, "ok")
@@ -540,10 +544,16 @@ class TestExportHappyPath(unittest.TestCase):
         )
         _mk_structured_conversation(self.sessions, "test-conv-001", [
             {"role": "user", "content": "Draw me a fishbone of deployment failures.",
-             "timestamp": "2026-04-17 10:00:00"},
+             "timestamp": "2026-04-17 10:00:00", "turn_index": 1,
+             "chunk_id": "test-conv-001-turn-1", "turn_privacy": "standard"},
             {"role": "assistant", "content": asst,
-             "timestamp": "2026-04-17 10:00:05"},
+             "timestamp": "2026-04-17 10:00:05", "turn_index": 1,
+             "chunk_id": "test-conv-001-turn-1", "turn_privacy": "standard"},
         ])
+        source = self.sessions / "test-conv-001" / "conversation.json"
+        envelope = json.loads(source.read_text())
+        envelope["tag"] = ""
+        source.write_text(json.dumps(envelope))
 
     def tearDown(self):
         self._td.cleanup()
@@ -567,6 +577,21 @@ class TestExportHappyPath(unittest.TestCase):
     def test_markdown_has_frontmatter(self):
         # Phase 5.7: YAML follows Schema §12 — only nexus, type, tags, dates.
         # conversation_id and session_title moved to body meta block.
+        from orchestrator.project_documents import InvalidProjectDocumentError
+        original = V._build_canonical_frontmatter
+        for malformed in (
+            "---\ntype: [chat]\n---\n",
+            "---\nnexus: [wrong]\ntype: chat\ntags:\ndate created: 2026-02-30\ndate modified: 2026-04-17\n---\n",
+        ):
+            with mock.patch.object(V, "_build_canonical_frontmatter", return_value=malformed), mock.patch.object(V, "_render_envelope_to_svg") as renderer:
+                with self.assertRaises(InvalidProjectDocumentError):
+                    self._export()
+                renderer.assert_not_called()
+            self.assertFalse((self.vault / "Sessions").exists())
+        # Both a source-backed multi-nexus match and an authenticated empty
+        # match remain valid for this specialized Dialogue owner.
+        import yaml
+        self.matrix.write_text("project property name: deployment\nproject property name: failures\n")
         res = self._export()
         text = res.markdown_path.read_text()
         self.assertTrue(text.startswith("---\n"))
@@ -578,6 +603,9 @@ class TestExportHappyPath(unittest.TestCase):
         # controlled vocabulary; the indexer doesn't auto-emit them.
         # Body meta block still carries the conversation id for back-link.
         self.assertIn("test-conv-001", text)
+        self.assertEqual(yaml.safe_load(text.split("---\n", 2)[1])["nexus"], ["deployment", "failures"])
+        self.assertTrue(res.warnings)
+        self.assertEqual(V._build_canonical_frontmatter, original)
 
     def test_markdown_preserves_user_prose(self):
         res = self._export()

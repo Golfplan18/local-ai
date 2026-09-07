@@ -66,6 +66,13 @@ class ProjectsMomEndpointTests(unittest.TestCase):
         self.assertFalse(body["ok"])
 
     def test_post_creates_then_get_reads(self):
+        from orchestrator import operation_matrix as om
+        with mock.patch.object(om, "_new_matrix_text", return_value="---\ntype: [matrix]\n---\n"):
+            refusal = self.client.post("/api/projects/my-book/mom", json={"mission": "Refused"})
+        self.assertEqual(refusal.status_code, 409, refusal.data)
+        self.assertTrue(refusal.json["metadata_invalid"])
+        self.assertNotIn("mom", refusal.json)
+        self.assertFalse(list((self.vault / "Matrix").iterdir()))
         r = self.client.post(
             "/api/projects/my-book/mom",
             json={
@@ -81,6 +88,7 @@ class ProjectsMomEndpointTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         mom = json.loads(r.data)["mom"]
         self.assertTrue(mom["exists"])
+        self.assertTrue(mom["warnings"])
         self.assertEqual(mom["mission"], "Tell a story.")
         self.assertEqual(len(mom["milestones"]), 2)
         # File actually landed in the vault Matrix dir.

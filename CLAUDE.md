@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code when working in this repository.
 
+For shallow vault orientation, consult the selected vault's root `Directory Map.md` if present. Check its generation time and incomplete-source notices; it lists folders and authenticated project Matrix pointers, not every file. If missing or old, inspect the named source instead of treating the map as authority. Keep the vault Registry's separate document guidance. The explicit generator is documented in Technical Documentation; this entry does not authorize a refresh or uploading private names/descriptions.
+
 ## Vault Canonical Rule (READ FIRST)
 
 **The Wisdom Nexus vault at `/Users/oracle/Documents/vault/` is the canonical source of truth for all markdown content in this repository.** Files in `~/ora/` are operational copies the orchestrator loads at runtime; the vault is where edits happen and where the source-of-truth lives.

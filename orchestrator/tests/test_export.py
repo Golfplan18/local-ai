@@ -9,6 +9,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+import yaml
 from unittest import mock
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -145,12 +146,31 @@ class ExportModuleTests(unittest.TestCase):
 
     def test_save_project_goes_to_project_folder(self):
         self.pm.create_project("My Book")
+        content = '# Body heading\n\nExact "prose": Ω\n```text\nx:y\n```\n'
+        title = 'Review: "findings"'
+        warnings = []
         path = ex.save_output_to_vault(
-            "content", title="Draft", project_nexus="my-book",
-            vault=self.vault)
+            content, title=title, project_nexus="my-book",
+            vault=self.vault, turn_privacy="private", warnings=warnings)
         self.assertEqual(path.parent.name, "My Book")
         self.assertEqual(path.parent.parent.name, "Projects")
         self.assertIn("nexus:\n  - my-book", path.read_text(encoding="utf-8"))
+        metadata, body = path.read_text().split("---\n", 2)[1:]
+        parsed = yaml.safe_load(metadata)
+        self.assertEqual(parsed["title"], title)
+        self.assertIn("private", parsed["tags"])
+        self.assertIn(content, body)
+        self.assertTrue(warnings)
+        # Corrupt proposed writer metadata before a newly selected folder exists.
+        self.pm.create_project("Unwritten")
+        folder = self.vault / "Projects" / "Unwritten"
+        if folder.exists():
+            folder.rmdir()
+        from orchestrator.project_documents import InvalidProjectDocumentError
+        with mock.patch.object(ex, "_format_nexus", return_value="nexus: [wrong]\n"):
+            with self.assertRaises(InvalidProjectDocumentError):
+                ex.save_output_to_vault(content, project_nexus="unwritten", vault=self.vault)
+        self.assertFalse(folder.exists())
 
     def test_immutable_folder_name_is_loaded_from_record(self):
         self.pm.create_project("My Book")
@@ -206,6 +226,8 @@ class ExportModuleTests(unittest.TestCase):
         p2 = ex.save_output_to_vault("b", title="Same", vault=self.vault)
         self.assertNotEqual(p1, p2)
         self.assertTrue(p2.name.endswith("-2.md"))
+        self.assertTrue(p1.read_text().endswith("a\n"))
+        self.assertTrue(p2.read_text().endswith("b\n"))
 
     def test_project_output_filename_reserves_collision_and_temp_suffix(self):
         self.pm.create_project("My Book")
@@ -281,7 +303,30 @@ class ExportEndpointTests(unittest.TestCase):
         from orchestrator.embedding import install_test_stub
         install_test_stub()
         from server import app as server
+        self.server = server
         self.client = server.app.test_client()
+
+    def _source(self, content='# Source: "quoted"\n\nCanonical body\n', privacy="private"):
+        from orchestrator import conversation_memory as cm
+        sessions = pathlib.Path(self._tmp.name) / "sessions"
+        path = sessions / "metadata-export" / "conversation.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({
+            "conversation_id": "metadata-export", "tag": "private" if privacy == "private" else "",
+            "created_at": "2026-04-17 10:00:00", "session_title": "Source Dialogue",
+            "messages": [
+                {"role": role, "content": text, "turn_privacy": privacy,
+                 "turn_index": 1, "chunk_id": "metadata-turn-1"}
+                for role, text in (("user", "Canonical question"), ("assistant", content))
+            ],
+        }))
+        patcher = mock.patch.object(cm, "_DEFAULT_SESSIONS_ROOT", sessions)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return {
+            "conversation_id": "metadata-export", "source_conversation_id": "metadata-export",
+            "source_turn_index": 1, "source_chunk_id": "metadata-turn-1", "turn_privacy": privacy,
+        }
 
     def tearDown(self):
         if self._orig_env is None:
@@ -293,14 +338,28 @@ class ExportEndpointTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_current_output_saves_markdown(self):
+        authority = self._source()
         r = self.client.post("/api/export", json={
             "scope": "current_output", "content": "# Out\n\nbody", "title": "T",
-            "project": "commons"})
+            "project": "commons", **authority})
         self.assertEqual(r.status_code, 200)
         body = json.loads(r.data)
         self.assertTrue(body["ok"])
         self.assertTrue(pathlib.Path(body["path"]).is_file())
         self.assertEqual(pathlib.Path(body["path"]).parent.resolve(), self.vault.resolve())
+        self.assertTrue(body["warnings"])
+        saved = pathlib.Path(body["path"]).read_text()
+        self.assertIn('Source: "quoted"', saved)
+        self.assertIn("Canonical body", saved)
+        self.assertNotIn("# Out", saved)
+        self.assertIn("private", yaml.safe_load(saved.split("---\n", 2)[1])["tags"])
+        before = set(self.vault.iterdir())
+        with mock.patch.object(ex, "_format_nexus", return_value="nexus: broken\n"):
+            refusal = self.client.post("/api/export", json={"scope": "current_output", "project": "commons", **authority})
+        self.assertEqual(refusal.status_code, 409, refusal.data)
+        self.assertTrue(refusal.json["metadata_invalid"])
+        self.assertNotIn("path", refusal.json)
+        self.assertEqual(before, set(self.vault.iterdir()))
 
     def test_current_output_saves_markdown_legacy_general(self):
         r = self.client.post("/api/export", json={
@@ -313,6 +372,7 @@ class ExportEndpointTests(unittest.TestCase):
         self.assertEqual(pathlib.Path(body["path"]).parent.resolve(), self.vault.resolve())
 
     def test_project_rename_keeps_export_in_original_folder(self):
+        authority = self._source()
         self.pm.create_project("My Book")
         self.pm.update_project_meta("my-book", {"name": "Book of Law"})
         r = self.client.post("/api/export", json={
@@ -320,6 +380,7 @@ class ExportEndpointTests(unittest.TestCase):
             "content": "# Renamed project output",
             "title": "Renamed",
             "project": "my-book",
+            **authority,
         })
         self.assertEqual(r.status_code, 200)
         path = pathlib.Path(json.loads(r.data)["path"])
@@ -328,6 +389,38 @@ class ExportEndpointTests(unittest.TestCase):
             (self.vault / "Projects" / "My Book").resolve(),
         )
         self.assertFalse((self.vault / "Projects" / "Book of Law").exists())
+
+    def test_full_dialogue_metadata_outcomes(self):
+        import vault_export as ve
+        self._source()
+        sessions = pathlib.Path(self._tmp.name) / "sessions"
+        matrix = self.vault / "Administration" / "Reference — Master Matrix.md"
+        matrix.parent.mkdir()
+        matrix.write_text("# Master Matrix\nproject property name: dialogue\n")
+        real_export = ve.export_session_to_vault
+        def internal_export(conversation_id, **kwargs):
+            return real_export(conversation_id, vault_root=self.vault, sessions_root=sessions,
+                               raw_conversations_dir=pathlib.Path(self._tmp.name) / "raw",
+                               _validator=lambda value: None, **kwargs)
+        with mock.patch.object(ve, "export_session_to_vault", side_effect=internal_export):
+            for endpoint, extra in (("/api/export", {"scope": "full_conversation"}), ("/api/session/export", {})):
+                with self.subTest(endpoint=endpoint):
+                    payload = {"conversation_id": "metadata-export", "content": "Client lie", **extra}
+                    with mock.patch.object(ve, "_build_canonical_frontmatter", return_value="---\ntype: [chat]\n---\n"):
+                        refusal = self.client.post(endpoint, json=payload)
+                    rejected = json.loads(refusal.data)
+                    self.assertEqual(refusal.status_code, 409, rejected)
+                    self.assertTrue(rejected["metadata_invalid"])
+                    self.assertNotIn("path", rejected)
+                    self.assertNotIn("markdown_path", rejected)
+                    good = self.client.post(endpoint, json=payload)
+                    result = json.loads(good.data)
+                    self.assertEqual(good.status_code, 200, result)
+                    self.assertTrue(result["warnings"])
+                    saved = pathlib.Path(result.get("path") or result["markdown_path"]).read_text()
+                    self.assertIn("Canonical body", saved)
+                    self.assertNotIn("Client lie", saved)
+                    self.assertIn("private", yaml.safe_load(saved.split("---\n", 2)[1])["tags"])
 
     def test_missing_project_returns_404_without_nexus_folder_fallback(self):
         r = self.client.post("/api/export", json={

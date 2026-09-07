@@ -71,6 +71,11 @@ This module is deliberately free of Flask; the HTTP wrapper lives in
 """
 from __future__ import annotations
 
+from orchestrator.project_documents import (
+    DocumentIdentity, DocumentIssue, DocumentReport,
+    InvalidProjectDocumentError, require_valid_document,
+)
+
 import json
 import os
 import re
@@ -782,7 +787,7 @@ _MATRIX_PROPERTY_RE = re.compile(
 )
 
 
-def _load_master_matrix(path: Path | str | None = None) -> list[str]:
+def _load_master_matrix(path: Path | str | None = None, *, strict: bool = False) -> list[str]:
     """Parse the Master Matrix file and return a deduped list of
     project/passion identifiers (canonical nexus values).
 
@@ -792,7 +797,12 @@ def _load_master_matrix(path: Path | str | None = None) -> list[str]:
     target = Path(path) if path else _default_master_matrix_path()
     try:
         content = target.read_text(encoding="utf-8")
-    except (OSError, FileNotFoundError):
+    except (OSError, UnicodeError):
+        if strict:
+            raise InvalidProjectDocumentError(DocumentReport(
+                errors=[DocumentIssue("identity", "Master Matrix authority is unavailable")],
+                complete=False,
+            )) from None
         return []
 
     seen: set[str] = set()
@@ -1054,6 +1064,34 @@ def export_session_to_vault(
             source_title, conversation_id, first_user,
         )
 
+    # Compose metadata before any destination, ignore-file, or renderer effect.
+    # Automatic capture and chunking retain the generic builder's own contract.
+    matrix_path = Path(master_matrix_path) if master_matrix_path else next(
+        (vault_root / relative for relative in (
+            "Administration/Reference — Master Matrix.md",
+            "Engrams/Reference — Master Matrix.md",
+        ) if (vault_root / relative).is_file()),
+        vault_root / "Administration/Reference — Master Matrix.md",
+    )
+    matrix_identifiers = _load_master_matrix(matrix_path, strict=True)
+    topic_for_nexus = session_title or convo.get("session_title") or first_user or ""
+    nexus = _match_topic_to_nexus(topic_for_nexus, matrix_identifiers)
+    modified_at = datetime.now()
+    frontmatter = _build_canonical_frontmatter(
+        nexus=nexus, type_="chat",
+        tags=(["private"] if not stealth_export and export_privacies & {"private", "stealth"} else []),
+        created_at=convo.get("created_at"), modified_at=modified_at,
+    )
+    heading = f"# {resolved_title}\n"
+    report = require_valid_document(
+        frontmatter + heading,
+        DocumentIdentity(tuple(nexus), f"{stem}.md", resolved_title,
+                         created=_format_vault_date(convo.get("created_at")) or convo.get("created_at") or modified_at.date(),
+                         modified=modified_at.date()),
+        owner="chat",
+    )
+    warnings.extend(report.warning_messages)
+
     # ── Prepare output directory ────────────────────────────────────────────
     sessions_dir = vault_root / sessions_subdir
     _ensure_sessions_dir(sessions_dir)
@@ -1153,24 +1191,7 @@ def export_session_to_vault(
             sidecars_per_message[mi][vi] = sidecar_name
 
     # ── Second pass: build the markdown document. ───────────────────────────
-    # Derive nexus from the topic (session title or first user message)
-    # via Master Matrix substring match. Empty list when nothing matches.
-    matrix_identifiers = _load_master_matrix(master_matrix_path)
-    topic_for_nexus = session_title or convo.get("session_title") or first_user or ""
-    nexus = _match_topic_to_nexus(topic_for_nexus, matrix_identifiers)
-
-    frontmatter = _build_canonical_frontmatter(
-        nexus=nexus,
-        type_="chat",
-        tags=(
-            ["private"]
-            if not stealth_export and export_privacies & {"private", "stealth"}
-            else []
-        ),
-        created_at=convo.get("created_at"),
-    )
     now_iso = datetime.now().isoformat(timespec="seconds")
-    heading = f"# {resolved_title}\n"
     meta_block = (
         f"\n**Exported:** {now_iso}\n"
         if stealth_export else

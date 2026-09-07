@@ -6163,6 +6163,7 @@ def api_projects_mom_set(nexus):
     "milestones_raw": str}``. Only provided sections are touched; everything
     else in the matrix file is preserved. Persisted project metadata supplies
     both physical ``folder_name`` and the human-facing H1 label."""
+    from orchestrator.project_documents import InvalidProjectDocumentError
     try:
         from orchestrator import operation_matrix as _om
     except Exception as exc:
@@ -6237,6 +6238,8 @@ def api_projects_mom_set(nexus):
             milestones=data.get("milestones"),
             milestones_raw=data.get("milestones_raw"),
         )
+    except InvalidProjectDocumentError as exc:
+        return _json_response({"ok": False, "metadata_invalid": True, "error": str(exc)}, 409)
     except (_pm.ProjectStorageError, _om.MatrixError) as exc:
         return _json_response(
             {"ok": False, "migration_required": True, "error": str(exc)}, 409)
@@ -24730,6 +24733,7 @@ def api_export():
         from orchestrator import export as _export
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
+    from orchestrator.project_documents import InvalidProjectDocumentError
     data = request.get_json(silent=True) or {}
     scope = (data.get("scope") or "current_output").strip()
     fmt = (data.get("format") or "markdown").strip().lower()
@@ -24793,11 +24797,14 @@ def api_export():
         try:
             with _full_dialogue_export_lifecycle_scope(conversation_id):
                 result = export_session_to_vault(conversation_id)
+        except InvalidProjectDocumentError as exc:
+            return _json_response({"ok": False, "metadata_invalid": True, "error": str(exc)}, 409)
         except Exception as exc:
             return _json_response({"ok": False, "error": str(exc)}, 500)
         return _json_response({
             "ok": True, "scope": scope,
             "path": str(getattr(result, "markdown_path", "") or ""),
+            "warnings": list(result.warnings),
         })
 
     if scope != "current_output":
@@ -24813,6 +24820,7 @@ def api_export():
                 {"ok": False, "error": f"active project resolution failed: {exc}"},
                 503,
             )
+    warnings: list[str] = []
     try:
         owner_id = _current_output_owner_id(data)
         with _conversation_lifecycle_lock(owner_id):
@@ -24822,7 +24830,10 @@ def api_export():
                 title=_export._derive_title(authority["content"]),
                 project_nexus=project_nexus,
                 turn_privacy=authority["turn_privacy"],
+                warnings=warnings,
             )
+    except InvalidProjectDocumentError as exc:
+        return _json_response({"ok": False, "metadata_invalid": True, "error": str(exc)}, 409)
     except _export.ProjectExportNotFoundError as exc:
         return _json_response({"ok": False, "error": str(exc)}, 404)
     except _export.ProjectExportMigrationRequiredError as exc:
@@ -24840,7 +24851,7 @@ def api_export():
         return _json_response(
             {"ok": False, "storage_available": False,
              "error": "could not write to the vault (no vault / no access)"}, 503)
-    return _json_response({"ok": True, "scope": "current_output", "path": str(path)})
+    return _json_response({"ok": True, "scope": "current_output", "path": str(path), "warnings": warnings})
 
 
 # ── WP-6.1 — Vault export ────────────────────────────────────────────────────
@@ -24874,6 +24885,7 @@ def api_session_export():
     The UI hook is deferred to WP-6.2; this endpoint is consumed directly by
     tests and (until WP-6.2 ships) by ``curl``.
     """
+    from orchestrator.project_documents import InvalidProjectDocumentError
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         data = {}
@@ -24903,6 +24915,8 @@ def api_session_export():
                 conversation_id=conversation_id,
                 **kwargs,
             )
+    except InvalidProjectDocumentError as exc:
+        return json.dumps({"success": False, "metadata_invalid": True, "error": str(exc)}), 409
     except FileNotFoundError as e:
         return json.dumps({"error": str(e)}), 404
     except Exception as e:
