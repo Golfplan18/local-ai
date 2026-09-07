@@ -1733,6 +1733,15 @@
       previewMessage.textContent = 'Preview unavailable. The current content has not been loaded.';
     }
     previewSlots.metadata.append(heading, badges, previewMessage);
+    if (row.source === 'files') {
+      const details = (row.provenance && row.provenance.details) || {};
+      ['metadata_warning', 'category_warning'].forEach((key) => {
+        if (typeof details[key] !== 'string' || !details[key].trim()) return;
+        const warning = document.createElement('p');
+        warning.textContent = details[key];
+        previewSlots.metadata.appendChild(warning);
+      });
+    }
     if (row.source === 'dialogues') {
       renderDialogueDocument(row, currentPreview && currentPreview.turns);
       previewSlots.controls.textContent = 'Dialogues are read-only. Continue deliberately opens a retained Dialogue.';
@@ -1787,7 +1796,7 @@
   function builtinActions(row) {
     const actions = [];
     if (row) actions.push({ id: 'related', label: 'Show relationships', run: activatePinned });
-    if (row && ['dialogues', 'files'].includes(row.source) && row.preview.available) actions.push({
+    if (row && (row.source === 'files' || (row.source === 'dialogues' && row.preview.available))) actions.push({
       id: 'derived', label: 'Show derived Engrams', run: () => open({ sources: ['engrams'], provenanceId: row.id, projectId: state.projectId }),
     });
     if (row && row.source === 'engrams') actions.push({ id: 'trace', label: 'Trace from this Engram', run: () => {
