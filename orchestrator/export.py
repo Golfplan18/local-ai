@@ -35,6 +35,9 @@ vault or a permissions error (cloud-ora has neither vault nor ~/Documents).
 
 from __future__ import annotations
 
+import yaml
+from orchestrator.project_documents import DocumentIdentity, require_valid_document
+
 import os
 import ntpath
 import re
@@ -196,7 +199,7 @@ def _format_nexus(nexus: str | None) -> str:
     slug = (nexus or "").strip().lower()
     if not slug or slug in ("commons", "general"):
         return "nexus:\n"
-    return f"nexus:\n  - {slug}\n"
+    return yaml.safe_dump({"nexus": [slug]}, allow_unicode=True).replace("\n-", "\n  -")
 
 
 def save_output_to_vault(
@@ -209,6 +212,7 @@ def save_output_to_vault(
     vault: Path | None = None,
     outputs_subdir: str | None = None,
     turn_privacy: str = "standard",
+    warnings: list[str] | None = None,
 ) -> Path | None:
     """Save one rendered output as a canonical vault markdown note.
 
@@ -242,6 +246,7 @@ def save_output_to_vault(
             )
         try:
             from orchestrator import project_meta as _pm
+            _pm.validate_existing_nexus_source(canonical_nexus)
             record = _pm.read_project_meta(canonical_nexus)
         except Exception as exc:
             raise ProjectExportIdentityError(
@@ -271,11 +276,6 @@ def save_output_to_vault(
         folder = root / _safe_folder(outputs_subdir)
     else:
         folder = root
-    try:
-        folder.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        return None
-
     display = (title or "").strip() or _derive_title(content)
     today = datetime.now().strftime("%Y-%m-%d")
     path = _unique_path(
@@ -290,7 +290,7 @@ def save_output_to_vault(
         "---\n"
         + _format_nexus(project_nexus)
         + "type: output\n"
-        + f"title: {display}\n"
+        + yaml.safe_dump({"title": display}, allow_unicode=True, sort_keys=False)
         + "tags:\n"
         + "".join(f"  - {tag}\n" for tag in tags)
         + f"date created: {today}\n"
@@ -299,6 +299,18 @@ def save_output_to_vault(
     )
     body = output_content_for_privacy(content, turn_privacy)
     body = body if body.endswith("\n") else body + "\n"
+    report = require_valid_document(
+        frontmatter + body,
+        DocumentIdentity((canonical_nexus,) if is_project else (), path.name,
+                         created=today, modified=today),
+        owner="output",
+    )
+    if warnings is not None:
+        warnings.extend(report.warning_messages)
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
     try:
         tmp = path.with_suffix(path.suffix + ".tmp")
         tmp.write_text(frontmatter + body, encoding="utf-8")

@@ -862,6 +862,40 @@ class NewMatrixTemplateTests(unittest.TestCase):
         fm, _ = om._split_frontmatter(text)
         self.assertEqual(classify_matrix(fm, "Project Matrix Fresh.md")[0], "project")
         self.assertTrue(schema_valid(fm))
+        from orchestrator.project_documents import InvalidProjectDocumentError, DocumentIdentity, inspect_document
+        with tempfile.TemporaryDirectory() as temporary:
+            vault = pathlib.Path(temporary)
+            label = 'Fresh: "quoted" Ω'
+            for malformed in (
+                text.replace("tags:\n", ""),
+                text.replace("type: matrix", "type: [matrix]"),
+                text.replace("  - fresh", "  - wrong", 1),
+                text.replace("project_type:\n  - project", "project_type: project"),
+            ):
+                with mock.patch.object(om, "_new_matrix_text", return_value=malformed):
+                    with self.assertRaises(InvalidProjectDocumentError):
+                        om.write_mom("fresh", "Fresh", mission="Goal", vault=vault)
+                self.assertFalse((vault / "Matrix").exists())
+            result = om.write_mom("fresh", "Fresh", display_name=label, mission="Goal", vault=vault)
+            path = vault / "Matrix" / "Project Matrix Fresh.md"
+            report = inspect_document(path.read_text(), DocumentIdentity(("fresh",), path.name, "Project Matrix " + label), owner="matrix")
+            self.assertFalse(report.errors)
+            self.assertTrue(result["warnings"])
+            self.assertEqual(result["mission"], "Goal")
+            self.assertTrue(schema_valid(report.metadata))
+            for nexus in ("yes", "on", "123", "null", "2026-01-01"):
+                with self.subTest(nexus=nexus):
+                    created = om.write_mom(nexus, nexus, mission="First", vault=vault)
+                    encoded = pathlib.Path(created["matrix_path"]).read_text()
+                    metadata, _ = om._split_frontmatter(encoded)
+                    self.assertEqual(metadata["nexus"], [nexus])
+                    changed = om.write_mom(nexus, nexus, mission="Second", vault=vault)
+                    self.assertEqual(changed["mission"], "Second")
+            # Old documents remain splice-owned; missing metadata does not turn
+            # this new-document gate into a migration on their next MOM edit.
+            path.write_text(path.read_text().replace("tags:\n", ""))
+            om.write_mom("fresh", "Fresh", mission="Changed", vault=vault)
+            self.assertIn("Changed", path.read_text())
 
 
 if __name__ == "__main__":

@@ -46,11 +46,14 @@ at the closing marker, writes re-attach it with the file's own separator.
 from __future__ import annotations
 
 import os
+import logging
 import re
 import stat
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from orchestrator.project_documents import DocumentIdentity, require_valid_document
 
 try:
     import runtime_paths as _rp
@@ -587,9 +590,9 @@ def _new_matrix_text(nexus: str, display_name: str) -> str:
     today = datetime.now().strftime("%Y-%m-%d")
     fm = (
         "---\n"
-        "nexus:\n"
-        f"  - {nexus}\n"
-        "type: matrix\n"
+        + yaml.safe_dump({"nexus": [nexus]}, allow_unicode=True).replace("\n-", "\n  -")
+        + "type: matrix\n"
+        "tags:\n"
         # Required in list form: the MOM write gate rejects a matrix whose
         # project_type is absent or scalar, so omitting it here would make every
         # matrix Ora creates unwritable on its very next save.
@@ -613,6 +616,7 @@ def _create_matrix(
     display_name: str,
     *,
     vault: Path | None = None,
+    warnings: list[str] | None = None,
 ) -> Path | None:
     mdir = _matrix_dir(vault)
     # A cloud/headless process with no configured vault must not manufacture a
@@ -620,18 +624,29 @@ def _create_matrix(
     vroot = mdir.parent
     if not vroot.is_dir():
         return None
+    path = mdir / _matrix_filename(folder_name, vault=vroot)
+    proposed = _new_matrix_text(nexus, display_name)
+    today = datetime.now().date()
+    report = require_valid_document(
+        proposed,
+        DocumentIdentity((nexus,), path.name, f"Project Matrix {display_name}", created=today, modified=today),
+        owner="matrix",
+    )
+    if warnings is not None:
+        warnings.extend(report.warning_messages)
+    for warning in report.warning_messages:
+        logging.getLogger(__name__).warning("New Matrix metadata: %s", warning)
     try:
         mdir.mkdir(exist_ok=True)
     except OSError:
         return None
-    path = mdir / _matrix_filename(folder_name, vault=vroot)
     created = False
     try:
         # Exclusive creation prevents two projects or concurrent requests from
         # replacing a Matrix file between resolution and creation.
         with path.open("x", encoding="utf-8") as stream:
             created = True
-            stream.write(_new_matrix_text(nexus, display_name))
+            stream.write(proposed)
     except FileExistsError:
         try:
             existing = path.read_text(encoding="utf-8")
@@ -708,6 +723,7 @@ def _write_mom_locked(
         # `date modified`, which the vault's auto-sync would otherwise commit as
         # a spurious change to every matrix the user merely opened.
         return read_mom(nexus, folder_name, vault=vault)
+    warnings: list[str] = []
     path = resolve_matrix_path(nexus, folder_name, vault=vault)
     if path is None:
         if not create_if_missing or not folder_name:
@@ -717,6 +733,7 @@ def _write_mom_locked(
             folder_name,
             display_name or folder_name,
             vault=vault,
+            warnings=warnings,
         )
         if path is None:
             return None
@@ -752,7 +769,10 @@ def _write_mom_locked(
         _atomic_write(path, text)
     except OSError:
         return None
-    return read_mom(nexus, folder_name, vault=vault)
+    result = read_mom(nexus, folder_name, vault=vault)
+    if result is not None:
+        result["warnings"] = warnings
+    return result
 
 
 def write_mom(nexus: str, folder_name: str | None = None, **kwargs) -> dict[str, Any] | None:
