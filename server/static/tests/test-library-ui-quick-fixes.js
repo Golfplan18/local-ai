@@ -397,7 +397,7 @@ function deferredResponse() {
 w.fetch = function (url, opts) {
   var decoded = decodeURIComponent(String(url));
   if (decoded === '/api/overview') {
-    return response(true, { sources: ['project-priority', 'oversight', 'triggers'].map(function (sourceId) {
+    return response(true, { sources: ['project-priority', 'oversight', 'triggers', 'matrix-tasks'].map(function (sourceId) {
       return { source_id: sourceId, title: sourceId, state: 'empty', available: true, count: 0, items: [] };
     }).concat([{
       source_id: 'daily-note', title: 'Prior-day Daily Note', state: 'ready', available: true,
@@ -2033,7 +2033,7 @@ async function run() {
     w.document.querySelector('.library-preview-layer--findings').textContent
       .indexOf('intentionally metadata-only') !== -1
       && !Array.from(w.document.querySelectorAll('[data-library-action]')).some(function (button) {
-        return ['Continue Dialogue', 'Fork Dialogue', 'New Dialogue with contributor', 'Archive Dialogue']
+        return ['Continue Dialogue', 'Fork Dialogue', 'New Dialogue with contributor', 'Archive Dialogue', 'Show derived Engrams']
           .includes(button.textContent);
       }));
   record('relationship disclosure is native keyboard-readable and exposes missing family truthfully',
@@ -2657,10 +2657,19 @@ async function run() {
       && w.document.querySelector('.library-trace').textContent.includes('confidence high')
       && new w.URL(libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href).searchParams.get('trace_limit') === '50');
   var tracedFrom = w.OraLibraryWorkspace.getState().traceId;
+  var neighborPreviewRequests = previewRequestUrls.length;
+  var neighborBody = '# Current off-page neighbor\n\nReadable **neighbor content**.';
+  queuedPreviewResponses.push({ id: traceRows[1].id, source: 'engrams', text: neighborBody });
   w.document.querySelectorAll('[data-library-trace-neighbor]')[1].click();
-  await flush();
-  record('reading a neighbor preserves the current Trace context', w.OraLibraryWorkspace.getState().traceId === tracedFrom
-    && w.OraLibraryWorkspace.getState().pinnedId === traceRows[1].id);
+  await flush(); await flush();
+  record('reading an off-page neighbor fetches and displays its current content while preserving Trace context',
+    previewRequestUrls.length === neighborPreviewRequests + 1
+      && new w.URL(previewRequestUrls[previewRequestUrls.length - 1], w.location.href).searchParams.get('id') === traceRows[1].id
+      && !tracePayload.rows.some(function (row) { return row.id === traceRows[1].id; })
+      && w.document.querySelector('.library-preview-document strong').textContent === 'neighbor content'
+      && w.OraLibraryWorkspace.getState().traceId === tracedFrom
+      && w.OraLibraryWorkspace.getState().pinnedId === traceRows[1].id
+      && w.document.querySelectorAll('[data-library-trace-neighbor]').length === 51);
   var expandedPayload = libraryPayload([traceAnchor]);
   expandedPayload.trace = Object.assign({}, tracePayload.trace, { rows: traceRows, remaining: 0 });
   queuedLibraryResponses.push(expandedPayload);
@@ -2742,8 +2751,68 @@ async function run() {
   try { w.OraLibraryWorkspace.open({ sources: ['not-a-source'] }); } catch (error) { invalidEntryRejected = true; }
   record('invalid derived-source entry is rejected without a request or scope mutation', invalidEntryRejected
     && libraryRequestUrls.length === chipRequests + 1);
-  queuedLibraryResponses.push(libraryPayload([contextEngram]));
+
+  var warningFile = libraryRow('files:d2FybmluZw', 'files', 'Warned Markdown.md', {
+    metadata: { item_type: 'File' },
+    provenance: { available: true, kind: 'files', identity: 'warning', details: {} },
+  });
+  var unsupportedFile = libraryRow('files:dW5zdXBwb3J0ZWQ', 'files', 'Unsupported binary', {
+    metadata: { item_type: 'File', content_type: 'application/octet-stream' },
+    preview: { kind: 'unsupported', available: false, reason: 'No supported preview.' },
+    provenance: { available: true, kind: 'files', identity: 'unsupported', details: {
+      metadata_warning: '   ', category_warning: { message: 'Non-string warning must not render' },
+    } },
+  });
+  queuedLibraryResponses.push(libraryPayload([warningFile, unsupportedFile]));
+  w.OraLibraryWorkspace.open({ sources: ['files'], projectId: 'commons' });
+  await flush(); await flush();
+  w.document.querySelector('[data-library-row-id="' + warningFile.id + '"] .library-list-row__pin').click();
+  await flush(); await flush();
+  queuedEditResponses.push({ id: warningFile.id, source: 'files', text: rawMarkdown, digest: editDigest });
+  w.document.querySelector('[data-library-edit="start"]').click(); await flush(); await flush();
+  var warningDraft = w.document.querySelector('[data-library-edit-draft]');
+  var warningView = draftView(warningDraft);
+  replaceDraft(warningDraft, 'Unsaved File draft survives warning refresh');
+  var warningHost = w.document.querySelector('.library-preview-document');
+  var metadataWarning = 'Metadata unavailable <img src="https://invalid.test/warning" onerror="window.warningExecuted = true">';
+  var categoryWarning = 'Category invalid <script>window.warningExecuted = true</script>';
+  warningFile.provenance.details = { metadata_warning: metadataWarning, category_warning: categoryWarning };
+  queuedLibraryResponses.push(libraryPayload([warningFile, unsupportedFile]));
   await w.OraLibraryWorkspace.refresh(); await flush(); await flush();
+  var warningMetadata = w.document.querySelector('.library-preview-metadata');
+  record('File metadata and category warnings render literally while preserving the mounted editor and unsaved draft',
+    Array.from(warningMetadata.querySelectorAll('p')).some(function (node) { return node.textContent === metadataWarning; })
+      && Array.from(warningMetadata.querySelectorAll('p')).some(function (node) { return node.textContent === categoryWarning; })
+      && !warningMetadata.querySelector('img, script') && !w.warningExecuted
+      && warningHost === w.document.querySelector('.library-preview-document')
+      && warningView === draftView(warningDraft)
+      && warningView.state.doc.toString() === 'Unsaved File draft survives warning refresh');
+  var unsupportedPreviewRequests = previewRequestUrls.length;
+  w.document.querySelector('[data-library-row-id="' + unsupportedFile.id + '"] .library-list-row__pin').click();
+  await flush(); await flush();
+  var clearedWarningMetadata = w.document.querySelector('.library-preview-metadata');
+  record('next pin removes prior File warnings and ignores blank or non-string warning fields',
+    !clearedWarningMetadata.textContent.includes(metadataWarning)
+      && !clearedWarningMetadata.textContent.includes(categoryWarning)
+      && !clearedWarningMetadata.textContent.includes('Non-string warning')
+      && clearedWarningMetadata.querySelectorAll('p').length === 2
+      && previewRequestUrls.length === unsupportedPreviewRequests
+      && w.OraConversation.getActiveConversationId() === activeDialogueBeforePreview
+      && inquiryDraft.value === 'Composer draft survives Library preview');
+  queuedLibraryResponses.push(libraryPayload([]));
+  var fileDerivedRequests = libraryRequestUrls.length;
+  w.document.querySelector('[data-library-action="derived"]').click(); await flush(); await flush();
+  var fileDerivedParams = new w.URL(libraryRequestUrls[libraryRequestUrls.length - 1], w.location.href).searchParams;
+  record('an admitted File without preview browses derived Engrams once and reports an honest empty result',
+    libraryRequestUrls.length === fileDerivedRequests + 1
+      && fileDerivedParams.get('source') === 'engrams'
+      && fileDerivedParams.get('provenance_id') === unsupportedFile.id
+      && w.OraLibraryWorkspace.getState().projectId === 'commons'
+      && w.OraLibraryWorkspace.getState().sources.join(',') === 'engrams'
+      && !w.OraLibraryWorkspace.getState().pinnedId
+      && w.document.querySelector('.library-empty-state').textContent.includes('No admitted indexed derivation'));
+  queuedLibraryResponses.push(libraryPayload([contextEngram]));
+  w.document.querySelector('[data-library-chip="provenance_id"]').click(); await flush(); await flush();
   w.document.querySelector('.library-list-row__pin').click(); await flush(); await flush();
   queuedEditResponses.push({ id: contextEngram.id, source: 'engrams', text: rawMarkdown, digest: editDigest });
   w.document.querySelector('[data-library-edit="start"]').click(); await flush(); await flush();

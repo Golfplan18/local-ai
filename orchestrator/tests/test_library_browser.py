@@ -2508,6 +2508,88 @@ class TestLibraryCompletion(unittest.TestCase):
                 self.assertTrue(any(edge["family"] == "unclassified" for edge in expanded["edges"]))
                 self.assertTrue(all(len(call) <= count + 1 for call in calls))
 
+        import copy
+        import json
+        import tempfile
+        from pathlib import Path
+
+        server = _server_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            rows = []
+            for index in range(112):
+                path = root / f"N{index:03}.md"
+                if index != 111:
+                    path.write_text(f"---\ntype: engram\n---\nCurrent neighbor {index}\n")
+                row = _row(str(path), f"N{index:03}", tag="kept", modified_at="2026-09-01")
+                row["metadata"]["item_type"] = "engram"
+                row["_relationship_identity"] = path.stem
+                row["preview"].update(available=False, locator={"path": str(path)})
+                row["editability"].update(available=False, editable=None)
+                if index == 110:
+                    row["editability"].update(available=True, editable=False,
+                                              reason="ambiguous source remains read-only")
+                rows.append(row)
+            selected = stable_item_id("engrams", rows[0]["identity"])
+            edges = [{"source": "N000", "target": target, "type": "supports", "confidence": "high"}
+                     for target in ("N001", "N109", "N110", "N111", "SECRET")]
+            secret_file = dict(_row(str(root / "SECRET.md"), "File", tag="", modified_at="2026-09-01"),
+                               _relationship_identity="SECRET")
+
+            def response_with_distinct_trace_representation(*args, **kwargs):
+                payload = build_browser_response(*args, **kwargs)
+                if payload.get("trace") and payload["trace"]["rows"]:
+                    # A separately returned representation must receive access too;
+                    # the other shared page/Trace row must be inspected only once.
+                    payload["trace"]["rows"][0] = copy.deepcopy(payload["trace"]["rows"][0])
+                return payload
+
+            with mock.patch.object(server, "_library_engram_provider", side_effect=lambda *a, **k: {
+                    "rows": copy.deepcopy(rows), "complete": True}), \
+                 mock.patch.object(server, "_library_dialogue_provider", return_value={"rows": [], "complete": True}), \
+                 mock.patch.object(server, "_library_file_provider", return_value={"rows": [secret_file], "complete": True}), \
+                 mock.patch.object(server, "_library_resolve_relationships", return_value={"state": "fresh", "edges": edges}), \
+                 mock.patch("orchestrator.library_browser.build_browser_response", side_effect=response_with_distinct_trace_representation), \
+                 mock.patch.object(server, "_library_hydrate_returned_engram_access",
+                                   wraps=server._library_hydrate_returned_engram_access) as hydrate:
+                client = server.app.test_client()
+                query = {"source": "engrams", "trace_id": selected}
+                normal = client.get("/api/library/browser", query_string=query).get_json()
+                streamed = client.get("/api/library/browser", query_string={**query, "stream": "1"})
+                frames = [json.loads(line) for line in streamed.data.splitlines()]
+                self.assertTrue(frames[-1]["final"])
+                self.assertEqual(normal, frames[-1]["data"])
+                self.assertEqual(hydrate.call_count, 2)
+                for call in hydrate.call_args_list:
+                    returned = call.args[0]
+                    self.assertEqual(len(returned), 104)
+                    self.assertEqual(len({id(row) for row in returned}), len(returned))
+                    self.assertEqual(sum(row["id"] == selected for row in returned), 2)
+                    self.assertNotIn(rows[108]["identity"], [row["preview"]["locator"]["path"] for row in returned])
+                for payload in (normal, frames[-1]["data"]):
+                    self.assertEqual(payload["total"], 112)
+                    self.assertEqual(len(payload["rows"]), 100)
+                    self.assertTrue(payload["pagination"]["has_more"])
+                    trace_rows = {row["id"]: row for row in payload["trace"]["rows"]}
+                    self.assertEqual(payload["trace"]["total_neighbors"], 4)
+                    self.assertNotIn("SECRET", str(payload))
+                    self.assertTrue(trace_rows[selected]["preview"]["available"])
+                    self.assertTrue(next(row for row in payload["rows"] if row["id"] == selected)["preview"]["available"])
+                    neighbor_id = stable_item_id("engrams", rows[109]["identity"])
+                    self.assertNotIn(neighbor_id, [row["id"] for row in payload["rows"]])
+                    self.assertTrue(trace_rows[neighbor_id]["preview"]["available"])
+                    self.assertTrue(trace_rows[neighbor_id]["editability"]["editable"])
+                    read_only = trace_rows[stable_item_id("engrams", rows[110]["identity"])]
+                    self.assertTrue(read_only["preview"]["available"])
+                    self.assertFalse(read_only["editability"]["editable"])
+                    missing = trace_rows[stable_item_id("engrams", rows[111]["identity"])]
+                    self.assertFalse(missing["preview"]["available"])
+                    self.assertFalse(missing["editability"]["available"])
+                    self.assertIsNone(missing["editability"]["editable"])
+                preview = client.get("/api/library/preview", query_string={"id": neighbor_id})
+                self.assertEqual(preview.status_code, 200)
+                self.assertEqual(preview.get_json()["text"], "Current neighbor 109\n")
+
     def test_stream_is_finite_qualified_and_final_equals_json_with_failures_visible(self):
         import json
         import copy

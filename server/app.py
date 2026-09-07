@@ -15313,7 +15313,7 @@ def _library_join_provenance(providers: dict) -> None:
 
 
 def _library_hydrate_returned_engram_access(rows: list[dict]) -> None:
-    """Add exact file access only after authoritative paging is complete."""
+    """Add exact file access to returned page and Trace rows after paging."""
 
     for row in rows:
         if row.get("source") != "engrams":
@@ -15762,7 +15762,10 @@ def library_browser():
                 relationship_resolver=_library_resolve_relationships if final else None,
                 trace_id=trace_id if final else None, trace_limit=trace_limit)
             if final:
-                _library_hydrate_returned_engram_access(payload["rows"])
+                returned_rows = payload["rows"] + (payload.get("trace") or {}).get("rows", [])
+                _library_hydrate_returned_engram_access(
+                    list({id(row): row for row in returned_rows}.values())
+                )
             payload["progress"] = {"stage": stage, "final": final, "pending_sources": list(pending),
                 "failed_sources": [source for source in sources if source not in pending and providers[source].get("complete") is not True]}
             if not final:
