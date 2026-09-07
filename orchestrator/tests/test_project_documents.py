@@ -29,6 +29,19 @@ def test_explicit_check_is_report_only(tmp_path, request):
     note.write_text(base)
     windows_note = folder / "Windows Note.md"
     windows_note.write_bytes(base.replace("# Note", "# Windows Note").replace("\n", "\r\n").encode("utf-8"))
+    fenced_notes = []
+    for label, newline, opening, closing in (
+        ("Fenced", "\n", "```markdown", "```"),
+        ("Windows fenced", "\r\n", "   ~~~~markdown\n~~~\n```", "   ~~~~~  "),
+    ):
+        for correct_heading in (False, True):
+            title = f"{label} {'valid' if correct_heading else 'mismatch'}"
+            example_heading = "Unrelated example" if correct_heading else title
+            actual_heading = title if correct_heading else "Different title"
+            body = f"{opening}\n# {example_heading}\n{closing}\n# {actual_heading}"
+            fenced_note = folder / f"{title}.md"
+            fenced_note.write_bytes(base.replace("# Note", body).replace("\n", newline).encode("utf-8"))
+            fenced_notes.append((fenced_note, correct_heading))
     matrix.write_text(base.replace("type: reference", "type: matrix\nproject_type: [project]").replace("# Note", "# Project Matrix Sample"))
     operation_pointer = pdir / "operation.json"
     operation_pointer.write_text(json.dumps({"name": "Operations", "folder_name": "Operations", "display_name": "Current label"}))
@@ -41,7 +54,7 @@ def test_explicit_check_is_report_only(tmp_path, request):
     outside = tmp_path / "outside.md"
     outside.write_text("Outside must not be read.")
     (folder / "Unsafe.md").symlink_to(outside)
-    original = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in (note, windows_note, matrix, historical_matrix, operation_pointer, invalid, unknown, outside, pdir / "sample.json")}
+    original = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in (note, windows_note, *(path for path, _ in fenced_notes), matrix, historical_matrix, operation_pointer, invalid, unknown, outside, pdir / "sample.json")}
     inventory = sorted(str(path.relative_to(tmp_path)) for path in tmp_path.rglob("*"))
     repository = Path(__file__).resolve().parents[2]
     env = {**os.environ, "ORA_HOME": str(ora), "ORA_VAULT_PATH": str(vault), "ORA_CONVERSATIONS": str(tmp_path / "conversations"), "PYTHONDONTWRITEBYTECODE": "1"}
@@ -55,6 +68,12 @@ def test_explicit_check_is_report_only(tmp_path, request):
     windows = run("--file", "Projects/Sample/Windows Note.md", "--owner", "ordinary")
     assert windows.returncode == 0, windows.stdout + windows.stderr
     assert "0 error(s), 1 warning(s); complete" in windows.stdout
+    for fenced_note, correct_heading in fenced_notes:
+        checked = run("--file", str(fenced_note.relative_to(vault)), "--owner", "ordinary")
+        expected_errors = 0 if correct_heading else 1
+        assert checked.returncode == expected_errors, checked.stdout + checked.stderr
+        assert f"{expected_errors} error(s), 1 warning(s); complete" in checked.stdout
+        assert ("heading: does not match the owner's document label" in checked.stdout) is not correct_heading
     historical = run("--file", "Matrix/Historical Operation.md", "--owner", "matrix")
     assert historical.returncode == 0, historical.stdout + historical.stderr
     assert "heading:" not in historical.stdout

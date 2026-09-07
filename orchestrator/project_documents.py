@@ -80,6 +80,26 @@ def _calendar_date(value: Any) -> date | None:
     return None
 
 
+def _first_heading(body: str) -> str | None:
+    """Find the first H1 outside fenced examples, without rewriting the body."""
+    fence = None
+    for line in body.split("\n"):
+        if fence is not None:
+            if re.fullmatch(rf" {{0,3}}{re.escape(fence[0])}{{{len(fence)},}}[ \t]*\r?", line):
+                fence = None
+            continue
+        opening = re.match(r" {0,3}(`{3,}|~{3,})([^\r\n]*)\r?$", line)
+        if opening:
+            marker, info = opening.groups()
+            if marker[0] == "~" or "`" not in info:
+                fence = marker
+                continue
+        heading = re.fullmatch(r"# +([^\r\n]+)\r?", line)
+        if heading:
+            return heading.group(1).rstrip()
+    return None
+
+
 def inspect_document(text: str, identity: DocumentIdentity, *, owner: str) -> DocumentReport:
     """Inspect without changing input or performing any filesystem operations."""
     report = DocumentReport(complete=identity.nexuses is not None and owner in {"ordinary", "matrix", "output", "chat", "directory_map"})
@@ -166,8 +186,7 @@ def inspect_document(text: str, identity: DocumentIdentity, *, owner: str) -> Do
     if owner == "ordinary" and identity.filename:
         expected_heading = Path(identity.filename).stem
     if expected_heading is not None:
-        heading = re.search(r"^# +([^\r\n]+)\r?$", text[match.end():], re.M)
-        if not heading or heading.group(1).rstrip() != expected_heading:
+        if _first_heading(text[match.end():]) != expected_heading:
             error("heading", "does not match the owner's document label")
     return report
 
