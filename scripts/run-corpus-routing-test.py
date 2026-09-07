@@ -1,349 +1,378 @@
 #!/usr/bin/env python3
-"""Live test of the four-stage pre-routing pipeline against the 220-prompt
-test corpus at vault/Projects/Ora/Reference — Pipeline Routing Test Corpus.md.
+"""Measure supported Stages 1–3 requirements in the bound vault's routing corpus.
 
-Reports per-stage accuracy and flags failing prompts. Saves a markdown
-report at the path specified by --report (default in the vault).
+The entire corpus must pass admission before importing the runtime. --validate-only
+performs admission without executing prompts or replacing the default vault report.
+Stage 4 text is required and preserved, but this command does not measure it.
 """
 from __future__ import annotations
 
+import argparse
 import os
 import re
+import stat
 import sys
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 
 WORKSPACE = str(Path(__file__).resolve().parents[1])
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator"))
 
-import boot
 import runtime_paths as _rp
 
-# The corpus and the report live in the vault this install is bound to
-# (ORA_VAULT, else <Documents>/vault), not in whoever packaged the repo.
 CORPUS_PATH = _rp.VAULT_ORA / "Reference — Pipeline Routing Test Corpus.md"
 DEFAULT_REPORT = _rp.VAULT_ORA / "Working — Phase 9 Routing Accuracy Report.md"
+VAULT_MODES = _rp.VAULT / "Modes"
+RUNTIME_MODES = _rp.ORA_HOME / "modes"
+STAGES = ("s1", "s2", "s3")
+QUOTES = {'"': '"', "'": "'", "\x60": "\x60", "“": "”", "‘": "’"}
 
 
-def parse_corpus(path: Path) -> list[dict]:
-    """Parse the corpus markdown into a list of test cases.
+def problem(category, reason, path, case=None, stage=None):
+    return {"category": category, "reason": reason, "path": str(path),
+            "prompt": case["index"] if case else None, "stage": stage,
+            "line": case["line"] if case else 1,
+            "original": case["original"] if case else ""}
 
-    Each case: {index, sub_corpus, prompt_text, expected_stage1,
-    expected_stage2, expected_stage3, notes}.
-    """
-    text = path.read_text()
-    cases: list[dict] = []
 
-    sub_corpus_pattern = re.compile(r"^## Sub-corpus (\d+)[^\n]*", re.MULTILINE)
-    sub_corpus_indices: list[tuple[int, str]] = []
-    for m in sub_corpus_pattern.finditer(text):
-        sub_corpus_indices.append((m.start(), m.group(0).strip()))
-
-    def sub_corpus_for(pos: int) -> str:
-        chosen = "?"
-        for start, label in sub_corpus_indices:
-            if start <= pos:
-                chosen = label
-            else:
+def parse_corpus(path: Path) -> tuple[list[dict], list[dict]]:
+    """Account for every Prompt heading without crossing a heading boundary."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return [], [problem("INACCESSIBLE SOURCE", str(exc), path)]
+    headings = list(re.finditer(r"^#{1,6}[ \t]+[^\n]*", text, re.MULTILINE))
+    cases, problems, seen = [], [], set()
+    sub_corpus = None
+    required = {"Prompt": "prompt", **{
+        f"Expected Stage {s}": f"expected_stage{s}" for s in range(1, 5)}}
+    for n, heading in enumerate(headings):
+        label = re.sub(r"^#+[ \t]+", "", heading.group())
+        level = len(heading.group()) - len(heading.group().lstrip("#"))
+        if level <= 2:
+            sub_corpus = (heading.group() if re.fullmatch(
+                r"Sub-corpus \d+\b.*", label) and level == 2 else None)
+        if not re.match(r"Prompt\b", label):
+            continue
+        end = len(text)
+        for later in headings[n + 1:]:
+            later_level = len(later.group()) - len(later.group().lstrip("#"))
+            if later_level <= level or re.match(r"^#+[ \t]+Prompt\b", later.group()):
+                end = later.start()
                 break
-        return chosen
-
-    prompt_pattern = re.compile(
-        r"^### Prompt (\d+)\s*\n"
-        r"\*\*Prompt:\*\*\s*(.*?)\n"
-        r"\*\*Expected Stage 1:\*\*\s*(.*?)\n"
-        r"\*\*Expected Stage 2:\*\*\s*(.*?)\n"
-        r"\*\*Expected Stage 3:\*\*\s*(.*?)\n"
-        r"\*\*Expected Stage 4:\*\*\s*(.*?)\n"
-        r"(?:\*\*Notes:\*\*\s*(.*?)\n)?",
-        re.DOTALL | re.MULTILINE,
-    )
-
-    for m in prompt_pattern.finditer(text):
-        idx = int(m.group(1))
-        prompt_text = m.group(2).strip().strip('"')
-        s1 = m.group(3).strip()
-        s2 = m.group(4).strip()
-        s3 = m.group(5).strip()
-        s4 = m.group(6).strip()
-        notes = (m.group(7) or "").strip()
-        cases.append({
-            "index": idx,
-            "sub_corpus": sub_corpus_for(m.start()),
-            "prompt": prompt_text,
-            "expected_stage1": s1,
-            "expected_stage2": s2,
-            "expected_stage3": s3,
-            "expected_stage4": s4,
-            "notes": notes,
-        })
-
-    return cases
+        identity = re.fullmatch(r"Prompt (\d+)[ \t]*", label)
+        case = {"index": int(identity[1]) if identity else label,
+                "sub_corpus": sub_corpus, "line": text.count("\n", 0, heading.start()) + 1,
+                "original": text[heading.start():end], "notes": ""}
+        initial_problems = len(problems)
+        if not identity:
+            problems.append(problem("INVALID CORPUS", "Prompt heading needs a numeric ID", path, case))
+        elif case["index"] in seen:
+            problems.append(problem("INVALID CORPUS", "Duplicate numeric prompt ID", path, case))
+        seen.add(case["index"])
+        if not sub_corpus:
+            problems.append(problem("INVALID CORPUS", "Prompt has no containing sub-corpus", path, case))
+        fields = list(re.finditer(r"^\*\*([^\n*]+):\*\*[ \t]*", case["original"], re.MULTILINE))
+        values = defaultdict(list)
+        for i, field in enumerate(fields):
+            stop = fields[i + 1].start() if i + 1 < len(fields) else len(case["original"])
+            value = case["original"][field.end():stop].strip()
+            values[field[1]].append(re.sub(r"\n---\s*$", "", value).strip())
+        for name, key in required.items():
+            value = values[name]
+            if len(value) != 1 or not value[0]:
+                stage = int(name[-1]) if name.startswith("Expected Stage") else None
+                problems.append(problem("INVALID CORPUS", f"Expected exactly one nonempty {name} field", path, case, stage))
+            else:
+                case[key] = value[0]
+        case["notes"] = "\n".join(values["Notes"])
+        if len(problems) == initial_problems:
+            cases.append(case)
+    if not seen:
+        problems.append(problem("INVALID CORPUS", "Corpus contains no Prompt items", path))
+    return cases, problems
 
 
-def expected_bypass(s1_text: str) -> bool:
-    return "BYPASS" in s1_text.upper()
+def mode_sources(path: Path) -> set[str]:
+    """Prove the flat source collection is available before diagnosing targets."""
+    if not stat.S_ISDIR(path.stat().st_mode):
+        raise OSError(f"Modes source is not a directory: {path}")
+    names = set()
+    for entry in path.iterdir():
+        if entry.suffix != ".md" or not stat.S_ISREG(entry.lstat().st_mode):
+            continue
+        entry.read_text(encoding="utf-8")
+        if entry.stem != "INDEX" and re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", entry.stem):
+            names.add(entry.stem)
+    if not names:
+        raise OSError(f"Modes source has no regular mode files in its expected flat layout: {path}")
+    return names
 
 
-def expected_dispatched_mode(s2_text: str) -> str | None:
-    """Extract dispatch=`mode-id` if present in the Stage-2 expected text."""
-    m = re.search(r"dispatch[=:]\s*[`']?([\w-]+)", s2_text)
-    if m:
-        return m.group(1)
-    return None
+def unquote(text: str) -> str:
+    if len(text) > 1 and QUOTES.get(text[0]) == text[-1]:
+        return text[1:-1]
+    return text
 
 
-def expected_disambiguate(s2_text: str) -> bool:
-    return "disambiguate" in s2_text.lower() or "ask" in s2_text.lower()
-
-
-def expected_complete(s3_text: str) -> bool:
-    """Return True only when the corpus says complete unconditionally."""
-    text = s3_text.lower()
-    if "missing" in text or "underspecif" in text:
-        return False
-    # Conditional language ("complete if X is attached", "complete via prior
-    # context") is ambiguous — don't treat as a hard "expected complete".
-    if " if " in text or "via prior" in text or "via context" in text:
-        return False
-    return "complete" in text
-
-
-def expected_missing_input(s3_text: str) -> bool:
-    text = s3_text.lower()
-    return ("missing-input" in text
-            or "missing input" in text
-            or "underspecif" in text
-            or "graceful" in text)
-
-
-def expected_conditional(s3_text: str) -> bool:
-    """True for prompts where corpus says complete-IF or complete-via-context.
-    Either complete or missing is acceptable since the conditional depends on
-    runtime context (attachment, prior conversation) the harness doesn't model.
-    """
-    text = s3_text.lower()
-    return (" if " in text and "complete" in text) or "via prior" in text
-
-
-def evaluate_case(case: dict) -> dict:
-    """Run a corpus case through the pipeline and record per-stage outcomes."""
-    routing = boot.run_pre_routing_pipeline(case["prompt"])
-
-    actual_bypass = routing["bypass_to_direct_response"]
-    actual_dispatch = routing["dispatched_mode_id"]
-    actual_completeness = routing.get("stage3_output", {}) or {}
-
-    # Stage 1 evaluation
-    expected_s1_bypass = expected_bypass(case["expected_stage1"])
-    s1_pass = (actual_bypass == expected_s1_bypass)
-
-    # Stage 2 evaluation
-    expected_dispatch = expected_dispatched_mode(case["expected_stage2"])
-    if actual_bypass:
-        s2_pass = expected_s1_bypass  # if Stage 1 expected bypass, Stage 2 N/A counts as pass
-    elif expected_dispatch:
-        s2_pass = (actual_dispatch == expected_dispatch)
-    elif expected_disambiguate(case["expected_stage2"]):
-        s2_pass = (actual_dispatch is None
-                   and routing["pending_clarification_stage"] == "stage2")
+def explanation_only(tail: str, stage: int) -> bool:
+    """Accept a reason, never a second outcome or an operative qualifier."""
+    tail = tail.strip()
+    if not tail.strip(".!;:"):
+        return True
+    if tail.startswith("(") and tail.rstrip(".").endswith(")"):
+        reason = tail[1:tail.rfind(")")]
+    elif re.match(r"^(?:[—–-]|:)\s+", tail):
+        reason = re.sub(r"^(?:[—–-]|:)\s+", "", tail)
     else:
-        s2_pass = True  # unparseable expected → don't count as fail
+        return False
+    if stage == 1:
+        # Quoted filter vocabulary can describe an input signal.
+        reason = re.sub(r"\x60[^\x60]*\x60|“[^”]*”|\"[^\"]*\"", "signal", reason)
+    qualifiers = (r"\b(?:if|unless|when|until|otherwise|then|either|or|depends|likely|"
+                  r"maybe|should|must|except|provided|assuming|after|before|once|"
+                  r"pass|bypass|dispatch|ask|disambiguate|complete|incomplete|"
+                  r"missing|offer|defer\w*|resume\w*)\b|[→⇒]|->")
+    if re.search(qualifiers, reason, re.IGNORECASE):
+        return False
+    if stage == 3 and re.search(
+            r"\b(?:attach\w*|prior|context|referenced|answer\w*|tier\w*|parse|"
+            r"fields?|required|needs?|graceful\w*|warning|notify|except|only)\b|"
+            r"[\x60\"“”‘’]|\b\w+_\w+\b|\bT\d+\b", reason, re.IGNORECASE):
+        return False
+    if stage == 1:
+        # Recognize complete descriptions, not a bag of individually known
+        # words that could also instruct an unmeasured action.
+        return bool(re.fullmatch(
+            r"(?:(?:(?:red-team|steelman|method-name|artifact-type|signal)\s+)?"
+            r"(?:(?:strong|weak|analytical|broad)\s+)+(?:T\d+\s+)?(?:signal|trigger|cue)"
+            r"|(?:greeting|acknowledgement|affirmation|continuation|"
+            r"(?:simple )?(?:factual )?lookup|(?:simple )?translation|system command|"
+            r"file conversion|proofreading|service metric query|no operation|permissive default)"
+            r"(?:;\s*no analytical signal)?)\.?", reason, re.IGNORECASE))
+    # Only descriptive completeness reasons are supported. In particular, a
+    # parenthesized list of missing identities must not vanish into a boolean.
+    return bool(re.fullmatch(
+        r"(?:no [a-z -]+ text in (?:the )?prompt|"
+        r"(?:situation|subject|concept|domain|event|game|pattern|phenomenon|debate|"
+        r"plan|paste|hypotheses|the three explanations|vendors) "
+        r"(?:named|described in (?:the )?prompt|not pasted|not enumerated|pasted|present))\.?",
+        reason, re.IGNORECASE))
 
-    # Stage 3 evaluation
-    if actual_bypass or routing["pending_clarification_stage"] == "stage2":
-        s3_pass = True  # Stage 3 didn't run; expected may say N/A
-    elif expected_conditional(case["expected_stage3"]):
-        # Conditional cases ("complete if attached") accept either outcome
-        s3_pass = True
-    elif expected_complete(case["expected_stage3"]):
-        s3_pass = bool(actual_completeness.get("inputs_complete"))
-    elif expected_missing_input(case["expected_stage3"]):
-        s3_pass = (actual_completeness.get("inputs_complete") is False
-                   or routing["pending_clarification_stage"] == "stage3")
+
+def interpret(case: dict, available: list[set[str]], path: Path) -> list[dict]:
+    """Interpret complete fields once; evaluation consumes these requirements."""
+    problems, expected = [], {}
+
+    def unsupported(stage, reason):
+        problems.append(problem("UNSUPPORTED MEASUREMENT", reason, path, case, stage))
+
+    s1 = unquote(case["expected_stage1"])
+    match = re.match(r"^(PASS|BYPASS)\b(.*)$", s1, re.IGNORECASE | re.DOTALL)
+    if match and explanation_only(match[2], 1):
+        expected["s1"] = {"kind": match[1].lower()}
     else:
-        s3_pass = True
+        unsupported(1, "Cannot prove one unconditional PASS or BYPASS outcome from the complete field")
 
-    return {
-        "case": case,
-        "actual_bypass": actual_bypass,
-        "actual_dispatch": actual_dispatch,
-        "actual_completeness": actual_completeness,
-        "actual_pending": routing["pending_clarification_stage"],
-        "s1_pass": s1_pass,
-        "s2_pass": s2_pass,
-        "s3_pass": s3_pass,
-    }
+    for stage in (2, 3):
+        text = unquote(case[f"expected_stage{stage}"])
+        na = re.fullmatch(r"(?:N/A|not executed|not run)(?:\s*\((?:filter blocked|after bypass)\))?[.!]?", text, re.IGNORECASE)
+        if stage == 3 and expected.get("s2", {}).get("kind") == "pause":
+            na = na or re.fullmatch(r"N/A until (?:disambiguation )?answered[.!]?", text, re.IGNORECASE)
+        if na:
+            if (expected.get("s1", {}).get("kind") == "bypass"
+                    or stage == 3 and expected.get("s2", {}).get("kind") == "pause"):
+                expected[f"s{stage}"] = {"kind": "not_applicable"}
+            else:
+                unsupported(stage, "Non-execution is measurable only after an expected bypass or supported pause")
+            continue
+        if stage == 2:
+            dispatch = re.match(r"^dispatch\s*[=:]\s*([\x60'\"“‘]?)([A-Za-z0-9_-]+)([\x60'\"”’]?)(.*)$", text, re.DOTALL)
+            if dispatch:
+                opening, target, closing, rest = dispatch.groups()
+                quoted = not opening and not closing or QUOTES.get(opening) == closing
+                if quoted and any(target not in names for names in available):
+                    problems.append(problem("STALE OR INVALID TARGET", f"Expected dispatch target {target!r} does not exist as an exact regular mode file in both Modes sources", path, case, stage))
+                if quoted and not rest.strip().strip(".!;"):
+                    expected["s2"] = {"kind": "dispatch", "target": target}
+                else:
+                    unsupported(2, "Cannot prove the full dispatch requirement, including its qualifiers or later actions")
+            elif re.fullmatch(r"(?:ask(?: a (?:clarifying|disambiguation) question)?|disambiguate|pause(?: to (?:ask|disambiguate))?)[.!]?", text, re.IGNORECASE):
+                expected["s2"] = {"kind": "pause"}
+            else:
+                unsupported(2, "Cannot prove this question, answer, alternative, territory, tier, parse, or route requirement")
+        else:
+            complete = re.match(r"^complete\b(.*)$", text, re.IGNORECASE | re.DOTALL)
+            missing = re.match(r"^(?:missing[- ]input|underspecified|incomplete)\b(.*)$", text, re.IGNORECASE | re.DOTALL)
+            if complete and explanation_only(complete[1], 3):
+                expected["s3"] = {"kind": "complete"}
+            elif missing:
+                tail, fields = missing[1].strip(), []
+                if tail.startswith(("=", ":")):
+                    # Keep every named identity in the required missing-field list.
+                    identity = r"(?:\x60[a-z][a-z0-9_]*\x60|'[a-z][a-z0-9_]*'|\"[a-z][a-z0-9_]*\"|[a-z][a-z0-9_]*)"
+                    separator = r"(?:\+|,|\bAND\b|\band\b)"
+                    listing = re.match(r"^[=:]\s*(" + identity + r"(?:\s*" + separator + r"\s*" + identity + r")*)(.*)$", tail, re.DOTALL)
+                    if listing:
+                        fields = [unquote(item) for item in re.findall(
+                            r"(?:^|" + separator + r")\s*(" + identity + r")", listing[1])]
+                        tail = listing[2]
+                    else:
+                        tail = "unmeasured missing-field identities"
+                if explanation_only(tail, 3):
+                    expected["s3"] = {"kind": "missing", "fields": fields}
+                else:
+                    unsupported(3, "Cannot prove every missing field, condition, continuation, or additional outcome")
+            else:
+                unsupported(3, "Cannot prove an unconditional completeness requirement from the complete field")
+    for stage in (2, 3):
+        if (expected.get(f"s{stage}", {}).get("kind") not in (None, "not_applicable")
+                and (expected.get("s1", {}).get("kind") == "bypass"
+                     or stage == 3 and expected.get("s2", {}).get("kind") == "pause")):
+            unsupported(stage, "A required later stage after bypass or pause needs a continuation this command does not execute")
+    case["expectations"] = expected
+    return problems
+
+
+def admit_corpus(path: Path, modes: tuple[Path, Path]) -> tuple[list[dict], list[dict]]:
+    cases, problems = parse_corpus(path)
+    available = []
+    for source in modes:
+        try:
+            available.append(mode_sources(source))
+        except (OSError, UnicodeError) as exc:
+            problems.append(problem("INACCESSIBLE SOURCE", str(exc), source))
+    if len(available) == 2:
+        for case in cases:
+            problems.extend(interpret(case, available, path))
+    return cases, problems
+
+
+def evaluate_case(case: dict, pipeline) -> dict:
+    routing = pipeline(unquote(case["prompt"]))
+    bypass = routing["bypass_to_direct_response"]
+    dispatch = routing["dispatched_mode_id"]
+    pending = routing["pending_clarification_stage"]
+    completeness = routing.get("stage3_output")
+    executed = {f"s{s}": routing.get(f"stage{s}_output") is not None for s in (1, 2, 3)}
+    result = {"case": case, "actual_bypass": bypass, "actual_dispatch": dispatch,
+              "actual_completeness": completeness or {}, "actual_pending": pending,
+              "cascade_non_execution": []}
+    for stage in STAGES:
+        requirement = case["expectations"][stage]
+        kind = requirement["kind"]
+        if kind == "not_applicable":
+            passed = None if not executed[stage] else False
+        elif not executed[stage]:
+            passed = False
+            if stage != "s1":
+                result["cascade_non_execution"].append(stage)
+        elif stage == "s1":
+            passed = bypass is (kind == "bypass")
+        elif kind == "dispatch":
+            passed = not bypass and dispatch == requirement["target"]
+        elif kind == "pause":
+            passed = not bypass and dispatch is None and pending == "stage2" and bool(routing.get("pending_clarification"))
+        elif kind == "complete":
+            passed = completeness.get("inputs_complete") is True
+        elif kind == "missing":
+            passed = completeness.get("inputs_complete") is False and set(requirement["fields"]).issubset(completeness.get("missing_fields") or [])
+        else:
+            raise ValueError(f"Unadmitted requirement: {requirement}")
+        result[f"{stage}_pass"] = passed
+    return result
 
 
 def aggregate(results: list[dict]) -> dict:
-    by_subcorpus: dict[str, dict[str, list[bool]]] = defaultdict(
-        lambda: {"s1": [], "s2": [], "s3": []}
-    )
-    for r in results:
-        sc = r["case"]["sub_corpus"]
-        by_subcorpus[sc]["s1"].append(r["s1_pass"])
-        by_subcorpus[sc]["s2"].append(r["s2_pass"])
-        by_subcorpus[sc]["s3"].append(r["s3_pass"])
+    if not results:
+        raise ValueError("Cannot aggregate an empty result set")
 
-    overall = {"s1": [], "s2": [], "s3": []}
-    for sc, stages in by_subcorpus.items():
-        for k in ("s1", "s2", "s3"):
-            overall[k].extend(stages[k])
+    def measurements(rows):
+        stages = {}
+        for stage in STAGES:
+            measured = [row[f"{stage}_pass"] for row in rows
+                        if row["case"]["expectations"][stage]["kind"] != "not_applicable"]
+            stages[stage] = {"accuracy": sum(measured) / len(measured) if measured else None,
+                             "denominator": len(measured), "not_applicable": len(rows) - len(measured),
+                             "cascade_non_execution": sum(stage in row["cascade_non_execution"] for row in rows)}
+        return stages
 
-    return {
-        "by_subcorpus": {
-            sc: {k: (sum(v) / len(v) if v else 1.0) for k, v in stages.items()}
-            for sc, stages in by_subcorpus.items()
-        },
-        "overall": {k: (sum(v) / len(v) if v else 1.0) for k, v in overall.items()},
-        "total_cases": len(results),
-    }
+    groups = defaultdict(list)
+    for result in results:
+        groups[result["case"]["sub_corpus"]].append(result)
+    return {"overall": measurements(results), "total_cases": len(results),
+            "by_subcorpus": {name: measurements(rows) for name, rows in groups.items()}}
+
+
+def measurement_text(measurement: dict) -> str:
+    value = measurement["accuracy"]
+    accuracy = "not measured" if value is None else f"{value * 100:.1f}%"
+    return (f"{accuracy} (measured denominator: {measurement['denominator']}; "
+            f"not applicable: {measurement['not_applicable']}; "
+            f"cascade non-execution: {measurement['cascade_non_execution']})")
 
 
 def write_report(results: list[dict], agg: dict, path: Path):
-    failing_by_sc: dict[str, list[dict]] = defaultdict(list)
-    for r in results:
-        if not (r["s1_pass"] and r["s2_pass"] and r["s3_pass"]):
-            failing_by_sc[r["case"]["sub_corpus"]].append(r)
-
-    lines = []
-    lines.append("---")
-    lines.append("nexus:")
-    lines.append("  - ora")
-    lines.append("type: working")
-    lines.append("tags:")
-    lines.append("  - architecture")
-    lines.append("  - phase-9")
-    lines.append("date created: 2026-05-02")
-    lines.append("date modified: 2026-05-02")
-    lines.append("---")
-    lines.append("")
-    lines.append("# Working — Phase 9 Routing Accuracy Report")
-    lines.append("")
-    lines.append("Live test of the four-stage pre-routing pipeline (boot.py "
-                 "Stages 1-3) against the 220-prompt corpus.")
-    lines.append("")
-    lines.append("## Overall accuracy")
-    lines.append("")
-    lines.append(f"- Total cases: **{agg['total_cases']}**")
-    for stage, name in [("s1", "Stage 1"), ("s2", "Stage 2"), ("s3", "Stage 3")]:
-        pct = agg["overall"][stage] * 100
-        lines.append(f"- {name}: **{pct:.1f}%**")
-    lines.append("")
-    lines.append("## Per sub-corpus accuracy")
-    lines.append("")
-    lines.append("| Sub-corpus | Stage 1 | Stage 2 | Stage 3 |")
-    lines.append("|---|---|---|---|")
-    for sc, stages in sorted(agg["by_subcorpus"].items()):
-        s1 = stages["s1"] * 100
-        s2 = stages["s2"] * 100
-        s3 = stages["s3"] * 100
-        lines.append(f"| {sc} | {s1:.1f}% | {s2:.1f}% | {s3:.1f}% |")
-    lines.append("")
-    lines.append("## Failing prompts")
-    lines.append("")
-    for sc in sorted(failing_by_sc.keys()):
-        lines.append(f"### {sc}")
+    today = date.today().isoformat()
+    lines = ["---", "nexus:", "  - ora", "type: working", "tags:", "  - architecture",
+             "  - phase-9", f"date created: {today}", f"date modified: {today}", "---", "",
+             "# Working — Phase 9 Routing Accuracy Report", "",
+             "Current supported Stages 1–3 measurements. Stage 4 and targeted-question semantics are unmeasured.",
+             "The accuracy standard remains 90% for each measured stage. A stage with no measured observations has no percentage.",
+             "", "## Overall accuracy", "", f"- Total cases: **{agg['total_cases']}**"]
+    for n, stage in enumerate(STAGES, 1):
+        lines.append(f"- Stage {n}: {measurement_text(agg['overall'][stage])}")
+    lines += ["", "## Per sub-corpus accuracy", "", "| Sub-corpus | Stage 1 | Stage 2 | Stage 3 |", "|---|---|---|---|"]
+    for name, stages in sorted(agg["by_subcorpus"].items()):
+        lines.append(f"| {name} | " + " | ".join(measurement_text(stages[s]) for s in STAGES) + " |")
+    lines += ["", "## Failing prompts", ""]
+    for result in results:
+        failures = [s.upper() for s in STAGES if result[f"{s}_pass"] is False]
+        if not failures:
+            continue
+        case = result["case"]
+        lines += [f"### {case['sub_corpus']} — Prompt {case['index']} ({'/'.join(failures)} fail)", "",
+                  f"Source line: {case['line']}", "", case["original"].rstrip(), "",
+                  f"Actual: bypass={result['actual_bypass']}, dispatch={result['actual_dispatch']}, "
+                  f"pending_stage={result['actual_pending']}, completeness={result['actual_completeness']}"]
+        if result["cascade_non_execution"]:
+            lines.append("Cascade non-execution (required stage did not run): " + ", ".join(s.upper() for s in result["cascade_non_execution"]))
         lines.append("")
-        for r in failing_by_sc[sc]:
-            c = r["case"]
-            stages = []
-            if not r["s1_pass"]:
-                stages.append("S1")
-            if not r["s2_pass"]:
-                stages.append("S2")
-            if not r["s3_pass"]:
-                stages.append("S3")
-            lines.append(f"- **Prompt {c['index']} ({'/'.join(stages)} fail):** "
-                         f"\"{c['prompt'][:120]}\"")
-            lines.append(f"  - Expected S1: {c['expected_stage1'][:100]}")
-            lines.append(f"  - Expected S2: {c['expected_stage2'][:100]}")
-            lines.append(f"  - Expected S3: {c['expected_stage3'][:100]}")
-            lines.append(f"  - Actual: bypass={r['actual_bypass']}, "
-                         f"dispatch={r['actual_dispatch']}, "
-                         f"pending_stage={r['actual_pending']}, "
-                         f"complete={r['actual_completeness'].get('inputs_complete')}")
-        lines.append("")
-
-    lines.append("## Implementation notes")
-    lines.append("")
-    lines.append("- **All three stages now meet or exceed the 90% target.** "
-                 "Stage 1 is permissive by design (the few \"failures\" are "
-                 "prompts where the corpus expected BYPASS but Stage 1 "
-                 "forwarded to Stage 2 — the spec explicitly defaults "
-                 "permissive when in doubt).")
-    lines.append("- **Stage 2** (95.0%) — strong signals dispatch directly; "
-                 "weak signals route through within-territory disambiguation. "
-                 "T15-home suppression (Decision G) was added so steelman / "
-                 "red-team on an argument doesn't fire the T1↔T15 cross-"
-                 "territory question.")
-    lines.append("- **Stage 3** (92.3%) — field-category-aware detection: "
-                 "artifact-text fields require attached / pasted / multi-"
-                 "paragraph content; subject-named fields are satisfied by "
-                 "any concrete noun phrase; situation fields by ≥5 words "
-                 "with a concrete subject; molecular modes tighten the "
-                 "situation rule to artifact-level content. A top-level "
-                 "\"artifact-mentioned-without-content\" check catches "
-                 "prompts that name a typed artifact (\"this strategy\", "
-                 "\"the policy memo\") without supplying it, even when the "
-                 "mode-spec doesn't declare a matching field.")
-    lines.append("")
-    lines.append("## Remaining failure categories")
-    lines.append("")
-    lines.append("- **Mode-spec ↔ corpus mismatches.** A handful of prompts "
-                 "expect a field name (e.g., `decision_context_full`, "
-                 "`market_context`, `team_conflict_specifics`, `strategy_text`) "
-                 "that the actual mode file doesn't declare. Resolving these "
-                 "requires editing either the mode spec or the corpus — out "
-                 "of Phase 9 scope.")
-    lines.append("- **Sub-corpus 8 (multi-stage)** at 83.3% Stage 2 — these "
-                 "are the trickiest cases (vague prompts, prior-context "
-                 "dependencies, deliberate ambiguity). The remaining failures "
-                 "are mostly cases where the corpus expects disambiguation "
-                 "but my code direct-dispatches on a strong signal that won "
-                 "the tie-break. Tightening the strong-dispatch confidence "
-                 "threshold could help.")
-    lines.append("- **Constraint-mapping enumeration.** The mode's accessible_mode "
-                 "only requires `decision_or_choice_situation`, but the corpus "
-                 "expects `alternatives_set` to fire as missing. Either the "
-                 "mode file needs the alternatives field or the corpus is "
-                 "stricter than the spec — discrepancy not resolvable here.")
-    lines.append("")
-    lines.append("## Code-side aliases added (Phase 9)")
-    lines.append("")
-    lines.append("`_PHASE9_SIGNAL_ALIASES` in [boot.py](orchestrator/boot.py) "
-                 "augments the canonical signal vocabulary registry with "
-                 "high-frequency corpus-expected phrases (\"make the case for\", "
-                 "\"what could go wrong\", \"map the stakeholders\", "
-                 "\"compare these frames\", etc.). The canonical registry "
-                 "should pick up these phrases at next vault edit; the "
-                 "code-side list is the orchestrator-side bridge until then.")
-
-    path.write_text("\n".join(lines))
+    rendered = "\n".join(lines) + "\n"
+    _rp.atomic_write_text(path, rendered)
 
 
-def main():
-    cases = parse_corpus(CORPUS_PATH)
-    print(f"Parsed {len(cases)} corpus cases")
-
-    results = [evaluate_case(c) for c in cases]
-    agg = aggregate(results)
-
-    print()
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--validate-only", action="store_true")
+    args = parser.parse_args(argv)
+    cases, problems = admit_corpus(CORPUS_PATH, (VAULT_MODES, RUNTIME_MODES))
+    if problems:
+        for item in problems:
+            print(f"{item['category']} | Prompt {item['prompt']} | Stage {item['stage']} | "
+                  f"{item['path']}:{item['line']} | {item['reason']}\n{item['original']}", file=sys.stderr)
+        print(f"Corpus refused: {len(problems)} problem(s); no measurements or report produced.", file=sys.stderr)
+        return 2
+    if args.validate_only:
+        print(f"Corpus admitted: {len(cases)} cases; Stages 1–3 supported, Stage 4 unmeasured. Validation only.")
+        return 0
+    try:
+        import boot
+        results = [evaluate_case(case, boot.run_pre_routing_pipeline) for case in cases]
+        agg = aggregate(results)
+        write_report(results, agg, DEFAULT_REPORT)
+    except Exception as exc:
+        print(f"Routing measurement/report failed: {exc}", file=sys.stderr)
+        return 1
     print(f"Total cases: {agg['total_cases']}")
-    for stage, name in [("s1", "Stage 1"), ("s2", "Stage 2"), ("s3", "Stage 3")]:
-        pct = agg["overall"][stage] * 100
-        print(f"{name}: {pct:.1f}%")
-    print()
-
-    failing = sum(1 for r in results
-                  if not (r["s1_pass"] and r["s2_pass"] and r["s3_pass"]))
+    for n, stage in enumerate(STAGES, 1):
+        print(f"Stage {n}: {measurement_text(agg['overall'][stage])}")
+    failing = sum(any(row[f"{s}_pass"] is False for s in STAGES) for row in results)
     print(f"Total failing prompts (any stage): {failing}/{len(results)}")
-
-    write_report(results, agg, DEFAULT_REPORT)
     print(f"Report saved to {DEFAULT_REPORT}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
