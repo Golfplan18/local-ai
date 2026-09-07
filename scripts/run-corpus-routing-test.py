@@ -127,8 +127,8 @@ def explanation_only(tail: str, stage: int) -> bool:
         reason = re.sub(r"^(?:[—–-]|:)\s+", "", tail)
     else:
         return False
-    # Quoted filter vocabulary describes an input signal, not another result.
     if stage == 1:
+        # Quoted filter vocabulary can describe an input signal.
         reason = re.sub(r"\x60[^\x60]*\x60|“[^”]*”|\"[^\"]*\"", "signal", reason)
     qualifiers = (r"\b(?:if|unless|when|until|otherwise|then|either|or|depends|likely|"
                   r"maybe|should|must|except|provided|assuming|after|before|once|"
@@ -142,22 +142,15 @@ def explanation_only(tail: str, stage: int) -> bool:
             r"[\x60\"“”‘’]|\b\w+_\w+\b|\bT\d+\b", reason, re.IGNORECASE):
         return False
     if stage == 1:
-        # This is measurement admission, not a claim to understand arbitrary
-        # prose after a dash. Unknown explanatory vocabulary remains unmeasured.
-        words = re.findall(r"[\w]+(?:[-'][\w]+)*", reason.lower())
-        known = set(("signal strong weak analytical broad trigger cue vocabulary "
-                     "greeting acknowledgement affirmation continuation factual lookup "
-                     "simple translation system command file conversion proofreading "
-                     "service metric query no operation permissive default present "
-                     "is a the but negated by prior-conversation prior-answer reference "
-                     "meta-conversational about prior turn red-team steelman method-name "
-                     "molecular stance artifact-type depth conflict decision-shape "
-                     "future-oriented framing risk-stance aesthetic image garden "
-                     "both modes mode names named explicit and with conflicting "
-                     "dominates probability output historical event contradicts "
-                     "prior-context satisfies framework ameliorative article-handling "
-                     "paradigm-suspending").split())
-        return bool(words) and all(word in known or re.fullmatch(r"t\d+|tier-\d+", word) for word in words)
+        # Recognize complete descriptions, not a bag of individually known
+        # words that could also instruct an unmeasured action.
+        return bool(re.fullmatch(
+            r"(?:(?:(?:red-team|steelman|method-name|artifact-type|signal)\s+)?"
+            r"(?:(?:strong|weak|analytical|broad)\s+)+(?:T\d+\s+)?(?:signal|trigger|cue)"
+            r"|(?:greeting|acknowledgement|affirmation|continuation|"
+            r"(?:simple )?(?:factual )?lookup|(?:simple )?translation|system command|"
+            r"file conversion|proofreading|service metric query|no operation|permissive default)"
+            r"(?:;\s*no analytical signal)?)\.?", reason, re.IGNORECASE))
     # Only descriptive completeness reasons are supported. In particular, a
     # parenthesized list of missing identities must not vanish into a boolean.
     return bool(re.fullmatch(

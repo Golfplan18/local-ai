@@ -353,6 +353,13 @@ class TestRoutingCorpusOracle(unittest.TestCase):
         unsupported = (
             {"s1": "PASS or BYPASS"}, {"s1": "PASS — if attached"},
             {"s1": "PASS — record a warning"},
+            {"s1": "PASS — output a greeting"},
+            {"s1": "PASS — output “warning”"},
+            {"s1": "PASS — strong analytical signal; output a greeting"},
+            {"s1": "PASS — lookup a historical event"},
+            {"s1": "PASS — query a probability"},
+            {"s1": "PASS — file a query"},
+            {"s1": "PASS — steelman a framework"},
             {"s2": "dispatch=`example-mode` or `another-mode`"},
             {"s2": "dispatch=`example-mode` (T7 framing wins; action-plan parse)"},
             {"s2": "ask Q1; answer A → dispatch=`example-mode`"},
@@ -376,14 +383,20 @@ class TestRoutingCorpusOracle(unittest.TestCase):
                 err = self.assert_refused_without_effects("UNSUPPORTED MEASUREMENT", 2)
                 self.assertIn(original, err)
                 self.assertNotIn("INVALID CORPUS", err)
-        self.source(valid)
+        self.source(valid
+                    + self.item(2, s1="PASS — red-team strong T15 signal")
+                    + self.item(3, s1="PASS — “red-team” strong T15 signal")
+                    + self.item(4, s1="BYPASS — greeting; no analytical signal.",
+                                s2="N/A (filter blocked)", s3="N/A")
+                    + self.item(5, s1="BYPASS — simple factual lookup.",
+                                s2="N/A", s3="N/A"))
         with patch("builtins.__import__", self.guard_import), \
                 patch.object(self.oracle, "evaluate_case") as evaluate, \
                 patch.object(self.oracle, "aggregate") as aggregate, \
                 patch.object(self.oracle, "write_report") as report:
             code, out, err = self.run_main(("--validate-only",))
             self.assertEqual((code, err), (0, ""))
-            self.assertIn("Corpus admitted: 1 cases", out)
+            self.assertIn("Corpus admitted: 5 cases", out)
             evaluate.assert_not_called()
             aggregate.assert_not_called()
             report.assert_not_called()
