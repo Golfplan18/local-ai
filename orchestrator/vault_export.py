@@ -71,6 +71,8 @@ This module is deliberately free of Flask; the HTTP wrapper lives in
 """
 from __future__ import annotations
 
+import yaml
+
 from orchestrator.project_documents import (
     DocumentIdentity, DocumentIssue, DocumentReport,
     InvalidProjectDocumentError, require_valid_document,
@@ -1078,10 +1080,13 @@ def export_session_to_vault(
     nexus = _match_topic_to_nexus(topic_for_nexus, matrix_identifiers)
     modified_at = datetime.now()
     frontmatter = _build_canonical_frontmatter(
-        nexus=nexus, type_="chat",
+        nexus=[], type_="chat",
         tags=(["private"] if not stealth_export and export_privacies & {"private", "stealth"} else []),
         created_at=convo.get("created_at"), modified_at=modified_at,
     )
+    if nexus:
+        encoded_nexus = yaml.safe_dump({"nexus": nexus}, allow_unicode=True).replace("\n-", "\n  -")
+        frontmatter = frontmatter.replace("nexus:\n", encoded_nexus, 1)
     heading = f"# {resolved_title}\n"
     report = require_valid_document(
         frontmatter + heading,

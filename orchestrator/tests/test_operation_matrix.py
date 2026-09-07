@@ -883,6 +883,14 @@ class NewMatrixTemplateTests(unittest.TestCase):
             self.assertTrue(result["warnings"])
             self.assertEqual(result["mission"], "Goal")
             self.assertTrue(schema_valid(report.metadata))
+            for nexus in ("yes", "on", "123", "null", "2026-01-01"):
+                with self.subTest(nexus=nexus):
+                    created = om.write_mom(nexus, nexus, mission="First", vault=vault)
+                    encoded = pathlib.Path(created["matrix_path"]).read_text()
+                    metadata, _ = om._split_frontmatter(encoded)
+                    self.assertEqual(metadata["nexus"], [nexus])
+                    changed = om.write_mom(nexus, nexus, mission="Second", vault=vault)
+                    self.assertEqual(changed["mission"], "Second")
             # Old documents remain splice-owned; missing metadata does not turn
             # this new-document gate into a migration on their next MOM edit.
             path.write_text(path.read_text().replace("tags:\n", ""))

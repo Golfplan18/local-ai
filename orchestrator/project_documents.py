@@ -152,13 +152,21 @@ def inspect_document(text: str, identity: DocumentIdentity, *, owner: str) -> Do
         report.complete = False
         report.warnings.append(DocumentIssue("owner", "specialized contract not checked"))
     if owner == "output" and identity.filename is not None:
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2} [a-z0-9-]+\.md", identity.filename):
+        # The exporter preserves Unicode word characters and underscores. A
+        # tight portable path budget can shorten even the date prefix; numeric
+        # collision suffixes are added after that truncation.
+        output_date = _calendar_date(identity.created) or _calendar_date(metadata.get("date created"))
+        truncated_date = output_date is not None and any(
+            re.fullmatch(re.escape(output_date.isoformat()[:end].rstrip("-")) + r"(?:-\d+)?\.md", identity.filename)
+            for end in range(1, 11)
+        )
+        if not (re.fullmatch(r"\d{4}-\d{2}-\d{2} [\w-]+\.md", identity.filename) or truncated_date):
             error("filename", "must use the owner's dated output slug")
     expected_heading = identity.heading
     if owner == "ordinary" and identity.filename:
         expected_heading = Path(identity.filename).stem
     if expected_heading is not None:
-        heading = re.search(r"^# +([^\r\n]+)$", text[match.end():], re.M)
+        heading = re.search(r"^# +([^\r\n]+)\r?$", text[match.end():], re.M)
         if not heading or heading.group(1).rstrip() != expected_heading:
             error("heading", "does not match the owner's document label")
     return report

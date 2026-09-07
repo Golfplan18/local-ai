@@ -27,6 +27,8 @@ def test_explicit_check_is_report_only(tmp_path, request):
     base = "---\nnexus: [sample]\ntype: reference\ntags:\ndate created: 2024-02-29\ndate modified: '2024-03-01'\n---\n# Note\n\nExact Ω prose.\n"
     note = folder / "Note.md"
     note.write_text(base)
+    windows_note = folder / "Windows Note.md"
+    windows_note.write_bytes(base.replace("# Note", "# Windows Note").replace("\n", "\r\n").encode("utf-8"))
     matrix.write_text(base.replace("type: reference", "type: matrix\nproject_type: [project]").replace("# Note", "# Project Matrix Sample"))
     operation_pointer = pdir / "operation.json"
     operation_pointer.write_text(json.dumps({"name": "Operations", "folder_name": "Operations", "display_name": "Current label"}))
@@ -39,7 +41,7 @@ def test_explicit_check_is_report_only(tmp_path, request):
     outside = tmp_path / "outside.md"
     outside.write_text("Outside must not be read.")
     (folder / "Unsafe.md").symlink_to(outside)
-    original = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in (note, matrix, historical_matrix, operation_pointer, invalid, unknown, outside, pdir / "sample.json")}
+    original = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in (note, windows_note, matrix, historical_matrix, operation_pointer, invalid, unknown, outside, pdir / "sample.json")}
     inventory = sorted(str(path.relative_to(tmp_path)) for path in tmp_path.rglob("*"))
     repository = Path(__file__).resolve().parents[2]
     env = {**os.environ, "ORA_HOME": str(ora), "ORA_VAULT_PATH": str(vault), "ORA_CONVERSATIONS": str(tmp_path / "conversations"), "PYTHONDONTWRITEBYTECODE": "1"}
@@ -50,6 +52,9 @@ def test_explicit_check_is_report_only(tmp_path, request):
     assert valid.returncode == 0, valid.stdout + valid.stderr
     assert "description: No recorded description" in valid.stdout
     assert "0 error(s), 1 warning(s); complete" in valid.stdout
+    windows = run("--file", "Projects/Sample/Windows Note.md", "--owner", "ordinary")
+    assert windows.returncode == 0, windows.stdout + windows.stderr
+    assert "0 error(s), 1 warning(s); complete" in windows.stdout
     historical = run("--file", "Matrix/Historical Operation.md", "--owner", "matrix")
     assert historical.returncode == 0, historical.stdout + historical.stderr
     assert "heading:" not in historical.stdout

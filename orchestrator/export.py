@@ -199,7 +199,7 @@ def _format_nexus(nexus: str | None) -> str:
     slug = (nexus or "").strip().lower()
     if not slug or slug in ("commons", "general"):
         return "nexus:\n"
-    return f"nexus:\n  - {slug}\n"
+    return yaml.safe_dump({"nexus": [slug]}, allow_unicode=True).replace("\n-", "\n  -")
 
 
 def save_output_to_vault(

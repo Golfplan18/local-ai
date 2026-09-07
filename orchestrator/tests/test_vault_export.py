@@ -605,6 +605,18 @@ class TestExportHappyPath(unittest.TestCase):
         self.assertIn("test-conv-001", text)
         self.assertEqual(yaml.safe_load(text.split("---\n", 2)[1])["nexus"], ["deployment", "failures"])
         self.assertTrue(res.warnings)
+        source = self.sessions / "test-conv-001" / "conversation.json"
+        envelope = json.loads(source.read_text())
+        for nexuses in ([], ["yes", "on", "123", "null", "2026-01-01"]):
+            with self.subTest(nexuses=nexuses):
+                envelope["session_title"] = " ".join(nexuses) or "Unmatched topic"
+                source.write_text(json.dumps(envelope))
+                self.matrix.write_text("".join(f"project property name: {nexus}\n" for nexus in nexuses))
+                res = self._export()
+                text = res.markdown_path.read_text()
+                self.assertEqual(yaml.safe_load(text.split("---\n", 2)[1])["nexus"] or [], nexuses)
+                self.assertIn("# " + envelope["session_title"] + "\n", text)
+                self.assertIn("Draw me a fishbone of deployment failures.", text)
         self.assertEqual(V._build_canonical_frontmatter, original)
 
     def test_markdown_preserves_user_prose(self):

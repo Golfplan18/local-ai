@@ -161,6 +161,17 @@ class ExportModuleTests(unittest.TestCase):
         self.assertIn("private", parsed["tags"])
         self.assertIn(content, body)
         self.assertTrue(warnings)
+        for nexus in ("yes", "on", "123", "null", "2026-01-01"):
+            with self.subTest(nexus=nexus):
+                self.pm.create_project(nexus)
+                encoded = ex.save_output_to_vault(
+                    content, title="Résumé project_plan", project_nexus=nexus,
+                    vault=self.vault, turn_privacy="private")
+                metadata, body = encoded.read_text().split("---\n", 2)[1:]
+                self.assertEqual(yaml.safe_load(metadata)["nexus"], [nexus])
+                self.assertEqual(encoded.parent.name, nexus)
+                self.assertTrue(encoded.name.endswith("résumé-project_plan.md"))
+                self.assertIn(content, body)
         # Corrupt proposed writer metadata before a newly selected folder exists.
         self.pm.create_project("Unwritten")
         folder = self.vault / "Projects" / "Unwritten"
@@ -222,12 +233,32 @@ class ExportModuleTests(unittest.TestCase):
             )
 
     def test_filename_collision(self):
-        p1 = ex.save_output_to_vault("a", title="Same", vault=self.vault)
-        p2 = ex.save_output_to_vault("b", title="Same", vault=self.vault)
-        self.assertNotEqual(p1, p2)
-        self.assertTrue(p2.name.endswith("-2.md"))
-        self.assertTrue(p1.read_text().endswith("a\n"))
-        self.assertTrue(p2.read_text().endswith("b\n"))
+        for title in ("Same", "Résumé", "project_plan", "𐐀_" * 150):
+            with self.subTest(title=title):
+                p1 = ex.save_output_to_vault("a", title=title, vault=self.vault)
+                p2 = ex.save_output_to_vault("b", title=title, vault=self.vault)
+                self.assertNotEqual(p1, p2)
+                self.assertTrue(p2.name.endswith("-2.md"))
+                self.assertTrue(p1.read_text().endswith("a\n"))
+                self.assertTrue(p2.read_text().endswith("b\n"))
+                for path in (p1, p2):
+                    self.assertLessEqual(ex._utf16_units(str(path.resolve()) + ".tmp"), ex.WINDOWS_PORTABLE_PATH_LIMIT)
+        # Portable shortening can leave a partial slug, just the date, or a
+        # partial date. Each still saves and preserves collision handling.
+        for budget in (24, 17, 10):
+            with self.subTest(filename_budget=budget):
+                subdir = f"budget-{budget}"
+                folder = self.vault / subdir
+                limit = ex._utf16_units(str(folder.resolve())) + 1 + budget
+                with mock.patch.object(ex, "WINDOWS_PORTABLE_PATH_LIMIT", limit):
+                    p1 = ex.save_output_to_vault("a", title="Résumé project_plan", vault=self.vault, outputs_subdir=subdir)
+                    p2 = ex.save_output_to_vault("b", title="Résumé project_plan", vault=self.vault, outputs_subdir=subdir)
+                self.assertNotEqual(p1, p2)
+                self.assertTrue(p2.name.endswith("-2.md"))
+                self.assertTrue(p1.read_text().endswith("a\n"))
+                self.assertTrue(p2.read_text().endswith("b\n"))
+                for path in (p1, p2):
+                    self.assertLessEqual(ex._utf16_units(path.name + ".tmp"), budget)
 
     def test_project_output_filename_reserves_collision_and_temp_suffix(self):
         self.pm.create_project("My Book")

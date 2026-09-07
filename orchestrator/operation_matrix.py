@@ -590,9 +590,8 @@ def _new_matrix_text(nexus: str, display_name: str) -> str:
     today = datetime.now().strftime("%Y-%m-%d")
     fm = (
         "---\n"
-        "nexus:\n"
-        f"  - {nexus}\n"
-        "type: matrix\n"
+        + yaml.safe_dump({"nexus": [nexus]}, allow_unicode=True).replace("\n-", "\n  -")
+        + "type: matrix\n"
         "tags:\n"
         # Required in list form: the MOM write gate rejects a matrix whose
         # project_type is absent or scalar, so omitting it here would make every
