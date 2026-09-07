@@ -198,7 +198,9 @@
       const data = await r.json();
       if (data && data.ok && data.path) {
         const name = data.path.split(/[\\/]/).pop();
-        setStatus('Saved ' + name, data.path);
+        const warnings = Array.isArray(data.warnings)
+          ? data.warnings.filter(w => typeof w === 'string' && w.trim()) : [];
+        setStatus('Saved ' + name + (warnings.length ? ' — Warning: ' + warnings.join('; ') : ''), data.path);
       } else {
         setStatus((data && data.error) || 'Export failed.');
       }

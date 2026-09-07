@@ -127,6 +127,8 @@ A Private current-output export stays visibly labelled Private and its Markdown 
 
 Choose **Save full Dialogue** when you need the effective branch rather than one answer. Ora holds every ancestral owner stable and authenticates every complete exchange against its canonical Dialogue, turn, chunk, privacy, and content. A Standard or Private target refuses any Stealth-owned turn. A Stealth target may include eligible Standard or Private ancestry inherited through a real fork, but the exported artifact remains source-free and uses a neutral fallback name when a safe canonical title is unavailable.
 
+Both Markdown saves check the document's metadata before creating supporting output. A metadata refusal names the field that needs attention and does not mean a file was saved. A missing optional description instead permits the save and appears as a warning in the existing saved-result status; Reveal remains available after success. Titles with punctuation, the source prose and privacy presentation keep their meaning. Word/PDF, Print and Trace are unchanged. These checks describe the P4 source implementation, not a claim that this machine's running Ora has been updated.
+
 ---
 
 ## Ask Aside for help
@@ -611,6 +613,12 @@ If **Trace** is disabled or absent, the turn has no trace reference. Common caus
 - **Model configuration** — `~/ora/config/routing-config.json` (routing and slots) and `~/ora/config/model-registry.json` (model inventory). Edit these through the Models pane, not by hand.
 
 On Windows, read `~/...` as `%USERPROFILE%\...`.
+
+**Check a project's metadata without changing it.** In an Ora source checkout, run `python -m orchestrator.project_documents check --ora-root <existing-ora-root> --vault <existing-vault-root> --project <nexus>`, substituting the actual roots and persisted project identifier. For one note, replace `--project <nexus>` with `--file <vault-relative-markdown-path> --owner <ordinary|matrix|output|chat>`. Choosing an owner does not prove the file belongs to it. The result lists each selected document's metadata errors, optional-description warnings and completeness. Exit 0 means a complete check without errors, 1 means document errors, and 2 means some selection or authority could not be checked. The command makes no repairs, date changes or index updates; inspect the named source before deciding how to correct it.
+
+**Preview the folder map.** From the same checkout, `python -m orchestrator.project_orientation --ora-root <existing-ora-root> --vault <existing-vault-root>` prints the proposed shallow map. It lists immediate folders and registered project folders, not every file. Descriptions come only from existing folder guidance or explicit Matrix metadata; missing descriptions and unavailable Matrices remain visible. Read the generation time and completeness notice rather than assuming a continuously current inventory.
+
+Add `--write` only when you want to save that preview's kind of output as root `Directory Map.md`. The command generates a fresh snapshot on each invocation. It refuses unsafe destinations and an existing file it cannot recognize as its generated output; do not delete or rename a colliding user file to work around the refusal. A failed atomic replacement preserves the previous map. No timer or startup refresh is installed. The Registry remains the separate explanation of important documents. The map inherits source privacy, so a pointer to it is not permission to send its names or descriptions to a provider. P4 source acceptance uses synthetic examples; generating your real map is a separate deliberate local action.
 
 ---
 
