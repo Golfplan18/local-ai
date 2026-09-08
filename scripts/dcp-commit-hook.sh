@@ -58,22 +58,34 @@ mkdir -p "$(dirname "$LOG")" 2>/dev/null
 # Recursion guard, the commit-identity equivalent of the event dispatcher's
 # .git exclusion: a commit that only touched DCP's own outputs is this hook's
 # own footprint, not new subject matter.
+SHA=$(git rev-parse --short HEAD 2>/dev/null)
 CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null)
 if [ -n "$CHANGED" ]; then
     OTHER=$(printf '%s\n' "$CHANGED" | grep -v '^Administration/DCP/' || true)
     if [ -z "$OTHER" ]; then
-        log "skip $(git rev-parse --short HEAD 2>/dev/null): DCP outputs only"
+        log "skip $SHA: DCP outputs only"
         exit 0
     fi
 fi
 
 if [ ! -f "$VERIFY" ]; then
-    log "ERROR verifier missing at $VERIFY — DCP did not run for $(git rev-parse --short HEAD 2>/dev/null)"
+    log "ERROR verifier missing at $VERIFY — DCP did not run for $SHA"
     echo "DCP commit hook: verifier missing at $VERIFY (see $LOG)" >&2
     exit 0
 fi
 
-SHA=$(git rev-parse --short HEAD 2>/dev/null)
+# Keep the originating commit above, then remove Git's hook-local settings so
+# the verifier's explicit cross-repository reads reach their intended roots.
+git_local_environment=$(git rev-parse --local-env-vars 2>/dev/null) || {
+    log "ERROR Git hook-local environment could not be identified — DCP did not run for $SHA"
+    echo "DCP commit hook FAILED — Git hook-local environment could not be identified. See $LOG" >&2
+    exit 0
+}
+for variable in $git_local_environment
+do
+    unset "$variable"
+done
+
 OUT=$("$PYTHON" "$VERIFY" --check framework-pairs-audit --verbose --enqueue-framework-findings 2>&1)
 STATUS=$?
 

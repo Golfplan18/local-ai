@@ -1,9 +1,11 @@
-"""Behavioral tests for DCP hook installation and pre-push enforcement."""
+"""Behavioral tests for DCP hook installation, commit audits and push enforcement."""
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -387,6 +389,171 @@ class DcpHookBehaviorTests(DcpHookFixture):
         )
         self.assertIn("FAIL", log)
         self.assertIn("paired_body_drift:pair:new", log)
+
+    def test_installed_post_commit_reads_distinct_repositories_from_each_worktree(self):
+        capture = Path(self.temp.name) / "post-commit-reads.json"
+        write(
+            self.roots["ora"] / "scripts/verify-implementation.py",
+            """import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+observed = {"arguments": sys.argv[1:], "guard": os.environ.get("DCP_COMMIT_HOOK_RUNNING")}
+for name, variable in (("ora", "ORA_HOME"), ("vault", "ORA_VAULT")):
+    root = os.environ[variable]
+    def read_git(*arguments):
+        return subprocess.check_output(["git", "-C", root, *arguments], text=True).strip()
+    observed[name] = {
+        "root": root,
+        "head": read_git("rev-parse", "HEAD"),
+        "blob": read_git("rev-parse", "HEAD:README.md"),
+        "body": read_git("show", "HEAD:README.md"),
+    }
+Path(os.environ["DCP_CAPTURE"]).write_text(json.dumps(observed), encoding="utf-8")
+print("paired clean=2, paired drifted=0")
+""",
+        )
+        installed = self.install()
+        self.assertEqual(installed.returncode, 0, installed.stdout + installed.stderr)
+
+        for repository in ("ora", "vault"):
+            for worktree in ("ordinary", "linked"):
+                with self.subTest(repository=repository, worktree=worktree):
+                    origin = self.roots[repository]
+                    if worktree == "linked":
+                        origin = Path(self.temp.name) / f"{repository}-task"
+                        git(self.roots[repository], "worktree", "add", "-q", "-b", "task", str(origin))
+                    write(origin / "README.md", f"# {repository} {worktree}\n")
+                    git(origin, "add", "README.md")
+                    capture.unlink(missing_ok=True)
+                    git_dir = git(origin, "rev-parse", "--absolute-git-dir")
+                    common_dir = self.common_dir(repository)
+                    environment = {
+                        **os.environ,
+                        "ORA_PYTHON": sys.executable,
+                        "DCP_CAPTURE": str(capture),
+                        "GIT_DIR": git_dir,
+                        "GIT_COMMON_DIR": str(common_dir),
+                        "GIT_WORK_TREE": str(origin),
+                        "GIT_INDEX_FILE": str(Path(git_dir) / "index"),
+                        "GIT_OBJECT_DIRECTORY": str(common_dir / "objects"),
+                    }
+
+                    result = subprocess.run(
+                        ["git", "commit", "-qm", f"Update {repository} {worktree}"],
+                        cwd=origin, capture_output=True, text=True, env=environment,
+                    )
+
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(result.stderr, "")
+                    observed = json.loads(capture.read_text(encoding="utf-8"))
+                    self.assertEqual(observed["guard"], "1")
+                    self.assertEqual(observed["arguments"], [
+                        "--check", "framework-pairs-audit", "--verbose", "--enqueue-framework-findings",
+                    ])
+                    for name in ("ora", "vault"):
+                        root = self.roots[name]
+                        self.assertEqual(observed[name], {
+                            "root": str(root),
+                            "head": git(root, "rev-parse", "HEAD"),
+                            "blob": git(root, "rev-parse", "HEAD:README.md"),
+                            "body": git(root, "show", "HEAD:README.md"),
+                        })
+                    self.assertNotEqual(observed["ora"]["head"], observed["vault"]["head"])
+                    self.assertNotEqual(observed["ora"]["blob"], observed["vault"]["blob"])
+                    origin_sha = git(origin, "rev-parse", "--short", "HEAD")
+                    log = (self.roots["ora"] / "logs/dcp-commit-hook.log").read_text(encoding="utf-8")
+                    self.assertIn(f"run {origin_sha} exit=0", log.splitlines()[-1])
+
+    def test_post_commit_local_environment_list_failure_is_loud_and_skips_audit(self):
+        installed = self.install()
+        self.assertEqual(installed.returncode, 0, installed.stdout + installed.stderr)
+        fake_bin = Path(self.temp.name) / "fail-local-env-vars"
+        real_git = shutil.which("git")
+        self.assertIsNotNone(real_git)
+        write(
+            fake_bin / "git",
+            """#!/bin/sh
+if [ "$1" = "rev-parse" ] && [ "${2:-}" = "--local-env-vars" ]; then
+    printf 'GIT_DIR\\n'
+    exit 73
+fi
+exec "$DCP_REAL_GIT" "$@"
+""",
+            executable=True,
+        )
+        audit_called = Path(self.temp.name) / "audit-called"
+        fake_python = Path(self.temp.name) / "must-not-audit"
+        write(fake_python, '#!/bin/sh\ntouch "$DCP_AUDIT_CALLED"\n', executable=True)
+        root = self.roots["vault"]
+        write(root / "README.md", "# A real vault commit\n")
+        git(root, "add", "README.md")
+        environment = {
+            **os.environ,
+            "ORA_PYTHON": str(fake_python),
+            "DCP_AUDIT_CALLED": str(audit_called),
+            "DCP_REAL_GIT": str(real_git),
+            # Git prepends its helper directory to PATH when invoking hooks.
+            "GIT_EXEC_PATH": str(fake_bin),
+            "PATH": f"{fake_bin}:{os.environ.get('PATH', '')}",
+            "GIT_DIR": git(root, "rev-parse", "--absolute-git-dir"),
+            "GIT_WORK_TREE": str(root),
+        }
+
+        result = subprocess.run(
+            [str(real_git), "commit", "-qm", "Commit despite hook operational failure"],
+            cwd=root, capture_output=True, text=True, env=environment,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("DCP commit hook FAILED", result.stderr)
+        self.assertIn("Git hook-local environment could not be identified", result.stderr)
+        self.assertFalse(audit_called.exists())
+        self.assertNotEqual(git(root, "rev-parse", "HEAD"), self.bases["vault"])
+        log = (self.roots["ora"] / "logs/dcp-commit-hook.log").read_text(encoding="utf-8")
+        self.assertIn("ERROR Git hook-local environment could not be identified", log)
+        self.assertIn(f"DCP did not run for {git(root, 'rev-parse', '--short', 'HEAD')}", log)
+        self.assertNotIn("exit=", log)
+
+    def test_installed_post_commit_recursion_guards_skip_the_audit(self):
+        installed = self.install()
+        self.assertEqual(installed.returncode, 0, installed.stdout + installed.stderr)
+        linked = Path(self.temp.name) / "vault-task"
+        git(self.roots["vault"], "worktree", "add", "-q", "-b", "task", str(linked))
+        audit_called = Path(self.temp.name) / "audit-called"
+        fake_python = Path(self.temp.name) / "must-not-audit"
+        write(fake_python, '#!/bin/sh\ntouch "$DCP_AUDIT_CALLED"\n', executable=True)
+        environment = {
+            **os.environ,
+            "ORA_PYTHON": str(fake_python),
+            "DCP_AUDIT_CALLED": str(audit_called),
+            "GIT_DIR": git(linked, "rev-parse", "--absolute-git-dir"),
+            "GIT_WORK_TREE": str(linked),
+        }
+        for guard, path in (("outputs", "Administration/DCP/queue.md"), ("reentry", "README.md")):
+            with self.subTest(guard=guard):
+                write(linked / path, f"# {guard}\n")
+                git(linked, "add", path)
+                if guard == "reentry":
+                    environment["DCP_COMMIT_HOOK_RUNNING"] = "1"
+
+                result = subprocess.run(
+                    ["git", "commit", "-qm", f"Commit with {guard} guard"],
+                    cwd=linked, capture_output=True, text=True, env=environment,
+                )
+
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, "")
+                self.assertFalse(audit_called.exists())
+                log = (self.roots["ora"] / "logs/dcp-commit-hook.log").read_text(encoding="utf-8")
+                if guard == "outputs":
+                    sha = git(linked, "rev-parse", "--short", "HEAD")
+                    self.assertIn(f"skip {sha}: DCP outputs only", log)
+                    outputs_log = log
+                else:
+                    self.assertEqual(log, outputs_log)
 
     def test_pre_push_blocks_code_without_or_with_incomplete_context(self):
         self.commit_change("app", "src/feature.ts", "export const value = 1;\n", "Code")
