@@ -560,6 +560,87 @@ class TestServerLaunchers(unittest.TestCase):
         assert "PORT must be a canonical integer" in completed.stderr
 
     def test_interactive_launchers_poll_exact_explicit_port(self):
+        workspace = self.tmp_path / "ora root"
+        (workspace / "scripts").mkdir(parents=True)
+        fake_bin = self.tmp_path / "bin"
+        fake_bin.mkdir()
+        (fake_bin / "python3").symlink_to(sys.executable)
+        forbidden_start = (
+            "#!/bin/sh\n"
+            'printf \'%s\\n\' "$0 $*" >> "$ORA_TEST_CAPTURE/starts"\n'
+            "exit 99\n"
+        )
+        stubs = {
+            workspace / "run-ora-server.sh": forbidden_start,
+            workspace / "scripts" / "ora-launchd.sh": forbidden_start,
+            fake_bin / "curl": (
+                "#!/bin/sh\n"
+                'printf \'%s\\n\' "$4" >> "$ORA_TEST_CAPTURE/probes"\n'
+                'if [ "$4" = "http://localhost:$ORA_TEST_READY_PORT/health" ]; then\n'
+                '  printf \'{"ora_home":"%s"}\\n\' "$ORA_HOME"\n'
+                'elif [ "$4" = "http://localhost:5000/health" ]; then\n'
+                '  printf \'{"ora_home":"%s/other checkout"}\\n\' "$ORA_HOME"\n'
+                "else\n  exit 22\nfi\n"
+            ),
+            fake_bin / "launchctl": (
+                "#!/bin/sh\n"
+                'printf \'%s\\n\' "$*" >> "$ORA_TEST_CAPTURE/launchctl"\n'
+                '[ "$1" = "print" ] && [ "$ORA_TEST_SUPERVISED" = "1" ]\n'
+            ),
+            fake_bin / "open": (
+                "#!/bin/sh\n"
+                'printf \'%s\\n\' "$@" >> "$ORA_TEST_CAPTURE/browser"\n'
+            ),
+        }
+        for path, source in stubs.items():
+            path.write_text(source, encoding="utf-8")
+            path.chmod(0o755)
+
+        # The first case reaches the last default port after rejecting another
+        # checkout at 5000. Run the real system Bash, including macOS Bash 3.2.
+        for name, port, supervised in (
+            ("default", None, "1"),
+            ("explicit", "6123", "0"),
+            ("supervised override", "6123", "1"),
+        ):
+            with self.subTest(name=name):
+                capture = self.tmp_path / name
+                capture.mkdir()
+                for log in ("starts", "probes", "launchctl", "browser"):
+                    (capture / log).touch()
+                env = {
+                    "PATH": f"{fake_bin}:/usr/bin:/bin",
+                    "HOME": str(self.tmp_path),
+                    "ORA_HOME": str(workspace),
+                    "ORA_START_TIMEOUT": "1",
+                    "ORA_TEST_CAPTURE": str(capture),
+                    "ORA_TEST_READY_PORT": port or "5010",
+                    "ORA_TEST_SUPERVISED": supervised,
+                }
+                if port is not None:
+                    env["PORT"] = port
+                completed = subprocess.run(
+                    ["/bin/bash", str(START)], cwd=workspace, env=env,
+                    text=True, capture_output=True, check=False, timeout=10,
+                )
+                rejected = port is not None and supervised == "1"
+                assert completed.returncode == (2 if rejected else 0), completed
+                probes = [] if rejected else (
+                    [port] if port is not None else list(range(5000, 5011))
+                )
+                assert (capture / "probes").read_text().splitlines() == [
+                    f"http://localhost:{number}/health" for number in probes
+                ]
+                assert (capture / "browser").read_text().splitlines() == (
+                    [] if rejected else [f"http://localhost:{port or '5010'}"]
+                )
+                assert (capture / "starts").read_text() == ""
+                assert (capture / "launchctl").read_text().splitlines() == [
+                    f"print gui/{os.getuid()}/com.ora.server"
+                ]
+                if rejected:
+                    assert "cannot be applied while Ora is managed by launchd" in completed.stderr
+
         posix = START.read_text(encoding="utf-8")
         windows = _bat_source(START_BAT)
     
